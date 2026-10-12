@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@fontsource-variable/onest";
 
 /*
  * Dizajnový systém: pokojná, teplá úžitková aplikácia.
@@ -32,7 +33,7 @@
   --radius-surface: 0.875rem;
   --radius-modal: 1.25rem;
 
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Onest Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 :root {

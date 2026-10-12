@@ -37,6 +37,9 @@ export function errorMessage(error: unknown): string {
         return "Server je nedostupný. Skontroluj pripojenie a skús znova.";
       }
       if (/jwt|token.*expired/i.test(e.message)) return MESSAGES.NOT_AUTHENTICATED!;
+      if (/provider is not enabled|unsupported provider/i.test(e.message)) {
+        return "Prihlásenie cez Google ešte nie je zapnuté. Zatiaľ použi e-mail.";
+      }
     }
   }
   return "Niečo sa pokazilo. Skús to znova.";

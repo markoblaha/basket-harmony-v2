@@ -14,5 +14,8 @@ if (!url || !key) {
  * a token sa sám obnovuje (autoRefreshToken).
  */
 export const supabase = createClient<Database>(url, key, {
+  // Návrat z Google aj z odkazov v e-mailoch spracuje knižnica sama (detectSessionInUrl).
+  // Zámerne nepoužívame PKCE: odkaz "zabudnuté heslo" otvorený v inom prehliadači
+  // (napr. v e-mailovej aplikácii) by s PKCE nefungoval.
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
