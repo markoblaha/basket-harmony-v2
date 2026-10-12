@@ -1,0 +1,292 @@
+-- =============================================================================
+-- Test databázových pravidiel na skutočnej databáze.
+--
+-- Simuluje troch používateľov: Anna a Cyril sú v jednej domácnosti,
+-- Boris (útočník) je v inej. Na konci blok VŽDY vyhodí výnimku TEST_REPORT,
+-- čím sa celá transakcia vráti späť – v databáze nezostane nič.
+-- Spustenie: vložiť celý súbor do SQL editora / execute_sql.
+-- Výsledok: chybová správa obsahuje riadky "ok:" a prípadne "FAIL:".
+-- =============================================================================
+do $test$
+declare
+  a uuid := gen_random_uuid();  -- Anna  (vlastník domácnosti H)
+  b uuid := gen_random_uuid();  -- Boris (iná domácnosť – útočník)
+  c uuid := gen_random_uuid();  -- Cyril (pozvaný do H)
+  h uuid; hb uuid; l uuid; lb uuid; acc uuid;
+  res jsonb; res2 jsonb; inv jsonb; inv2 jsonb;
+  s1 public.shopping_sessions; s2 public.shopping_sessions;
+  item_id uuid; req_id uuid; n int; n2 int; txt text; err text;
+  report text := '';
+  fails int := 0;
+begin
+  -- ---------------------------------------------------------------- príprava
+  insert into auth.users (id, email, aud, role, raw_user_meta_data) values
+    (a, 'anna@test.invalid',  'authenticated', 'authenticated', '{"display_name":"Anna"}'),
+    (b, 'boris@test.invalid', 'authenticated', 'authenticated', '{"display_name":"Boris"}'),
+    (c, 'cyril@test.invalid', 'authenticated', 'authenticated', '{}');
+
+  select count(*) into n from public.profiles where id in (a, b, c);
+  if n = 3 then report := report || E'ok: profil sa vytvorí pri registrácii\n';
+  else report := report || E'FAIL: profily po registrácii\n'; fails := fails + 1; end if;
+  select display_name into txt from public.profiles where id = c;
+  if txt = 'cyril' then report := report || E'ok: meno z e-mailu, keď nie je zadané\n';
+  else report := report || 'FAIL: meno z e-mailu = ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- Anna
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  h := public.create_household('Domácnosť Anny');
+  select id into l from public.shopping_lists where household_id = h;
+  if l is not null then report := report || E'ok: založenie domácnosti vytvorí aj zoznam\n';
+  else report := report || E'FAIL: domácnosť bez zoznamu\n'; fails := fails + 1; end if;
+  inv := public.create_invitation(h);
+  inv2 := public.create_invitation(h);
+
+  -- ---------------------------------------------------------------- Boris
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  hb := public.create_household('Borisova domácnosť');
+  select id into lb from public.shopping_lists where household_id = hb;
+
+  select count(*) into n from public.households where id = h;
+  select count(*) into n2 from public.shopping_lists where id = l;
+  if n = 0 and n2 = 0 then report := report || E'ok: cudzí nevidí domácnosť ani zoznam\n';
+  else report := report || E'FAIL: cudzí vidí cudziu domácnosť\n'; fails := fails + 1; end if;
+
+  select count(*) into n from public.profiles where id = a;
+  if n = 0 then report := report || E'ok: cudzí nevidí profil (meno) človeka z inej domácnosti\n';
+  else report := report || E'FAIL: profil viditeľný cudziemu\n'; fails := fails + 1; end if;
+
+  err := null;
+  begin perform public.add_item(l, 'Útočná položka'); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepridá položku podvrhnutím ID zoznamu\n';
+  else report := report || 'FAIL: cudzí add_item -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  err := null;
+  begin perform public.create_invitation(h); exception when others then err := sqlerrm; end;
+  if err = 'FORBIDDEN' then report := report || E'ok: cudzí nevytvorí pozvánku do cudzej domácnosti\n';
+  else report := report || 'FAIL: cudzia pozvánka -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  err := null;
+  begin perform public.start_shopping(l); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nezačne nákup v cudzom zozname\n';
+  else report := report || 'FAIL: cudzí start_shopping -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  err := null;
+  begin
+    insert into public.shopping_list_items (list_id, household_id, name) values (lb, hb, 'Obchádzka');
+  exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: priamy INSERT položky je zakázaný (len cez add_item)\n';
+  else report := report || 'FAIL: priamy insert -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  err := null;
+  begin
+    insert into public.shopping_lists (household_id, name) values (h, 'Podvrhnutý zoznam');
+  exception when others then err := sqlerrm; end;
+  if err like 'new row violates row-level security%' then report := report || E'ok: cudzí nevloží zoznam do cudzej domácnosti\n';
+  else report := report || 'FAIL: cudzí zoznam -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- pozvánky
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  res := public.invitation_preview(inv ->> 'token');
+  if res ->> 'state' = 'VALID' and res ->> 'invited_by' = 'Anna' then
+    report := report || E'ok: náhľad pozvánky (od koho, kam)\n';
+  else report := report || 'FAIL: náhľad -> ' || res::text || E'\n'; fails := fails + 1; end if;
+
+  acc := public.accept_invitation(inv ->> 'token');
+  select count(*) into n from public.household_members where household_id = h and user_id = c;
+  if acc = h and n = 1 then
+    report := report || E'ok: prijatie pozvánky\n';
+  else report := report || E'FAIL: prijatie pozvánky\n'; fails := fails + 1; end if;
+  if public.accept_invitation(inv ->> 'token') = h then
+    report := report || E'ok: opakované prijatie tým istým členom nič nepokazí\n';
+  else report := report || E'FAIL: opakované prijatie\n'; fails := fails + 1; end if;
+
+  err := null;
+  begin perform public.accept_invitation('neexistujuci-token'); exception when others then err := sqlerrm; end;
+  if err = 'INVITATION_INVALID' then report := report || E'ok: neplatná pozvánka sa odmietne\n';
+  else report := report || 'FAIL: neplatná pozvánka -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  select count(*) into n from public.profiles where id in (a, c);
+  if n = 2 then report := report || E'ok: členovia vidia mená navzájom\n';
+  else report := report || E'FAIL: členovia nevidia mená\n'; fails := fails + 1; end if;
+
+  -- Boris skúsi použiť už použitú pozvánku a potom vypršanú
+  execute 'reset role';
+  update public.household_invitations set expires_at = now() - interval '1 minute'
+   where token_hash = encode(sha256(convert_to(inv2 ->> 'token', 'UTF8')), 'hex');
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null;
+  begin perform public.accept_invitation(inv ->> 'token'); exception when others then err := sqlerrm; end;
+  if err = 'INVITATION_USED' then report := report || E'ok: použitá pozvánka nefunguje druhýkrát\n';
+  else report := report || 'FAIL: použitá pozvánka -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.accept_invitation(inv2 ->> 'token'); exception when others then err := sqlerrm; end;
+  if err = 'INVITATION_EXPIRED' then report := report || E'ok: vypršaná pozvánka sa odmietne\n';
+  else report := report || 'FAIL: vypršaná pozvánka -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- pravidlo A
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  res := public.add_item(l, 'Mlieko', 2, 'ks', null, null, 'dairy_eggs');
+  if res ->> 'kind' = 'ITEM' then report := report || E'ok: A) nikto nenakupuje -> položka ide rovno do zoznamu\n';
+  else report := report || 'FAIL: pravidlo A -> ' || res::text || E'\n'; fails := fails + 1; end if;
+  select category_id into txt from public.shopping_list_items where id = (res ->> 'id')::uuid;
+  if txt = 'dairy_eggs' then report := report || E'ok: kategória z odhadu aplikácie\n';
+  else report := report || 'FAIL: kategória = ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- nákup
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  s1 := public.start_shopping(l);
+  s2 := public.start_shopping(l);
+  if s1.id = s2.id and s1.status = 'ACTIVE' then report := report || E'ok: opakovaný štart nákupu vráti ten istý nákup\n';
+  else report := report || E'FAIL: opakovaný štart\n'; fails := fails + 1; end if;
+
+  res := public.add_item(l, 'Chlieb');
+  if res ->> 'kind' = 'ITEM' then report := report || E'ok: B) nakupujúci pridáva rovno, nič neschvaľuje sám sebe\n';
+  else report := report || 'FAIL: pravidlo B -> ' || res::text || E'\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null;
+  begin perform public.start_shopping(l); exception when others then err := sqlerrm; end;
+  if err = 'SESSION_ALREADY_ACTIVE' then report := report || E'ok: dva súčasné nákupy jedného zoznamu sú nemožné\n';
+  else report := report || 'FAIL: druhý nákup -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  res := public.add_item(l, 'Olivový olej', 1, 'ks', null, null, null, '11111111-1111-4111-8111-111111111111');
+  res2 := public.add_item(l, 'Olivový olej', 1, 'ks', null, null, null, '11111111-1111-4111-8111-111111111111');
+  req_id := (res ->> 'id')::uuid;
+  select count(*) into n from public.addition_requests where client_op_id = '11111111-1111-4111-8111-111111111111';
+  if res ->> 'kind' = 'REQUEST' and (res ->> 'shopper_id')::uuid = a then
+    report := report || E'ok: C) iný člen počas nákupu -> vznikne žiadosť pre nakupujúceho\n';
+  else report := report || 'FAIL: pravidlo C -> ' || res::text || E'\n'; fails := fails + 1; end if;
+  if res2 ->> 'id' = res ->> 'id' and n = 1 then report := report || E'ok: dvojité odoslanie (zlý signál) vytvorí iba jednu žiadosť\n';
+  else report := report || E'FAIL: idempotencia add_item\n'; fails := fails + 1; end if;
+
+  err := null;
+  begin perform public.accept_request(req_id); exception when others then err := sqlerrm; end;
+  if err = 'FORBIDDEN' then report := report || E'ok: žiadosť nemôže schváliť niekto iný ako nakupujúci\n';
+  else report := report || 'FAIL: cudzie schválenie -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- schválenie
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.shopping_list_items where list_id = l;
+  res := public.accept_request(req_id);
+  res2 := public.accept_request(req_id);
+  select count(*) into n2 from public.shopping_list_items where list_id = l;
+  if res ->> 'outcome' = 'ACCEPTED' and res2 ->> 'item_id' = res ->> 'item_id' and n2 = n + 1 then
+    report := report || E'ok: schválenie vytvorí položku; dvojité schválenie nevytvorí duplikát\n';
+  else report := report || 'FAIL: schválenie ' || res::text || ' / ' || res2::text || E'\n'; fails := fails + 1; end if;
+  select added_by into item_id from public.shopping_list_items where id = (res ->> 'item_id')::uuid;
+  if item_id = c then report := report || E'ok: pri schválenej položke je uvedené, kto ju chcel\n';
+  else report := report || E'FAIL: added_by pri schválení\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- zamietnutie
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  req_id := (public.add_item(l, 'Čokoláda') ->> 'id')::uuid;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.shopping_list_items where list_id = l;
+  res := public.reject_request(req_id);
+  res2 := public.accept_request(req_id);
+  select count(*) into n2 from public.shopping_list_items where list_id = l;
+  if res ->> 'outcome' = 'REJECTED' and res2 ->> 'outcome' = 'REJECTED' and n2 = n then
+    report := report || E'ok: zamietnutá žiadosť sa nedá dodatočne schváliť\n';
+  else report := report || 'FAIL: zamietnutie ' || res::text || ' / ' || res2::text || E'\n'; fails := fails + 1; end if;
+  select count(*) into n from public.addition_requests where id = req_id and status = 'REJECTED';
+  if n = 1 then report := report || E'ok: zamietnutá žiadosť ostáva v histórii\n';
+  else report := report || E'FAIL: história zamietnutia\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- nákupná položka
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select id into item_id from public.shopping_list_items where list_id = l and name = 'Mlieko';
+  update public.shopping_list_items set status = 'PURCHASED' where id = item_id;
+  select purchased_by::text into txt from public.shopping_list_items where id = item_id;
+  if txt = c::text then report := report || E'ok: odškrtnutie zapíše, kto položku kúpil\n';
+  else report := report || E'FAIL: purchased_by\n'; fails := fails + 1; end if;
+
+  err := null;
+  begin update public.shopping_list_items set household_id = hb where id = item_id;
+  exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: položku nemožno presunúť do inej domácnosti\n';
+  else report := report || 'FAIL: zmena household_id -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  -- pamäť kategórií
+  update public.shopping_list_items set category_id = 'beverages' where id = item_id;
+  res := public.add_item(l, '  MLIEKO ');
+  -- (počas nákupu Anny je to žiadosť – kategória sa berie z pamäte aj tak)
+  select category_id into txt from public.addition_requests where id = (res ->> 'id')::uuid;
+  if txt = 'beverages' then report := report || E'ok: domácnosť si pamätá zmenenú kategóriu (aj bez diakritiky/veľkých písmen)\n';
+  else report := report || 'FAIL: pamäť kategórií = ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+  req_id := (res ->> 'id')::uuid;
+
+  -- ---------------------------------------------------------------- koniec nákupu
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  s2 := public.end_shopping(s1.id);
+  select status::text into txt from public.addition_requests where id = req_id;
+  res := public.accept_request(req_id);
+  if s2.status = 'ENDED' and txt = 'EXPIRED' and res ->> 'outcome' = 'EXPIRED' then
+    report := report || E'ok: po skončení nákupu nevybavené žiadosti prepadnú a nič nepridajú\n';
+  else report := report || 'FAIL: koniec nákupu ' || txt || ' / ' || res::text || E'\n'; fails := fails + 1; end if;
+  select count(*) into n from public.shopping_list_items where list_id = l and status = 'PURCHASED';
+  select count(*) into n2 from public.shopping_list_items where list_id = l and status = 'OPEN';
+  if n = 1 and n2 = 2 then report := report || E'ok: kúpené aj nekúpené položky ostanú zachované\n';
+  else report := report || format(E'FAIL: po nákupe kúpené=%s otvorené=%s\n', n, n2); fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- vypršanie
+  s1 := public.start_shopping(l);
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  req_id := (public.add_item(l, 'Syr') ->> 'id')::uuid;
+  execute 'reset role';
+  update public.shopping_sessions set expires_at = now() - interval '1 second' where id = s1.id;
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  res := public.accept_request(req_id);
+  if res ->> 'outcome' = 'EXPIRED' then report := report || E'ok: žiadosť z vypršaného nákupu sa nedá schváliť\n';
+  else report := report || 'FAIL: žiadosť po vypršaní -> ' || res::text || E'\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  res := public.add_item(l, 'Maslo');
+  select status::text into txt from public.shopping_sessions where id = s1.id;
+  if res ->> 'kind' = 'ITEM' and txt = 'EXPIRED' then
+    report := report || E'ok: po vypršaní nákupu sa položky znova pridávajú normálne\n';
+  else report := report || 'FAIL: po vypršaní ' || res::text || ' ' || txt || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- anonym
+  execute 'reset role';
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  execute 'set local role anon';
+  err := null;
+  begin select count(*) into n from public.households; exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: neprihlásený nevidí nič\n';
+  else report := report || 'FAIL: anonym -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.create_household('x'); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: neprihlásený nevolá funkcie\n';
+  else report := report || 'FAIL: anonym funkcia -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  raise exception E'TEST_REPORT fails=%\n%', fails, report;
+end
+$test$;

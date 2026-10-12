@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+/*
+ * Dizajnový systém: pokojná, teplá úžitková aplikácia.
+ * Farby sú "role" (pozadie, povrch, primárna akcia, úspech...), nie konkrétne
+ * odtiene – komponenty používajú role, takže tmavý režim je len iná sada hodnôt.
+ */
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-pressed: var(--pressed);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-primary: var(--primary);
+  --color-primary-pressed: var(--primary-pressed);
+  --color-primary-soft: var(--primary-soft);
+  --color-on-primary: var(--on-primary);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --radius-control: 0.625rem;
+  --radius-surface: 0.875rem;
+  --radius-modal: 1.25rem;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+  --bg: oklch(0.978 0.009 84);
+  --surface: oklch(0.948 0.012 84);
+  --elevated: oklch(0.996 0.003 87);
+  --pressed: oklch(0.925 0.018 81);
+  --text: oklch(0.205 0.014 329);
+  --text-2: oklch(0.41 0.014 329);
+  --text-3: oklch(0.52 0.012 329);
+  --line: oklch(0.885 0.011 85);
+  --line-strong: oklch(0.72 0.012 329);
+  --primary: oklch(0.39 0.078 327);
+  --primary-pressed: oklch(0.32 0.074 327);
+  --primary-soft: oklch(0.93 0.029 327);
+  --on-primary: oklch(0.994 0.004 86);
+  --success: oklch(0.46 0.104 162);
+  --success-soft: oklch(0.94 0.035 162);
+  --warning: oklch(0.52 0.11 70);
+  --warning-soft: oklch(0.955 0.043 82);
+  --danger: oklch(0.48 0.17 28);
+  --danger-soft: oklch(0.955 0.035 29);
+  --info: oklch(0.49 0.07 277);
+  --info-soft: oklch(0.948 0.03 280);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: oklch(0.17 0.014 328);
+    --surface: oklch(0.208 0.013 328);
+    --elevated: oklch(0.247 0.015 328);
+    --pressed: oklch(0.29 0.017 328);
+    --text: oklch(0.965 0.006 85);
+    --text-2: oklch(0.79 0.009 86);
+    --text-3: oklch(0.68 0.008 86);
+    --line: oklch(0.98 0.004 85 / 13%);
+    --line-strong: oklch(0.98 0.004 85 / 25%);
+    --primary: oklch(0.785 0.075 327);
+    --primary-pressed: oklch(0.72 0.077 327);
+    --primary-soft: oklch(0.31 0.045 327);
+    --on-primary: oklch(0.19 0.019 329);
+    --success: oklch(0.72 0.105 162);
+    --success-soft: oklch(0.28 0.045 162);
+    --warning: oklch(0.8 0.11 80);
+    --warning-soft: oklch(0.31 0.04 80);
+    --danger: oklch(0.68 0.17 28);
+    --danger-soft: oklch(0.29 0.051 28);
+    --info: oklch(0.765 0.072 277);
+    --info-soft: oklch(0.3 0.039 280);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    min-height: 100dvh;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

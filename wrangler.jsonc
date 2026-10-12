@@ -1,0 +1,11 @@
+// Cloudflare: aplikácia je statická stránka (HTML + JS), ktorú Cloudflare
+// rozosiela z najbližšieho servera. "single-page-application" znamená, že
+// akákoľvek adresa (napr. /join/abc) vráti index.html a o zvyšok sa postará React.
+{
+  "name": "basket-harmony",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
