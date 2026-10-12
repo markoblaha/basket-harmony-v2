@@ -2,7 +2,7 @@
 // rozosiela z najbližšieho servera. "single-page-application" znamená, že
 // akákoľvek adresa (napr. /join/abc) vráti index.html a o zvyšok sa postará React.
 {
-  "name": "basket-harmony",
+  "name": "basket-harmony-v2",
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": "./dist",
