@@ -1,8 +1,13 @@
 -- =============================================================================
--- Prísnejšie pravidlo na dátum: dátum starší ako 18 mesiacov je podozrivý
--- (typicky AI prečíta zlý rok), takže bloček počká na kontrolu.
--- Funkcia sa len nahrádza (zmena je jediný riadok s `current_date - 548`);
--- oprávnenia ostávajú.
+-- Pravidlá kontroly dokladu + spájanie dokladov.
+--
+-- 1) Dátum starší ako 18 mesiacov je podozrivý (AI často prečíta zlý rok).
+-- 2) Doklad bez názvu obchodu čaká na kontrolu (STORE_MISSING): človek ho doplní.
+-- 3) merge_receipts: viac dokladov (napr. dve polovice jednej faktúry, ktoré boli
+--    nahraté zvlášť) sa spojí do jedného. Strany sa presunú k prvému dokladu,
+--    ostatné doklady sa zmažú a spojený doklad sa pripraví na nové prečítanie.
+-- Funkcie sa len nahrádzajú / pridávajú; oprávnenia sú nižšie.
+-- POZOR: obsahuje príkaz `delete` (zmazanie dokladov, ktoré sa spojili).
 -- =============================================================================
 create or replace function public.save_receipt_extraction(p_receipt_id uuid, p_payload jsonb)
 returns public.receipts
@@ -56,6 +61,8 @@ begin
     v_reason := 'TOTAL_MISMATCH';
   elsif v_date is null or v_date > current_date + 1 or v_date < current_date - 548 then
     v_reason := 'DATE_SUSPECT';
+  elsif v_store is null then
+    v_reason := 'STORE_MISSING';
   else
     select id into v_dup from public.receipts
      where household_id = r.household_id and id <> r.id and status in ('OK', 'NEEDS_REVIEW')
@@ -79,3 +86,46 @@ begin
   returning * into r;
   return r;
 end $$;
+
+create or replace function public.merge_receipts(p_receipt_ids uuid[])
+returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare
+  target uuid := p_receipt_ids[1];
+  n_ids int := cardinality(p_receipt_ids);
+  hh uuid;
+  n_pages int;
+  off int;
+  rid uuid;
+begin
+  perform public._require_uid();
+  if n_ids is null or n_ids < 2 or n_ids > 8
+     or (select count(distinct x) from unnest(p_receipt_ids) as x) <> n_ids then
+    raise exception 'VALIDATION';
+  end if;
+  select household_id into hh from public.receipts where id = target;
+  if hh is null or not public.is_member(hh) then raise exception 'NOT_FOUND'; end if;
+  if (select count(*) from public.receipts where id = any (p_receipt_ids) and household_id = hh) <> n_ids then
+    raise exception 'NOT_FOUND';
+  end if;
+  select count(*) into n_pages from public.receipt_pages where receipt_id = any (p_receipt_ids);
+  if n_pages > 8 then raise exception 'TOO_MANY_PAGES'; end if;
+
+  perform 1 from public.receipts where id = any (p_receipt_ids) order by id for update;
+
+  select coalesce(max(position), 0) into off from public.receipt_pages where receipt_id = target;
+  foreach rid in array p_receipt_ids[2:n_ids] loop
+    update public.receipt_pages set receipt_id = target, position = position + off where receipt_id = rid;
+    select coalesce(max(position), 0) into off from public.receipt_pages where receipt_id = target;
+  end loop;
+
+  delete from public.receipts where id = any (p_receipt_ids[2:n_ids]);
+
+  update public.receipts
+     set status = 'PROCESSING', review_reason = null, error_text = null, duplicate_of = null
+   where id = target;
+  return target;
+end $$;
+
+revoke execute on function public.merge_receipts(uuid[]) from public, anon;
+grant execute on function public.merge_receipts(uuid[]) to authenticated;

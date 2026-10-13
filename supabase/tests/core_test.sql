@@ -396,6 +396,59 @@ begin
   if n = 1 and n2 = 0 then report := report || E'ok: člen zmaže bloček aj s položkami\n';
   else report := report || 'FAIL: mazanie bločku ' || n || '/' || n2 || E'\n'; fails := fails + 1; end if;
 
+  -- ------------------------------------------------- viac strán, spájanie
+  -- (vyžaduje migrácie 17 a 18; člen C je stále prihlásený)
+  select * into rg from public.register_receipt_page(rc1, repeat('1', 64), 'png');
+  select count(*) into n from public.receipt_pages where receipt_id = rc1;
+  if not rg.already_exists and n = 2 and rg.path like h::text || '/%.png' then
+    report := report || E'ok: k bločku sa dá pridať ďalšia strana\n';
+  else report := report || 'FAIL: register_receipt_page ' || n || E'\n'; fails := fails + 1; end if;
+  select * into rg from public.register_receipt_page(rc1, repeat('1', 64), 'png');
+  if rg.already_exists and rg.owner_receipt_id = rc1 then
+    report := report || E'ok: tá istá strana sa nepridá dvakrát\n';
+  else report := report || E'FAIL: duplicitná strana prešla\n'; fails := fails + 1; end if;
+
+  select * into rg from public.register_receipt(h, repeat('2', 64));
+  rc2 := rg.receipt_id;
+  select * into rg from public.register_receipt(h, repeat('3', 64));
+  perform public.merge_receipts(array[rc2, rg.receipt_id]);
+  select count(*) into n from public.receipt_pages where receipt_id = rc2;
+  select count(*) into n2 from public.receipts where id = rg.receipt_id;
+  select status::text into txt from public.receipts where id = rc2;
+  if n = 2 and n2 = 0 and txt = 'PROCESSING' then
+    report := report || E'ok: spojenie dvoch dokladov dá jeden s dvoma stranami\n';
+  else report := report || 'FAIL: merge_receipts ' || n || '/' || n2 || '/' || coalesce(txt, '-') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.merge_receipts(array[rc2]); exception when others then err := sqlerrm; end;
+  if err = 'VALIDATION' then report := report || E'ok: spojiť sa dá najmenej dva doklady\n';
+  else report := report || 'FAIL: merge jeden doklad -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  -- ručne zadaný obchod prepočíta store_key
+  update public.receipts set store_name = 'Tesco' where id = rc2;
+  select store_key into txt from public.receipts where id = rc2;
+  if txt = public.name_key('Tesco') then report := report || E'ok: ručne zadaný obchod prepočíta store_key\n';
+  else report := report || 'FAIL: store_key -> ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+
+  -- doklad bez obchodu ide na kontrolu
+  execute 'reset role';
+  rrec := public.save_receipt_extraction(rc2, jsonb_build_object(
+    'store_name', null, 'purchased_on', '2026-09-20', 'total', 1.20,
+    'items', jsonb_build_array(jsonb_build_object('name', 'Mlieko', 'line_total', 1.20, 'category_id', 'dairy_eggs'))));
+  if rrec.review_reason = 'STORE_MISSING' then report := report || E'ok: chýbajúci obchod -> kontrola\n';
+  else report := report || 'FAIL: STORE_MISSING -> ' || coalesce(rrec.review_reason, 'OK') || E'\n'; fails := fails + 1; end if;
+
+  -- cudzí nespojí ani nepridá stranu
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null;
+  begin perform public.register_receipt_page(rc1, repeat('4', 64)); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepridá stranu k cudziemu bločku\n';
+  else report := report || 'FAIL: cudzia strana -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.merge_receipts(array[rc1, rc2]); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nespojí cudzie doklady\n';
+  else report := report || 'FAIL: cudzí merge -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);

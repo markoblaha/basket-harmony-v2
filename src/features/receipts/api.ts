@@ -8,6 +8,7 @@ import type { Row } from "@/lib/database.types";
 
 export type Receipt = Row<"receipts">;
 export type ReceiptItem = Row<"receipt_items">;
+export type ReceiptPage = Row<"receipt_pages">;
 
 export const receiptKeys = {
   all: (hid: string) => ["receipts", hid] as const,
@@ -93,20 +94,42 @@ function extensionOf(file: File): "jpg" | "png" | "webp" | "heic" | "pdf" {
   return "jpg";
 }
 
-/** Príliš veľkú fotku (nad limit úložiska) zmenšíme; bežné fotky a PDF idú v pôvodnej podobe. */
-async function fitForUpload(file: File): Promise<Blob> {
-  const LIMIT = 9 * 1024 * 1024;
-  if (file.size <= LIMIT) return file;
+/** Najviac strán jedného dokladu (rovnaký limit je v databáze). */
+export const MAX_PAGES = 8;
+/** Server pošle Gemini všetky strany naraz; spolu ich smie byť zhruba toľko. */
+const TOTAL_BUDGET = 12 * 1024 * 1024;
+const STORAGE_LIMIT = 9 * 1024 * 1024;
+
+/**
+ * Príliš veľký súbor zmenšíme (obrázok) alebo odmietneme (PDF); bežné fotky idú v pôvodnej podobe.
+ * Pri doklade z viacerých strán sa limit na jednu stranu zníži, aby sa všetky zmestili naraz.
+ */
+async function fitForUpload(file: File, limit: number): Promise<Blob> {
+  if (file.size <= limit) return file;
   if (extensionOf(file) === "pdf") throw new Error("FILE_TOO_LARGE");
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 3000 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.85));
-  if (!blob) throw new Error("IMAGE_TOO_LARGE");
+  let blob: Blob | null = null;
+  for (const [side, quality] of [[3600, 0.85], [3000, 0.75], [2400, 0.7]] as const) {
+    const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", quality));
+    if (blob && blob.size <= limit) return blob;
+  }
+  if (!blob || blob.size > STORAGE_LIMIT) throw new Error("FILE_TOO_LARGE");
   return blob;
+}
+
+const perFileLimit = (count: number) => Math.min(STORAGE_LIMIT, Math.floor(TOTAL_BUDGET / Math.max(1, count)));
+
+async function putFile(path: string, file: File, limit: number): Promise<void> {
+  const body = await fitForUpload(file, limit);
+  const up = await supabase.storage.from("receipts").upload(path, body, {
+    contentType: body.type || (extensionOf(file) === "pdf" ? "application/pdf" : "image/jpeg"),
+  });
+  if (up.error) throw up.error;
 }
 
 /** Vyvolá čítanie bločku na serveri. Vráti výsledný stav bločku. */
@@ -125,43 +148,72 @@ export async function extractReceipt(receiptId: string): Promise<"OK" | "NEEDS_R
 }
 
 /**
- * Nahrá jednu fotku: odtlačok -> registrácia (duplicitu databáza odmietne)
- * -> fotka do úložiska -> čítanie na serveri.
+ * Nahrá jeden doklad z jednej alebo viacerých strán (fotiek, snímok, PDF):
+ * odtlačok -> registrácia (duplicitu databáza odmietne) -> súbory do úložiska -> čítanie na serveri.
+ * Strana, ktorá v domácnosti už je, sa preskočí.
  */
-export async function uploadReceiptFile(householdId: string, file: File): Promise<UploadOutcome> {
-  const checksum = await sha256Hex(file);
+export async function uploadReceipt(householdId: string, files: File[]): Promise<UploadOutcome> {
+  const first = files[0];
+  if (!first) throw new Error("VALIDATION");
+  if (files.length > MAX_PAGES) throw new Error("TOO_MANY_PAGES");
+  const limit = perFileLimit(files.length);
+
   const { data, error } = await supabase.rpc("register_receipt", {
     p_household_id: householdId,
-    p_checksum: checksum,
-    p_ext: extensionOf(file),
+    p_checksum: await sha256Hex(first),
+    p_ext: extensionOf(first),
   });
   if (error) throw error;
   const reg = data[0]!;
   if (reg.already_exists) return "DUPLICATE";
 
-  let body: Blob;
+  const uploaded: string[] = [];
   try {
-    body = await fitForUpload(file);
+    await putFile(reg.path, first, limit);
+    uploaded.push(reg.path);
+    for (const file of files.slice(1)) {
+      const { data: pd, error: pe } = await supabase.rpc("register_receipt_page", {
+        p_receipt_id: reg.receipt_id,
+        p_checksum: await sha256Hex(file),
+        p_ext: extensionOf(file),
+      });
+      if (pe) throw pe;
+      const page = pd[0]!;
+      if (page.already_exists) continue; // tá istá strana už v domácnosti je
+      await putFile(page.path, file, limit);
+      uploaded.push(page.path);
+    }
   } catch (err) {
-    await supabase.from("receipts").delete().eq("id", reg.receipt_id); // bez súboru by ostal prázdny riadok
-    throw err;
-  }
-  const up = await supabase.storage.from("receipts").upload(reg.path, body, {
-    contentType: body.type || (extensionOf(file) === "pdf" ? "application/pdf" : "image/jpeg"),
-  });
-  if (up.error) {
-    // Bez fotky by bloček zostal prázdny a ďalší pokus by ho brał ako duplicitu.
+    // Bez súborov by doklad zostal prázdny a ďalší pokus by ho bral ako duplicitu.
     await supabase.from("receipts").delete().eq("id", reg.receipt_id);
-    throw up.error;
+    if (uploaded.length > 0) await supabase.storage.from("receipts").remove(uploaded);
+    throw err;
   }
   try {
     return await extractReceipt(reg.receipt_id);
   } catch (e) {
     // Globálna chyba (kredit, kľúč) ide ďalej, aby sa dávka zastavila a človek videl dôvod.
     if (e instanceof Error && isGlobalFailure(e.message)) throw e;
-    // Ostatné: dôvod je uložený pri bločku, zobrazí sa v zozname.
+    // Ostatné: dôvod je uložený pri doklade, zobrazí sa v zozname.
     return isNotAReceiptError(e) ? "NOT_A_RECEIPT" : "FAILED";
   }
+}
+
+/** Strany jedného dokladu v poradí (každá je samostatný súbor v úložisku). */
+export function useReceiptPages(receiptId: string | undefined) {
+  return useQuery({
+    queryKey: ["receipt-pages", receiptId ?? "none"],
+    enabled: !!receiptId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("receipt_pages")
+        .select("*")
+        .eq("receipt_id", receiptId!)
+        .order("position");
+      if (error) throw error;
+      return data as ReceiptPage[];
+    },
+  });
 }
 
 // ------------------------------------------------------------------ úpravy
@@ -174,6 +226,66 @@ export function useRereadReceipt() {
       qc.invalidateQueries({ queryKey: ["receipts"] });
       qc.invalidateQueries({ queryKey: ["receipt"] });
     },
+  });
+}
+
+function invalidateReceipts(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["receipts"] });
+  qc.invalidateQueries({ queryKey: ["receipt"] });
+  qc.invalidateQueries({ queryKey: ["receipt-pages"] });
+}
+
+/** Pridá strany k existujúcemu dokladu a prečíta ho znova (všetky strany spolu). */
+export function useAddReceiptPages() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ receipt, files }: { receipt: Receipt; files: File[] }) => {
+      const { count } = await supabase
+        .from("receipt_pages")
+        .select("id", { count: "exact", head: true })
+        .eq("receipt_id", receipt.id);
+      if ((count ?? 1) + files.length > MAX_PAGES) throw new Error("TOO_MANY_PAGES");
+      const limit = perFileLimit((count ?? 1) + files.length);
+      let added = 0;
+      for (const file of files) {
+        const { data, error } = await supabase.rpc("register_receipt_page", {
+          p_receipt_id: receipt.id,
+          p_checksum: await sha256Hex(file),
+          p_ext: extensionOf(file),
+        });
+        if (error) throw error;
+        const page = data[0]!;
+        if (page.already_exists) continue; // tá istá strana už v domácnosti je
+        await putFile(page.path, file, limit);
+        added++;
+      }
+      if (added === 0) throw new Error("PAGE_ALREADY_EXISTS");
+      return extractReceipt(receipt.id);
+    },
+    onSettled: () => invalidateReceipts(qc),
+  });
+}
+
+/**
+ * Spojí viac dokladov do jedného (prvý zostane, ostatné sa pridajú ako ďalšie strany)
+ * a spojený doklad prečíta znova. Samotné spojenie robí databáza.
+ */
+export function useMergeReceipts() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { data, error } = await supabase.rpc("merge_receipts", { p_receipt_ids: ids });
+      if (error) throw error;
+      invalidateReceipts(qc);
+      try {
+        await extractReceipt(data);
+      } catch (e) {
+        // Spojenie prebehlo; zlyhanie čítania je vidno pri doklade a dá sa zopakovať.
+        if (e instanceof Error && isGlobalFailure(e.message)) throw e;
+      }
+      return data;
+    },
+    onSettled: () => invalidateReceipts(qc),
   });
 }
 
@@ -215,10 +327,13 @@ export function useDeleteReceipt() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (receipt: Receipt) => {
+      // Cesty všetkých strán si zapamätáme skôr, než zmizne riadok.
+      const { data: pages } = await supabase.from("receipt_pages").select("image_path").eq("receipt_id", receipt.id);
+      const paths = new Set([receipt.image_path, ...(pages ?? []).map((p) => p.image_path)]);
       const { error } = await supabase.from("receipts").delete().eq("id", receipt.id);
       if (error) throw error;
-      // Fotku mažeme až po riadku; ak by sa nepodarilo, ostane len nevyužitý súbor.
-      await supabase.storage.from("receipts").remove([receipt.image_path]);
+      // Súbory mažeme až po riadku; ak by sa nepodarilo, ostanú len nevyužité súbory.
+      await supabase.storage.from("receipts").remove([...paths]);
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["receipts"] });

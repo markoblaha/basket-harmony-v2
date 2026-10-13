@@ -1,21 +1,22 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ArrowLeft, FileText, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Banner, Button, ErrorState, Group, IconButton, Section, Sheet, Spinner, TextField } from "@/components/ui";
 import { useToast } from "@/components/toast";
-import { errorMessage } from "@/lib/errors";
 import { category } from "@/lib/categories";
 import {
-  isReceiptPdf,
+  MAX_PAGES,
+  useAddReceiptPages,
   useConfirmReceipt,
   useDeleteReceipt,
   useReceipt,
   useReceiptImage,
+  useReceiptPages,
   useRereadReceipt,
   useUpdateReceipt,
   type Receipt,
 } from "./api";
-import { failureText, formatDate, formatMoney, reviewText } from "./format";
+import { failureText, formatDate, formatMoney, readErrorMessage, reviewText } from "./format";
 
 export function ReceiptDetailPage() {
   const { id } = useParams();
@@ -26,22 +27,37 @@ export function ReceiptDetailPage() {
   const confirm = useConfirmReceipt();
   const remove = useDeleteReceipt();
   const [editing, setEditing] = useState(false);
-  const [photoOpen, setPhotoOpen] = useState(false);
-  const image = useReceiptImage(query.data?.receipt.image_path);
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const pagesQuery = useReceiptPages(id);
+  const addPages = useAddReceiptPages();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const viewer = useReceiptImage(openPath ?? undefined);
 
   if (query.isPending) return <Spinner />;
-  if (query.isError) return <ErrorState error={errorMessage(query.error)} onRetry={() => query.refetch()} />;
+  if (query.isError) return <ErrorState error={readErrorMessage(query.error)} onRetry={() => query.refetch()} />;
   if (!query.data) return <ErrorState error="Tento bloček už neexistuje alebo k nemu nemáš prístup." />;
   const { receipt: r, items } = query.data;
+  // Strany v poradí; kým sa nenačítajú (alebo pri staršom doklade) je to aspoň prvá fotka.
+  const pageList = pagesQuery.data && pagesQuery.data.length > 0 ? pagesQuery.data.map((p) => p.image_path) : [r.image_path];
 
   const act = async (fn: () => Promise<unknown>, ok?: string) => {
     try {
       await fn();
       if (ok) toast.show(ok, "success");
     } catch (err) {
-      toast.show(errorMessage(err), "error");
+      toast.show(readErrorMessage(err), "error");
     }
   };
+
+  async function onAddPages(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    await act(
+      () => addPages.mutateAsync({ receipt: r, files }),
+      files.length === 1 ? "Strana pridaná, doklad prečítaný znova" : "Strany pridané, doklad prečítaný znova",
+    );
+  }
 
   async function onDelete() {
     if (!window.confirm("Naozaj zmazať tento bloček aj s fotkou?")) return;
@@ -122,26 +138,24 @@ export function ReceiptDetailPage() {
           </Section>
         )}
 
-        {image.data && isReceiptPdf(r) && (
-          <Section>
-            <a
-              href={image.data}
-              target="_blank"
-              rel="noreferrer"
-              className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-surface)] bg-surface px-4 py-3 font-semibold active:bg-pressed"
-            >
-              <FileText className="size-5" aria-hidden /> Otvoriť PDF doklad
-            </a>
-          </Section>
-        )}
-        {image.data && !isReceiptPdf(r) && (
-          <Section>
-            <button type="button" onClick={() => setPhotoOpen(true)} className="block w-full overflow-hidden rounded-[var(--radius-surface)] bg-surface">
-              <img src={image.data} alt="Fotka bločku" className="max-h-64 w-full object-cover object-top" />
-            </button>
-            <p className="mt-1 px-1 text-xs text-text-3">Klepnutím zväčšíš fotku.</p>
-          </Section>
-        )}
+        <Section title={pageList.length > 1 ? `Strany dokladu (${pageList.length})` : undefined}>
+          <div className="flex flex-col gap-2">
+            {pageList.map((path, i) => (
+              <PageView key={path} path={path} label={pageList.length > 1 ? `Strana ${i + 1} z ${pageList.length}` : null} onOpen={() => setOpenPath(path)} />
+            ))}
+          </div>
+          {r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
+            <div className="mt-2">
+              <Button variant="secondary" block loading={addPages.isPending} onClick={() => fileInput.current?.click()}>
+                <Plus className="size-4" aria-hidden /> Pridať ďalšiu stranu
+              </Button>
+              <input ref={fileInput} type="file" accept="image/*,application/pdf" multiple hidden onChange={onAddPages} />
+              <p className="mt-1 px-1 text-xs text-text-3">
+                Ak je doklad na viacerých fotkách alebo stranách, pridaj ďalšie. Doklad sa prečíta znova zo všetkých strán.
+              </p>
+            </div>
+          )}
+        </Section>
 
         {items.length > 0 && (
           <Section title={`Položky (${items.length})`}>
@@ -185,9 +199,39 @@ export function ReceiptDetailPage() {
       </div>
 
       <EditSheet open={editing} onClose={() => setEditing(false)} receipt={r} />
-      <Sheet open={photoOpen} onClose={() => setPhotoOpen(false)} title="Fotka bločku">
-        {image.data && <img src={image.data} alt="Fotka bločku" className="w-full rounded-lg" />}
+      <Sheet open={openPath !== null} onClose={() => setOpenPath(null)} title="Fotka dokladu">
+        {viewer.data && <img src={viewer.data} alt="Fotka dokladu" className="w-full rounded-lg" />}
       </Sheet>
+    </div>
+  );
+}
+
+/** Jedna strana dokladu: náhľad fotky (klepnutím sa zväčší) alebo odkaz na PDF. */
+function PageView({ path, label, onOpen }: { path: string; label: string | null; onOpen: () => void }) {
+  const image = useReceiptImage(path);
+  const pdf = path.toLowerCase().endsWith(".pdf");
+  return (
+    <div>
+      {label && <p className="mb-1 px-1 text-xs font-medium text-text-3">{label}</p>}
+      {image.isError ? (
+        <p className="rounded-[var(--radius-surface)] bg-surface p-3 text-sm text-text-2">Súbor tejto strany sa nenašiel.</p>
+      ) : !image.data ? null : pdf ? (
+        <a
+          href={image.data}
+          target="_blank"
+          rel="noreferrer"
+          className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-surface)] bg-surface px-4 py-3 font-semibold active:bg-pressed"
+        >
+          <FileText className="size-5" aria-hidden /> Otvoriť PDF doklad
+        </a>
+      ) : (
+        <>
+          <button type="button" onClick={onOpen} className="block w-full overflow-hidden rounded-[var(--radius-surface)] bg-surface">
+            <img src={image.data} alt={label ?? "Fotka dokladu"} className="max-h-64 w-full object-cover object-top" />
+          </button>
+          <p className="mt-1 px-1 text-xs text-text-3">Klepnutím zväčšíš fotku.</p>
+        </>
+      )}
     </div>
   );
 }
@@ -214,7 +258,7 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
       toast.show("Uložené", "success");
       onClose();
     } catch (err) {
-      toast.show(errorMessage(err), "error");
+      toast.show(readErrorMessage(err), "error");
     }
   }
 

@@ -11,6 +11,8 @@ const MESSAGES: Record<string, string> = {
   LIST_ARCHIVED: "Zoznam je archivovaný.",
   SESSION_ALREADY_ACTIVE: "Práve nakupuje niekto iný.",
   INVITATION_INVALID: "Pozvánka je neplatná.",
+  TOO_MANY_PAGES: "Doklad môže mať najviac 8 strán.",
+  PAGE_ALREADY_EXISTS: "Táto strana už v aplikácii je (možno v inom doklade).",
   FILE_TOO_LARGE: "Súbor je príliš veľký (najviac 10 MB). Zmenši ho alebo ho odfoť.",
   INVITATION_USED: "Táto pozvánka už bola použitá.",
   INVITATION_EXPIRED: "Platnosť pozvánky vypršala. Požiadaj o novú.",
@@ -38,6 +40,9 @@ export function errorMessage(error: unknown): string {
         return "Server je nedostupný. Skontroluj pripojenie a skús znova.";
       }
       if (/jwt|token.*expired/i.test(e.message)) return MESSAGES.NOT_AUTHENTICATED!;
+      if (/could not find the function/i.test(e.message)) {
+        return "Táto funkcia ešte nie je v databáze nasadená. Treba spustiť posledný SQL súbor (migráciu).";
+      }
       if (/provider is not enabled|unsupported provider/i.test(e.message)) {
         return "Prihlásenie cez Google ešte nie je zapnuté. Zatiaľ použi e-mail.";
       }

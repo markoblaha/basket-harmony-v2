@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import type { Receipt } from "./api";
 
 const money = new Intl.NumberFormat("sk-SK", { style: "currency", currency: "EUR" });
@@ -23,7 +24,9 @@ export function reviewText(r: Receipt): string {
     case "TOTAL_MISMATCH":
       return `Súčet položiek (${formatMoney(r.items_sum)}) nesedí s celkovou sumou (${formatMoney(r.total)}). Porovnaj s fotkou.`;
     case "NO_ITEMS":
-      return "Nepodarilo sa prečítať žiadne položky.";
+      return "Nepodarilo sa prečítať položky s cenami (doklad ich možno neobsahuje). Čo sa dalo prečítať, je uložené. Doplň obchod, dátum a sumu cez „Upraviť“ alebo pridaj ďalšiu stranu.";
+    case "STORE_MISSING":
+      return "Na doklade sa nenašiel obchod. Doplň ho cez „Upraviť“. Ak je na ďalšej strane, pridaj ju alebo doklad spoj s ďalším.";
     case "DATE_SUSPECT":
       return "Dátum chýba, vyzerá nepravdepodobne alebo je starší ako 18 mesiacov. Skontroluj ho podľa dokladu.";
     case "POSSIBLE_DUPLICATE":
@@ -43,8 +46,18 @@ export function failureText(error: string | null): string {
   if (error.startsWith("GEMINI_API_KEY_MISSING")) return "Chýba kľúč služby na čítanie bločkov (GEMINI_API_KEY).";
   if (error.startsWith("GEMINI_400") || error.startsWith("GEMINI_403") || error.startsWith("GEMINI_404"))
     return "Služba na čítanie bločkov odmietla požiadavku (nastavenie kľúča alebo modelu).";
+  if (error.startsWith("FILES_TOO_LARGE"))
+    return "Strany dokladu sú spolu príliš veľké. Zmenši ich alebo ich rozdeľ na dva doklady.";
   if (error.startsWith("IMAGE_MISSING")) return "Súbor sa nenašiel v úložisku.";
   if (/^GEMINI_(TIMEOUT|NETWORK|EMPTY|BAD_JSON|5\d\d)/.test(error))
     return "Služba na čítanie sa tentoraz neozvala alebo vrátila nepoužiteľnú odpoveď. Skús čítanie spustiť znova.";
   return "Čítanie sa nepodarilo. Skús ho spustiť znova.";
+}
+
+/** Chyba akcie s dokladom -> veta pre človeka (chyby čítania majú vlastné texty, ostatné ide cez errorMessage). */
+export function readErrorMessage(err: unknown): string {
+  if (err instanceof Error && /^(GEMINI_|NOT_A_RECEIPT|IMAGE_MISSING|FILES_TOO_LARGE|SAVE_FAILED)/.test(err.message)) {
+    return failureText(err.message);
+  }
+  return errorMessage(err);
 }

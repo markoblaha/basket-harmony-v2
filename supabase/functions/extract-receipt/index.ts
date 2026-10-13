@@ -32,19 +32,26 @@ const modelStrong = () => Deno.env.get("GEMINI_MODEL_STRONG") ?? "gemini-3.1-pro
 
 /** Celé spracovanie musí skončiť skôr, než Supabase preruší dlho trvajúcu požiadavku (~150 s). */
 const TOTAL_BUDGET_MS = 130_000;
+/** Gemini prijme v jednej požiadavke najviac ~20 MB (po prevode do base64 je súbor o tretinu väčší). */
+const MAX_TOTAL_BYTES = 14 * 1024 * 1024;
 const SECOND_PASS_MIN_MS = 40_000;
 
-const promptFor = (today: string) => `Si presný čítač nákupných dokladov: pokladničné bločky, e-shopové faktúry, potvrdenia objednávok (fotka, snímka obrazovky alebo PDF). Z dokladu vytiahni údaje a vráť ich ako JSON podľa schémy. Dnes je ${today}.
+const pageNote = (pages: number) =>
+  pages > 1
+    ? `\n\nTento doklad má ${pages} strán (fotiek alebo snímok obrazovky) v poradí, v akom nasledujú. Je to JEDEN doklad: spoj všetky strany do jedného výsledku. Hlavička (obchod, dátum) je zvyčajne na prvej strane, celková suma na poslednej. Ak sa riadky na konci jednej strany opakujú na začiatku ďalšej (fotky sa prekrývajú), započítaj ich iba raz.`
+    : "";
+
+const promptFor = (today: string, pages = 1) => `Si presný čítač nákupných dokladov: pokladničné bločky, e-shopové faktúry, potvrdenia objednávok (fotka, snímka obrazovky alebo PDF). Z dokladu vytiahni údaje a vráť ich ako JSON podľa schémy. Dnes je ${today}.${pageNote(pages)}
 
 Najdôležitejšia je presnosť. Čísla prepisuj znak po znaku (pozor na zámenu 3/8, 1/7, 5/6, 0/8 a na desatinnú čiarku). Nič nevynechaj a nič nevymýšľaj. Pri dlhom doklade prejdi každý riadok od prvého po posledný.
 
 Pravidlá:
-- is_receipt: true pre každý nákupný doklad s cenami položiek (pokladničný bloček, faktúra, potvrdenie objednávky z e-shopu). false iba ak na obrázku nie je žiadny doklad s cenami položiek (bežná fotka, doklad bez cien) – vtedy daj items prázdne.
-- store_name: iba značka obchodu alebo predajcu (napr. "Lidl", "Tesco", "Billa", "Kaufland", "Coop Jednota", "dm", "Metro", "Dr.Max", "Mykan"), nie celá adresa ani názov s.r.o.
+- is_receipt: true pre každý nákupný doklad (pokladničný bloček, faktúra, potvrdenie alebo prehľad objednávky z e-shopu), aj keď je to len časť dokladu. Ak sú na ňom ceny položiek, vyplň ich. Ak je na ňom iba celková suma a názvy položiek bez cien, vyplň čo vidíš (obchod, dátum, total) a položkám daj line_total = null – ceny nikdy nevymýšľaj. false iba ak na obrázku vôbec nie je nákupný doklad (bežná fotka, krajina, text bez nákupu) – vtedy daj items prázdne.
+- store_name: iba značka obchodu alebo predajcu (napr. "Lidl", "Tesco", "Billa", "Kaufland", "Coop Jednota", "dm", "Metro", "Dr.Max", "Mykan"), nie celá adresa ani názov s.r.o. Ak názov obchodu na doklade nie je (napr. je to len pokračovanie alebo časť bločku), daj null – nehádaj ho podľa tovaru.
 - purchased_on: dátum nákupu YYYY-MM-DD. Slovenský zápis je deň.mesiac.rok (13.9.2026 = 2026-09-13). Pri faktúre dátum vystavenia, pri objednávke dátum objednávky. Doklady sú spravidla z posledného roka. Ak dátum alebo rok nevidno celý, daj null – radšej null ako tipovať.
 - purchased_time: čas HH:MM, ak je na doklade.
 - total: konečná suma na zaplatenie presne tak, ako je vytlačená na doklade (Spolu, Celkom, K úhrade, Na zaplatenie). Prepíš ju z dokladu, nepočítaj ju zo súčtu položiek. Pri dlhom doklade je na úplnom konci – nezabudni ju.
-- items: každý nakúpený riadok v poradí z dokladu. name presne podľa dokladu. quantity a unit: pri kusoch quantity = počet a unit "ks"; pri vážených veciach quantity = hmotnosť a unit "kg". unit_price = cena za jednotku. line_total = suma, ktorú si zákazník za riadok naozaj zaplatil PO zľave a S DPH (ak je na faktúre cena bez DPH aj s DPH, použi s DPH).
+- items: každý nakúpený riadok v poradí z dokladu. name presne podľa dokladu. quantity a unit: pri kusoch quantity = počet a unit "ks"; pri vážených veciach quantity = hmotnosť a unit "kg". unit_price = cena za jednotku. line_total = suma, ktorú si zákazník za riadok naozaj zaplatil PO zľave a S DPH (ak je na faktúre cena bez DPH aj s DPH, použi s DPH); ak cena riadku na doklade nie je, daj null.
 - Riadky so zľavou (Zľava, Akcia, Kupón, Lidl Plus) pripoj k položke, ktorej patria: zníž jej line_total a do discount daj kladnú sumu zľavy. Ak zľava patrí celému nákupu, nepridávaj ju ako položku, len ju sčítaj do discount_total.
 - Doprava, balné a iné poplatky sú samostatné položky (category_id other). Položka s nulovou cenou (darček, kupón na budúci nákup) sa neuvádza.
 - Záloha na obaly: samostatná položka "Záloha na obal" (category_id other). Vrátená záloha je položka so zápornou sumou.
@@ -71,7 +78,7 @@ const SCHEMA = {
           quantity: { type: "NUMBER", nullable: true },
           unit: { type: "STRING", nullable: true },
           unit_price: { type: "NUMBER", nullable: true },
-          line_total: { type: "NUMBER" },
+          line_total: { type: "NUMBER", nullable: true },
           discount: { type: "NUMBER", nullable: true },
           category_id: { type: "STRING", enum: CATEGORIES },
         },
@@ -91,6 +98,8 @@ const MIME: Record<string, string> = {
 };
 
 type Extraction = Record<string, unknown>;
+/** Jedna strana dokladu: súbor v base64 a jeho typ. Doklad môže mať viac strán. */
+type Page = { b64: string; mime: string };
 type Saved = {
   status: string;
   review_reason: string | null;
@@ -109,8 +118,7 @@ const isGlobalError = (message: string) => /^(GEMINI_(401|402|403)|GEMINI_API_KE
  * alebo pokazený JSON) sa opakujú; trvalé (kredit, kľúč, zlý model) končia hneď.
  */
 async function askGemini(
-  imageB64: string,
-  mime: string,
+  pages: Page[],
   model: string,
   today: string,
   deadline: number,
@@ -119,12 +127,17 @@ async function askGemini(
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-  const text = hint ? `${promptFor(today)}\n\n${hint}` : promptFor(today);
+  const prompt = promptFor(today, pages.length);
+  const text = hint ? `${prompt}\n\n${hint}` : prompt;
+  const fileParts = pages.flatMap((pg, i) => [
+    ...(pages.length > 1 ? [{ text: `Strana ${i + 1} z ${pages.length}:` }] : []),
+    { inline_data: { mime_type: pg.mime, data: pg.b64 } },
+  ]);
   // Vyššie rozlíšenie a väčší limit odpovede pomáhajú pri dlhých dokladoch. Ak ich model
   // neprijme (chyba 400), skúsime to raz bez nich.
   let extras = true;
   const makeBody = () => ({
-    contents: [{ parts: [{ text }, { inline_data: { mime_type: mime, data: imageB64 } }] }],
+    contents: [{ parts: [{ text }, ...fileParts] }],
     generationConfig: {
       temperature: 0,
       responseMimeType: "application/json",
@@ -184,8 +197,7 @@ async function askGemini(
 
 /** Skúša modely popri sebe: ďalší sa použije, ak ten predchádzajúci nie je dostupný alebo zlyhal. */
 async function read(
-  imageB64: string,
-  mime: string,
+  pages: Page[],
   models: string[],
   today: string,
   deadline: number,
@@ -194,7 +206,7 @@ async function read(
   let lastError: Error = new Error("GEMINI_UNKNOWN");
   for (const model of [...new Set(models)]) {
     try {
-      return await askGemini(imageB64, mime, model, today, deadline, hint);
+      return await askGemini(pages, model, today, deadline, hint);
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));
       console.error("extract-receipt model", model, lastError.message);
@@ -299,23 +311,42 @@ Deno.serve(async (req) => {
   try {
     await admin.from("receipts").update({ status: "PROCESSING", review_reason: null, error_text: null }).eq("id", receiptId);
 
-    const file = await admin.storage.from("receipts").download(receipt.image_path);
-    if (file.error || !file.data) throw new Error("IMAGE_MISSING: " + (file.error?.message ?? ""));
-    const ext = receipt.image_path.split(".").pop()?.toLowerCase() ?? "jpg";
-    const mime = MIME[ext] ?? "image/jpeg";
-    const b64 = encodeBase64(new Uint8Array(await file.data.arrayBuffer()));
+    // Všetky strany dokladu v poradí (starší doklad bez záznamu strán = jedna strana).
+    const { data: pageRows } = await admin
+      .from("receipt_pages").select("image_path").eq("receipt_id", receiptId).order("position");
+    const paths = pageRows && pageRows.length > 0
+      ? pageRows.map((r: { image_path: string }) => r.image_path)
+      : [receipt.image_path];
+    const pages: Page[] = [];
+    let totalBytes = 0;
+    for (const [i, path] of paths.entries()) {
+      const file = await admin.storage.from("receipts").download(path);
+      if (file.error || !file.data) {
+        // Prvá strana je povinná. Ďalšia, ktorej súbor chýba (nahrávanie sa prerušilo), sa preskočí.
+        if (i > 0) {
+          console.error("extract-receipt chýba súbor strany", receiptId, path);
+          continue;
+        }
+        throw new Error("IMAGE_MISSING: " + (file.error?.message ?? path));
+      }
+      const bytes = new Uint8Array(await file.data.arrayBuffer());
+      totalBytes += bytes.byteLength;
+      if (totalBytes > MAX_TOTAL_BYTES) throw new Error("FILES_TOO_LARGE");
+      const ext = path.split(".").pop()?.toLowerCase() ?? "jpg";
+      pages.push({ b64: encodeBase64(bytes), mime: MIME[ext] ?? "image/jpeg" });
+    }
     const today = new Date().toISOString().slice(0, 10);
     const timeLeft = () => deadline - Date.now();
 
     // 1. čítanie
-    let first = await read(b64, mime, [modelMain(), modelFallback()], today, deadline);
+    let first = await read(pages, [modelMain(), modelFallback()], today, deadline);
 
     // „Nie je to doklad“ si radšej overíme druhým pohľadom, aby sa nezahodil skutočný doklad.
     if (first.is_receipt === false) {
       if (timeLeft() > SECOND_PASS_MIN_MS) {
         try {
           const again = await read(
-            b64, mime, [modelStrong(), modelMain(), modelFallback()], today, deadline,
+            pages, [modelStrong(), modelMain(), modelFallback()], today, deadline,
             "Prvé čítanie tvrdí, že na obrázku nie je nákupný doklad. Over to pozorne: ak je tam akýkoľvek doklad s cenami položiek (aj faktúra, potvrdenie objednávky alebo snímka obrazovky), prečítaj ho. Ak tam naozaj nie je, nechaj is_receipt = false.",
           );
           first = again;
@@ -329,11 +360,14 @@ Deno.serve(async (req) => {
     let saved = await save(first);
 
     // 2. čítanie, ak databáza výsledok neprijala (súčet, položky, dátum)
-    const problem = saved.status === "OK" ? null : problemText(saved);
+    // Doklad, ktorý má len celkovú sumu a názvy položiek bez cien (napr. prehľad objednávok), druhé čítanie nezlepší.
+    const pricelessOnly = saved.review_reason === "NO_ITEMS" && saved.total != null &&
+      (Array.isArray(first.items) ? first.items : []).some((it: Record<string, unknown>) => it && it.line_total == null);
+    const problem = saved.status === "OK" || pricelessOnly ? null : problemText(saved);
     if (problem && timeLeft() > SECOND_PASS_MIN_MS) {
       try {
         const second = await read(
-          b64, mime, [modelStrong(), modelMain(), modelFallback()], today, deadline,
+          pages, [modelStrong(), modelMain(), modelFallback()], today, deadline,
           `Prvé čítanie tohto dokladu je podozrivé: ${problem}. Prečítaj doklad znovu úplne od začiatku, riadok po riadku, a oprav chyby: chýbajúce alebo zdvojené riadky, zle prečítané ceny a množstvá, zľavy, celkovú sumu, dátum. Prvé čítanie je len na porovnanie a môže byť chybné (názov | množstvo | suma):\n${compact(first)}`,
         );
         if (second.is_receipt !== false) {

@@ -114,6 +114,20 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      receipt_pages: {
+        Row: {
+          created_at: string;
+          household_id: string;
+          id: string;
+          image_checksum: string;
+          image_path: string;
+          position: number;
+          receipt_id: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       receipts: {
         Row: {
           created_at: string;
@@ -214,9 +228,14 @@ export type Database = {
       end_shopping: { Args: { p_session_id: string }; Returns: SessionRow };
       invitation_preview: { Args: { p_token: string }; Returns: Json };
       leave_household: { Args: { p_household_id: string }; Returns: undefined };
+      merge_receipts: { Args: { p_receipt_ids: string[] }; Returns: string };
       register_receipt: {
         Args: { p_checksum: string; p_ext?: string; p_household_id: string; p_source?: string };
         Returns: { already_exists: boolean; path: string; receipt_id: string }[];
+      };
+      register_receipt_page: {
+        Args: { p_checksum: string; p_ext?: string; p_receipt_id: string };
+        Returns: { already_exists: boolean; owner_receipt_id: string; path: string }[];
       };
       reject_request: { Args: { p_request_id: string }; Returns: Json };
       remove_member: { Args: { p_household_id: string; p_user_id: string }; Returns: undefined };
