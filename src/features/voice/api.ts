@@ -122,12 +122,20 @@ export function useSaveVoiceList(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ store, items }: { store: string; items: DraftItem[] }): Promise<SaveResult> => {
-      const lists = await supabase.from("shopping_lists").select("id, name").eq("household_id", householdId).eq("is_archived", false);
+      // Použije sa rozpracovaný nákup v tej istej predajni; nákup z Histórie sa neotvára – vznikne nový.
+      const lists = await supabase
+        .from("shopping_lists")
+        .select("id, name, completed_at")
+        .eq("household_id", householdId)
+        .eq("is_archived", false)
+        .is("completed_at", null);
       if (lists.error) throw lists.error;
       let listId = lists.data.find((l) => normalizeName(l.name) === normalizeName(store))?.id;
       const created = !listId;
       if (!listId) {
-        const ins = await supabase.from("shopping_lists").insert({ household_id: householdId, name: store }).select("id").single();
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const ins = await supabase.from("shopping_lists").insert({ household_id: householdId, name: store, planned_for: today }).select("id").single();
         if (ins.error) throw ins.error;
         listId = ins.data.id;
       }

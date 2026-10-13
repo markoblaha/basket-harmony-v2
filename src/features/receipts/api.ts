@@ -156,7 +156,7 @@ export async function extractReceipt(receiptId: string): Promise<"OK" | "NEEDS_R
  * odtlačok -> registrácia (duplicitu databáza odmietne) -> súbory do úložiska -> čítanie na serveri.
  * Strana, ktorá v domácnosti už je, sa preskočí.
  */
-export async function uploadReceipt(householdId: string, files: File[]): Promise<UploadOutcome> {
+export async function uploadReceipt(householdId: string, files: File[], listId?: string | null): Promise<UploadOutcome> {
   const first = files[0];
   if (!first) throw new Error("VALIDATION");
   if (files.length > MAX_PAGES) throw new Error("TOO_MANY_PAGES");
@@ -192,6 +192,11 @@ export async function uploadReceipt(householdId: string, files: File[]): Promise
     await supabase.from("receipts").delete().eq("id", reg.receipt_id);
     if (uploaded.length > 0) await supabase.storage.from("receipts").remove(uploaded);
     throw err;
+  }
+  if (listId) {
+    // Doklad k nákupu (z obrazovky „Nákup dokončený“ alebo z Histórie): priradí sa hneď.
+    const { error: ae } = await supabase.rpc("attach_receipt_to_list", { p_receipt_id: reg.receipt_id, p_list_id: listId });
+    if (ae) console.warn("Doklad sa nepodarilo priradiť k nákupu", ae);
   }
   try {
     return await extractReceipt(reg.receipt_id);

@@ -15,6 +15,9 @@ import {
 } from "lucide-react";
 import { Banner, Button, ErrorState, Group, IconButton, Section, Sheet, Spinner, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
+import { useHousehold } from "@/features/household/HouseholdProvider";
+import { useLists } from "@/features/lists/api";
+import { dayLabel } from "@/features/lists/dates";
 import { CATEGORIES, category, categoryOrder } from "@/lib/categories";
 import {
   MAX_PAGES,
@@ -39,6 +42,8 @@ type ItemTarget = { item: ReceiptItem | null; price?: number | null; key: number
 export function ReceiptDetailPage() {
   const { id } = useParams();
   const query = useReceipt(id);
+  const { household } = useHousehold();
+  const lists = useLists(household.id);
   const navigate = useNavigate();
   const toast = useToast();
   const reread = useRereadReceipt();
@@ -136,6 +141,7 @@ export function ReceiptDetailPage() {
               )}
             </div>
             <p className="mt-3 text-4xl font-bold tabular-nums">{formatMoney(r.total)}</p>
+            {r.list_id && <TripLink list={lists.data?.find((l) => l.id === r.list_id)} score={r.match_score} />}
             {editable && <SumCheck receipt={r} count={rows.length} onAdd={(price) => openItem(null, price)} onEdit={() => setEditing(true)} />}
             {!isDocument && (
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-text-2">
@@ -517,5 +523,20 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
         </Button>
       </form>
     </Sheet>
+  );
+}
+
+/** K akému nákupu doklad patrí (priradený ručne alebo automaticky podľa položiek). */
+function TripLink({ list, score }: { list?: { id: string; name: string; completed_at: string | null }; score: number | null }) {
+  if (!list) return null;
+  return (
+    <Link to={`/lists/${list.id}`} className="mt-3 flex items-center gap-2 rounded-xl bg-surface px-3 py-2 text-sm active:bg-pressed">
+      <span aria-hidden>🛒</span>
+      <span className="min-w-0 flex-1 truncate">
+        Nákup <b>{list.name}</b>
+        {list.completed_at && ` · ${dayLabel(list.completed_at)}`}
+        {score != null && <span className="text-text-2"> · priradené automaticky ({Math.round(Number(score) * 100)} % zhoda)</span>}
+      </span>
+    </Link>
   );
 }

@@ -32,7 +32,7 @@ const EMPTY_COUNTS = { NEW: 0, DUPLICATE: 0, OK: 0, NEEDS_REVIEW: 0, FAILED: 0, 
 const OUTAGE_TEXT = `${STOP_AFTER_FAILURES} dokladov za sebou sa nepodarilo prečítať, takže ide pravdepodobne o výpadok služby. Skús to o chvíľu.`;
 
 /** Spracovanie viacerých dokladov po jednom (nahratie + čítanie) so stavom pre lištu priebehu. */
-export function useBatch(householdId: string) {
+export function useBatch(householdId: string, listId?: string | null, onAttached?: () => void) {
   const qc = useQueryClient();
   const toast = useToast();
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -41,6 +41,7 @@ export function useBatch(householdId: string) {
   const publish = (state: Progress) => {
     setProgress({ ...state, counts: { ...state.counts } });
     qc.invalidateQueries({ queryKey: ["receipts"] });
+    qc.invalidateQueries({ queryKey: ["lists"] });
   };
 
   /** Každá skupina súborov je jeden doklad (strany v poradí). Server číta jeden naraz, aby sme nepreťažili limity služby. */
@@ -49,9 +50,15 @@ export function useBatch(householdId: string) {
     setProgress({ ...state, counts: { ...state.counts } });
     let lastError: unknown = null;
     let streak = 0;
+    let attachTo = listId ?? null;
     for (const group of groups) {
       try {
-        const outcome = await uploadReceipt(householdId, group);
+        // K nákupu sa priradí iba prvý doklad dávky.
+        const outcome = await uploadReceipt(householdId, group, attachTo);
+        if (attachTo && outcome !== "DUPLICATE") {
+          attachTo = null;
+          onAttached?.();
+        }
         state.counts[outcome]++;
         if (outcome === "FAILED") streak++;
         else if (outcome !== "NOT_A_RECEIPT") streak = 0;

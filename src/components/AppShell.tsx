@@ -10,7 +10,7 @@ import { OfflineBanner, cx } from "./ui";
 const VoiceSession = lazy(() => import("@/features/voice/VoiceSession").then((m) => ({ default: m.VoiceSession })));
 
 const TABS = [
-  { to: "/", label: "Nákup", icon: ShoppingCart, match: (p: string) => p === "/" || p.startsWith("/lists") },
+  { to: "/", label: "Nákupy", icon: ShoppingCart, match: (p: string) => p === "/" || p.startsWith("/lists") },
   { to: "/receipts", label: "Bločky", icon: Receipt, match: (p: string) => p.startsWith("/receipts") },
   { to: "/analytics", label: "Prehľady", icon: BarChart3, match: (p: string) => p.startsWith("/analytics") },
   { to: "/more", label: "Viac", icon: Menu, match: (p: string) => p.startsWith("/more") },
@@ -73,7 +73,7 @@ export function AppShell() {
               toast.show(
                 r.requests
                   ? `${store}: ${r.requests} ${itemsWord(r.requests)} čaká na schválenie nakupujúcim`
-                  : `Uložené do Nákup · ${store} · ${n} ${itemsWord(n)}`,
+                  : `Uložené do Nákupov · ${store} · ${n} ${itemsWord(n)}`,
                 "success",
               );
             }}

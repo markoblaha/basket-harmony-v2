@@ -190,6 +190,8 @@ export type Database = {
           image_checksum: string;
           image_path: string;
           items_sum: number | null;
+          list_id: string | null;
+          match_score: number | null;
           origin: "RECEIPT" | "BANK" | "MANUAL";
           purchased_on: string | null;
           purchased_time: string | null;
@@ -238,15 +240,21 @@ export type Database = {
       shopping_lists: {
         Row: {
           created_at: string;
+          completed_at: string | null;
           created_by: string | null;
           household_id: string;
           id: string;
           is_archived: boolean;
+          is_private: boolean;
           name: string;
+          note: string | null;
+          planned_for: string | null;
+          receipt_id: string | null;
+          receipt_state: "NONE" | "LATER" | "ATTACHED";
           updated_at: string;
         };
-        Insert: { household_id: string; name: string };
-        Update: { is_archived?: boolean; name?: string };
+        Insert: { household_id: string; name: string; is_private?: boolean; planned_for?: string | null; note?: string | null };
+        Update: { is_archived?: boolean; name?: string; is_private?: boolean; planned_for?: string | null; note?: string | null };
         Relationships: [];
       };
       shopping_sessions: {
@@ -339,6 +347,8 @@ export type Database = {
         Returns: { already_exists: boolean; owner_receipt_id: string; path: string }[];
       };
       reject_request: { Args: { p_request_id: string }; Returns: Json };
+      set_receipt_later: { Args: { p_later?: boolean; p_list_id: string }; Returns: undefined };
+      attach_receipt_to_list: { Args: { p_list_id: string; p_receipt_id: string }; Returns: undefined };
       reply_request: { Args: { p_message: string; p_request_id: string }; Returns: undefined };
       frequent_items: {
         Args: { p_household_id: string; p_limit?: number };
