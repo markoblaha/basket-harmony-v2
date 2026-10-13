@@ -48,7 +48,7 @@ export const enAnalytics: Record<keyof typeof skAnalytics, string> = {
   "stores.summary.few": "{n} stores · {total} in total",
   "stores.summary.other": "{n} stores · {total} in total",
   "stores.rowLine": "{share} · {count}× · average {avg}",
-  "addtolist.noList": "Create a shopping list first.",
+  "addtolist.noList": "Create a shopping trip in the Shopping tab first.",
   "addtolist.request": "Sent to the shopper for approval",
   "addtolist.added": "Added to the list {name}",
   "chart.summary": "Spending up to {date}: {now}; in the previous period up to the same day: {prev}.",

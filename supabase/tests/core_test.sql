@@ -16,7 +16,7 @@ declare
   res jsonb; res2 jsonb; inv jsonb; inv2 jsonb;
   s1 public.shopping_sessions; s2 public.shopping_sessions;
   item_id uuid; req_id uuid; n int; n2 int; txt text; err text;
-  rc1 uuid; rc2 uuid; rg record; rrec public.receipts;
+  rc1 uuid; rc2 uuid; rg record; rrec public.receipts; lp uuid; ls uuid; t timestamptz;
   report text := '';
   fails int := 0;
 begin
@@ -582,6 +582,79 @@ begin
   select count(*) into n from public.frequent_items(h);
   if n = 0 then report := report || E'ok: cudzí nevidí najčastejšie položky inej domácnosti\n';
   else report := report || E'FAIL: frequent_items cudzej domácnosti\n'; fails := fails + 1; end if;
+
+  -- ------------------------------------------------- nákupy, súkromné zoznamy, doklad k nákupu (migrácia 23)
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  insert into public.shopping_lists (household_id, name, is_private) values (h, 'Darček', true) returning id into lp;
+  perform public.add_item(lp, 'Prekvapenie');
+  insert into public.shopping_lists (household_id, name, planned_for, note) values (h, 'Lidl test', current_date, 'po práci') returning id into ls;
+  perform public.add_item(ls, 'Kaiserka natural', 4);
+  perform public.add_item(ls, 'Bio jogurt', 2);
+  perform public.add_item(ls, 'Banány', 3);
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.shopping_lists where id = lp;
+  select count(*) into n2 from public.shopping_list_items where list_id = lp;
+  if n = 0 and n2 = 0 then report := report || E'ok: súkromný zoznam ani jeho položky druhý člen nevidí\n';
+  else report := report || E'FAIL: súkromný zoznam viditeľný\n'; fails := fails + 1; end if;
+  err := null; begin perform public.add_item(lp, 'Vniknutie'); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: do súkromného zoznamu druhý člen nepridá\n';
+  else report := report || 'FAIL: add_item súkromný -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.start_shopping(lp); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: súkromný zoznam druhý člen nenakupuje\n';
+  else report := report || 'FAIL: start súkromný -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  update public.shopping_list_items set status = 'PURCHASED' where list_id = lp;
+  get diagnostics n = row_count;
+  if n = 0 then report := report || E'ok: položky súkromného zoznamu druhý člen nezmení\n';
+  else report := report || E'FAIL: zmena súkromných položiek\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  s1 := public.start_shopping(ls);
+  update public.shopping_list_items set status = 'PURCHASED' where list_id = ls and name <> 'Banány';
+  perform public.end_shopping(s1.id);
+  select completed_at into t from public.shopping_lists where id = ls;
+  if t is null then report := report || E'ok: s nekúpenou položkou nákup ostane rozpracovaný\n';
+  else report := report || E'FAIL: predčasne v histórii\n'; fails := fails + 1; end if;
+  s1 := public.start_shopping(ls);
+  update public.shopping_list_items set status = 'PURCHASED' where list_id = ls;
+  perform public.end_shopping(s1.id);
+  select completed_at into t from public.shopping_lists where id = ls;
+  if t is not null then report := report || E'ok: všetko kúpené -> nákup ide do histórie\n';
+  else report := report || E'FAIL: neuložil sa do histórie\n'; fails := fails + 1; end if;
+  perform public.set_receipt_later(ls);
+
+  select * into rg from public.register_receipt(h, repeat('9', 64));
+  rc1 := rg.receipt_id;
+  execute 'reset role';
+  rrec := public.save_receipt_extraction(rc1, jsonb_build_object(
+    'store_name', 'LIDL Slovenská republika', 'purchased_on', current_date::text, 'total', 6.10,
+    'items', jsonb_build_array(
+      jsonb_build_object('name', 'KAISERKA NAT. 4X', 'line_total', 1.20, 'category_id', 'bakery'),
+      jsonb_build_object('name', 'JOGURT BIO BIELY', 'line_total', 1.40, 'category_id', 'dairy_eggs'),
+      jsonb_build_object('name', 'BANANY', 'line_total', 1.50, 'category_id', 'produce'),
+      jsonb_build_object('name', 'PIVO', 'line_total', 2.00, 'category_id', 'alcohol'))));
+  select list_id::text into txt from public.receipts where id = rc1;
+  if txt = ls::text then report := report || E'ok: samostatne nahratý bloček sa sám priradí k nákupu bez dokladu\n';
+  else report := report || 'FAIL: auto-match -> ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  perform public.add_item(ls, 'Zabudnuté mlieko');
+  select completed_at into t from public.shopping_lists where id = ls;
+  if t is null then report := report || E'ok: pridanie položky vráti nákup z histórie\n';
+  else report := report || E'FAIL: ostal v histórii\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.attach_receipt_to_list(rc1, ls); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepriradí doklad k cudziemu nákupu\n';
+  else report := report || 'FAIL: cudzí attach -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
 
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';

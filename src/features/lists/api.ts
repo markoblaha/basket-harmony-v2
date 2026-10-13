@@ -21,12 +21,15 @@ export const listKeys = {
   session: (listId: string) => ["session", listId] as const,
   requests: (listId: string) => ["requests", listId] as const,
   frequent: (hid: string) => ["frequent", hid] as const,
+  stats: (hid: string) => ["list-stats", hid] as const,
+  hubSessions: (hid: string) => ["hub-sessions", hid] as const,
   favorites: (hid: string) => ["favorites", hid] as const,
 };
 
 /** Kúpené položky zobrazujeme ešte 7 dní (dajú sa vrátiť do zoznamu). */
 const RECENT_PURCHASE_DAYS = 7;
 
+/** Všetky nákupy domácnosti (rozpracované aj história). Súkromné cudzie databáza vôbec nevráti. */
 export function useLists(householdId: string) {
   return useQuery({
     queryKey: listKeys.lists(householdId),
@@ -36,7 +39,7 @@ export function useLists(householdId: string) {
         .select("*")
         .eq("household_id", householdId)
         .eq("is_archived", false)
-        .order("created_at");
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -192,13 +195,15 @@ export function useDeleteItem(listId: string) {
   });
 }
 
+export type ListInput = { name: string; isPrivate: boolean; plannedFor: string | null; note: string | null };
+
 export function useCreateList(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (input: ListInput) => {
       const { data, error } = await supabase
         .from("shopping_lists")
-        .insert({ household_id: householdId, name })
+        .insert({ household_id: householdId, name: input.name, is_private: input.isPrivate, planned_for: input.plannedFor, note: input.note })
         .select("id")
         .single();
       if (error) throw error;
@@ -211,7 +216,13 @@ export function useCreateList(householdId: string) {
 export function useUpdateList(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: { name?: string; is_archived?: boolean } }) => {
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: { name?: string; is_archived?: boolean; is_private?: boolean; planned_for?: string | null; note?: string | null };
+    }) => {
       const { error } = await supabase.from("shopping_lists").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -351,5 +362,66 @@ export function useRemoveFavorite(householdId: string) {
       if (ctx?.previous) qc.setQueryData(key, ctx.previous);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+// ------------------------------------------------------------------ prehľad nákupov
+
+export type ListStats = { open: number; bought: number; preview: string[] };
+
+/** Počty položiek a náhľad mien pre karty v prehľade Nákupy (jeden dotaz pre všetky zoznamy). */
+export function useListStats(householdId: string) {
+  return useQuery({
+    queryKey: listKeys.stats(householdId),
+    queryFn: async (): Promise<Map<string, ListStats>> => {
+      const since = new Date(Date.now() - 120 * 86_400_000).toISOString();
+      const { data, error } = await supabase
+        .from("shopping_list_items")
+        .select("list_id, status, name, created_at")
+        .eq("household_id", householdId)
+        .or(`status.eq.OPEN,purchased_at.gte.${since}`)
+        .order("created_at", { ascending: false })
+        .limit(3000);
+      if (error) throw error;
+      const map = new Map<string, ListStats>();
+      for (const row of data) {
+        const st = map.get(row.list_id) ?? { open: 0, bought: 0, preview: [] };
+        if (row.status === "OPEN") {
+          st.open++;
+          if (st.preview.length < 4) st.preview.push(row.name);
+        } else st.bought++;
+        map.set(row.list_id, st);
+      }
+      return map;
+    },
+  });
+}
+
+/** Kto práve nakupuje (podľa zoznamu). */
+export function useHubSessions(householdId: string) {
+  return useQuery({
+    queryKey: listKeys.hubSessions(householdId),
+    queryFn: async (): Promise<Session[]> => {
+      const { data, error } = await supabase
+        .from("shopping_sessions")
+        .select("*")
+        .eq("household_id", householdId)
+        .eq("status", "ACTIVE");
+      if (error) throw error;
+      return data.filter((s) => new Date(s.expires_at).getTime() > Date.now());
+    },
+    refetchInterval: 60_000,
+  });
+}
+
+/** „Doklad odfotím neskôr“ – nákup v histórii bude ukazovať, že doklad chýba. */
+export function useSetReceiptLater(householdId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ listId, later }: { listId: string; later: boolean }) => {
+      const { error } = await supabase.rpc("set_receipt_later", { p_list_id: listId, p_later: later });
+      if (error) throw error;
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: listKeys.lists(householdId) }),
   });
 }

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { ArrowRight, ChevronDown, Play } from "lucide-react";
-import { Avatar, Button, EmptyState, ErrorState, SectionTitle, Spinner, cx } from "@/components/ui";
+import { Navigate, useNavigate, useParams } from "react-router";
+import { ArrowRight, Camera, Check, ChevronDown, ChevronLeft, Lock, MoreHorizontal, Play, Receipt } from "lucide-react";
+import { Avatar, ErrorState, SectionTitle, Spinner, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
 import { errorMessage } from "@/lib/errors";
-import { formatDateTime, t, tn, type Key } from "@/i18n";
+import { t, tn, type Key } from "@/i18n";
 import { useListPriceHints, type PriceHint } from "@/features/analytics/api";
 import { formatMoney } from "@/features/receipts/format";
 import { useActiveSession, useEndShopping, useItems, useLists, useRequests, useStartShopping, useUpdateItem, type Item } from "./api";
@@ -15,7 +15,8 @@ import { AddFeed, useFeed } from "./feed";
 import { Composer } from "./Composer";
 import { DoneScreen, type ShopSummary } from "./DoneScreen";
 import { EditItemSheet } from "./EditItemSheet";
-import { ListsSheet } from "./ListsSheet";
+import { ListSheet } from "./ListSheet";
+import { dayLabel } from "./dates";
 import { PlanList } from "./PlanList";
 import { QuickTiles } from "./QuickTiles";
 import { RequestCard } from "./RequestCard";
@@ -33,7 +34,6 @@ function priceHint(h: PriceHint | undefined): string | undefined {
     : t("shop.price.last", { price, store: h.last_store });
 }
 
-const today = () => formatDateTime(new Date(), { weekday: "long", day: "numeric", month: "numeric" });
 
 /** Prerušený nákup si pamätáme v tomto okne prehliadača (po zatvorení aplikácie sa obnoví režim nákupu). */
 const interruptKey = (sessionId: string) => `bh.interrupted.${sessionId}`;
@@ -66,7 +66,7 @@ export function ShoppingPage() {
   const params = useParams();
   const toast = useToast();
   const lists = useLists(household.id);
-  const listId = lists.data?.find((l) => l.id === params.listId)?.id ?? lists.data?.[0]?.id;
+  const listId = lists.data?.find((l) => l.id === params.listId)?.id;
   const list = lists.data?.find((l) => l.id === listId);
 
   const items = useItems(listId);
@@ -79,7 +79,7 @@ export function ShoppingPage() {
   const end = useEndShopping(listId ?? "none");
 
   const [editing, setEditing] = useState<Item | null>(null);
-  const [listsOpen, setListsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [showPurchased, setShowPurchased] = useState(false);
   const [summary, setSummary] = useState<ShopSummary | null>(null);
   /** Pri znovuotvorení nákupu ukážeme v košíku aj veci z pôvodného nákupu. */
@@ -172,20 +172,14 @@ export function ShoppingPage() {
 
   if (lists.isPending) return <Spinner />;
   if (lists.isError) return <ErrorState error={errorMessage(lists.error)} onRetry={() => lists.refetch()} />;
-  if (!list || !listId) {
-    return (
-      <EmptyState icon="📝" title={t("shop.emptyTitle")}>
-        <Button className="mt-4" onClick={() => setListsOpen(true)}>
-          {t("shop.createList")}
-        </Button>
-        <ListsSheet open={listsOpen} onClose={() => setListsOpen(false)} householdId={household.id} lists={[]} currentId="" onSelect={(id) => navigate(`/lists/${id}`)} />
-      </EmptyState>
-    );
-  }
+  // Nákup neexistuje, bol odstránený z prehľadu, alebo je súkromný cudzí → späť na prehľad.
+  if (!list || !listId) return <Navigate to="/" replace />;
 
   if (summary) {
     return (
       <DoneScreen
+        listId={listId}
+        householdId={household.id}
         summary={summary}
         names={names}
         me={me}
@@ -194,6 +188,7 @@ export function ShoppingPage() {
         onClose={() => {
           setSummary(null);
           setCartSince(null);
+          navigate("/");
         }}
       />
     );
@@ -226,25 +221,65 @@ export function ShoppingPage() {
 
   return (
     <div className="pb-24">
-      <header className="flex items-center gap-2 px-4 pb-3 pt-4">
-        <button type="button" onClick={() => setListsOpen(true)} className="-ml-1 min-w-0 flex-1 rounded-xl px-1 text-left active:bg-pressed">
-          <span className="flex items-center gap-1">
-            <h1 className="truncate text-[1.75rem] font-extrabold leading-tight tracking-[-0.03em]">{list.name}</h1>
-            <ChevronDown className="size-5 shrink-0 text-text-3" aria-label={t("shop.changeList")} />
-          </span>
-          <span className="block text-[0.8125rem] font-medium text-text-2">{today()}</span>
+      <header className="flex items-center gap-1 pb-3 pl-1 pr-3 pt-3">
+        <button type="button" onClick={() => navigate("/")} aria-label={t("trip.backAria")} className="grid size-11 shrink-0 place-items-center rounded-xl active:bg-pressed">
+          <ChevronLeft className="size-6" aria-hidden />
         </button>
-        <span className="flex items-center gap-2 rounded-xl border border-line bg-elevated py-1.5 pl-1.5 pr-2.5 text-sm font-semibold" aria-label={t("shop.householdLabel", { name: household.name })}>
-          <span className="flex">
+        <button type="button" onClick={() => setSettingsOpen(true)} className="min-w-0 flex-1 rounded-xl px-1 text-left active:bg-pressed" aria-label={t("trip.editAria", { name: list.name })}>
+          <h1 className="truncate text-[1.75rem] font-extrabold leading-tight tracking-[-0.03em]">{list.name}</h1>
+          <span className="flex items-center gap-1.5 truncate text-[0.8125rem] font-medium text-text-2">
+            {list.is_private && (
+              <span className="flex items-center gap-1 rounded-md bg-surface px-1.5 py-px text-[0.6875rem] font-bold">
+                <Lock className="size-3" aria-hidden /> {t("trip.onlyMe")}
+              </span>
+            )}
+            {list.planned_for ? dayLabel(list.planned_for) : t("trip.noDay")}
+            {list.note && ` · ${list.note}`}
+          </span>
+        </button>
+        {!list.is_private && (
+          <span className="flex shrink-0" aria-label={t("trip.sharedAria", { name: household.name })}>
             {memberIds.slice(0, 3).map((id, i) => (
-              <span key={id} className={cx(i > 0 && "-ml-2 rounded-lg ring-2 ring-elevated")}>
+              <span key={id} className={cx(i > 0 && "-ml-2 rounded-lg ring-2 ring-bg")}>
                 <Avatar name={names?.get(id) ?? "?"} me={id === me} />
               </span>
             ))}
           </span>
-          <span className="max-w-28 truncate">{household.name}</span>
-        </span>
+        )}
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          aria-label={t("trip.edit")}
+          className="ml-1 grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-elevated active:bg-pressed"
+        >
+          <MoreHorizontal className="size-5" aria-hidden />
+        </button>
       </header>
+
+      {list.completed_at && !active && (
+        <div className="mx-4 mb-3 flex items-center gap-3 rounded-2xl border border-line bg-elevated p-3 animate-rise">
+          <span className="grid size-9 shrink-0 place-items-center rounded-[0.6875rem] bg-success-soft text-success" aria-hidden>
+            <Check className="size-[1.125rem]" strokeWidth={2.8} />
+          </span>
+          <p className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-text-2">
+            <b className="block text-[0.9375rem] text-text">{t("trip.boughtOn", { day: dayLabel(list.completed_at) })}</b>
+            {t("trip.reopenHint")}
+          </p>
+          {list.receipt_state === "ATTACHED" && list.receipt_id ? (
+            <button type="button" onClick={() => navigate(`/receipts/${list.receipt_id}`)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-[0.625rem] bg-success-soft px-2.5 text-[0.8125rem] font-bold text-success">
+              <Receipt className="size-4" aria-hidden /> {t("trip.receipt")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate(`/receipts?pridat=1&nakup=${list.id}`)}
+              className={cx("flex h-9 shrink-0 items-center gap-1.5 rounded-[0.625rem] px-2.5 text-[0.8125rem] font-bold", list.receipt_state === "LATER" ? "bg-accent-soft text-accent" : "border border-line")}
+            >
+              <Camera className="size-4" aria-hidden /> {list.receipt_state === "LATER" ? t("trip.completeReceipt") : t("trip.addReceipt")}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col gap-2.5 px-4">
         {iAmShopping && interrupted && active && (
@@ -410,14 +445,16 @@ export function ShoppingPage() {
 
       <AddFeed entries={feed.entries} />
       <EditItemSheet key={editing?.id} item={editing} listId={listId} onClose={() => setEditing(null)} />
-      <ListsSheet
-        key={listId}
-        open={listsOpen}
-        onClose={() => setListsOpen(false)}
+      <ListSheet
+        key={`${list.id}-${settingsOpen}`}
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
         householdId={household.id}
-        lists={lists.data ?? []}
-        currentId={listId}
-        onSelect={(id) => navigate(`/lists/${id}`)}
+        householdName={household.name}
+        memberNames={memberIds.map((id) => names?.get(id) ?? "?")}
+        me={me}
+        recentNames={[]}
+        list={list}
       />
     </div>
   );

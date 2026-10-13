@@ -121,7 +121,7 @@ export const enLists: Record<keyof typeof skLists, string> = {
   "done.whatBought": "What you bought",
   "done.hide": "hide",
   "done.show": "show {n}",
-  "done.photo": "Photograph the receipt",
+  "done.photo": "Photograph the receipt now",
   "done.photoHint": "Prices are filled in from the receipt and the trip counts toward Insights.",
   "done.reopen": "Back to shopping",
   "done.reopenHint": "Forgot something? The trip reopens.",
@@ -152,4 +152,8 @@ export const enLists: Record<keyof typeof skLists, string> = {
   "mode.pausedAria": "Shopping paused",
   "mode.pausedTitle": "Shopping is paused",
   "mode.pausedText": "You have {done} of {total} in the cart. Others can keep adding – you will see their requests when you are back.",
+  "done.laterDone": "You'll add the receipt later",
+  "done.laterDoneHint": "The trip is in History marked “Add receipt”. If you upload the receipt under Receipts, it attaches here automatically.",
+  "done.later": "I'll photograph the receipt later",
+  "done.laterHint": "We'll remind you in your shopping history",
 };

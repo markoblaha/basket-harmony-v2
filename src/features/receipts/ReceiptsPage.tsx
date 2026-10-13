@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { ChevronRight, Merge, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronRight, Link2, Merge, Plus, Search, Trash2, X } from "lucide-react";
 import { Button, EmptyState, ErrorState, Group, PageHeader, Section, Spinner, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { t, tn } from "@/i18n";
 import { useHousehold } from "@/features/household/HouseholdProvider";
+import { useLists } from "@/features/lists/api";
+import { dayLabel } from "@/features/lists/dates";
 import { MAX_PAGES, isStale, needsAttention, useDeleteReceipt, useMergeReceipts, useReceipts, type Receipt } from "./api";
 import { AddMenu, ManualExpenseSheet, PendingSheet, type Pending, type PendingMode } from "./AddFlow";
 import { ReceiptRow } from "./ReceiptRow";
@@ -21,7 +23,15 @@ export function ReceiptsPage() {
   const { household } = useHousehold();
   const receipts = useReceipts(household.id);
   const toast = useToast();
-  const batch = useBatch(household.id);
+  // Doklad k nákupu (?nakup=<id> z obrazovky „Nákup dokončený“ alebo z Histórie nákupov).
+  const [params, setParams] = useSearchParams();
+  const [attachListId, setAttachListId] = useState<string | null>(() => params.get("nakup"));
+  const lists = useLists(household.id);
+  const attachList = lists.data?.find((l) => l.id === attachListId);
+  const batch = useBatch(household.id, attachListId, () => {
+    toast.show(t("trip.attached", { name: attachList?.name ?? "" }).trim(), "success");
+    setAttachListId(null);
+  });
   const merge = useMergeReceipts();
   const remove = useDeleteReceipt();
 
@@ -29,10 +39,9 @@ export function ReceiptsPage() {
   const galleryInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   // Príchod z obrazovky „Nákup dokončený“ (?pridat=1) rovno otvorí ponuku na pridanie bločku.
-  const [params, setParams] = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(() => params.get("pridat") === "1");
   useEffect(() => {
-    if (params.get("pridat")) setParams({}, { replace: true });
+    if (params.get("pridat") || params.get("nakup")) setParams({}, { replace: true });
   }, [params, setParams]);
   const [manualOpen, setManualOpen] = useState(false);
   const navigate = useNavigate();
@@ -175,6 +184,20 @@ export function ReceiptsPage() {
           ) : undefined
         }
       />
+      {attachList && (
+        <div role="status" className="mx-4 mb-3 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary-soft p-3 animate-rise">
+          <span className="grid size-9 shrink-0 place-items-center rounded-[0.6875rem] bg-primary text-on-primary" aria-hidden>
+            <Link2 className="size-[1.125rem]" />
+          </span>
+          <p className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-text-2">
+            <b className="block text-[0.9375rem] text-text">{t("trip.attachTitle", { name: attachList.name })}</b>
+            {attachList.completed_at ? t("trip.attachDone", { day: dayLabel(attachList.completed_at) }) : t("trip.attachOpen")} · {t("trip.attachNext")}
+          </p>
+          <button type="button" aria-label={t("trip.detach")} onClick={() => setAttachListId(null)} className="grid size-9 shrink-0 place-items-center rounded-[0.625rem] text-text-2 active:bg-pressed">
+            <X className="size-[1.125rem]" aria-hidden />
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 pb-40">
         {receipts.isPending ? (

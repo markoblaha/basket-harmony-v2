@@ -11,6 +11,7 @@ import { OnboardingPage } from "@/features/household/OnboardingPage";
 import { HouseholdPage } from "@/features/more/HouseholdPage";
 import { MorePage } from "@/features/more/MorePage";
 import { ShoppingPage } from "@/features/lists/ShoppingPage";
+import { ShoppingHub } from "@/features/lists/ShoppingHub";
 import { AnalyticsLayout } from "@/features/analytics/AnalyticsLayout";
 import { CategoryPage } from "@/features/analytics/CategoryPage";
 import { OverviewTab } from "@/features/analytics/OverviewTab";
@@ -64,7 +65,7 @@ export function App() {
             </RequireAuth>
           }
         >
-          <Route index element={<ShoppingPage />} />
+          <Route index element={<ShoppingHub />} />
           <Route path="lists/:listId" element={<ShoppingPage />} />
           <Route path="receipts" element={<ReceiptsPage />} />
           <Route path="receipts/statement" element={<StatementImportPage />} />

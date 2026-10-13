@@ -47,7 +47,7 @@ export const skAnalytics = {
   "stores.summary.few": "{n} obchody · spolu {total}",
   "stores.summary.other": "{n} obchodov · spolu {total}",
   "stores.rowLine": "{share} · {count}× · priemer {avg}",
-  "addtolist.noList": "Najprv si vytvor nákupný zoznam.",
+  "addtolist.noList": "Najprv založ nákup v karte Nákupy.",
   "addtolist.request": "Poslané nakupujúcemu na schválenie",
   "addtolist.added": "Pridané do zoznamu {name}",
   "chart.summary": "Výdavky k {date}: {now}, v predchádzajúcom období k rovnakému dňu {prev}.",

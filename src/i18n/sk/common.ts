@@ -3,7 +3,7 @@ export const skCommon = {
   "app.description": "Spoločný nákupný zoznam domácnosti",
 
   "nav.label": "Hlavná navigácia",
-  "nav.shopping": "Nákup",
+  "nav.shopping": "Nákupy",
   "nav.receipts": "Bločky",
   "nav.analytics": "Prehľady",
   "nav.more": "Viac",

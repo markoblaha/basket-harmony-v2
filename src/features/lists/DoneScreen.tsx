@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Camera, ChevronDown, RotateCcw } from "lucide-react";
+import { Camera, Check, ChevronDown, Clock, RotateCcw } from "lucide-react";
 import { Avatar, cx } from "@/components/ui";
+import { useToast } from "@/components/toast";
+import { errorMessage } from "@/lib/errors";
 import { formatDateTime, formatNumber, t } from "@/i18n";
-import type { Item } from "./api";
+import { useSetReceiptLater, type Item } from "./api";
 import { qtyLabel } from "./qty";
 
 export type ShopSummary = {
@@ -23,6 +25,8 @@ const day = (iso: string) => formatDateTime(iso, { weekday: "long", day: "numeri
  * nákup znova otvorí a nič sa nestratí.
  */
 export function DoneScreen({
+  listId,
+  householdId,
   summary,
   names,
   me,
@@ -30,6 +34,8 @@ export function DoneScreen({
   reopening,
   onClose,
 }: {
+  listId: string;
+  householdId: string;
   summary: ShopSummary;
   names: Map<string, string> | undefined;
   me: string;
@@ -39,6 +45,18 @@ export function DoneScreen({
 }) {
   const navigate = useNavigate();
   const [showBought, setShowBought] = useState(false);
+  const later = useSetReceiptLater(householdId);
+  const toast = useToast();
+  const [savedLater, setSavedLater] = useState(false);
+
+  async function receiptLater() {
+    try {
+      await later.mutateAsync({ listId, later: true });
+      setSavedLater(true);
+    } catch (err) {
+      toast.show(errorMessage(err), "error");
+    }
+  }
   const pieces = summary.bought.reduce((sum, i) => sum + (i.quantity && (!i.unit || i.unit === "ks") ? Number(i.quantity) : 1), 0);
 
   // Kto čo pridal – „Ty 5 · Lucia 2“
@@ -123,12 +141,36 @@ export function DoneScreen({
         <div className="mt-5 [animation:bh-rise_.5s_ease_.55s_both]">
           <button
             type="button"
-            onClick={() => navigate("/receipts?pridat=1")}
+            onClick={() => navigate(`/receipts?pridat=1&nakup=${listId}`)}
             className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-accent text-base font-bold text-on-accent active:scale-[0.98]"
           >
             <Camera className="size-[1.3125rem]" aria-hidden />
             {t("done.photo")}
           </button>
+          {savedLater ? (
+            <div role="status" className="mt-2 flex items-center gap-3 rounded-2xl bg-success-soft px-3.5 py-3 text-success animate-rise">
+              <Check className="size-5 shrink-0" strokeWidth={2.8} aria-hidden />
+              <p className="text-[0.8125rem] leading-snug">
+                <b className="block text-[0.9375rem]">{t("done.laterDone")}</b>
+                {t("done.laterDoneHint")}
+              </p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={receiptLater}
+              disabled={later.isPending}
+              className="mt-2 flex w-full items-center gap-3 rounded-2xl border border-line bg-elevated px-3.5 py-3 text-left active:bg-pressed disabled:opacity-60"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-[0.6875rem] bg-surface" aria-hidden>
+                <Clock className="size-[1.125rem]" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[0.9375rem] font-bold">{t("done.later")}</span>
+                <span className="block text-[0.8125rem] text-text-2">{t("done.laterHint")}</span>
+              </span>
+            </button>
+          )}
           <p className="mx-1 mt-2.5 text-center text-[0.8125rem] leading-snug text-text-2">{t("done.photoHint")}</p>
 
           <button
