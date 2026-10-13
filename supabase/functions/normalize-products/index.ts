@@ -16,7 +16,9 @@ const CORS = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
-const BATCH = 40;
+// Menšia dávka = kratšia odpoveď AI; funkcia musí skončiť pred limitom Supabase (~150 s).
+const BATCH = 20;
+const BUDGET_MS = 110_000;
 const CATEGORIES: Record<string, string> = {
   produce: "ovocie a zelenina",
   bakery: "pečivo",
@@ -85,7 +87,7 @@ ${known.length > 0 ? known.join("\n") : "(zatiaľ žiadne)"}
 Riadky na zjednotenie (product_id | zápis na bločku | ďalšie zápisy | obchod | súčasná kategória):
 ${rows}`;
 
-async function askGemini(text: string): Promise<{ products: Record<string, unknown>[] }> {
+async function askGemini(text: string, deadline: number): Promise<{ products: Record<string, unknown>[] }> {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
   const models = [...new Set([Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash", "gemini-3.6-flash"])];
@@ -93,6 +95,8 @@ async function askGemini(text: string): Promise<{ products: Record<string, unkno
   for (const model of models) {
     for (let attempt = 0; attempt < 3; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 2000 * attempt));
+      const remaining = deadline - Date.now();
+      if (remaining < 15_000) throw new Error(`GEMINI_TIMEOUT: ${lastError.slice(0, 120)}`);
       let res: Response;
       try {
         res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -102,7 +106,7 @@ async function askGemini(text: string): Promise<{ products: Record<string, unkno
             contents: [{ parts: [{ text }] }],
             generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: SCHEMA },
           }),
-          signal: AbortSignal.timeout(60_000),
+          signal: AbortSignal.timeout(Math.min(60_000, remaining - 5_000)),
         });
       } catch (e) {
         lastError = `GEMINI_NETWORK: ${e instanceof Error ? e.message : String(e)}`;
@@ -131,6 +135,7 @@ async function askGemini(text: string): Promise<{ products: Record<string, unkno
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "METHOD" }, 405);
+  const deadline = Date.now() + BUDGET_MS;
 
   const url = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -169,7 +174,7 @@ Deno.serve(async (req) => {
     const known = await asUser
       .from("products").select("name, brand, size_value, size_unit")
       .eq("household_id", householdId).is("merged_into", null).eq("normalized", true)
-      .order("updated_at", { ascending: false }).limit(400);
+      .order("updated_at", { ascending: false }).limit(250);
 
     const byProduct = new Map<string, { names: Set<string>; stores: Set<string> }>();
     for (const it of (items.data ?? []) as { product_id: string; raw_name: string; receipts: { store_name: string | null } | null }[]) {
@@ -189,7 +194,7 @@ Deno.serve(async (req) => {
       `${clean(k.name)} | ${k.brand ?? "-"} | ${k.size_value ? `${Number(k.size_value)} ${k.size_unit}` : "-"}`
     );
 
-    const result = await askGemini(prompt(knownLines, rows));
+    const result = await askGemini(prompt(knownLines, rows), deadline);
     const allowed = new Set(ids);
     const payload = result.products
       .filter((x) => typeof x.product_id === "string" && allowed.has(x.product_id) && typeof x.name === "string")

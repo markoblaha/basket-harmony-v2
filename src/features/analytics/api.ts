@@ -343,8 +343,16 @@ export function useProductNormalization(householdId: string, pending: number | u
     started.current = true;
     setState({ running: true, remaining: pending ?? null, error: null });
     try {
-      for (let round = 0; round < 40; round++) {
+      let failures = 0;
+      for (let round = 0; round < 80; round++) {
         const { data, error } = await supabase.functions.invoke("normalize-products", { body: { household_id: householdId } });
+        if (error && failures < 2) {
+          // Dočasný výpadok alebo preťaženie: chvíľu počkáme a skúsime tú istú dávku znova.
+          failures++;
+          await new Promise((r) => setTimeout(r, 3000));
+          continue;
+        }
+        failures = 0;
         if (error) {
           let detail = "";
           try {
