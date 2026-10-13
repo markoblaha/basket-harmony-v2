@@ -6,13 +6,24 @@ import { Banner, Button, EmptyState, ErrorState, Group, PageHeader, Section, Spi
 import { useToast } from "@/components/toast";
 import { errorMessage } from "@/lib/errors";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { extractReceipt, uploadReceiptFile, useReceipts, type Receipt, type UploadOutcome } from "./api";
+import {
+  extractReceipt,
+  isNotAReceipt,
+  isNotAReceiptError,
+  uploadReceiptFile,
+  useReceipts,
+  type Receipt,
+  type UploadOutcome,
+} from "./api";
 import { formatDate, formatMoney, monthLabel } from "./format";
 
 type Progress = { total: number; done: number; counts: Record<UploadOutcome | "ERROR", number>; stopped?: boolean };
-/** Po tomto počte neúspechov za sebou spracovanie zastavíme – ide takmer iste o rovnakú príčinu (kľúč, kredit, limit). */
+/**
+ * Po tomto počte technických chýb za sebou spracovanie zastavíme – ide takmer iste o rovnakú príčinu
+ * (kľúč, kredit, limit). Fotka, na ktorej nie je bloček, je iný prípad: ostatné sa spracujú ďalej.
+ */
 const STOP_AFTER_FAILURES = 3;
-const EMPTY_COUNTS = { NEW: 0, DUPLICATE: 0, OK: 0, NEEDS_REVIEW: 0, FAILED: 0, ERROR: 0 };
+const EMPTY_COUNTS = { NEW: 0, DUPLICATE: 0, OK: 0, NEEDS_REVIEW: 0, FAILED: 0, NOT_A_RECEIPT: 0, ERROR: 0 };
 
 export function ReceiptsPage() {
   const { household } = useHousehold();
@@ -38,7 +49,8 @@ export function ReceiptsPage() {
       try {
         const outcome = await uploadReceiptFile(household.id, file);
         state.counts[outcome]++;
-        streak = outcome === "FAILED" ? streak + 1 : 0;
+        if (outcome === "FAILED") streak++;
+        else if (outcome !== "NOT_A_RECEIPT") streak = 0;
       } catch (err) {
         state.counts.ERROR++;
         lastError = err;
@@ -55,7 +67,10 @@ export function ReceiptsPage() {
 
   /** Znova prečíta všetky bločky, ktoré skončili chybou (fotky už sú nahraté). */
   async function retryFailed() {
-    const failed = (receipts.data ?? []).filter((r) => r.status === "FAILED");
+    // Najprv tie, ktoré zlyhali technicky (kredit, preťaženie); fotky bez bločku až nakoniec.
+    const failed = (receipts.data ?? [])
+      .filter((r) => r.status === "FAILED")
+      .sort((a, b) => Number(isNotAReceipt(a)) - Number(isNotAReceipt(b)));
     if (failed.length === 0) return;
     const state: Progress = { total: failed.length, done: 0, counts: { ...EMPTY_COUNTS } };
     setProgress({ ...state, counts: { ...state.counts } });
@@ -65,9 +80,13 @@ export function ReceiptsPage() {
         const status = await extractReceipt(r.id);
         state.counts[status]++;
         streak = 0;
-      } catch {
-        state.counts.FAILED++;
-        streak++;
+      } catch (err) {
+        if (isNotAReceiptError(err)) {
+          state.counts.NOT_A_RECEIPT++;
+        } else {
+          state.counts.FAILED++;
+          streak++;
+        }
       }
       state.done++;
       if (streak >= STOP_AFTER_FAILURES && state.done < state.total) state.stopped = true;
@@ -167,7 +186,9 @@ function ReceiptRow({ receipt: r }: { receipt: Receipt }) {
         <p className="text-sm text-text-2">
           {formatDate(r.purchased_on)}
           {r.status === "NEEDS_REVIEW" && <span className="ml-2 font-medium text-warning">· skontrolovať</span>}
-          {r.status === "FAILED" && <span className="ml-2 font-medium text-danger">· nepodarilo sa</span>}
+          {r.status === "FAILED" && (
+            <span className="ml-2 font-medium text-danger">· {isNotAReceipt(r) ? "nie je bloček" : "nepodarilo sa"}</span>
+          )}
           {stale && <span className="ml-2 font-medium text-warning">· zaseklo sa, otvor a skús znova</span>}
         </p>
       </div>
@@ -192,6 +213,7 @@ function UploadProgress({ progress, running, onClose }: { progress: Progress; ru
     c.OK > 0 && `${c.OK} v poriadku`,
     c.NEEDS_REVIEW > 0 && `${c.NEEDS_REVIEW} na kontrolu`,
     c.DUPLICATE > 0 && `${c.DUPLICATE} už bolo (preskočené)`,
+    c.NOT_A_RECEIPT > 0 && `${c.NOT_A_RECEIPT} nie je nákupný doklad`,
     c.FAILED + c.ERROR > 0 && `${c.FAILED + c.ERROR} sa nepodarilo`,
   ].filter(Boolean);
   return (

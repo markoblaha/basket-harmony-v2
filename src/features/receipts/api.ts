@@ -66,7 +66,11 @@ export function useReceiptImage(path: string | undefined) {
 
 // ------------------------------------------------------------------ nahrávanie
 
-export type UploadOutcome = "NEW" | "DUPLICATE" | "OK" | "NEEDS_REVIEW" | "FAILED";
+/** NOT_A_RECEIPT = na fotke nie je nákupný doklad (trvalé, nie porucha služby – preto nezastavuje dávku). */
+export type UploadOutcome = "NEW" | "DUPLICATE" | "OK" | "NEEDS_REVIEW" | "FAILED" | "NOT_A_RECEIPT";
+
+export const isNotAReceiptError = (e: unknown) => e instanceof Error && e.message.startsWith("NOT_A_RECEIPT");
+export const isNotAReceipt = (r: Receipt) => r.status === "FAILED" && !!r.error_text?.startsWith("NOT_A_RECEIPT");
 
 async function sha256Hex(file: Blob): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
@@ -137,8 +141,9 @@ export async function uploadReceiptFile(householdId: string, file: File): Promis
   }
   try {
     return await extractReceipt(reg.receipt_id);
-  } catch {
-    return "FAILED"; // dôvod je uložený pri bločku, zobrazí sa v zozname
+  } catch (e) {
+    // dôvod je uložený pri bločku, zobrazí sa v zozname
+    return isNotAReceiptError(e) ? "NOT_A_RECEIPT" : "FAILED";
   }
 }
 

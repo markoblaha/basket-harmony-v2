@@ -32,7 +32,8 @@ Pravidlá:
 - Riadky so zľavou (Zľava, Akcia, Kupón) pripoj k položke, ktorej patria: zníž jej line_total a do discount daj kladnú sumu zľavy. Ak zľava patrí celému nákupu, nepridávaj ju ako položku, len ju sčítaj do discount_total.
 - Záloha na obaly: samostatná položka "Záloha na obal" (category_id other). Vrátená záloha je položka so zápornou sumou.
 - category_id vyber z povolených hodnôt podľa druhu tovaru.
-- Ak obrázok nie je pokladničný bloček, daj is_receipt = false a items prázdne.
+- Za bloček sa berie aj faktúra alebo potvrdenie objednávky z e-shopu (aj snímka obrazovky či PDF), ak sú na ňom ceny jednotlivých položiek. Obchod = predajca (e-shop), dátum = dátum objednávky alebo vystavenia, doprava a poplatky sú samostatné položky (category_id other), total = suma na úhradu.
+- Ak na obrázku nie je žiadny nákupný doklad s cenami položiek (bežná fotka, doklad bez cien), daj is_receipt = false a items prázdne.
 Vymýšľať údaje je zakázané: čo nevidíš, daj null.`;
 
 const SCHEMA = {
