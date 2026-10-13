@@ -7,7 +7,7 @@
  * jednotky („gramov“, „kila“) a príkazy („zmaž…“, „hotovo“). Obe cesty vracajú
  * rovnaký tvar, takže obrazovka nevie, ktorá odpovedala.
  */
-import { normalizeName } from "@/lib/categories";
+import { normalizeName, PRODUCT_STEMS } from "@/lib/categories";
 
 export type VoiceUnit = "ks" | "kg" | "g" | "dkg" | "l" | "ml" | "dl" | "bal";
 export const VOICE_UNITS: VoiceUnit[] = ["ks", "kg", "g", "dkg", "l", "ml", "dl", "bal"];
@@ -60,6 +60,7 @@ type Tok = { raw: string; key: string };
 
 function tokens(text: string): Tok[] {
   return text
+    .replace(/(\d)([a-zA-Zá-žÁ-Ž])/g, "$1 $2")
     .replace(/[.!?;:]+/g, " , ")
     .split(/\s+/)
     .filter(Boolean)
@@ -154,28 +155,62 @@ function stripFillers(toks: Tok[]): Tok[] {
   return toks.slice(i);
 }
 
-/** Množstvo + jednotka zo začiatku alebo konca úseku; zvyšok je názov. */
-function readItem(toks: Tok[]): { name: string; quantity: number | null; unit: VoiceUnit | null } {
-  const lead = readNumber(toks, 0);
-  if (lead && lead.next < toks.length) {
-    let i = lead.next;
-    const u = toks[i] ? unitOf(toks[i]!.key) : null;
-    if (u) i++;
-    const rest = toks.slice(i).filter((t) => !FILLERS.has(t.key));
-    if (rest.length) return { name: cap(rest.map((t) => t.raw).join(" ")), quantity: lead.value, unit: u ?? (lead.value % 1 ? null : "ks") };
-  }
-  // Na konci: „hovädzie mäso dvesto päťdesiat gramov“, „mlieko dva litre“
-  for (let start = 1; start < toks.length; start++) {
-    const tail = readNumber(toks, start);
-    if (!tail) continue;
-    let i = tail.next;
-    const u = toks[i] ? unitOf(toks[i]!.key) : null;
-    if (u) i++;
-    if (i === toks.length) {
-      return { name: cap(toks.slice(0, start).map((t) => t.raw).join(" ")), quantity: tail.value, unit: u ?? (tail.value % 1 ? null : "ks") };
+/** Slovo, ktoré vyzerá ako prídavné meno pred podstatným („hovädzie“, „nugátové“, „kuracie“). */
+const ADJ = /(ie|ove|ova|ovy|ych|sky|ska|ske|cie|zie)$/;
+const isAdj = (key: string) => key.length > 4 && ADJ.test(key);
+/** Slovo začína známym produktom z kategórií („mrkv…“, „pivo“, „sunk…“). */
+const isHead = (key: string) => key.length > 2 && PRODUCT_STEMS.some((s) => key.startsWith(s));
+
+/**
+ * Rozpoznávanie reči nedáva čiarky, takže „banány 3 rožky maslo šunka“ príde ako jeden prúd.
+ * Delíme ho takto:
+ *  - číslo bez jednotky začína novú položku („… 3 rožky“),
+ *  - číslo s jednotkou za názvom patrí k nemu („pivo 6 kusov šunka“ → pivo 6 ks | šunka),
+ *  - druhé podstatné meno produktu začína novú položku („maslo šunka“), prídavné meno ide s nasledujúcim.
+ */
+export function splitProducts(toks: Tok[]): { name: string; quantity: number | null; unit: VoiceUnit | null }[] {
+  type Part = { toks: Tok[]; quantity: number | null; unit: VoiceUnit | null; noun: boolean };
+  const parts: Part[] = [];
+  let cur: Part = { toks: [], quantity: null, unit: null, noun: false };
+  const flush = () => {
+    if (cur.toks.length) parts.push(cur);
+    else if (cur.quantity != null && parts.length) {
+      // osamotené množstvo na konci patrí k predošlej položke
+      const last = parts[parts.length - 1]!;
+      if (last.quantity == null) Object.assign(last, { quantity: cur.quantity, unit: cur.unit });
     }
+    cur = { toks: [], quantity: null, unit: null, noun: false };
+  };
+  let i = 0;
+  while (i < toks.length) {
+    const t = toks[i]!;
+    if (FILLERS.has(t.key)) {
+      i++;
+      continue;
+    }
+    const num = readNumber(toks, i);
+    if (num) {
+      let j = num.next;
+      const u = toks[j] ? unitOf(toks[j]!.key) : null;
+      if (u) j++;
+      if (u && cur.toks.length && cur.quantity == null) {
+        Object.assign(cur, { quantity: num.value, unit: u });
+      } else {
+        flush();
+        Object.assign(cur, { quantity: num.value, unit: u ?? (num.value % 1 ? null : "ks") });
+      }
+      i = j;
+      continue;
+    }
+    const adj = isAdj(t.key);
+    const head = !adj && isHead(t.key);
+    if (cur.noun && (head || adj)) flush();
+    cur.toks.push(t);
+    if (head) cur.noun = true;
+    i++;
   }
-  return { name: cap(toks.map((t) => t.raw).join(" ")), quantity: null, unit: null };
+  flush();
+  return parts.map((p) => ({ name: cap(p.toks.map((t) => t.raw).join(" ")), quantity: p.quantity, unit: p.unit }));
 }
 
 /**
@@ -215,9 +250,10 @@ export function parseLocal(text: string, target?: string | null): VoiceOp[] {
       ops.push({ op: "done" });
       continue;
     }
-    const it = readItem(clean);
-    if (!it.name) continue;
-    ops.push({ op: "add", name: it.name, quantity: it.quantity, unit: it.unit, categoryId: null, status: "ok", suggestions: [] });
+    for (const it of splitProducts(clean)) {
+      if (!it.name) continue;
+      ops.push({ op: "add", name: it.name, quantity: it.quantity, unit: it.unit, categoryId: null, status: "ok", suggestions: [] });
+    }
   }
   return ops;
 }

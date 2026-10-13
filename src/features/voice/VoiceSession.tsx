@@ -3,14 +3,13 @@ import { Keyboard, Mic, MicOff, X } from "lucide-react";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { countOf, isCountable, sameProduct } from "@/features/lists/qty";
 import { t, tn } from "@/i18n";
-import { guessCategory, normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
-import { interpret, loadDraft, saveDraft, useKnownStores, useSaveVoiceList, type DraftItem, type SaveResult } from "./api";
-import { matchStore, type VoiceOp } from "./parse";
+import { interpretAI, loadDraft, saveDraft, useKnownStores, useSaveVoiceList, type DraftItem, type SaveResult } from "./api";
+import { matchStore, parseLocal } from "./parse";
+import { applyOps, diff, reconcile, stepOf } from "./engine";
 import { buzz, useSpeech } from "./useSpeech";
-import { stepOf, VoiceRow, type RowAnim } from "./VoiceRow";
+import { VoiceRow, type RowAnim } from "./VoiceRow";
 
 /** Vlna hlasu – tri periodické krivky; posun o 390 px nadväzuje bez skoku. */
 function wavePath(fn: (x: number) => number) {
@@ -21,8 +20,6 @@ function wavePath(fn: (x: number) => number) {
 const W1 = wavePath((x) => Math.sin((x / 130) * Math.PI * 2) * 22 * (0.55 + 0.45 * Math.sin((x / 390) * Math.PI * 2)));
 const W2 = wavePath((x) => Math.sin((x / 195) * Math.PI * 2 + 1) * 15);
 const W3 = wavePath((x) => Math.sin((x / 78) * Math.PI * 2 + 2) * 12 * Math.abs(Math.sin((x / 390) * Math.PI * 2)));
-
-const VISIBLE = 7;
 
 /**
  * Hlasový nákup. Otvorí sa tlačidlom v strede navigácie s už zapnutým mikrofónom:
@@ -51,55 +48,119 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [goneId, setGoneId] = useState<string | null>(null);
   const [said, setSaid] = useState("");
-  const [thinking, setThinking] = useState(false);
   const [paused, setPaused] = useState(false);
   const [typing, setTyping] = useState(false);
   const [typed, setTyped] = useState("");
-  const [hint, setHint] = useState<{ text: string; k: number } | null>(null);
+  const [hint, setHint] = useState<{ text: string; k: number; ms: number } | null>(null);
   const [unclearWarned, setUnclearWarned] = useState(false);
   const [draft, setDraft] = useState(() => loadDraft(household.id));
 
   const itemsRef = useRef(items);
   itemsRef.current = items;
-  const queue = useRef<Promise<void>>(Promise.resolve());
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const later = useCallback((fn: () => void, ms: number) => {
     timers.current.push(setTimeout(fn, ms));
   }, []);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const showHint = useCallback((text: string) => {
-    setHint((h) => ({ text, k: (h?.k ?? 0) + 1 }));
-    later(() => setHint((h) => (h?.text === text ? null : h)), 4000);
+  const showHint = useCallback((text: string, ms = 4000) => {
+    setHint((h) => ({ text, k: (h?.k ?? 0) + 1, ms }));
+    later(() => setHint((h) => (h?.text === text ? null : h)), ms);
   }, [later]);
+
+  // iPhone: Safari sa na mikrofón pýta pri každom otvorení stránky, kým ho pre ňu natrvalo nepovolíš.
+  useEffect(() => {
+    if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) return;
+    let n = 0;
+    try {
+      n = Number(localStorage.getItem("bh.voiceIosTip") ?? 0);
+      localStorage.setItem("bh.voiceIosTip", String(n + 1));
+    } catch {
+      /* nevadí */
+    }
+    if (n < 3) later(() => showHint(t("voice.iosTip"), 7000), 1200);
+  }, [later, showHint]);
 
   // Rozdiktovaný zoznam priebežne ukladáme, aby ho nič nezmazalo.
   useEffect(() => {
     if (phase === "dict") saveDraft(household.id, { store, items, savedAt: Date.now() });
   }, [phase, store, items, household.id]);
 
-  // ---------------------------------------------------------------- operácie
+  // ---------------------------------------------------------------- animácie
 
-  const find = (name: string) =>
-    itemsRef.current.find((i) => sameProduct(i.name, name)) ??
-    itemsRef.current.find((i) => normalizeName(i.name).includes(normalizeName(name)) || normalizeName(name).includes(normalizeName(i.name)));
+  const listRef = useRef<HTMLDivElement>(null);
+  const seq = useRef(0);
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+  const [ghosts, setGhosts] = useState<{ item: DraftItem; index: number }[]>([]);
+  const [refining, setRefining] = useState(0);
+  const [discardArmed, setDiscardArmed] = useState(false);
 
-  const patch = useCallback((id: string, p: Partial<DraftItem>, glow = false) => {
-    setItems((all) => all.map((i) => (i.id === id ? { ...i, ...p } : i)));
+  const flash = useCallback((ids: string[]) => {
     setAnims((a) => {
-      const prev = a[id] ?? {};
-      return { ...a, [id]: { ...prev, bump: prev.bump === "a" ? "b" : "a", ...(glow ? { glow: prev.glow === "a" ? "b" : "a" } : {}) } };
+      const n = { ...a };
+      for (const id of ids) {
+        const p = n[id] ?? {};
+        n[id] = { ...p, bump: p.bump === "a" ? "b" : "a", glow: p.glow === "a" ? "b" : "a" };
+      }
+      return n;
     });
-    setLastId(null);
-    buzz(10);
   }, []);
+
+  /**
+   * Prechod na nový stav zoznamu: nové položky padajú po jednej (najnovšia dopadne hore),
+   * odstránené odídu doľava, zmenené bliknú. Dáta sa menia hneď – animácia len dobieha.
+   */
+  const present = useCallback((next: DraftItem[]) => {
+    const d = diff(itemsRef.current, next);
+    itemsRef.current = next;
+    setItems(next);
+    if (d.removed.length) {
+      setGhosts((g) => [...g, ...d.removed]);
+      later(() => setGhosts((g) => g.filter((x) => !d.removed.some((r) => r.item.id === x.item.id))), 300);
+    }
+    if (d.changed.length) {
+      flash(d.changed);
+      buzz(10);
+    }
+    if (!d.added.length) return;
+    setLastId(null);
+    const order = [...d.added].reverse();
+    setHidden((h) => new Set([...h, ...order]));
+    order.forEach((id, k) =>
+      later(() => {
+        setHidden((h) => {
+          const n = new Set(h);
+          n.delete(id);
+          return n;
+        });
+        setLastId(id);
+        setPushKey((p) => (p === "a" ? "b" : "a"));
+        const el = listRef.current;
+        // Keď si posunutý nižšie (kontroluješ zoznam), nepreskakujeme – len jemne upozorníme.
+        if (el && el.scrollTop < 140) el.scrollTo({ top: 0, behavior: "smooth" });
+        else if (k === 0) showHint(t("voice.newOnTop"));
+        later(() => {
+          setShake((s) => (s === "a" ? "b" : "a"));
+          const it = itemsRef.current.find((i) => i.id === id);
+          buzz(it && it.status !== "ok" ? [16, 50, 16] : 14);
+        }, 420);
+      }, k * 320),
+    );
+    if (itemsRef.current.length === d.added.length) later(() => showHint(t("voice.swipeHint")), 900 + order.length * 320);
+  }, [later, showHint, flash]);
+
+  const patch = useCallback((id: string, p: Partial<DraftItem>) => {
+    present(itemsRef.current.map((i) => (i.id === id ? { ...i, ...p } : i)));
+  }, [present]);
 
   const remove = useCallback((id: string) => {
     setConfirmId(null);
     setGoneId(id);
     buzz([10, 30, 26]);
     later(() => {
-      setItems((all) => all.filter((i) => i.id !== id));
+      const next = itemsRef.current.filter((i) => i.id !== id);
+      itemsRef.current = next;
+      setItems(next);
       setGoneId(null);
       setLastId(null);
       setEditId((e) => (e === id ? null : e));
@@ -126,70 +187,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
     else patch(id, { quantity: next });
   }, [patch, askDelete]);
 
-  const addNew = useCallback((op: Extract<VoiceOp, { op: "add" }>, delay: number) => {
-    later(() => {
-      const existing = op.status === "ok" ? find(op.name) : undefined;
-      if (existing && isCountable(existing.unit) && isCountable(op.unit) && existing.status === "ok") {
-        patch(existing.id, { quantity: countOf(existing.quantity) + countOf(op.quantity), unit: existing.unit ?? "ks" }, true);
-        buzz([12, 40, 12]);
-        showHint(t("voice.dupe", { name: existing.name }));
-        return;
-      }
-      const it: DraftItem = {
-        id: crypto.randomUUID(),
-        name: op.name,
-        quantity: op.quantity,
-        unit: op.unit,
-        categoryId: op.categoryId ?? guessCategory(op.name),
-        status: op.status,
-        suggestions: op.suggestions,
-      };
-      setItems((all) => [it, ...all]);
-      setLastId(it.id);
-      setPushKey((k) => (k === "a" ? "b" : "a"));
-      // Dopad položky = 64 % animácie pádu.
-      later(() => {
-        setShake((s) => (s === "a" ? "b" : "a"));
-        buzz(it.status === "ok" ? 14 : [16, 50, 16]);
-      }, 420);
-      if (itemsRef.current.length === 0) later(() => showHint(t("voice.swipeHint")), 900);
-    }, delay);
-  }, [later, patch, showHint]);
-
   const finishRef = useRef<() => void>(() => {});
-
-  const apply = useCallback((ops: VoiceOp[]) => {
-    let delay = 0;
-    let understood = false;
-    for (const op of ops) {
-      if (op.op === "done") {
-        understood = true;
-        later(() => finishRef.current(), delay + 200);
-      } else if (op.op === "add") {
-        understood = true;
-        addNew(op, delay);
-        delay += 380;
-      } else if (op.op === "remove") {
-        const it = find(op.target);
-        if (it) {
-          understood = true;
-          remove(it.id);
-        }
-      } else if (op.op === "change") {
-        const it = find(op.target);
-        if (!it) continue;
-        understood = true;
-        const p: Partial<DraftItem> = { status: "ok" };
-        if (op.name && op.quantity == null && op.delta == null) Object.assign(p, { name: op.name, suggestions: [] });
-        if (op.quantity != null) Object.assign(p, { quantity: op.quantity, unit: op.unit ?? it.unit ?? "ks" });
-        else if (op.delta != null) Object.assign(p, { quantity: Math.max(stepOf(it.unit), countOf(it.quantity) + op.delta * (isCountable(it.unit) ? 1 : stepOf(it.unit))) });
-        if (op.name && (op.quantity != null || op.delta != null)) p.name = op.name;
-        if (it.status === "needs_qty" && p.quantity == null) delete p.status;
-        patch(it.id, p, true);
-      }
-    }
-    if (!understood) showHint(t("voice.notUnderstood"));
-  }, [addNew, later, patch, remove, showHint]);
 
   // ---------------------------------------------------------------- vety
 
@@ -205,6 +203,11 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
     }, 380);
   }, [leaving, later]);
 
+  /**
+   * Jedna veta: okamžite lokálny rozbor (položky padnú bez čakania), súčasne AI.
+   * Keď AI odpovie (zvyčajne do 1,5 s), lokálny výsledok vety nahradí presnejším –
+   * napr. rozdelí „banány 3 rožky maslo“ správne alebo opraví tvar slova.
+   */
   const handleSentence = useCallback((text: string, typedByHand = false) => {
     if (phase === "pick") {
       // Napísaný text je rovno názov predajne; povedaný hľadáme vo vete („idem do Lidla“).
@@ -213,17 +216,48 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
       else showHint(t("voice.storeHint", { text }));
       return;
     }
-    const target = editId ? itemsRef.current.find((i) => i.id === editId)?.name ?? null : null;
-    queue.current = queue.current.then(async () => {
-      setSaid(text);
-      setThinking(true);
-      const { ops } = await interpret(text, itemsRef.current, target);
-      setThinking(false);
-      setSaid("");
-      if (target) setEditId(null);
-      apply(ops);
+    const target = editId ? (itemsRef.current.find((i) => i.id === editId)?.name ?? null) : null;
+    if (target) setEditId(null);
+    const before = itemsRef.current;
+    const local = applyOps(before, parseLocal(text, target));
+    if (local.done && !local.added.length && !local.merged.length) {
+      finishRef.current();
+      return;
+    }
+    if (local.understood) present(local.items);
+    const mergedName = !target && local.merged.length ? itemsRef.current.find((i) => i.id === local.merged[0])?.name : null;
+    if (mergedName) showHint(t("voice.dupe", { name: mergedName }));
+
+    const mine = ++seq.current;
+    setSaid(text);
+    setRefining((r) => r + 1);
+    void interpretAI(text, before, target).then((ops) => {
+      setRefining((r) => r - 1);
+      if (seq.current === mine) setSaid("");
+      if (!ops) {
+        if (!local.understood) showHint("Nerozumel som — skús to povedať inak");
+        return;
+      }
+      const r = reconcile(itemsRef.current, local, ops);
+      present(r.items);
+      if (r.done) finishRef.current();
+      else if (!r.understood && !local.understood) showHint("Nerozumel som — skús to povedať inak");
     });
-  }, [phase, stores, pickStore, showHint, editId, apply]);
+  }, [phase, stores, pickStore, showHint, editId, present]);
+
+  function discard() {
+    if (!discardArmed) {
+      buzz(16);
+      setDiscardArmed(true);
+      later(() => setDiscardArmed(false), 3000);
+      return;
+    }
+    buzz([10, 30, 26]);
+    saveDraft(household.id, null);
+    itemsRef.current = [];
+    setItems([]);
+    close();
+  }
 
   const speech = useSpeech(handleSentence);
 
@@ -317,12 +351,13 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
   const pending = items.filter((i) => i.status !== "ok").length;
   const editName = editId ? items.find((i) => i.id === editId)?.name : null;
   const live = speech.interim || said;
+  const thinking = refining > 0 && !speech.interim;
   const talk = speech.hearing || !!speech.interim;
   const waveState = paused || (!speech.listening && !typing) ? "off" : thinking ? "think" : talk ? "talk" : "idle";
   const status = paused
     ? t("voice.st.paused")
     : thinking
-      ? t("voice.st.thinking")
+      ? t("voice.st.refining")
       : talk
         ? t("voice.st.listening")
         : editName
@@ -341,7 +376,9 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
         : n === 0
           ? t("voice.ghost.first")
           : t("voice.ghost.next");
-  const visible = items.slice(0, VISIBLE);
+  // Zobrazené riadky: bez tých, čo ešte len padnú, a s odchádzajúcimi na pôvodnom mieste.
+  const rows: { it: DraftItem; leaving: boolean }[] = items.filter((i) => !hidden.has(i.id)).map((it) => ({ it, leaving: goneId === it.id }));
+  for (const g of ghosts) rows.splice(Math.min(g.index, rows.length), 0, { it: g.item, leaving: true });
   const meta = useMemo(
     () =>
       n === 0
@@ -438,50 +475,65 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
                 <X className="size-[22px]" />
               </button>
               <HouseholdChip name={household.name} />
-              <span className="size-11" />
+              {n > 0 ? (
+                <button
+                  type="button"
+                  onClick={discard}
+                  className={cx(
+                    "-mr-1 h-9 rounded-full px-3 text-[0.8rem] font-semibold transition-colors",
+                    discardArmed ? "animate-drop bg-danger text-on-primary" : "text-text-2 active:bg-pressed",
+                  )}
+                >
+                  {discardArmed ? t("voice.discardConfirm") : t("voice.discard")}
+                </button>
+              ) : (
+                <span className="size-11" />
+              )}
             </div>
-            <div className="px-6 pt-4">
-              <h1 className="animate-rise truncate text-[3.5rem] font-bold leading-[0.95] tracking-[-0.045em]">{store}</h1>
-              <p className="mt-2.5 text-[0.8125rem] text-text-2">{meta}</p>
+            {/* Celý obsah (názov + zoznam) sa dá posúvať aj počas počúvania. */}
+            <div ref={listRef} className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <div className="px-6 pt-4">
+                <h1 className="animate-rise truncate text-[3.5rem] font-bold leading-[0.95] tracking-[-0.045em]">{store}</h1>
+                <p className="mt-2.5 text-[0.8125rem] text-text-2">{meta}</p>
+              </div>
+              <ul className="relative z-[2] px-3.5 pb-8 pt-4" aria-live="polite">
+                {n === 0 && <li className="list-none animate-fade px-2.5 pt-2 text-[1.0625rem] text-text-3">{t("voice.emptyHint")}</li>}
+                {rows.map(({ it, leaving: out }, i) => (
+                  <VoiceRow
+                    key={it.id}
+                    item={it}
+                    anim={{
+                      fall: i === 0 && it.id === lastId,
+                      push: lastId && i > 0 ? pushKey : null,
+                      bump: anims[it.id]?.bump ?? null,
+                      glow: anims[it.id]?.glow ?? null,
+                    }}
+                    editing={editId === it.id}
+                    confirming={confirmId === it.id}
+                    leaving={out}
+                    onStep={(d) => step(it.id, d)}
+                    onAskDelete={() => askDelete(it.id)}
+                    onDelete={() => remove(it.id)}
+                    onTap={() => {
+                      buzz(10);
+                      setEditId((e) => (e === it.id ? null : it.id));
+                    }}
+                    onResolve={(p) => {
+                      if (p === "remove") remove(it.id);
+                      else if (p === "voice") setEditId(it.id);
+                      else patch(it.id, p);
+                    }}
+                  />
+                ))}
+              </ul>
             </div>
-            <ul className="relative z-[2] min-h-0 flex-1 px-3.5 pt-4" aria-live="polite">
-              {n === 0 && <li className="list-none animate-fade px-2.5 pt-2 text-[1.0625rem] text-text-3">{t("voice.emptyHint")}</li>}
-              {visible.map((it, i) => (
-                <VoiceRow
-                  key={it.id}
-                  item={it}
-                  anim={{
-                    fall: i === 0 && it.id === lastId,
-                    push: lastId && i > 0 ? pushKey : null,
-                    bump: anims[it.id]?.bump ?? null,
-                    glow: anims[it.id]?.glow ?? null,
-                  }}
-                  editing={editId === it.id}
-                  confirming={confirmId === it.id}
-                  leaving={goneId === it.id}
-                  onStep={(d) => step(it.id, d)}
-                  onAskDelete={() => askDelete(it.id)}
-                  onDelete={() => remove(it.id)}
-                  onTap={() => {
-                    buzz(10);
-                    setEditId((e) => (e === it.id ? null : it.id));
-                  }}
-                  onResolve={(p) => {
-                    if (p === "remove") remove(it.id);
-                    else if (p === "voice") setEditId(it.id);
-                    else patch(it.id, p, true);
-                  }}
-                />
-              ))}
-              {n > VISIBLE && <li className="list-none px-2.5 py-2 text-[0.8rem] text-text-3">{t("voice.older", { n: n - VISIBLE })}</li>}
-            </ul>
           </section>
         )}
 
         <div className="relative z-[3] rounded-t-[1.875rem] bg-elevated px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3">
-          <div className="flex h-[1.375rem] items-center justify-center">
+          <div className="flex min-h-[1.375rem] items-center justify-center">
             {hint && (
-              <p key={hint.k} className="vo-hint text-center text-[0.8rem] text-text-3">
+              <p key={hint.k} className="vo-hint text-center text-[0.8rem] leading-snug text-text-3" style={{ animationDuration: `${hint.ms}ms` }}>
                 {hint.text}
               </p>
             )}

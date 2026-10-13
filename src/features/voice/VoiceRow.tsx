@@ -7,21 +7,12 @@ import { formatNumber, t } from "@/i18n";
 import { unitLabel } from "@/lib/parseItem";
 import type { DraftItem } from "./api";
 import { buzz } from "./useSpeech";
-
-/** Krok pri potiahnutí: kusy po 1, gramy po 100, kilá po pol… */
-export function stepOf(unit: string | null): number {
-  switch (unit) {
-    case "g": return 100;
-    case "dkg": return 10;
-    case "kg": return 0.5;
-    case "ml": return 250;
-    default: return 1;
-  }
-}
+import { stepOf } from "./engine";
 
 /** „250“ + „g“ zvlášť – číslo je veľké, jednotka malá pod ním. */
 export function qtyParts(it: DraftItem): [string, string] {
-  if (it.quantity == null) return ["—", it.status === "needs_qty" ? t("voice.howMuchShort") : unitLabel("ks")];
+  // Bez množstva = 1 kus (tak ho uloží aj zoznam); pri tovare na váhu sa pýtame.
+  if (it.quantity == null) return it.status === "needs_qty" ? ["—", t("voice.howMuchShort")] : ["1", unitLabel(it.unit ?? "ks")];
   const label = qtyLabel(it.quantity, it.unit);
   const i = label.lastIndexOf(" ");
   return i > 0 ? [label.slice(0, i), label.slice(i + 1)] : [label, ""];
@@ -177,7 +168,7 @@ export function VoiceRow({
           <span
             className={cx(
               "inline-block text-[1.625rem] font-bold leading-none tracking-[-0.03em]",
-              item.quantity == null && "text-warning",
+              item.quantity == null && item.status === "needs_qty" && "text-warning",
               anim.bump && `vo-bump-${anim.bump}`,
             )}
           >

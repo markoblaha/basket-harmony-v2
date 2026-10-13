@@ -271,6 +271,9 @@ const RULES: [CategoryId, string[]][] = Object.keys({ ...KEYWORDS, ...KEYWORDS_E
   ].map(normalizeName),
 ]);
 
+/** Jednoslovné začiatky názvov produktov – hlasový rozbor podľa nich delí vetu bez čiarok. */
+export const PRODUCT_STEMS: string[] = RULES.flatMap(([, words]) => words).filter((w) => !w.includes(" ") && w.length >= 3);
+
 export function guessCategory(name: string): CategoryId {
   const text = normalizeName(name);
   if (!text) return "other";

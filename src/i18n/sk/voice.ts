@@ -58,4 +58,8 @@ export const skVoice = {
   "voice.unclearAsk": "Nerozumel som presne. Myslel si…",
   "voice.say": "Povedať",
   "voice.repeat": "Zopakovať",
+  "voice.st.refining": "spresňujem",
+  "voice.newOnTop": "Nová položka pribudla hore",
+  "voice.discardConfirm": "Naozaj zahodiť?",
+  "voice.iosTip": "Aby sa iPhone nepýtal stále: v Safari aA → Nastavenia webovej stránky → Mikrofón → Povoliť",
 } as const;

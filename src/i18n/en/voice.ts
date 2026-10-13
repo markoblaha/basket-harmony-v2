@@ -59,4 +59,8 @@ export const enVoice: Record<keyof typeof skVoice, string> = {
   "voice.unclearAsk": "I didn't catch that exactly. Did you mean…",
   "voice.say": "Say it",
   "voice.repeat": "Repeat",
+  "voice.st.refining": "refining",
+  "voice.newOnTop": "New item added at the top",
+  "voice.discardConfirm": "Really discard?",
+  "voice.iosTip": "To stop iPhone asking every time: in Safari tap aA → Website Settings → Microphone → Allow",
 };

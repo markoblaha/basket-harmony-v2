@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { guessCategory, normalizeName } from "@/lib/categories";
 import { listKeys } from "@/features/lists/api";
 import { countOf, isCountable, qtyLabel, sameProduct } from "@/features/lists/qty";
-import { parseLocal, VOICE_UNITS, type VoiceOp, type VoiceUnit } from "./parse";
+import { VOICE_UNITS, type VoiceOp, type VoiceUnit } from "./parse";
 
 /** Položka rozdiktovaného zoznamu (žije v prehliadači, kým nedáš Hotovo). */
 export type DraftItem = {
@@ -91,23 +91,22 @@ function fromServer(ops: ServerOp[]): VoiceOp[] {
 }
 
 /**
- * Veta → operácie. Najprv AI (rozumie skloňovaniu a chybám rozpoznania),
- * ak neodpovie do 7 s alebo zlyhá, lokálny rozbor. Vráti aj, ktorá cesta odpovedala.
+ * Veta → operácie od AI (rozumie skloňovaniu, delí vety bez čiarok, pozná tovar na váhu).
+ * Vráti null, ak neodpovie do 6 s alebo zlyhá – vtedy ostane okamžitý lokálny rozbor.
  */
-export async function interpret(text: string, items: DraftItem[], target: string | null): Promise<{ ops: VoiceOp[]; ai: boolean }> {
+export async function interpretAI(text: string, items: DraftItem[], target: string | null): Promise<VoiceOp[] | null> {
   try {
     const call = supabase.functions.invoke("parse-voice", {
       body: { text, target, items: items.map((i) => ({ name: i.name, qty: i.quantity ? qtyLabel(i.quantity, i.unit) : "-" })) },
     });
-    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), 7000));
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), 6000));
     const { data, error } = await Promise.race([call, timeout]);
-    if (error || !Array.isArray(data?.ops)) throw error ?? new Error("BAD");
+    if (error || !Array.isArray(data?.ops)) return null;
     const ops = fromServer(data.ops as ServerOp[]);
-    if (ops.length) return { ops, ai: true };
+    return ops.length ? ops : null;
   } catch {
-    /* záloha nižšie */
+    return null;
   }
-  return { ops: parseLocal(text, target), ai: false };
 }
 
 export type SaveResult = { listId: string; added: number; merged: number; requests: number; created: boolean };

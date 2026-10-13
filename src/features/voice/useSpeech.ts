@@ -29,6 +29,12 @@ function ctor(): (new () => Rec) | null {
 
 export type SpeechError = "denied" | "unavailable" | null;
 
+/**
+ * Jeden rozpoznávač na celé otvorenie aplikácie. Safari sa na povolenie pýta pri
+ * každom novom rozpoznávači; keď ten istý používame znova, opýta sa najviac raz.
+ */
+let shared: Rec | null = null;
+
 export function useSpeech(onFinal: (text: string) => void) {
   const supported = typeof window !== "undefined" && !!ctor();
   const [listening, setListening] = useState(false);
@@ -37,17 +43,22 @@ export function useSpeech(onFinal: (text: string) => void) {
   const [error, setError] = useState<SpeechError>(null);
   const want = useRef(false);
   const rec = useRef<Rec | null>(null);
+  const restarts = useRef(0);
   const cb = useRef(onFinal);
   cb.current = onFinal;
 
   const boot = useCallback(() => {
     const C = ctor();
     if (!C) return;
-    const r = new C();
+    shared ??= new C();
+    const r = shared;
     r.lang = getLocale() === "en" ? "en-GB" : "sk-SK";
     r.continuous = true;
     r.interimResults = true;
-    r.onspeechstart = () => setHearing(true);
+    r.onspeechstart = () => {
+      restarts.current = 0;
+      setHearing(true);
+    };
     r.onresult = (e) => {
       let live = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -72,7 +83,9 @@ export function useSpeech(onFinal: (text: string) => void) {
       setHearing(false);
       setInterim("");
       if (want.current) {
-        // Chrome skončí po tichu – pokračujeme, kým je režim zapnutý.
+        // Chrome aj Safari po tichu skončia – pokračujeme, kým je režim zapnutý.
+        // Pri dlhom tichu reštartujeme zriedkavejšie, aby sa prehliadač zbytočne nebudil.
+        restarts.current++;
         setTimeout(() => {
           if (!want.current) return;
           try {
@@ -80,7 +93,7 @@ export function useSpeech(onFinal: (text: string) => void) {
           } catch {
             /* už beží */
           }
-        }, 200);
+        }, restarts.current > 6 ? 1200 : 150);
       } else setListening(false);
     };
     rec.current = r;
@@ -89,7 +102,7 @@ export function useSpeech(onFinal: (text: string) => void) {
   const start = useCallback(() => {
     if (!ctor()) return;
     setError(null);
-    if (!rec.current) boot();
+    boot();
     want.current = true;
     setListening(true);
     try {
@@ -113,9 +126,10 @@ export function useSpeech(onFinal: (text: string) => void) {
 
   useEffect(
     () => () => {
+      // Nezahadzujeme ho (abort) – zastavíme a necháme na ďalšie otvorenie.
       want.current = false;
       try {
-        rec.current?.abort();
+        rec.current?.stop();
       } catch {
         /* nebeží */
       }

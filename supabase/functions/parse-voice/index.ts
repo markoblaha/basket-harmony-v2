@@ -4,7 +4,8 @@
 // používateľa, (2) pošle vetu a aktuálne položky Gemini (iba krátky text – lacné
 // a rýchle), (3) vráti zoznam operácií: pridať / zmeniť / zmazať / hotovo.
 // Nič neukladá – ukladá až aplikácia po „Hotovo“ cez add_item (pravidlá ostávajú
-// v databáze). Keď funkcia zlyhá, aplikácia použije lokálny rozbor (parse.ts).
+// v databáze). Aplikácia medzitým ukáže okamžitý lokálny rozbor; táto odpoveď ho
+// do sekundy spresní (rozdelí vety bez čiarok, opraví tvary slov, doplní kategóriu).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CORS = {
@@ -47,68 +48,82 @@ const SCHEMA = {
   required: ["ops"],
 };
 
-const prompt = (text: string, items: string, target: string | null) => `Spracúvaš hlasom nadiktovaný nákupný zoznam slovenskej domácnosti.
-Dostaneš prepis jednej vety z rozpoznávania reči (môže obsahovať chyby rozpoznania) a položky, ktoré už sú v zozname.
-Vráť operácie (ops) v poradí, ako ich človek povedal.
+const prompt = (text: string, items: string, target: string | null) => `Hlasom nadiktovaný nákupný zoznam (slovenčina). Prepis z rozpoznávania reči NEMÁ čiarky a môže mať chyby.
+Rozdeľ vetu na jednotlivé položky a vráť operácie (ops) v poradí, ako zazneli.
 
-Pravidlá:
-- add: nová položka. name = prirodzený názov na nákupný zoznam v 1. páde, prvé písmeno veľké, bez množstva
-  ("tri nugátové šišky" -> name "Nugátová šiška", quantity 3, unit "ks"; "pol kila múky" -> "Múka", 0.5, "kg";
-  "dvadsaťpäť deka šunky" -> "Šunka", 25, "dkg"; "hovädzie dvesto päťdesiat gramov" -> "Hovädzie mäso", 250, "g";
-  "banány" -> "Banány", quantity null, unit null). Jednotky iba: ${UNITS.join(", ")}. Počet kusov = "ks".
-- category_id podľa druhu tovaru: ${CATEGORIES.join(", ")}.
-- status "needs_qty": tovar sa bežne kupuje na váhu (mäso, ryby, syr alebo šunka z pultu, údeniny na váhu) a množstvo NEZAZNELO.
-- status "unclear": slovo zjavne nie je nákupná položka alebo je asi zle rozpoznané (napr. "tráva"); do suggestions daj 2–3
-  podobne znejúce bežné produkty v 1. páde. Inak status "ok" a suggestions [].
-- change: zmena položky, ktorá už je v zozname ("ešte jedny banány" -> target "Banány", delta 1; "banánov daj tri" -> target "Banány", quantity 3, unit "ks").
-  Keď je produkt už v zozname a človek ho povie znova, je to change s delta (nie druhý add).
-- remove: "zmaž/vymaž/odstráň X" -> target = presný názov položky zo zoznamu.
-- done: "hotovo", "to je všetko", "koniec".
-- target vždy presne ako je napísaný v zozname nižšie.
-${target ? `\nPoužívateľ práve upravuje položku "${target}". Veta sa týka iba jej: vráť jednu operáciu change s target "${target}" (množstvo, jednotka alebo nový názov v name).\n` : ""}
-Položky v zozname (názov | množstvo):
-${items || "(zatiaľ prázdny)"}
+Delenie: každý produkt je samostatná položka. Množstvo patrí k produktu, pri ktorom zaznelo:
+"banány 3 rožky maslo šunka" -> Banány | Rožok 3 ks | Maslo | Šunka
+"mrkva pivo 6 kusov šunka" -> Mrkva | Pivo 6 ks | Šunka
+"mlieko 3 kusy banány smotana 3 kusy" -> Mlieko 3 ks | Banány | Smotana 3 ks
+"tri banány" = "banány 3 kusy" -> Banány 3 ks
+
+- add: name = názov v 1. páde, prvé písmeno veľké, bez množstva ("tri nugátové šišky" -> "Nugátová šiška" 3 ks; "pol kila múky" -> "Múka" 0.5 kg;
+  "dvadsaťpäť deka šunky" -> "Šunka" 25 dkg; "hovädzie dvesto päťdesiat gramov" -> "Hovädzie mäso" 250 g). Bez množstva: quantity null, unit null.
+  Jednotky iba: ${UNITS.join(", ")}.
+- category_id: ${CATEGORIES.join(", ")}.
+- status "needs_qty": mäso, ryby, syr/šunka z pultu bez zaznetého množstva. "unclear": slovo nie je nákupná položka alebo je zle rozpoznané
+  (suggestions: 2–3 podobne znejúce produkty v 1. páde). Inak "ok", suggestions [].
+- change: produkt už je v zozname ("ešte jedny banány" -> target "Banány", delta 1; "banánov daj tri" -> target "Banány", quantity 3, unit "ks").
+- remove: "zmaž/vymaž X" -> target. done: "hotovo", "to je všetko". target presne podľa zoznamu.
+${target ? `Upravuje sa položka "${target}": vráť jednu operáciu change s target "${target}" (množstvo, jednotka alebo nový name).\n` : ""}
+Zoznam (názov | množstvo):
+${items || "(prázdny)"}
 
 Veta: "${text}"`;
 
-async function askGemini(text: string): Promise<{ ops: Record<string, unknown>[] }> {
+type Cfg = { model: string; thinking: Record<string, unknown> | null };
+
+/** Poradie: najrýchlejší model s minimálnym „premýšľaním“; ďalšie sú záloha. Dá sa zmeniť v GEMINI_VOICE_MODEL. */
+const CANDIDATES: Cfg[] = [
+  ...(Deno.env.get("GEMINI_VOICE_MODEL") ? [{ model: Deno.env.get("GEMINI_VOICE_MODEL")!, thinking: { thinkingLevel: "minimal" } }] : []),
+  // Namerané 13. 10. 2026 na vete so 6 položkami: 3.5-flash-lite ≈ 1,0–1,5 s, 3.6-flash ≈ 1,9–2,3 s, 3.8-flash ≈ 5–6 s.
+  { model: "gemini-3.5-flash-lite", thinking: { thinkingLevel: "minimal" } },
+  { model: "gemini-3.6-flash", thinking: { thinkingLevel: "minimal" } },
+  { model: "gemini-3.8-flash", thinking: { thinkingLevel: "low" } },
+];
+/** Teplá inštancia si pamätá, ktorý model naposledy odpovedal (ďalšie volanie neskúša nedostupné). */
+let preferred: Cfg | null = null;
+
+async function call(cfg: Cfg, text: string, timeoutMs: number): Promise<{ ops: Record<string, unknown>[] }> {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
-  const models = [...new Set([Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash", "gemini-3.6-flash"])];
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent`, {
+    method: "POST",
+    headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text }] }],
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: "application/json",
+        responseSchema: SCHEMA,
+        ...(cfg.thinking ? { thinkingConfig: cfg.thinking } : {}),
+      },
+    }),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new Error(`GEMINI_${res.status}: ${(await res.text()).slice(0, 160)}`);
+  const data = await res.json();
+  const out = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("");
+  const parsed = JSON.parse(out ?? "");
+  if (!Array.isArray(parsed?.ops)) throw new Error("GEMINI_BAD_JSON");
+  return parsed;
+}
+
+async function askGemini(text: string): Promise<{ ops: Record<string, unknown>[]; model: string }> {
+  const deadline = Date.now() + 7_000;
+  const list = preferred ? [preferred, ...CANDIDATES.filter((c) => c !== preferred)] : CANDIDATES;
   let lastError = "GEMINI_UNKNOWN";
-  for (const model of models) {
-    let res: Response;
+  for (const cfg of list) {
+    const left = deadline - Date.now();
+    if (left < 800) break;
     try {
-      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text }] }],
-          generationConfig: {
-            temperature: 0,
-            responseMimeType: "application/json",
-            responseSchema: SCHEMA,
-          },
-        }),
-        // Hlasové zadávanie musí byť svižné; aplikácia po ~7 s aj tak použije zálohu.
-        signal: AbortSignal.timeout(6_500),
-      });
+      const r = await call(cfg, text, Math.min(3_500, left));
+      preferred = cfg;
+      return { ...r, model: cfg.model + (cfg.thinking ? "+min" : "") };
     } catch (e) {
-      lastError = `GEMINI_NETWORK: ${e instanceof Error ? e.message : String(e)}`;
-      continue;
+      lastError = e instanceof Error ? e.message : String(e);
+      if (/^GEMINI_(401|402|403)|GEMINI_API_KEY_MISSING/.test(lastError)) throw new Error(lastError);
     }
-    if (res.ok) {
-      const data = await res.json();
-      const out = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("");
-      try {
-        const parsed = JSON.parse(out ?? "");
-        if (Array.isArray(parsed?.ops)) return parsed;
-      } catch { /* skúsi ďalší model */ }
-      lastError = "GEMINI_BAD_JSON";
-      continue;
-    }
-    lastError = `GEMINI_${res.status}: ${(await res.text()).slice(0, 200)}`;
-    if (/^GEMINI_(401|402|403)/.test(lastError)) throw new Error(lastError);
   }
   throw new Error(lastError);
 }
@@ -120,6 +135,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "METHOD" }, 405);
 
+  let body: { text?: unknown; items?: unknown; target?: unknown } = {};
+  try {
+    body = await req.json();
+  } catch { /* prázdne telo */ }
+
   const url = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
@@ -128,10 +148,6 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await admin.auth.getUser(token);
   if (userError || !userData.user) return json({ error: "NOT_AUTHENTICATED" }, 401);
 
-  let body: { text?: unknown; items?: unknown; target?: unknown } = {};
-  try {
-    body = await req.json();
-  } catch { /* prázdne telo */ }
   const text = str(body.text, 400);
   if (!text) return json({ error: "VALIDATION" }, 400);
   const target = str(body.target);
@@ -142,6 +158,7 @@ Deno.serve(async (req) => {
     .filter((l) => !l.startsWith(" |"))
     .join("\n");
 
+  const t0 = Date.now();
   try {
     const result = await askGemini(prompt(text.replace(/"/g, "'"), items, target));
     const ops = result.ops.slice(0, 20).map((o) => ({
@@ -155,10 +172,11 @@ Deno.serve(async (req) => {
       status: ["ok", "needs_qty", "unclear"].includes(String(o.status)) ? o.status : "ok",
       suggestions: (Array.isArray(o.suggestions) ? o.suggestions : []).map((s) => str(s, 40)).filter(Boolean).slice(0, 3),
     }));
-    return json({ ops });
+    console.log("parse-voice ok", result.model, Date.now() - t0, "ms");
+    return json({ ops, model: result.model, ms: Date.now() - t0 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("parse-voice", message);
+    console.error("parse-voice", Date.now() - t0, "ms", message);
     return json({ error: "PARSE_FAILED", detail: message.slice(0, 200) }, 502);
   }
 });

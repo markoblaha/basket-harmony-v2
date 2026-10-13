@@ -53,3 +53,18 @@ describe("matchStore", () => {
     expect(matchStore("idem do drogérie", stores)).toBe("Drogérie");
   });
 });
+
+describe("delenie vety bez čiarok", () => {
+  const names = (t: string) => parseLocal(t).map((o) => (o.op === "add" ? `${o.name}${o.quantity != null ? ` ${o.quantity} ${o.unit}` : ""}` : o.op));
+  it("rozpoznávanie reči bez čiarok", () => {
+    expect(names("banány 3 rožky maslo šunka")).toEqual(["Banány", "Rožky 3 ks", "Maslo", "Šunka"]);
+    expect(names("mrkva pivo 6ks šunka")).toEqual(["Mrkva", "Pivo 6 ks", "Šunka"]);
+    expect(names("mlieko 3 kusy banány smotana 3 kusy")).toEqual(["Mlieko 3 ks", "Banány", "Smotana 3 ks"]);
+    expect(names("tri banány")).toEqual(["Banány 3 ks"]);
+    expect(names("banány 3ks")).toEqual(["Banány 3 ks"]);
+  });
+  it("prídavné meno ostáva pri podstatnom", () => {
+    expect(names("maslo hovädzie mäso 250 g")).toEqual(["Maslo", "Hovädzie mäso 250 g"]);
+    expect(names("kuracie prsia mlieko polotučné")).toEqual(["Kuracie prsia", "Mlieko polotučné"]);
+  });
+});
