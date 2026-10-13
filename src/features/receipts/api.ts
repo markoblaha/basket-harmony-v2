@@ -78,6 +78,10 @@ export const isNotAReceiptError = (e: unknown) => e instanceof Error && e.messag
 export const isGlobalFailure = (message: string | null | undefined) =>
   !!message && /^(GEMINI_(401|402|403)|GEMINI_API_KEY_MISSING)/.test(message);
 export const isReceiptPdf = (r: Pick<Receipt, "image_path">) => r.image_path.toLowerCase().endsWith(".pdf");
+/** Čítanie sa začalo, ale server ho nikdy nedokončil (napr. zavretá aplikácia, výpadok). */
+export const isStale = (r: Receipt) => r.status === "PROCESSING" && Date.now() - new Date(r.updated_at).getTime() > 3 * 60_000;
+/** Doklad čaká na človeka: kontrola, chyba alebo zaseknuté čítanie. */
+export const needsAttention = (r: Receipt) => r.status === "NEEDS_REVIEW" || r.status === "FAILED" || isStale(r);
 export const isNotAReceipt = (r: Receipt) => r.status === "FAILED" && !!r.error_text?.startsWith("NOT_A_RECEIPT");
 
 async function sha256Hex(file: Blob): Promise<string> {
@@ -284,6 +288,47 @@ export function useMergeReceipts() {
         if (e instanceof Error && isGlobalFailure(e.message)) throw e;
       }
       return data;
+    },
+    onSettled: () => invalidateReceipts(qc),
+  });
+}
+
+export type ItemInput = {
+  /** Bez id = nová položka. */
+  id?: string;
+  name: string;
+  lineTotal: number;
+  quantity: number;
+  discount: number;
+  categoryId: string;
+};
+
+/** Pridá alebo zmení položku dokladu. Súčet a stav dokladu prepočíta databáza. */
+export function useSaveReceiptItem(receiptId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (item: ItemInput) => {
+      const { error } = await supabase.rpc("save_receipt_item", {
+        p_receipt_id: receiptId,
+        p_item_id: item.id ?? null,
+        p_name: item.name,
+        p_line_total: item.lineTotal,
+        p_quantity: item.quantity,
+        p_discount: item.discount,
+        p_category_id: item.categoryId,
+      });
+      if (error) throw error;
+    },
+    onSettled: () => invalidateReceipts(qc),
+  });
+}
+
+export function useRemoveReceiptItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await supabase.rpc("remove_receipt_item", { p_item_id: itemId });
+      if (error) throw error;
     },
     onSettled: () => invalidateReceipts(qc),
   });

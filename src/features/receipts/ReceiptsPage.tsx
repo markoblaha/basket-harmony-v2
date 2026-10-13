@@ -1,125 +1,97 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Link } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Camera, ChevronRight, FileText, Loader2, Merge, X } from "lucide-react";
-import {
-  Banner,
-  Button,
-  EmptyState,
-  ErrorState,
-  Group,
-  IconButton,
-  PageHeader,
-  Section,
-  Sheet,
-  Spinner,
-  cx,
-} from "@/components/ui";
+import { ChevronRight, Merge, Plus, Search, Trash2 } from "lucide-react";
+import { Button, EmptyState, ErrorState, Group, PageHeader, Section, Spinner, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
+import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import {
-  extractReceipt,
-  isGlobalFailure,
-  isNotAReceipt,
-  isNotAReceiptError,
-  isReceiptPdf,
-  MAX_PAGES,
-  uploadReceipt,
-  useMergeReceipts,
-  useReceiptImage,
-  useReceipts,
-  type Receipt,
-  type UploadOutcome,
-} from "./api";
-import { failureText, formatDate, formatMoney, monthLabel, readErrorMessage } from "./format";
+import { MAX_PAGES, isStale, needsAttention, useDeleteReceipt, useMergeReceipts, useReceipts, type Receipt } from "./api";
+import { AddMenu, PendingSheet, type Pending, type PendingMode } from "./AddFlow";
+import { ReceiptRow } from "./ReceiptRow";
+import { Dock, UploadStatus } from "./UploadStatus";
+import { useBatch } from "./useBatch";
+import { formatDate, formatMoney, monthLabel, plural, readErrorMessage } from "./format";
 
-type Progress = {
-  total: number;
-  done: number;
-  counts: Record<UploadOutcome | "ERROR", number>;
-  stopped?: boolean;
-  /** Prečo sa dávka zastavila (veta pre človeka). */
-  stopReason?: string;
-};
-/**
- * Jeden problémový doklad dávku nezastaví. Zastavíme ju len keď:
- *  - došiel kredit alebo je zlý kľúč (zastaví sa hneď, ďalšie doklady by zlyhali tiež), alebo
- *  - zlyhalo viac technických pokusov za sebou (výpadok služby alebo siete).
- */
-const STOP_AFTER_FAILURES = 5;
-const EMPTY_COUNTS = { NEW: 0, DUPLICATE: 0, OK: 0, NEEDS_REVIEW: 0, FAILED: 0, NOT_A_RECEIPT: 0, ERROR: 0 };
+type Filter = "all" | "review" | "ok";
+const INBOX_PREVIEW = 4;
 
 export function ReceiptsPage() {
   const { household } = useHousehold();
   const receipts = useReceipts(household.id);
-  const qc = useQueryClient();
   const toast = useToast();
-  const input = useRef<HTMLInputElement>(null);
-  const [progress, setProgress] = useState<Progress | null>(null);
-  const [onlyReview, setOnlyReview] = useState(false);
-  // Vybrané súbory čakajúce na rozhodnutie: samostatné doklady, alebo strany jedného dokladu.
-  const [pending, setPending] = useState<File[] | null>(null);
-  const [mode, setMode] = useState<"separate" | "one">("separate");
-  // Režim spájania dokladov: poradie klepnutí = poradie strán.
+  const batch = useBatch(household.id);
+  const merge = useMergeReceipts();
+  const remove = useDeleteReceipt();
+
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const galleryInput = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [mode, setMode] = useState<PendingMode>("separate");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
+  const [inboxOpen, setInboxOpen] = useState(false);
+  // Výber dokladov (podržanie riadku alebo tlačidlo "Vybrať"): poradie klepnutí = poradie strán pri spájaní.
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
-  const merge = useMergeReceipts();
 
-  const running = progress !== null && !progress.stopped && progress.done < progress.total;
+  const all = receipts.data ?? [];
+  const attention = all.filter(needsAttention);
+  const failedCount = attention.filter((r) => r.status === "FAILED" || isStale(r)).length;
+  const searching = query.trim() !== "";
+  const flat = filter !== "all" || searching;
 
-  function onPick(e: ChangeEvent<HTMLInputElement>) {
+  const visible = useMemo(() => {
+    const needle = normalizeName(query);
+    return all.filter((r) => {
+      if (filter === "review" && !needsAttention(r)) return false;
+      if (filter === "ok" && r.status !== "OK") return false;
+      if (!needle) return true;
+      const hay = normalizeName(`${r.store_name ?? ""} ${formatDate(r.purchased_on)} ${r.total ?? ""}`);
+      return hay.includes(needle);
+    });
+  }, [all, filter, query]);
+
+  const listed = flat ? visible : all.filter((r) => !needsAttention(r));
+  const groups = groupByMonth(listed);
+  const month = useMemo(() => monthSummary(all), [all]);
+
+  // ------------------------------------------------------------ pridávanie
+  function onPickCamera(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (files.length === 0) return;
-    if (pending) {
-      setPending([...pending, ...files]); // "Pridať ďalšie súbory" v okne
+    setPending((p) => ({ kind: "camera", files: p?.kind === "camera" ? [...p.files, ...files] : files }));
+  }
+
+  function onPickFiles(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    if (pending?.kind === "files") {
+      setPending({ kind: "files", files: [...pending.files, ...files] });
     } else if (files.length === 1) {
-      void processGroups([files]);
+      void batch.processGroups([files]);
     } else {
       setMode("separate");
-      setPending(files);
+      setPending({ kind: "files", files });
     }
   }
 
   function startPending() {
     if (!pending) return;
-    const groups = mode === "one" ? [pending] : pending.map((f) => [f]);
+    const one = pending.kind === "camera" || mode === "one";
+    const groups = one ? [pending.files] : pending.files.map((f) => [f]);
     setPending(null);
-    void processGroups(groups);
+    void batch.processGroups(groups);
   }
 
-  /** Doklady nahrávame po jednom: server číta jeden naraz a nepreťažíme limity služby. */
-  async function processGroups(groups: File[][]) {
-    const state: Progress = { total: groups.length, done: 0, counts: { ...EMPTY_COUNTS } };
-    setProgress({ ...state, counts: { ...state.counts } });
-    let lastError: unknown = null;
-    let streak = 0;
-    for (const group of groups) {
-      try {
-        const outcome = await uploadReceipt(household.id, group);
-        state.counts[outcome]++;
-        if (outcome === "FAILED") streak++;
-        else if (outcome !== "NOT_A_RECEIPT") streak = 0;
-      } catch (err) {
-        state.counts.ERROR++;
-        lastError = err;
-        streak++;
-        if (err instanceof Error && isGlobalFailure(err.message)) {
-          state.stopped = true;
-          state.stopReason = failureText(err.message);
-        }
-      }
-      state.done++;
-      if (streak >= STOP_AFTER_FAILURES && state.done < state.total && !state.stopped) {
-        state.stopped = true;
-        state.stopReason = `${STOP_AFTER_FAILURES} dokladov za sebou sa nepodarilo prečítať, takže ide pravdepodobne o výpadok služby. Skús to o chvíľu.`;
-      }
-      setProgress({ ...state, counts: { ...state.counts } });
-      qc.invalidateQueries({ queryKey: ["receipts"] });
-      if (state.stopped) break;
-    }
-    if (lastError && !state.stopReason) toast.show(readErrorMessage(lastError), "error");
+  // ------------------------------------------------------------ výber
+  function startSelecting(id?: string) {
+    setSelecting(true);
+    setPicked(id ? [id] : []);
   }
 
   function cancelSelect() {
@@ -129,11 +101,11 @@ export function ReceiptsPage() {
 
   function toggle(id: string) {
     if (picked.includes(id)) return setPicked(picked.filter((x) => x !== id));
-    if (picked.length >= MAX_PAGES) return toast.show(`Spojiť sa dá najviac ${MAX_PAGES} dokladov naraz.`, "error");
     setPicked([...picked, id]);
   }
 
   async function doMerge() {
+    if (picked.length > MAX_PAGES) return toast.show(`Spojiť sa dá najviac ${MAX_PAGES} dokladov naraz.`, "error");
     const text = `Spojiť ${picked.length} dokladov do jedného? Prvý vybraný zostane a ostatné sa doň pridajú ako ďalšie strany (ich fotky sa zachovajú). Spojený doklad sa potom prečíta znova.`;
     if (!window.confirm(text)) return;
     try {
@@ -145,164 +117,212 @@ export function ReceiptsPage() {
     }
   }
 
-  /** Znova prečíta všetky bločky, ktoré skončili chybou (fotky už sú nahraté). */
-  async function retryFailed() {
-    // Najprv tie, ktoré zlyhali technicky (kredit, preťaženie); súbory bez dokladu až nakoniec.
-    // Zaseknuté (čítanie sa začalo, ale nikdy neskončilo) berieme tiež.
-    const failed = (receipts.data ?? [])
-      .filter((r) => r.status === "FAILED" || isStale(r))
-      .sort((a, b) => Number(isNotAReceipt(a)) - Number(isNotAReceipt(b)));
-    if (failed.length === 0) return;
-    const state: Progress = { total: failed.length, done: 0, counts: { ...EMPTY_COUNTS } };
-    setProgress({ ...state, counts: { ...state.counts } });
-    let streak = 0;
-    for (const r of failed) {
+  async function doDelete() {
+    const text = `Naozaj zmazať ${picked.length} ${plural(picked.length, ["doklad", "doklady", "dokladov"])} aj s fotkami? Toto sa nedá vrátiť späť.`;
+    if (!window.confirm(text)) return;
+    let failed = 0;
+    for (const id of picked) {
+      const receipt = all.find((r) => r.id === id);
+      if (!receipt) continue;
       try {
-        const status = await extractReceipt(r.id);
-        state.counts[status]++;
-        streak = 0;
-      } catch (err) {
-        if (isNotAReceiptError(err)) {
-          state.counts.NOT_A_RECEIPT++;
-        } else {
-          state.counts.FAILED++;
-          streak++;
-          const message = err instanceof Error ? err.message : "";
-          if (isGlobalFailure(message)) {
-            state.stopped = true;
-            state.stopReason = failureText(message);
-          }
-        }
+        await remove.mutateAsync(receipt);
+      } catch {
+        failed++;
       }
-      state.done++;
-      if (streak >= STOP_AFTER_FAILURES && state.done < state.total && !state.stopped) {
-        state.stopped = true;
-        state.stopReason = `${STOP_AFTER_FAILURES} dokladov za sebou sa nepodarilo prečítať, takže ide pravdepodobne o výpadok služby. Skús to o chvíľu.`;
-      }
-      setProgress({ ...state, counts: { ...state.counts } });
-      qc.invalidateQueries({ queryKey: ["receipts"] });
-      if (state.stopped) break;
     }
+    if (failed > 0) toast.show(`${failed} dokladov sa nepodarilo zmazať.`, "error");
+    else toast.show("Zmazané", "success");
+    cancelSelect();
   }
 
-  const all = receipts.data ?? [];
-  const failedCount = all.filter((r) => r.status === "FAILED" || isStale(r)).length;
-  const needsAttention = (r: Receipt) => r.status === "NEEDS_REVIEW" || r.status === "FAILED" || isStale(r);
-  const reviewCount = all.filter(needsAttention).length;
-  const visible = onlyReview ? all.filter(needsAttention) : all;
-  const groups = groupByMonth(visible);
+  const inbox = !flat && attention.length > 0 ? (inboxOpen ? attention : attention.slice(0, INBOX_PREVIEW)) : [];
+  const busy = batch.running || merge.isPending || remove.isPending;
+
+  const row = (r: Receipt, isAttention = false) => (
+    <ReceiptRow
+      key={r.id}
+      receipt={r}
+      selecting={selecting}
+      order={picked.indexOf(r.id)}
+      attention={isAttention}
+      onToggle={() => toggle(r.id)}
+      onLongPress={() => startSelecting(r.id)}
+    />
+  );
 
   return (
     <>
       <PageHeader
         title="Bločky"
-        subtitle={all.length > 0 ? `${all.length} v domácnosti` : undefined}
+        subtitle={all.length > 0 ? `${all.length} ${plural(all.length, ["doklad", "doklady", "dokladov"])} v domácnosti` : undefined}
         trailing={
-          <div className="flex shrink-0 gap-2">
-            {selecting ? (
-              <Button variant="secondary" onClick={cancelSelect}>
-                Zrušiť
-              </Button>
-            ) : (
-              <>
-                {all.length >= 2 && (
-                  <Button variant="secondary" onClick={() => setSelecting(true)} disabled={running}>
-                    <Merge className="size-5" aria-hidden /> Spojiť
-                  </Button>
-                )}
-                <Button onClick={() => input.current?.click()} disabled={running}>
-                  <Camera className="size-5" aria-hidden /> Pridať
-                </Button>
-              </>
-            )}
-            <input ref={input} type="file" accept="image/*,application/pdf" multiple hidden onChange={onPick} />
-          </div>
+          selecting ? (
+            <Button variant="ghost" onClick={cancelSelect}>
+              Zrušiť
+            </Button>
+          ) : all.length >= 2 ? (
+            <Button variant="ghost" onClick={() => startSelecting()} disabled={busy}>
+              Vybrať
+            </Button>
+          ) : undefined
         }
       />
 
-      <div className="flex flex-col gap-4 pb-8">
-        {progress && <UploadProgress progress={progress} running={running} onClose={() => setProgress(null)} />}
-
-        {selecting && (
-          <div className="sticky top-0 z-20 px-4">
-            <div className="rounded-[var(--radius-surface)] bg-elevated p-3.5 shadow-md">
-              <p className="text-sm font-semibold">Spojenie dokladov</p>
-              <p className="mt-0.5 text-sm text-text-2">
-                Klepni na doklady, ktoré tvoria jeden doklad (napr. dve polovice faktúry). Prvý vybraný zostane, ostatné sa doň
-                pridajú ako ďalšie strany.
-              </p>
-              <Button
-                className="mt-2"
-                block
-                disabled={picked.length < 2}
-                loading={merge.isPending}
-                onClick={doMerge}
-              >
-                {picked.length < 2 ? "Vyber aspoň 2 doklady" : `Spojiť vybrané (${picked.length})`}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {reviewCount > 0 && (
-          <Section>
-            <Banner
-              tone={failedCount > 0 ? "danger" : "warning"}
-              title={`${reviewCount} ${reviewCount === 1 ? "bloček čaká" : reviewCount < 5 ? "bločky čakajú" : "bločkov čaká"} na kontrolu`}
-              action={
-                <div className="flex flex-wrap gap-2">
-                  {failedCount > 0 && (
-                    <Button loading={running} disabled={running} onClick={retryFailed}>
-                      Skúsiť znova nepodarené ({failedCount})
-                    </Button>
-                  )}
-                  <Button variant="secondary" onClick={() => setOnlyReview((v) => !v)}>
-                    {onlyReview ? "Ukázať všetky" : "Ukázať len tieto"}
-                  </Button>
-                </div>
-              }
-            >
-              Súčet položiek nesedí s celkovou sumou, údaje sa nepodarilo prečítať alebo je niečo podozrivé. Otvor doklad a porovnaj s fotkou.
-            </Banner>
-          </Section>
-        )}
-
+      <div className="flex flex-col gap-4 pb-40">
         {receipts.isPending ? (
           <Spinner />
         ) : receipts.isError ? (
           <ErrorState error={errorMessage(receipts.error)} onRetry={() => receipts.refetch()} />
         ) : all.length === 0 ? (
-          <EmptyState icon="🧾" title="Zatiaľ žiadne bločky">
-            Klepni na „Pridať“ a vyber fotky bločkov, snímky obrazovky alebo PDF faktúry (aj viac naraz). Umelá inteligencia
-            z nich prečíta obchod, dátum a všetky položky s cenami.
+          <EmptyState icon="🧾" title="Zatiaľ žiadne doklady">
+            Klepni na „Pridať“ a odfoť bloček, vyber fotky alebo snímky obrazovky, alebo pridaj PDF faktúru. Umelá inteligencia z
+            nich prečíta obchod, dátum a všetky položky s cenami.
           </EmptyState>
         ) : (
-          groups.map(([month, list]) => (
-            <Section key={month} title={month}>
-              <Group>
-                {list.map((r) => (
-                  <ReceiptRow
-                    key={r.id}
-                    receipt={r}
-                    selecting={selecting}
-                    order={picked.indexOf(r.id)}
-                    onToggle={() => toggle(r.id)}
+          <>
+            {month && !selecting && (
+              <Section>
+                <Link
+                  to="/analytics"
+                  className="flex items-center justify-between gap-3 rounded-[var(--radius-surface)] bg-primary-soft p-4 shadow-sm active:bg-pressed"
+                >
+                  <div>
+                    <p className="text-sm text-text-2">{month.label}</p>
+                    <p className="text-3xl font-bold tabular-nums">{formatMoney(month.total)}</p>
+                    <p className="text-sm text-text-2">
+                      {month.count} {plural(month.count, ["nákup", "nákupy", "nákupov"])}
+                    </p>
+                  </div>
+                  <span className="flex items-center gap-0.5 text-sm font-semibold text-primary">
+                    Prehľady <ChevronRight className="size-4" aria-hidden />
+                  </span>
+                </Link>
+              </Section>
+            )}
+
+            {all.length >= 5 && (
+              <Section>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-text-3" aria-hidden />
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Hľadať obchod, dátum alebo sumu"
+                    aria-label="Hľadať doklad"
+                    className="min-h-11 w-full rounded-full border border-line-strong/40 bg-elevated pl-10 pr-4 text-base outline-none placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/25"
                   />
-                ))}
-              </Group>
-            </Section>
-          ))
+                </div>
+              </Section>
+            )}
+
+            {(attention.length > 0 || filter !== "all") && (
+              <Section>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Filter dokladov">
+                  <Chip active={filter === "all"} onClick={() => setFilter("all")}>
+                    Všetky
+                  </Chip>
+                  <Chip active={filter === "review"} onClick={() => setFilter("review")}>
+                    Na kontrolu ({attention.length})
+                  </Chip>
+                  <Chip active={filter === "ok"} onClick={() => setFilter("ok")}>
+                    V poriadku
+                  </Chip>
+                </div>
+              </Section>
+            )}
+
+            {inbox.length > 0 && (
+              <Section title={`Čaká na teba (${attention.length})`}>
+                <Group>{inbox.map((r) => row(r, true))}</Group>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {attention.length > INBOX_PREVIEW && (
+                    <Button variant="secondary" onClick={() => setInboxOpen((v) => !v)}>
+                      {inboxOpen ? "Zbaliť" : `Ukázať všetkých ${attention.length}`}
+                    </Button>
+                  )}
+                  {failedCount > 0 && (
+                    <Button variant="secondary" loading={batch.running} disabled={busy} onClick={() => void batch.retry(all)}>
+                      Skúsiť znova nepodarené ({failedCount})
+                    </Button>
+                  )}
+                </div>
+              </Section>
+            )}
+
+            {flat && filter === "review" && failedCount > 0 && (
+              <Section>
+                <Button variant="secondary" loading={batch.running} disabled={busy} onClick={() => void batch.retry(all)}>
+                  Skúsiť znova nepodarené ({failedCount})
+                </Button>
+              </Section>
+            )}
+
+            {listed.length === 0 && flat ? (
+              <p className="px-6 py-10 text-center text-text-2">
+                {searching ? "Nič sa nenašlo. Skús iné slovo." : filter === "review" ? "Nič nečaká na kontrolu. 🎉" : "Zatiaľ tu nič nie je."}
+              </p>
+            ) : (
+              groups.map(([label, list]) => (
+                <Section key={label} title={label}>
+                  <Group>{list.map((r) => row(r))}</Group>
+                </Section>
+              ))
+            )}
+          </>
         )}
       </div>
 
+      <Dock>
+        {batch.progress && <UploadStatus progress={batch.progress} running={batch.running} onClose={batch.close} />}
+        {selecting ? (
+          <div className="w-full rounded-[var(--radius-surface)] bg-elevated p-3 shadow-lg">
+            <p className="px-1 text-sm text-text-2">
+              {picked.length === 0
+                ? "Klepaj na doklady, ktoré chceš spojiť alebo zmazať."
+                : `Vybrané: ${picked.length}. Pri spájaní prvý vybraný zostane a ostatné sa doň pridajú ako ďalšie strany.`}
+            </p>
+            <div className="mt-2 flex gap-2">
+              <Button block disabled={picked.length < 2 || busy} loading={merge.isPending} onClick={doMerge}>
+                <Merge className="size-5" aria-hidden /> Spojiť
+              </Button>
+              <Button variant="danger" disabled={picked.length < 1 || busy} loading={remove.isPending} onClick={doDelete}>
+                <Trash2 className="size-5" aria-hidden /> Zmazať
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            disabled={batch.running}
+            className="flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-base font-semibold text-on-primary shadow-lg active:bg-primary-pressed disabled:opacity-55"
+          >
+            <Plus className="size-6" aria-hidden /> Pridať
+          </button>
+        )}
+      </Dock>
+
+      <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={onPickCamera} />
+      <input ref={galleryInput} type="file" accept="image/*" multiple hidden onChange={onPickFiles} />
+      <input ref={fileInput} type="file" accept="application/pdf,image/*" multiple hidden onChange={onPickFiles} />
+
+      <AddMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onCamera={() => cameraInput.current?.click()}
+        onGallery={() => galleryInput.current?.click()}
+        onFile={() => fileInput.current?.click()}
+      />
       <PendingSheet
-        files={pending}
+        pending={pending}
         mode={mode}
         onMode={setMode}
-        onAddMore={() => input.current?.click()}
+        onAddMore={() => (pending?.kind === "camera" ? cameraInput : galleryInput).current?.click()}
         onRemove={(i) => {
-          const rest = (pending ?? []).filter((_, idx) => idx !== i);
-          setPending(rest.length > 0 ? rest : null);
+          if (!pending) return;
+          const rest = pending.files.filter((_, idx) => idx !== i);
+          setPending(rest.length > 0 ? { ...pending, files: rest } : null);
         }}
         onStart={startPending}
         onClose={() => setPending(null)}
@@ -311,8 +331,21 @@ export function ReceiptsPage() {
   );
 }
 
-/** Čítanie sa začalo, ale server ho nikdy nedokončil (napr. zavretá aplikácia, výpadok). */
-const isStale = (r: Receipt) => r.status === "PROCESSING" && Date.now() - new Date(r.updated_at).getTime() > 3 * 60_000;
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cx(
+        "min-h-9 rounded-full px-3.5 text-sm font-medium transition-colors",
+        active ? "bg-primary text-on-primary" : "bg-surface text-text-2 active:bg-pressed",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 function groupByMonth(list: Receipt[]): [string, Receipt[]][] {
   const map = new Map<string, Receipt[]>();
@@ -323,213 +356,16 @@ function groupByMonth(list: Receipt[]): [string, Receipt[]][] {
   return [...map.entries()];
 }
 
-function ReceiptRow({
-  receipt: r,
-  selecting,
-  order,
-  onToggle,
-}: {
-  receipt: Receipt;
-  selecting: boolean;
-  /** Poradie vo výbere na spojenie (-1 = nevybraný). */
-  order: number;
-  onToggle: () => void;
-}) {
-  const stale = isStale(r);
-  const body = (
-    <>
-      {selecting && <Thumb receipt={r} />}
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{r.store_name ?? (r.status === "PROCESSING" ? "Číta sa…" : "Neznámy obchod")}</p>
-        <p className="text-sm text-text-2">
-          {formatDate(r.purchased_on)}
-          {r.status === "NEEDS_REVIEW" && <span className="ml-2 font-medium text-warning">· skontrolovať</span>}
-          {r.status === "FAILED" && (
-            <span className="ml-2 font-medium text-danger">· {isNotAReceipt(r) ? "nie je bloček" : "nepodarilo sa"}</span>
-          )}
-          {stale && <span className="ml-2 font-medium text-warning">· zaseklo sa, otvor a skús znova</span>}
-        </p>
-      </div>
-      {r.status === "PROCESSING" ? (
-        <Loader2 className="size-5 animate-spin text-text-3" aria-label="Číta sa" />
-      ) : r.status === "OK" ? (
-        <span className="font-semibold tabular-nums">{formatMoney(r.total)}</span>
-      ) : (
-        <>
-          <AlertTriangle className={cx("size-5", r.status === "FAILED" ? "text-danger" : "text-warning")} aria-hidden />
-          {r.status === "NEEDS_REVIEW" && <span className="font-semibold tabular-nums">{formatMoney(r.total)}</span>}
-        </>
-      )}
-    </>
-  );
-  if (selecting) {
-    return (
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-pressed={order >= 0}
-        className={cx(
-          "flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left active:bg-pressed",
-          order >= 0 && "bg-primary/10",
-        )}
-      >
-        {body}
-        <span
-          aria-hidden
-          className={cx(
-            "flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold",
-            order >= 0 ? "border-primary bg-primary text-on-primary" : "border-line-strong/60 text-transparent",
-          )}
-        >
-          {order >= 0 ? order + 1 : "·"}
-        </span>
-      </button>
-    );
-  }
-  return (
-    <Link to={`/receipts/${r.id}`} className="flex min-h-16 items-center gap-3 px-4 py-3 active:bg-pressed">
-      {body}
-      <ChevronRight className="size-5 text-text-3" aria-hidden />
-    </Link>
-  );
-}
-
-/** Malý náhľad prvej strany – v režime spájania, aby bolo vidno, ktoré doklady patria k sebe. */
-function Thumb({ receipt }: { receipt: Receipt }) {
-  const pdf = isReceiptPdf(receipt);
-  const image = useReceiptImage(pdf ? undefined : receipt.image_path);
-  return (
-    <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface text-text-3">
-      {pdf ? (
-        <FileText className="size-6" aria-hidden />
-      ) : image.data ? (
-        <img src={image.data} alt="" loading="lazy" decoding="async" className="size-full object-cover object-top" />
-      ) : null}
-    </div>
-  );
-}
-
-/** Okno po výbere viacerých súborov: sú to samostatné doklady, alebo strany jedného dokladu? */
-function PendingSheet({
-  files,
-  mode,
-  onMode,
-  onAddMore,
-  onRemove,
-  onStart,
-  onClose,
-}: {
-  files: File[] | null;
-  mode: "separate" | "one";
-  onMode: (m: "separate" | "one") => void;
-  onAddMore: () => void;
-  onRemove: (index: number) => void;
-  onStart: () => void;
-  onClose: () => void;
-}) {
-  const list = files ?? [];
-  const urls = useMemo(
-    () => list.map((f) => (f.type.startsWith("image/") && !/hei[cf]/i.test(f.type) ? URL.createObjectURL(f) : null)),
-    [files], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-  useEffect(() => () => urls.forEach((u) => u && URL.revokeObjectURL(u)), [urls]);
-  const tooMany = mode === "one" && list.length > MAX_PAGES;
-  const option = (value: "separate" | "one", title: string, hint: string) => (
-    <button
-      type="button"
-      onClick={() => onMode(value)}
-      aria-pressed={mode === value}
-      className={cx(
-        "rounded-[var(--radius-control)] border-2 p-3 text-left",
-        mode === value ? "border-primary bg-primary/10" : "border-line-strong/40 bg-surface",
-      )}
-    >
-      <p className="font-semibold">{title}</p>
-      <p className="text-sm text-text-2">{hint}</p>
-    </button>
-  );
-  return (
-    <Sheet open={files !== null} onClose={onClose} title={`Pridať ${list.length} súborov`}>
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          {option("separate", "Každý súbor je samostatný doklad", `Vznikne ${list.length} dokladov.`)}
-          {option(
-            "one",
-            "Všetky súbory sú jeden doklad",
-            "Napr. dlhý bloček alebo faktúra na viacerých fotkách či stranách. Prečítajú sa spolu.",
-          )}
-        </div>
-        <ul className="flex gap-2 overflow-x-auto pb-1" aria-label="Vybrané súbory">
-          {list.map((f, i) => (
-            <li key={`${f.name}-${i}`} className="relative shrink-0">
-              <div className="flex h-24 w-16 items-center justify-center overflow-hidden rounded-md bg-surface text-text-3">
-                {urls[i] ? (
-                  <img src={urls[i]!} alt={f.name} className="size-full object-cover object-top" />
-                ) : (
-                  <FileText className="size-6" aria-hidden />
-                )}
-              </div>
-              {mode === "one" && (
-                <span className="absolute left-1 top-1 rounded-full bg-black/60 px-1.5 text-xs font-bold text-white">{i + 1}</span>
-              )}
-              <IconButton
-                label={`Odstrániť ${f.name}`}
-                onClick={() => onRemove(i)}
-                className="absolute -right-2 -top-2 size-7 bg-elevated shadow"
-              >
-                <X className="size-4" />
-              </IconButton>
-            </li>
-          ))}
-        </ul>
-        {tooMany && <p className="text-sm text-danger">Jeden doklad môže mať najviac {MAX_PAGES} strán.</p>}
-        <div className="flex flex-col gap-2">
-          <Button size="lg" block disabled={list.length === 0 || tooMany} onClick={onStart}>
-            {mode === "one" ? "Pridať ako 1 doklad" : `Pridať ${list.length} dokladov`}
-          </Button>
-          <Button variant="secondary" block onClick={onAddMore}>
-            Pridať ďalšie súbory
-          </Button>
-        </div>
-      </div>
-    </Sheet>
-  );
-}
-
-function UploadProgress({ progress, running, onClose }: { progress: Progress; running: boolean; onClose: () => void }) {
-  const c = progress.counts;
-  const parts = [
-    c.OK > 0 && `${c.OK} v poriadku`,
-    c.NEEDS_REVIEW > 0 && `${c.NEEDS_REVIEW} na kontrolu`,
-    c.DUPLICATE > 0 && `${c.DUPLICATE} už bolo (preskočené)`,
-    c.NOT_A_RECEIPT > 0 && `${c.NOT_A_RECEIPT} nie je nákupný doklad`,
-    c.FAILED + c.ERROR > 0 && `${c.FAILED + c.ERROR} sa nepodarilo`,
-  ].filter(Boolean);
-  return (
-    <Section>
-      <Banner
-        tone={running ? "info" : progress.stopped || c.FAILED + c.ERROR > 0 ? "warning" : "success"}
-        title={
-          running
-            ? `Spracúvam ${progress.done + 1} z ${progress.total}…`
-            : progress.stopped
-              ? `Zastavené po ${progress.done} z ${progress.total}`
-              : `Hotovo: ${progress.total} ${progress.total === 1 ? "doklad" : progress.total < 5 ? "doklady" : "dokladov"}`
-        }
-        action={!running && <Button variant="secondary" onClick={onClose}>Zavrieť</Button>}
-      >
-        {progress.stopped && (
-          <p className="font-medium">
-            {progress.stopReason ?? "Spracovanie sa zastavilo."} Už nahraté doklady sú v poriadku uložené. Po oprave klikni
-            na „Skúsiť znova nepodarené“ a nenahraté súbory vyber znova (už nahraté sa preskočia).
-          </p>
-        )}
-        {running ? "Nechaj túto stránku otvorenú, kým sa všetko nespracuje. Jeden bloček trvá niekoľko sekúnd." : null}
-        {parts.length > 0 && <p>{parts.join(" · ")}</p>}
-        {!running && c.FAILED + c.ERROR > 0 && (
-          <p className="mt-1">Nepodarené nájdeš v zozname (označené červene). Dôvod je v detaile dokladu.</p>
-        )}
-      </Banner>
-    </Section>
-  );
+/** Súčet najnovšieho mesiaca, v ktorom je nejaký prečítaný doklad (zlyhané sa nerátajú). */
+function monthSummary(list: Receipt[]): { label: string; total: number; count: number } | null {
+  const dated = list.filter((r) => r.purchased_on && r.total != null && (r.status === "OK" || r.status === "NEEDS_REVIEW"));
+  if (dated.length === 0) return null;
+  const key = dated.map((r) => r.purchased_on!.slice(0, 7)).sort().at(-1)!;
+  const inMonth = dated.filter((r) => r.purchased_on!.startsWith(key));
+  const nowKey = new Date().toISOString().slice(0, 7);
+  return {
+    label: key === nowKey ? "Tento mesiac" : monthLabel(`${key}-01`),
+    total: inMonth.reduce((sum, r) => sum + (r.total ?? 0), 0),
+    count: inMonth.length,
+  };
 }

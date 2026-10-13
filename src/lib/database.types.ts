@@ -228,6 +228,22 @@ export type Database = {
       end_shopping: { Args: { p_session_id: string }; Returns: SessionRow };
       invitation_preview: { Args: { p_token: string }; Returns: Json };
       leave_household: { Args: { p_household_id: string }; Returns: undefined };
+      save_receipt_item: {
+        Args: {
+          p_category_id?: string;
+          p_discount?: number;
+          p_item_id: string | null;
+          p_line_total: number;
+          p_name: string;
+          p_quantity?: number;
+          p_receipt_id: string;
+        };
+        Returns: Database["public"]["Tables"]["receipts"]["Row"];
+      };
+      remove_receipt_item: {
+        Args: { p_item_id: string };
+        Returns: Database["public"]["Tables"]["receipts"]["Row"];
+      };
       merge_receipts: { Args: { p_receipt_ids: string[] }; Returns: string };
       register_receipt: {
         Args: { p_checksum: string; p_ext?: string; p_household_id: string; p_source?: string };

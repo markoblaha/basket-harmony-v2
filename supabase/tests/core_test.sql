@@ -437,6 +437,29 @@ begin
   if rrec.review_reason = 'STORE_MISSING' then report := report || E'ok: chýbajúci obchod -> kontrola\n';
   else report := report || 'FAIL: STORE_MISSING -> ' || coalesce(rrec.review_reason, 'OK') || E'\n'; fails := fails + 1; end if;
 
+  -- ručné doplnenie obchodu uzavrie kontrolu; úprava a mazanie položiek (migrácia 19)
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  update public.receipts set store_name = 'Tesco' where id = rc2;
+  select status::text into txt from public.receipts where id = rc2;
+  if txt = 'OK' then report := report || E'ok: doplnený obchod uzavrie kontrolu sám\n';
+  else report := report || 'FAIL: auto-uzavretie -> ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+  rrec := public.save_receipt_item(rc2, null, 'Chlieb', 2.00, 1, 0, 'bakery');
+  select id into item_id from public.receipt_items where receipt_id = rc2 and raw_name = 'Chlieb';
+  if rrec.items_sum = 3.20 and item_id is not null then report := report || E'ok: člen pridá položku, súčet sa prepočíta\n';
+  else report := report || 'FAIL: save_receipt_item -> ' || coalesce(rrec.items_sum::text, 'null') || E'\n'; fails := fails + 1; end if;
+  rrec := public.save_receipt_item(rc2, item_id, 'Chlieb celozrnný', 2.50, 1, 0, 'bakery');
+  if rrec.items_sum = 3.70 then report := report || E'ok: člen zmení cenu položky\n';
+  else report := report || 'FAIL: zmena položky -> ' || coalesce(rrec.items_sum::text, 'null') || E'\n'; fails := fails + 1; end if;
+  rrec := public.remove_receipt_item(item_id);
+  if rrec.items_sum = 1.20 then report := report || E'ok: člen zmaže položku, súčet sa prepočíta\n';
+  else report := report || 'FAIL: remove_receipt_item -> ' || coalesce(rrec.items_sum::text, 'null') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.save_receipt_item(rc2, null, '  ', 1); exception when others then err := sqlerrm; end;
+  if err = 'VALIDATION' then report := report || E'ok: položka bez názvu sa odmietne\n';
+  else report := report || 'FAIL: prázdny názov -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+
   -- cudzí nespojí ani nepridá stranu
   perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
   execute 'set local role authenticated';
@@ -444,6 +467,10 @@ begin
   begin perform public.register_receipt_page(rc1, repeat('4', 64)); exception when others then err := sqlerrm; end;
   if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepridá stranu k cudziemu bločku\n';
   else report := report || 'FAIL: cudzia strana -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.save_receipt_item(rc2, null, 'Cudzia', 1); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepridá položku k cudziemu dokladu\n';
+  else report := report || 'FAIL: cudzia položka -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
   err := null;
   begin perform public.merge_receipts(array[rc1, rc2]); exception when others then err := sqlerrm; end;
   if err = 'NOT_FOUND' then report := report || E'ok: cudzí nespojí cudzie doklady\n';

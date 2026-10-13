@@ -11,6 +11,71 @@ export function formatDate(iso: string | null): string {
   return `${d}. ${m}. ${y}`;
 }
 
+/** "2026-10-13" -> "13. 10." (rok len keď nie je tohtoročný). */
+export function formatShortDate(iso: string | null): string {
+  if (!iso) return "Bez dátumu";
+  const [y, m, d] = iso.split("-").map(Number);
+  return y === new Date().getFullYear() ? `${d}. ${m}.` : `${d}. ${m}. ${y}`;
+}
+
+/** Skloňovanie podľa počtu: plural(3, ["doklad", "doklady", "dokladov"]) -> "doklady" */
+export function plural(n: number, forms: [string, string, string]): string {
+  return n === 1 ? forms[0] : n >= 2 && n <= 4 ? forms[1] : forms[2];
+}
+
+/** Iniciálky obchodu do farebného kruhu: "Lidl Slovensko" -> "LS", "Tesco" -> "TE". */
+export function storeInitials(name: string | null | undefined): string {
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
+  return (words[0]![0]! + words[1]![0]!).toUpperCase();
+}
+
+/** Stabilný odtieň (0–359) podľa názvu: ten istý obchod má vždy tú istú farbu. */
+export function storeHue(name: string | null | undefined): number {
+  const text = (name ?? "").trim().toLowerCase();
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 360;
+  return h;
+}
+
+/** Krátky dôvod pre zoznam ("Súčet nesedí"). */
+export function shortReason(r: Receipt): string {
+  switch (r.review_reason) {
+    case "TOTAL_MISMATCH":
+      return "Súčet nesedí";
+    case "NO_ITEMS":
+      return "Bez položiek";
+    case "STORE_MISSING":
+      return "Chýba obchod";
+    case "DATE_SUSPECT":
+      return "Skontrolovať dátum";
+    case "POSSIBLE_DUPLICATE":
+      return "Možná duplicita";
+    default:
+      return "Skontrolovať";
+  }
+}
+
+/** Čo má človek spraviť ("Doplniť obchod") – jedna konkrétna akcia na riadok schránky. */
+export function nextStep(r: Receipt): string {
+  if (r.status === "FAILED") return r.error_text?.startsWith("NOT_A_RECEIPT") ? "Nie je doklad" : "Čítanie sa nepodarilo";
+  switch (r.review_reason) {
+    case "TOTAL_MISMATCH":
+      return "Skontrolovať súčet";
+    case "NO_ITEMS":
+      return "Doplniť položky";
+    case "STORE_MISSING":
+      return "Doplniť obchod";
+    case "DATE_SUSPECT":
+      return "Skontrolovať dátum";
+    case "POSSIBLE_DUPLICATE":
+      return "Možná duplicita";
+    default:
+      return "Skontrolovať";
+  }
+}
+
 export function monthLabel(iso: string | null): string {
   if (!iso) return "Bez dátumu";
   const [y, m] = iso.split("-").map(Number);
@@ -60,4 +125,12 @@ export function readErrorMessage(err: unknown): string {
     return failureText(err.message);
   }
   return errorMessage(err);
+}
+
+/** "1,50" alebo "1.5" -> 1.5; prázdne alebo nezmysel -> null. */
+export function parseAmount(text: string): number | null {
+  const cleaned = text.replace(/\s/g, "").replace(",", ".");
+  if (cleaned === "") return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
 }
