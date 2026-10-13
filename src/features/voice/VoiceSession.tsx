@@ -4,7 +4,7 @@ import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { countOf, isCountable, itemsWord, sameProduct } from "@/features/lists/qty";
-import { normalizeName } from "@/lib/categories";
+import { guessCategory, normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { interpret, loadDraft, saveDraft, useKnownStores, useSaveVoiceList, type DraftItem, type SaveResult } from "./api";
 import { matchStore, type VoiceOp } from "./parse";
@@ -139,7 +139,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
         name: op.name,
         quantity: op.quantity,
         unit: op.unit,
-        categoryId: op.categoryId,
+        categoryId: op.categoryId ?? guessCategory(op.name),
         status: op.status,
         suggestions: op.suggestions,
       };
@@ -204,9 +204,10 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
     }, 380);
   }, [leaving, later]);
 
-  const handleSentence = useCallback((text: string) => {
+  const handleSentence = useCallback((text: string, typedByHand = false) => {
     if (phase === "pick") {
-      const s = matchStore(text, stores);
+      // Napísaný text je rovno názov predajne; povedaný hľadáme vo vete („idem do Lidla“).
+      const s = matchStore(text, stores) ?? (typedByHand ? text : null);
       if (s) pickStore(s);
       else showHint(`„${text}“ — povedz napr. „idem do Lidla“ alebo vyber predajňu`);
       return;
@@ -294,7 +295,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
     const t = typed.trim();
     if (!t) return;
     setTyped("");
-    handleSentence(t);
+    handleSentence(t, true);
   }
 
   function resumeDraft() {
