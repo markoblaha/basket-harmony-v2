@@ -5,11 +5,13 @@ import { Button, ErrorState, Group, Section, Sheet, Spinner, TextField, cx } fro
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { CATEGORIES, normalizeName } from "@/lib/categories";
-import { formatMoney, formatShortDate, parseAmount, plural, readErrorMessage } from "@/features/receipts/format";
+import { formatMoney, formatShortDate, parseAmount, readErrorMessage } from "@/features/receipts/format";
+import { formatNumber, t, tn } from "@/i18n";
+import { unitLabel as pieceUnit } from "@/lib/parseItem";
 import { useMergeProducts, useProduct, useProducts, useUpdateProduct, type ProductDetail } from "./api";
 import { BackHeader } from "./AnalyticsLayout";
 import { PriceChart } from "./charts";
-import { Card, EmojiBadge, SectionTitle, Stat, categoryInfo, sizeLabel, storeColor, unitLabel } from "./bits";
+import { Card, EmojiBadge, SectionTitle, Stat, categoryInfo, sizeLabel, storeColor, storeLabel, unitLabel } from "./bits";
 import { usePeriod } from "./period";
 import { useAddToList } from "./useAddToList";
 
@@ -50,7 +52,7 @@ export function ProductPage() {
 
   return (
     <div className="pb-10">
-      <BackHeader fallback={`/analytics/products${search}`} title="Produkty" />
+      <BackHeader fallback={`/analytics/products${search}`} title={t("tab.products")} />
 
       <Section className="mt-1">
         <div className="flex items-start gap-3">
@@ -62,13 +64,13 @@ export function ProductPage() {
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => setEditing(true)}>
-            <Pencil className="size-4" aria-hidden /> Upraviť
+            <Pencil className="size-4" aria-hidden /> {t("pp.edit")}
           </Button>
           <Button variant="secondary" onClick={() => setMerging(true)}>
-            <Merge className="size-4" aria-hidden /> Spojiť
+            <Merge className="size-4" aria-hidden /> {t("pp.merge")}
           </Button>
           <Button variant="secondary" disabled={adding} onClick={() => void addToList(p.name, p.category_id)}>
-            <Plus className="size-4" aria-hidden /> {listName ? `Do zoznamu ${listName}` : "Do zoznamu"}
+            <Plus className="size-4" aria-hidden /> {listName ? t("pp.toNamedList", { name: listName }) : t("pp.toList")}
           </Button>
         </div>
       </Section>
@@ -78,26 +80,26 @@ export function ProductPage() {
           <Section>
             <Card>
               <div className="grid grid-cols-2 gap-4">
-                <Stat label="Naposledy" value={formatMoney(last.line_total)} hint={`${formatShortDate(last.date)} · ${last.store}`} />
+                <Stat label={t("pp.last")} value={formatMoney(last.line_total)} hint={`${formatShortDate(last.date)} · ${storeLabel(last.store)}`} />
                 {showUnit && last.shelf_unit !== null ? (
-                  <Stat label="Cena za jednotku" value={`${formatMoney(last.shelf_unit)} ${unitLabel(basis)}`} hint="na regáli, pred zľavou" />
+                  <Stat label={t("pp.unitPrice")} value={`${formatMoney(last.shelf_unit)} ${unitLabel(basis)}`} hint={t("pp.unitPriceHint")} />
                 ) : (
-                  <Stat label="Kúpené" value={`${d.purchases.length}×`} hint="spolu" />
+                  <Stat label={t("pp.bought")} value={`${d.purchases.length}×`} hint={t("pp.boughtHint")} />
                 )}
                 {cheapest && d.stores.length > 1 && (
                   <Stat
-                    label="Najlacnejšie"
+                    label={t("pp.cheapest")}
                     value={`${formatMoney(cheapest.avg_unit)} ${showUnit ? unitLabel(basis) : ""}`}
-                    hint={`${cheapest.name} (priemer)`}
+                    hint={t("pp.cheapestHint", { name: storeLabel(cheapest.name) })}
                   />
                 )}
                 {d.interval_days !== null && (
-                  <Stat label="Kupuješ" value={`každých ~${Math.round(d.interval_days)} dní`} hint={`naposledy ${daysAgo(last.date)}`} />
+                  <Stat label={t("pp.buyEvery")} value={t("pp.everyDays", { n: Math.round(d.interval_days) })} hint={t("pp.lastAgo", { when: daysAgo(last.date) })} />
                 )}
                 <Stat
-                  label="Tento rok"
+                  label={t("pp.thisYear")}
                   value={formatMoney(d.spent_year)}
-                  hint={`${d.count_year} ${plural(d.count_year, ["nákup", "nákupy", "nákupov"])}`}
+                  hint={tn("rpage.purchases", d.count_year)}
                 />
               </div>
             </Card>
@@ -105,7 +107,7 @@ export function ProductPage() {
         )}
 
         <Section>
-          <SectionTitle title={`Cena v čase${showUnit ? ` (€ ${unitLabel(basis)})` : ""}`} />
+          <SectionTitle title={showUnit ? t("pp.priceTitleUnit", { unit: unitLabel(basis) }) : t("pp.priceTitle")} />
           <Card>
             {points.length >= 2 ? (
               <>
@@ -113,18 +115,18 @@ export function ProductPage() {
                 <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-text-3">
                   {storesInChart.map((s) => (
                     <span key={s} className="inline-flex items-center gap-1.5">
-                      <span className="size-2.5 rounded-full" style={{ background: colorOf(s) }} aria-hidden /> {s}
+                      <span className="size-2.5 rounded-full" style={{ background: colorOf(s) }} aria-hidden /> {storeLabel(s)}
                     </span>
                   ))}
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="size-2.5 rounded-full border-2 border-text-3" aria-hidden /> akcia (bodka pod = zaplatené)
+                    <span className="size-2.5 rounded-full border-2 border-text-3" aria-hidden /> {t("pp.promoLegend")}
                   </span>
                 </div>
-                <p className="mt-2 text-center text-xs text-text-3">Klepni na bodku a uvidíš detail nákupu.</p>
+                <p className="mt-2 text-center text-xs text-text-3">{t("pp.tapDot")}</p>
               </>
             ) : (
               <p className="py-4 text-center text-sm text-text-2">
-                Na vývoj ceny treba aspoň 2 nákupy tohto produktu (zatiaľ {d.purchases.length}). Pribudne s ďalšími bločkami.
+                {t("pp.needTwo", { n: d.purchases.length })}
               </p>
             )}
           </Card>
@@ -133,22 +135,22 @@ export function ProductPage() {
         {d.stores.length > 1 && <StoreCompare d={d} showUnit={showUnit} colorOf={colorOf} />}
 
         <Section>
-          <SectionTitle title={`Nákupy (${d.purchases.length})`} />
+          <SectionTitle title={t("pp.purchases", { n: d.purchases.length })} />
           <Group>
             {d.purchases.map((x) => (
               <Link key={x.item_id} to={`/receipts/${x.receipt_id}`} className="flex items-center gap-3 px-4 py-2.5 active:bg-pressed">
                 <span className="size-2.5 shrink-0 rounded-full" style={{ background: colorOf(x.store) }} aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">
-                    {formatShortDate(x.date)} · {x.store}
+                    {formatShortDate(x.date)} · {storeLabel(x.store)}
                   </p>
                   <p className="text-xs text-text-3">
-                    {x.quantity !== 1 ? `${x.quantity.toLocaleString("sk-SK")} × · ` : ""}
+                    {x.quantity !== 1 ? `${formatNumber(x.quantity)} × · ` : ""}
                     {showUnit && x.shelf_unit !== null ? `${formatMoney(x.shelf_unit)} ${unitLabel(x.basis)}` : ""}
-                    {x.discount > 0 ? ` · zľava ${formatMoney(x.discount)}` : ""}
+                    {x.discount > 0 ? ` · ${t("detail.discount", { amount: formatMoney(x.discount) })}` : ""}
                   </p>
                 </div>
-                {x.discount > 0 && <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-semibold text-success">akcia</span>}
+                {x.discount > 0 && <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-semibold text-success">{t("ov.promoTag")}</span>}
                 <span className="font-semibold tabular-nums">{formatMoney(x.line_total)}</span>
                 <ChevronRight className="size-4 text-text-3" aria-hidden />
               </Link>
@@ -158,7 +160,7 @@ export function ProductPage() {
 
         {d.aliases.length > 0 && (
           <Section>
-            <SectionTitle title="Zápisy na bločkoch" />
+            <SectionTitle title={t("pp.aliases")} />
             <p className="px-1 text-sm text-text-2">{d.aliases.join(" · ")}</p>
           </Section>
         )}
@@ -172,16 +174,14 @@ export function ProductPage() {
 
 function daysAgo(date: string): string {
   const days = Math.round((Date.now() - Date.parse(date + "T00:00:00")) / 86_400_000);
-  if (days <= 0) return "dnes";
-  if (days === 1) return "pred 1 dňom";
-  return `pred ${days} dňami`;
+  return days <= 0 ? t("pp.today") : tn("pp.daysAgo", days);
 }
 
 function StoreCompare({ d, showUnit, colorOf }: { d: ProductDetail; showUnit: boolean; colorOf: (name: string) => string }) {
   const cheapest = d.stores[0]!.avg_unit;
   return (
     <Section>
-      <SectionTitle title="Porovnanie obchodov" />
+      <SectionTitle title={t("pp.compare")} />
       <Group>
         {d.stores.map((s, i) => {
           const diff = cheapest > 0 ? s.avg_unit / cheapest - 1 : 0;
@@ -189,9 +189,9 @@ function StoreCompare({ d, showUnit, colorOf }: { d: ProductDetail; showUnit: bo
             <div key={s.key} className="flex items-center gap-3 px-4 py-3">
               <span className="size-3 shrink-0 rounded-full" style={{ background: colorOf(s.name) }} aria-hidden />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{s.name}</p>
+                <p className="truncate font-medium">{storeLabel(s.name)}</p>
                 <p className="text-xs text-text-3">
-                  {s.count}× · naposledy {formatShortDate(s.last_date)} za {formatMoney(s.last_unit)}
+                  {t("pp.compareLine", { count: s.count, date: formatShortDate(s.last_date), price: formatMoney(s.last_unit) })}
                 </p>
               </div>
               <div className="text-right">
@@ -200,14 +200,14 @@ function StoreCompare({ d, showUnit, colorOf }: { d: ProductDetail; showUnit: bo
                   {showUnit ? <span className="text-xs font-normal text-text-3"> {unitLabel(d.purchases[0]?.basis ?? "ks")}</span> : null}
                 </p>
                 <p className={cx("text-xs font-semibold", i === 0 ? "text-success" : "text-warning")}>
-                  {i === 0 ? "najlacnejšie" : `+${Math.round(diff * 100)} %`}
+                  {i === 0 ? t("pp.cheapestTag") : t("fmt.percent", { value: `+${Math.round(diff * 100)}` })}
                 </p>
               </div>
             </div>
           );
         })}
       </Group>
-      <p className="mt-2 px-1 text-xs text-text-3">Priemerná cena na regáli (pred zľavou), aby akcie neskresľovali porovnanie.</p>
+      <p className="mt-2 px-1 text-xs text-text-3">{t("pp.compareNote")}</p>
     </Section>
   );
 }
@@ -229,38 +229,38 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return setError("Napíš názov produktu.");
+    if (!name.trim()) return setError(t("pp.nameRequired"));
     let sizeValue: number | null = null;
     let sizeUnit: "g" | "ml" | "ks" | null = null;
     if (size.trim() !== "" || unit) {
       const n = parseAmount(size);
-      if (n === null || n <= 0 || !unit) return setError("Balenie: zadaj číslo aj jednotku, alebo nechaj obe prázdne.");
+      if (n === null || n <= 0 || !unit) return setError(t("pp.packInvalid"));
       sizeValue = unit === "kg" || unit === "l" ? n * 1000 : n;
       sizeUnit = unit === "kg" ? "g" : unit === "l" ? "ml" : (unit as "g" | "ml" | "ks");
     }
     setError(null);
     try {
       await update.mutateAsync({ name: name.trim(), brand: brand.trim() || null, sizeValue, sizeUnit, categoryId });
-      toast.show("Produkt uložený", "success");
+      toast.show(t("pp.saved"), "success");
       onClose();
     } catch (err) {
       const code = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "";
-      toast.show(code === "PRODUCT_EXISTS" ? "Taký produkt už existuje. Použi radšej „Spojiť“." : readErrorMessage(err), "error");
+      toast.show(code === "PRODUCT_EXISTS" ? t("pp.exists") : readErrorMessage(err), "error");
     }
   }
 
   const selectClass =
     "min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
   return (
-    <Sheet open onClose={onClose} title="Upraviť produkt">
+    <Sheet open onClose={onClose} title={t("pp.editTitle")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <TextField label="Názov" value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
-        <TextField label="Značka (nepovinné)" value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={80} />
+        <TextField label={t("edit.name")} value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
+        <TextField label={t("pp.brand")} value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={80} />
         <div className="grid grid-cols-[1fr_auto] gap-3">
-          <TextField label="Balenie" inputMode="decimal" value={size} onChange={(e) => setSize(e.target.value)} placeholder="napr. 1" />
+          <TextField label={t("pp.pack")} inputMode="decimal" value={size} onChange={(e) => setSize(e.target.value)} placeholder={t("pp.packPlaceholder")} />
           <div className="flex flex-col gap-1.5">
             <label htmlFor="product-unit" className="text-sm font-medium text-text-2">
-              Jednotka
+              {t("edit.unit")}
             </label>
             <select id="product-unit" value={unit} onChange={(e) => setUnit(e.target.value)} className={selectClass}>
               <option value="">—</option>
@@ -268,13 +268,13 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
               <option value="kg">kg</option>
               <option value="ml">ml</option>
               <option value="l">l</option>
-              <option value="ks">ks</option>
+              <option value="ks">{pieceUnit("ks")}</option>
             </select>
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="product-category" className="text-sm font-medium text-text-2">
-            Kategória
+            {t("edit.category")}
           </label>
           <select id="product-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={selectClass}>
             {CATEGORIES.map((c) => (
@@ -283,7 +283,7 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
               </option>
             ))}
           </select>
-          <p className="text-sm text-text-3">Zmena platí pre všetky nákupy tohto produktu, aj budúce.</p>
+          <p className="text-sm text-text-3">{t("pp.categoryNote")}</p>
         </div>
         {error && (
           <p role="alert" className="text-sm text-danger">
@@ -291,7 +291,7 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
           </p>
         )}
         <Button type="submit" size="lg" block loading={update.isPending}>
-          Uložiť
+          {t("common.save")}
         </Button>
       </form>
     </Sheet>
@@ -322,10 +322,10 @@ function MergeProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => vo
   }, [products.data, query, d.product.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function pick(id: string, name: string) {
-    if (!window.confirm(`Je „${name}“ ten istý produkt ako „${d.product.name}“? Všetky jeho nákupy sa presunú sem.`)) return;
+    if (!window.confirm(t("pp.mergeConfirm", { other: name, name: d.product.name }))) return;
     try {
       await merge.mutateAsync({ target: d.product.id, sources: [id] });
-      toast.show("Produkty spojené", "success");
+      toast.show(t("pt.merged"), "success");
       onClose();
       navigate(`/analytics/product/${d.product.id}${search}`, { replace: true });
     } catch (err) {
@@ -334,9 +334,9 @@ function MergeProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => vo
   }
 
   return (
-    <Sheet open onClose={onClose} title="Spojiť s rovnakým produktom">
+    <Sheet open onClose={onClose} title={t("pp.mergeTitle")}>
       <p className="mb-3 text-sm text-text-2">
-        Vyber produkt, ktorý je to isté ako „{d.product.name}“ (napr. ten istý tovar z iného obchodu). Jeho nákupy sa presunú sem.
+        {t("pp.mergeText", { name: d.product.name })}
       </p>
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-text-3" aria-hidden />
@@ -345,15 +345,15 @@ function MergeProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => vo
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Hľadať produkt"
-          aria-label="Hľadať produkt"
+          placeholder={t("pt.searchAria")}
+          aria-label={t("pt.searchAria")}
           className="min-h-11 w-full rounded-full border border-line-strong/40 bg-elevated pl-10 pr-4 text-base outline-none focus:border-primary"
         />
       </div>
       {products.isPending ? (
         <Spinner />
       ) : candidates.length === 0 ? (
-        <p className="py-6 text-center text-sm text-text-2">{query ? "Nič sa nenašlo." : "Napíš časť názvu produktu."}</p>
+        <p className="py-6 text-center text-sm text-text-2">{query ? t("pt.nothingFound") : t("pp.typePart")}</p>
       ) : (
         <div className="divide-y divide-line overflow-hidden rounded-[var(--radius-surface)] bg-surface">
           {candidates.map((x) => (
@@ -367,9 +367,7 @@ function MergeProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => vo
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{x.name}</p>
                 <p className="truncate text-xs text-text-3">
-                  {[x.brand, sizeLabel(x.size_value, x.size_unit)].filter(Boolean).join(" · ")}
-                  {x.brand || x.size_value ? " · " : ""}
-                  {x.purchases}× · {x.last_store}
+                  {[x.brand, sizeLabel(x.size_value, x.size_unit), `${x.purchases}×`, storeLabel(x.last_store)].filter(Boolean).join(" · ")}
                 </p>
               </div>
               <span className="text-sm font-semibold tabular-nums">{formatMoney(x.last_price)}</span>

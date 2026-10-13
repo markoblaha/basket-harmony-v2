@@ -4,16 +4,17 @@ import { Avatar, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { category } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
+import { t, type Key } from "@/i18n";
 import { useDecideRequest, useReplyRequest, type AdditionRequest } from "./api";
 import { qtyLabel } from "./qty";
 
-const QUICK = ["Už je v košíku", "Nemajú to", "Vezmem podobné", "OK, beriem"];
+const QUICK: Key[] = ["request.quick.inCart", "request.quick.unavailable", "request.quick.similar", "request.quick.ok"];
 
 const OUTCOME_TEXT = {
-  ACCEPTED: "Pridané do nákupu",
-  REJECTED: "Zahodené – žiadateľ to uvidí",
-  EXPIRED: "Žiadosť už neplatí – nákup medzičasom skončil.",
-} as const;
+  ACCEPTED: "request.outcome.ACCEPTED",
+  REJECTED: "request.outcome.REJECTED",
+  EXPIRED: "request.outcome.EXPIRED",
+} as const satisfies Record<string, Key>;
 
 /**
  * Žiadosť o pridanie pre nakupujúceho: čo, koľko, poznámka, od koho.
@@ -47,7 +48,7 @@ export function RequestCard({
     setBusy(accept ? "yes" : "no");
     try {
       const outcome = await decide.mutateAsync({ id: request.id, accept });
-      toast.show(OUTCOME_TEXT[outcome] ?? OUTCOME_TEXT.EXPIRED, outcome === "ACCEPTED" ? "success" : "info");
+      toast.show(t(OUTCOME_TEXT[outcome] ?? OUTCOME_TEXT.EXPIRED), outcome === "ACCEPTED" ? "success" : "info");
     } catch (err) {
       toast.show(errorMessage(err), "error");
     } finally {
@@ -62,7 +63,7 @@ export function RequestCard({
       await reply.mutateAsync({ id: request.id, message: msg });
       setReplyOpen(false);
       setText("");
-      toast.show(`Odoslané: „${msg}“`, "success");
+      toast.show(t("request.sent", { message: msg }), "success");
     } catch (err) {
       toast.show(errorMessage(err), "error");
     }
@@ -77,8 +78,8 @@ export function RequestCard({
         <Avatar name={who} size="lg" />
         <div className="min-w-0 flex-1">
           <p className={cx("text-[0.8125rem] font-semibold", ink ? "opacity-70" : "text-text-2")}>
-            Pridať chce: <b className={ink ? "" : "text-text"}>{who}</b>
-            {more > 0 && <span className="font-normal"> · ďalšie {more}</span>}
+            {t("request.wants")} <b className={ink ? "" : "text-text"}>{who}</b>
+            {more > 0 && <span className="font-normal"> · {t("request.others", { n: more })}</span>}
           </p>
           <div className="mt-0.5 flex items-baseline justify-between gap-2">
             <span className="text-lg font-extrabold leading-tight tracking-[-0.01em]">{request.name}</span>
@@ -90,7 +91,7 @@ export function RequestCard({
           </p>
           {request.response_note && (
             <p className={cx("mt-1.5 inline-block rounded-xl rounded-br-sm px-2.5 py-1.5 text-[0.8125rem]", ink ? "bg-on-primary/12" : "bg-surface")}>
-              Tvoja odpoveď: {request.response_note}
+              {t("request.yourReply")} {request.response_note}
             </p>
           )}
         </div>
@@ -103,13 +104,13 @@ export function RequestCard({
               <button
                 key={q}
                 type="button"
-                onClick={() => send(q)}
+                onClick={() => send(t(q))}
                 className={cx(
                   "h-[2.125rem] shrink-0 rounded-[0.5625rem] border px-2.5 text-[0.8125rem] font-semibold",
                   ink ? "border-on-primary/20 bg-on-primary/8" : "border-line bg-elevated",
                 )}
               >
-                {q}
+                {t(q)}
               </button>
             ))}
           </div>
@@ -123,8 +124,8 @@ export function RequestCard({
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Napíš odpoveď…"
-              aria-label={`Odpoveď pre: ${who}`}
+              placeholder={t("request.replyPlaceholder")}
+              aria-label={t("request.replyAria", { who })}
               maxLength={300}
               autoFocus
               className={cx(
@@ -134,7 +135,7 @@ export function RequestCard({
             />
             <button
               type="submit"
-              aria-label="Odoslať odpoveď"
+              aria-label={t("request.send")}
               disabled={!text.trim() || reply.isPending}
               className={cx("grid h-[2.625rem] w-11 shrink-0 place-items-center rounded-[0.6875rem] disabled:opacity-40", ink ? "bg-on-primary text-primary" : "bg-primary text-on-primary")}
             >
@@ -154,11 +155,11 @@ export function RequestCard({
             ink ? "border-on-primary/20 text-accent" : "border-line bg-elevated text-danger",
           )}
         >
-          Zahodiť
+          {t("request.dismiss")}
         </button>
         <button
           type="button"
-          aria-label="Odpovedať"
+          aria-label={t("request.reply")}
           aria-expanded={replyOpen}
           onClick={() => setReplyOpen((v) => !v)}
           className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-xl border", ink ? "border-on-primary/20" : "border-line bg-elevated", replyOpen && "ring-2 ring-accent")}
@@ -175,7 +176,7 @@ export function RequestCard({
           )}
         >
           <Check className="size-4" strokeWidth={2.8} aria-hidden />
-          {busy === "yes" ? "Pridávam…" : "Pridať do nákupu"}
+          {busy === "yes" ? t("request.adding") : t("request.add")}
         </button>
       </div>
     </div>

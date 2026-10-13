@@ -2,6 +2,7 @@ import { useRef, type PointerEvent } from "react";
 import { Link } from "react-router";
 import { ChevronRight, FileText, Loader2 } from "lucide-react";
 import { cx } from "@/components/ui";
+import { t } from "@/i18n";
 import { isNotAReceipt, isReceiptPdf, isStale, useReceiptImage, type Receipt } from "./api";
 import { formatMoney, formatShortDate, nextStep, shortReason, storeHue, storeInitials } from "./format";
 
@@ -86,20 +87,20 @@ export function ReceiptRow({
   const stale = isStale(r);
   const processing = r.status === "PROCESSING" && !stale;
   const press = useLongPress(selecting || processing ? undefined : onLongPress);
-  const title = r.store_name ?? (processing ? "Číta sa…" : r.status === "OK" ? "Doklad" : "Neznámy obchod");
+  const title = r.store_name ?? (processing ? t("row.reading") : r.status === "OK" ? t("row.receipt") : t("row.unknownStore"));
   const failed = r.status === "FAILED";
   const warn = r.status === "NEEDS_REVIEW" || stale;
 
   const subtitle = processing ? (
-    <span className="text-text-3">Čítam doklad…</span>
+    <span className="text-text-3">{t("row.readingLong")}</span>
   ) : attention || failed || stale ? (
     <span className={cx("font-medium", failed && !isNotAReceipt(r) ? "text-danger" : failed ? "text-text-2" : "text-warning")}>
-      {stale ? "Zaseklo sa – skús znova" : nextStep(r)}
+      {stale ? t("row.stale") : nextStep(r)}
     </span>
   ) : (
     <span className="text-text-2">
       {formatShortDate(r.purchased_on)}
-      {r.origin === "BANK" ? " · z výpisu" : r.origin === "MANUAL" ? " · zadané ručne" : ""}
+      {r.origin === "BANK" ? t("row.fromStatement") : r.origin === "MANUAL" ? t("row.manual") : ""}
     </span>
   );
 
@@ -115,7 +116,7 @@ export function ReceiptRow({
       </div>
       <div className="flex shrink-0 flex-col items-end gap-0.5">
         {processing ? (
-          <Loader2 className="size-5 animate-spin text-text-3" aria-label="Číta sa" />
+          <Loader2 className="size-5 animate-spin text-text-3" aria-label={t("row.readingAria")} />
         ) : failed ? null : (
           <span className="text-base font-semibold tabular-nums">{formatMoney(r.total)}</span>
         )}

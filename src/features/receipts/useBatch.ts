@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/toast";
+import { t } from "@/i18n";
 import {
   extractReceipt,
   isGlobalFailure,
@@ -29,7 +30,7 @@ export type Progress = {
  */
 const STOP_AFTER_FAILURES = 5;
 const EMPTY_COUNTS = { NEW: 0, DUPLICATE: 0, OK: 0, NEEDS_REVIEW: 0, FAILED: 0, NOT_A_RECEIPT: 0, ERROR: 0 };
-const OUTAGE_TEXT = `${STOP_AFTER_FAILURES} dokladov za sebou sa nepodarilo prečítať, takže ide pravdepodobne o výpadok služby. Skús to o chvíľu.`;
+const outageText = () => t("batch.outage", { n: STOP_AFTER_FAILURES });
 
 /** Spracovanie viacerých dokladov po jednom (nahratie + čítanie) so stavom pre lištu priebehu. */
 export function useBatch(householdId: string) {
@@ -67,7 +68,7 @@ export function useBatch(householdId: string) {
       state.done++;
       if (streak >= STOP_AFTER_FAILURES && state.done < state.total && !state.stopped) {
         state.stopped = true;
-        state.stopReason = OUTAGE_TEXT;
+        state.stopReason = outageText();
       }
       publish(state);
       if (state.stopped) break;
@@ -106,7 +107,7 @@ export function useBatch(householdId: string) {
       state.done++;
       if (streak >= STOP_AFTER_FAILURES && state.done < state.total && !state.stopped) {
         state.stopped = true;
-        state.stopReason = OUTAGE_TEXT;
+        state.stopReason = outageText();
       }
       publish(state);
       if (state.stopped) break;

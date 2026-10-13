@@ -4,25 +4,30 @@ import { Link } from "react-router";
 import { ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { cx } from "@/components/ui";
 import { category } from "@/lib/categories";
+import { formatNumber, t } from "@/i18n";
+import { unitLabel as pieceUnit } from "@/lib/parseItem";
 import { formatMoney, storeHue } from "@/features/receipts/format";
 import type { Basis } from "./api";
+
+/** Názov obchodu; databáza pre doklad bez obchodu vracia slovenský text, preto ho preložíme tu. */
+export const storeLabel = (name: string | null | undefined) => (!name || name === "Neznámy obchod" ? t("row.unknownStore") : name);
 
 /** Kategória vrátane dvoch "účtovných" riadkov, ktoré nie sú tovar. */
 export function categoryInfo(id: string): { name: string; emoji: string; color: string; hint?: string } {
   if (id === "_unassigned") {
     return {
-      name: "Nerozpísané",
+      name: t("pseudo.unassigned"),
       emoji: "🧾",
       color: "var(--color-line-strong)",
-      hint: "Časť sumy dokladu, ktorú nevieme priradiť položkám (nečitateľný riadok, doklad bez položiek).",
+      hint: t("pseudo.unassignedHint"),
     };
   }
   if (id === "_receipt_discount") {
     return {
-      name: "Zľavy na celý nákup",
+      name: t("pseudo.receiptDiscount"),
       emoji: "🏷️",
       color: "var(--color-success)",
-      hint: "Kupóny a zľavy, ktoré platili na celý doklad, nie na jednu položku.",
+      hint: t("pseudo.receiptDiscountHint"),
     };
   }
   const c = category(id);
@@ -34,18 +39,18 @@ const STORE_HUES = [255, 155, 35, 330, 95, 200, 60, 290];
 export const storeColor = (key: number | string | null | undefined) =>
   `oklch(0.64 0.15 ${typeof key === "number" ? STORE_HUES[key % STORE_HUES.length] : storeHue(key)})`;
 
-export const unitLabel = (basis: Basis) => (basis === "kg" ? "/ kg" : basis === "l" ? "/ l" : "/ ks");
+export const unitLabel = (basis: Basis) => (basis === "kg" ? t("basis.kg") : basis === "l" ? t("basis.l") : t("basis.ks"));
 
 export function sizeLabel(value: number | null, unit: "g" | "ml" | "ks" | null): string | null {
   if (!value || !unit) return null;
-  const fmt = (n: number) => n.toLocaleString("sk-SK", { maximumFractionDigits: 2 });
+  const fmt = (n: number) => formatNumber(n, { maximumFractionDigits: 2 });
   if (unit === "g") return value >= 1000 ? `${fmt(value / 1000)} kg` : `${fmt(value)} g`;
   if (unit === "ml") return value >= 1000 ? `${fmt(value / 1000)} l` : `${fmt(value)} ml`;
-  return `${fmt(value)} ks`;
+  return `${fmt(value)} ${pieceUnit("ks")}`;
 }
 
 export const percent = (ratio: number) =>
-  `${ratio > 0 ? "+" : ratio < 0 ? "−" : ""}${Math.abs(Math.round(ratio * 100)).toLocaleString("sk-SK")} %`;
+  t("fmt.percent", { value: `${ratio > 0 ? "+" : ratio < 0 ? "−" : ""}${formatNumber(Math.abs(Math.round(ratio * 100)))}` });
 
 /**
  * Zmena oproti predchádzajúcemu obdobiu. Pri výdavkoch je nárast "zlý" (oranžová),
@@ -68,7 +73,7 @@ export function Delta({
   const diff = now - before;
   if (Math.abs(diff) < 0.5 || before <= 0) {
     if (before <= 0 && now > 0) return null;
-    return <span className={cx("whitespace-nowrap text-sm text-text-3", className)}>bez zmeny</span>;
+    return <span className={cx("whitespace-nowrap text-sm text-text-3", className)}>{t("delta.none")}</span>;
   }
   const up = diff > 0;
   const bad = invert ? !up : up;

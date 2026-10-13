@@ -1,53 +1,75 @@
+import { t } from "@/i18n";
+
 /**
  * Kategórie položiek. Zoznam je zhodný s tabuľkou `categories` v databáze
  * (tam je autoritatívny – databáza neprijme neznámu kategóriu).
  * Poradie zodpovedá tomu, ako bežne ideš obchodom: ovocie a zelenina pri
  * vchode, pečivo, chladené... drogéria na konci.
+ *
+ * Názov (`name`) sa prekladá v okamihu čítania podľa zvoleného jazyka;
+ * texty sú v src/i18n/sk/categories.ts a src/i18n/en/categories.ts pod kľúčom `category.<id>`.
  */
-export const CATEGORIES = [
-  { id: "groceries", name: "Nákup potravín (bez rozpisu)", emoji: "🧺", hue: 120 },
-  { id: "produce", name: "Ovocie a zelenina", emoji: "🥦", hue: 140 },
-  { id: "bakery", name: "Pečivo", emoji: "🥖", hue: 70 },
-  { id: "dairy_eggs", name: "Mliečne a vajcia", emoji: "🥛", hue: 230 },
-  { id: "deli_chilled", name: "Údeniny a chladené", emoji: "🧀", hue: 35 },
-  { id: "meat_fish", name: "Mäso a ryby", emoji: "🥩", hue: 15 },
-  { id: "frozen", name: "Mrazené", emoji: "🧊", hue: 210 },
-  { id: "pantry", name: "Trvanlivé potraviny", emoji: "🥫", hue: 55 },
-  { id: "breakfast", name: "Raňajky, káva a čaj", emoji: "☕", hue: 45 },
-  { id: "snacks_sweets", name: "Sladkosti a slané", emoji: "🍫", hue: 330 },
-  { id: "beverages", name: "Nápoje", emoji: "🧃", hue: 190 },
-  { id: "alcohol", name: "Alkohol", emoji: "🍷", hue: 350 },
-  { id: "household_cleaning", name: "Domácnosť a čistenie", emoji: "🧽", hue: 170 },
-  { id: "personal_care", name: "Drogéria", emoji: "🧴", hue: 290 },
-  { id: "health", name: "Zdravie a lekáreň", emoji: "💊", hue: 0 },
-  { id: "baby", name: "Pre deti", emoji: "🍼", hue: 310 },
-  { id: "pet", name: "Zvieratá", emoji: "🐾", hue: 90 },
-  { id: "clothing", name: "Oblečenie a obuv", emoji: "👕", hue: 260 },
-  { id: "home", name: "Domov a vybavenie", emoji: "🛋️", hue: 25 },
-  { id: "toys_hobby", name: "Hračky a hobby", emoji: "🧸", hue: 100 },
-  { id: "electronics", name: "Elektronika", emoji: "🔌", hue: 245 },
-  { id: "fuel", name: "Pohonné hmoty", emoji: "⛽", hue: 275 },
-  { id: "transport", name: "Auto a doprava", emoji: "🚗", hue: 230 },
-  { id: "dining", name: "Jedlo von", emoji: "🍽️", hue: 60 },
-  { id: "leisure", name: "Voľný čas", emoji: "🎟️", hue: 80 },
-  { id: "fees", name: "Doprava a poplatky", emoji: "📦", hue: 200 },
-  { id: "deposit", name: "Zálohy", emoji: "♻️", hue: 150 },
-  { id: "housing", name: "Bývanie a energie", emoji: "🏠", hue: 25 },
-  { id: "telecom", name: "Telefón, internet a predplatné", emoji: "📱", hue: 200 },
-  { id: "insurance", name: "Poistenie a financie", emoji: "🛡️", hue: 220 },
-  { id: "other", name: "Ostatné", emoji: "🛒", hue: 280 },
+const DEFINITIONS = [
+  ["groceries", "🧺", 120],
+  ["produce", "🥦", 140],
+  ["bakery", "🥖", 70],
+  ["dairy_eggs", "🥛", 230],
+  ["deli_chilled", "🧀", 35],
+  ["meat_fish", "🥩", 15],
+  ["frozen", "🧊", 210],
+  ["pantry", "🥫", 55],
+  ["breakfast", "☕", 45],
+  ["snacks_sweets", "🍫", 330],
+  ["beverages", "🧃", 190],
+  ["alcohol", "🍷", 350],
+  ["household_cleaning", "🧽", 170],
+  ["personal_care", "🧴", 290],
+  ["health", "💊", 0],
+  ["baby", "🍼", 310],
+  ["pet", "🐾", 90],
+  ["clothing", "👕", 260],
+  ["home", "🛋️", 25],
+  ["toys_hobby", "🧸", 100],
+  ["electronics", "🔌", 245],
+  ["fuel", "⛽", 275],
+  ["transport", "🚗", 230],
+  ["dining", "🍽️", 60],
+  ["leisure", "🎟️", 80],
+  ["fees", "📦", 200],
+  ["deposit", "♻️", 150],
+  ["housing", "🏠", 25],
+  ["telecom", "📱", 200],
+  ["insurance", "🛡️", 220],
+  ["other", "🛒", 280],
 ] as const;
 
-export type CategoryId = (typeof CATEGORIES)[number]["id"];
+export type CategoryId = (typeof DEFINITIONS)[number][0];
+
+export type CategoryInfo = {
+  readonly id: CategoryId;
+  readonly emoji: string;
+  readonly hue: number;
+  /** Názov v aktuálnom jazyku. */
+  readonly name: string;
+};
+
+export const CATEGORIES: readonly CategoryInfo[] = DEFINITIONS.map(([id, emoji, hue]) => ({
+  id,
+  emoji,
+  hue,
+  get name() {
+    return t(`category.${id}`);
+  },
+}));
 
 const ORDER = new Map<string, number>(CATEGORIES.map((c, i) => [c.id, i]));
-const BY_ID = new Map<string, (typeof CATEGORIES)[number]>(CATEGORIES.map((c) => [c.id, c]));
+const BY_ID = new Map<string, CategoryInfo>(CATEGORIES.map((c) => [c.id, c]));
 
 export function categoryOrder(id: string): number {
   return ORDER.get(id) ?? ORDER.get("other")!;
 }
 
-export function category(id: string) {
+export function category(id: string): CategoryInfo {
   return BY_ID.get(id) ?? BY_ID.get("other")!;
 }
 
@@ -144,7 +166,7 @@ const KEYWORDS: Record<Exclude<CategoryId, "other">, string[]> = {
     "bateri", "ziarovk", "sviecka", "sviecky", "servitk", "ariel", "persil", "lenor", "finish",
   ],
   personal_care: [
-    "sampon", "kondicioner", "sprchov", "mydlo", "zubna", "zubnu", "kefka", "deodorant", "dezodorant",
+    "sampon", "kondicioner", "sprchov", "mydlo", "zubna", "zubna pasta", "zubnu", "kefka", "deodorant", "dezodorant",
     "krem", "pletov", "holiac", "ziletk", "vlozk", "tampon", "vatov", "tycinky do usi", "parfum",
     "make-up", "rtenk", "odlicova", "ustna voda", "nivea", "dove", "hygien", "vitamin",
   ],
@@ -152,9 +174,101 @@ const KEYWORDS: Record<Exclude<CategoryId, "other">, string[]> = {
   pet: ["granul", "pre psa", "pre macku", "krmivo", "steliv", "psie", "macaci", "macacie", "whiskas", "pedigree"],
 };
 
-const RULES: [CategoryId, string[]][] = Object.entries(KEYWORDS).map(([id, words]) => [
+/**
+ * Anglické názvy. Odhad nezávisí od jazyka rozhrania – kto píše „milk“ v slovenskej
+ * aplikácii (alebo „mlieko“ v anglickej), dostane rovnakú kategóriu.
+ * Značka `$` na konci znamená „presne toto slovo“ (inak sedí začiatok slova):
+ * "pot$" je hrniec, ale nie "potato".
+ */
+const KEYWORDS_EN: Record<Exclude<CategoryId, "other" | "groceries">, string[]> = {
+  transport: ["parking", "toll$", "car wash", "vignette"],
+  leisure: ["ticket", "cinema", "movie"],
+  housing: ["rent$", "electricity", "utilities"],
+  telecom: ["subscription", "data plan", "phone credit", "top up"],
+  insurance: ["insurance"],
+  health: [
+    "ibuprofen", "paracetamol", "aspirin", "painkiller", "medicine", "pills$", "plaster$", "plasters$",
+    "bandage", "thermometer", "magnesium", "vitamin c", "vitamin d", "cough", "allergy",
+  ],
+  clothing: [
+    "t-shirt", "tshirt", "shirt$", "hoodie", "trousers", "pants$", "jeans", "socks$", "tights", "jacket",
+    "sweater", "jumper$", "shoes$", "sneakers", "boots$", "bras$", "underwear", "pyjama", "pajama",
+  ],
+  home: ["pot$", "pots$", "pan$", "pans$", "plate$", "plates$", "glass$", "glasses$", "cutlery", "knife$", "hanger", "decor", "towel$", "towels$", "bedding", "pillow", "cushion", "vase$", "mug$", "mugs$", "bowl$", "bowls$"],
+  toys_hobby: ["toy$", "toys$", "lego", "puzzle", "plasticine", "crayon", "notebook", "pen$", "pens$", "ball$"],
+  electronics: ["cable$", "charger", "headphones", "earbuds", "usb", "adapter", "keyboard", "powerbank", "power bank"],
+  fuel: ["diesel", "petrol", "unleaded", "gasoline", "lpg", "adblue", "fuel$"],
+  dining: ["lunch", "dinner", "restaurant", "takeaway", "kebab", "burger", "meal deal"],
+  fees: ["delivery", "postage", "shipping", "packaging", "fee$", "fees$", "courier"],
+  deposit: ["deposit", "refundable"],
+  produce: [
+    "apple", "pear$", "pears$", "banana", "orange$", "oranges$", "tangerine", "lemon", "lime$", "limes$",
+    "grapefruit", "kiwi", "grape$", "grapes$", "strawberr", "raspberr", "blueberr", "cherr", "plum$", "plums$",
+    "peach", "apricot", "melon$", "pineapple", "mango", "avocado", "fruit", "vegetable", "tomato", "cucumber",
+    "pepper$", "peppers$", "onion", "garlic", "potato", "carrot", "parsley", "celery", "cabbage", "kale$",
+    "broccoli", "cauliflower", "zucchini", "courgette", "aubergine", "eggplant", "lettuce", "spinach",
+    "rocket$", "arugula", "radish", "beetroot", "pumpkin", "mushroom", "chives", "herbs$", "dill$", "basil",
+    "ginger", "beans$", "peas$", "sweetcorn", "corn$", "dates$", "figs$", "salad",
+  ],
+  bakery: [
+    "bread", "roll$", "rolls$", "baguette", "bun$", "buns$", "croissant", "pastry", "pastries", "cake$",
+    "toast$", "tortilla", "wraps$", "pita", "bagel", "brioche", "pretzel", "donut", "doughnut", "scone",
+    "sourdough", "loaf",
+  ],
+  dairy_eggs: [
+    "milk", "yogurt", "yoghurt", "kefir", "cheese", "butter", "cream$", "sour cream", "egg$", "eggs$",
+    "mozzarella", "parmesan", "cheddar", "gouda", "edam", "feta", "halloumi", "ricotta", "mascarpone",
+    "cottage", "skyr", "pudding", "quark", "buttermilk", "creme fraiche",
+  ],
+  deli_chilled: ["ham$", "salami", "sausage", "hot dog", "bacon", "pate$", "hummus", "tofu", "cold cuts", "deli$", "sushi", "fresh pasta", "gnocchi"],
+  meat_fish: [
+    "meat$", "chicken", "beef", "pork", "veal", "lamb$", "turkey", "duck$", "goose$", "minced", "mince$",
+    "steak", "schnitzel", "chops$", "ribs$", "fillet", "fish$", "salmon", "tuna", "cod$", "trout", "carp$",
+    "shrimp", "prawn", "squid", "octopus", "tenderloin",
+  ],
+  frozen: ["frozen", "ice cream", "popsicle", "fries$", "french fries", "fish fingers"],
+  pantry: [
+    "rice$", "pasta$", "spaghetti", "penne", "fusilli", "macaroni", "noodle", "flour", "sugar", "salt$",
+    "oil$", "olive oil", "vinegar", "ketchup", "mustard", "mayonnaise", "mayo$", "sauce", "canned", "tinned",
+    "chickpea", "lentil", "couscous", "bulgur", "quinoa", "spice", "oregano", "stock cube", "bouillon", "soup$",
+    "baking powder", "yeast", "breadcrumb", "nuts$", "almond", "walnut", "raisin", "sesame", "chia",
+    "passata", "olives$", "coconut milk", "black pepper", "pesto", "tomato paste",
+  ],
+  breakfast: [
+    "coffee", "tea$", "teabag", "tea bags", "cocoa", "muesli", "oats$", "oatmeal", "porridge", "cornflakes",
+    "cereal", "honey", "jam$", "marmalade", "nutella", "peanut butter", "granola",
+  ],
+  snacks_sweets: [
+    "chocolate", "candy", "sweets$", "gummy", "gummies", "biscuit", "cookie", "wafer", "crisps", "chips$",
+    "popcorn", "lollipop", "marshmallow", "snack", "dessert",
+  ],
+  beverages: [
+    "water$", "sparkling water", "mineral water", "juice", "soda$", "lemonade", "cola", "tonic", "energy drink",
+    "red bull", "monster", "iced tea", "smoothie", "drink$", "drinks$", "squash$", "sprite", "fanta",
+    "orange juice", "apple juice",
+  ],
+  alcohol: ["beer", "wine", "prosecco", "champagne", "vodka", "rum$", "whisky", "whiskey", "gin$", "brandy", "liqueur", "cider", "lager", "ale$", "tequila"],
+  household_cleaning: [
+    "detergent", "washing powder", "laundry", "fabric softener", "dishwasher tablet", "toilet paper",
+    "kitchen roll", "paper towel", "bin bag", "trash bag", "garbage bag", "foil$", "aluminium foil",
+    "baking paper", "cling film", "cleaner", "bleach", "sponge", "cloth$", "air freshener", "battery", "batteries",
+    "light bulb", "candle", "napkin", "washing up", "dish soap", "wipes$",
+  ],
+  personal_care: [
+    "shampoo", "conditioner", "shower gel", "soap$", "toothpaste", "toothbrush", "deodorant", "face cream",
+    "moisturi", "razor", "shaving", "tampon", "cotton", "perfume", "make-up", "makeup", "mascara",
+    "mouthwash", "sunscreen", "lotion", "nail polish", "lip balm",
+  ],
+  baby: ["diaper", "nappy", "nappies", "baby", "formula milk", "wet wipes"],
+  pet: ["dog food", "cat food", "pet$", "cat litter", "litter$", "dog treats", "kibble"],
+};
+
+const RULES: [CategoryId, string[]][] = Object.keys({ ...KEYWORDS, ...KEYWORDS_EN }).map((id) => [
   id as CategoryId,
-  words.map(normalizeName),
+  [
+    ...(KEYWORDS[id as keyof typeof KEYWORDS] ?? []),
+    ...(KEYWORDS_EN[id as keyof typeof KEYWORDS_EN] ?? []),
+  ].map(normalizeName),
 ]);
 
 export function guessCategory(name: string): CategoryId {
@@ -164,11 +278,15 @@ export function guessCategory(name: string): CategoryId {
   let best: { id: CategoryId; length: number } | null = null;
   for (const [id, keywords] of RULES) {
     for (const keyword of keywords) {
-      const hit = keyword.includes(" ")
-        ? text.includes(keyword)
-        : words.some((word) => word.startsWith(keyword));
+      const exact = keyword.endsWith("$");
+      const word = exact ? keyword.slice(0, -1) : keyword;
+      const hit = word.includes(" ")
+        ? text.includes(word)
+        : exact
+          ? words.includes(word)
+          : words.some((w) => w.startsWith(word));
       // Dlhšie (konkrétnejšie) zhody vyhrávajú: "pizza mrazena" > "pizza".
-      if (hit && (!best || keyword.length > best.length)) best = { id, length: keyword.length };
+      if (hit && (!best || word.length > best.length)) best = { id, length: word.length };
     }
   }
   return best?.id ?? "other";

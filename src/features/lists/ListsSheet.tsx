@@ -3,6 +3,7 @@ import { Archive, Check, Plus } from "lucide-react";
 import { Button, Group, Sheet, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { errorMessage } from "@/lib/errors";
+import { t } from "@/i18n";
 import { useCreateList, useUpdateList, type ShoppingList } from "./api";
 
 /** Prepínanie medzi zoznamami, nový zoznam, premenovanie a archivácia. */
@@ -46,7 +47,7 @@ export function ListsSheet({
     if (!current || !rename.trim()) return;
     try {
       await update.mutateAsync({ id: current.id, patch: { name: rename.trim() } });
-      toast.show("Zoznam premenovaný", "success");
+      toast.show(t("lists.renamed"), "success");
     } catch (err) {
       toast.show(errorMessage(err), "error");
     }
@@ -65,7 +66,7 @@ export function ListsSheet({
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="Zoznamy">
+    <Sheet open={open} onClose={onClose} title={t("lists.title")}>
       <div className="flex flex-col gap-5">
         <Group>
           {lists.map((l) => (
@@ -79,30 +80,30 @@ export function ListsSheet({
               className={cx("flex min-h-14 w-full items-center justify-between px-4 text-left active:bg-pressed", l.id === currentId && "font-semibold")}
             >
               {l.name}
-              {l.id === currentId && <Check className="size-5 text-primary" aria-label="vybraný" />}
+              {l.id === currentId && <Check className="size-5 text-primary" aria-label={t("lists.selected")} />}
             </button>
           ))}
         </Group>
 
         <form onSubmit={createList} className="flex items-end gap-2">
-          <TextField className="flex-1" label="Nový zoznam" placeholder="napr. Drogéria, Chata…" value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60} />
+          <TextField className="flex-1" label={t("lists.newLabel")} placeholder={t("lists.newPlaceholder")} value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60} />
           <Button type="submit" className="mb-0.5 min-h-12" loading={create.isPending} disabled={!newName.trim()}>
-            <Plus className="size-4" aria-hidden /> Pridať
+            <Plus className="size-4" aria-hidden /> {t("lists.add")}
           </Button>
         </form>
 
         {current && (
           <form onSubmit={saveRename} className="flex items-end gap-2">
-            <TextField className="flex-1" label="Premenovať aktuálny zoznam" value={rename} onChange={(e) => setRename(e.target.value)} maxLength={60} />
+            <TextField className="flex-1" label={t("lists.renameLabel")} value={rename} onChange={(e) => setRename(e.target.value)} maxLength={60} />
             <Button type="submit" variant="secondary" className="mb-0.5 min-h-12" disabled={!rename.trim() || rename.trim() === current.name}>
-              Uložiť
+              {t("common.save")}
             </Button>
           </form>
         )}
 
         {current && lists.length > 1 && (
           <Button variant="ghost" onClick={archive}>
-            <Archive className="size-4" aria-hidden /> Archivovať „{current.name}“
+            <Archive className="size-4" aria-hidden /> {t("lists.archive", { name: current.name })}
           </Button>
         )}
       </div>

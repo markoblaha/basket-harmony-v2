@@ -3,11 +3,12 @@ import { ChevronRight } from "lucide-react";
 import { ErrorState, Group, Section, Spinner, cx } from "@/components/ui";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { StoreAvatar } from "@/features/receipts/ReceiptRow";
-import { formatMoney, formatShortDate, plural, readErrorMessage } from "@/features/receipts/format";
+import { formatMoney, formatShortDate, readErrorMessage } from "@/features/receipts/format";
+import { formatNumber, t, tn } from "@/i18n";
 import { useCategoryDetail } from "./api";
 import { BackHeader, PeriodBar } from "./AnalyticsLayout";
 import { BarChart } from "./charts";
-import { Card, Delta, EmojiBadge, SectionTitle, ShareRow, categoryInfo } from "./bits";
+import { Card, Delta, EmojiBadge, SectionTitle, ShareRow, categoryInfo, storeLabel } from "./bits";
 import { monthShort, usePeriod } from "./period";
 
 /** Detail kategórie: vývoj, produkty, obchody a jednotlivé nákupy (s preklikom na bloček). */
@@ -21,7 +22,7 @@ export function CategoryPage() {
 
   return (
     <div className="pb-10">
-      <BackHeader fallback={`/analytics${search}`} title="Prehľady" />
+      <BackHeader fallback={`/analytics${search}`} title={t("nav.analytics")} />
       <Section className="mt-1">
         <div className="flex items-center gap-3">
           <EmojiBadge emoji={info.emoji} color={info.color} />
@@ -44,28 +45,28 @@ export function CategoryPage() {
               {detail.data.prev_amount > 0 && (
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-text-3">
                   <Delta now={detail.data.amount} before={detail.data.prev_amount} invert={id === "_receipt_discount"} />
-                  {period.current ? `oproti rovnakému dňu (${period.prevLabel})` : `oproti obdobiu ${period.prevLabel}`}:{" "}
+                  {period.current ? t("ov.vsSameDay", { label: period.prevLabel }) : t("ov.vsPeriod", { label: period.prevLabel })}:{" "}
                   {formatMoney(detail.data.prev_amount)}
                 </p>
               )}
               {detail.data.liters !== null && detail.data.liters > 0 && (
                 <div className="mt-3 grid grid-cols-2 gap-3 rounded-[var(--radius-control)] bg-surface p-3">
                   <div>
-                    <p className="text-xs text-text-3">Natankované</p>
-                    <p className="text-lg font-semibold tabular-nums">{detail.data.liters.toLocaleString("sk-SK")} l</p>
+                    <p className="text-xs text-text-3">{t("cp.fueled")}</p>
+                    <p className="text-lg font-semibold tabular-nums">{formatNumber(detail.data.liters)} l</p>
                   </div>
                   <div>
-                    <p className="text-xs text-text-3">Priemerná cena</p>
+                    <p className="text-xs text-text-3">{t("cp.avgPrice")}</p>
                     <p className="text-lg font-semibold tabular-nums">
-                      {(detail.data.per_liter ?? 0).toLocaleString("sk-SK", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} € / l
+                      {formatNumber(detail.data.per_liter ?? 0, { minimumFractionDigits: 3, maximumFractionDigits: 3 })} € / l
                     </p>
                   </div>
-                  <p className="col-span-2 text-xs text-text-3">Z bločkov z pumpy. Platby z výpisu litre neobsahujú.</p>
+                  <p className="col-span-2 text-xs text-text-3">{t("cp.fuelNote")}</p>
                 </div>
               )}
               <div className="mt-4">
                 <BarChart
-                  label={`${info.name} po mesiacoch`}
+                  label={t("sp.monthsAria", { name: info.name })}
                   height={110}
                   data={detail.data.months.map((m) => ({ key: m.month, label: monthShort(Number(m.month.slice(5))), value: Math.abs(m.amount) }))}
                   activeKey={period.range === "month" ? period.month : null}
@@ -80,18 +81,18 @@ export function CategoryPage() {
 
           {pseudo ? (
             <Section>
-              <SectionTitle title="Doklady" />
+              <SectionTitle title={t("cp.receipts")} />
               {detail.data.receipts.length === 0 ? (
-                <p className="px-1 text-sm text-text-2">V tomto období nič.</p>
+                <p className="px-1 text-sm text-text-2">{t("cp.nothing")}</p>
               ) : (
                 <Group>
                   {detail.data.receipts.map((r) => (
                     <Link key={r.receipt_id} to={`/receipts/${r.receipt_id}`} className="flex items-center gap-3 px-4 py-3 active:bg-pressed">
                       <StoreAvatar name={r.store} className="!size-10" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{r.store}</p>
+                        <p className="truncate font-medium">{storeLabel(r.store)}</p>
                         <p className="text-xs text-text-3">
-                          {formatShortDate(r.date)} · doklad {formatMoney(r.total)}
+                          {t("cp.receiptLine", { date: formatShortDate(r.date), total: formatMoney(r.total) })}
                         </p>
                       </div>
                       <span className="font-semibold tabular-nums">{formatMoney(r.amount)}</span>
@@ -100,13 +101,13 @@ export function CategoryPage() {
                   ))}
                 </Group>
               )}
-              <p className="mt-2 px-1 text-xs text-text-3">Otvor doklad a doplň chýbajúce položky – rozdiel sa zmenší.</p>
+              <p className="mt-2 px-1 text-xs text-text-3">{t("cp.fillHint")}</p>
             </Section>
           ) : (
             <>
               {detail.data.products.length > 0 && (
                 <Section>
-                  <SectionTitle title="Produkty" />
+                  <SectionTitle title={t("tab.products")} />
                   <Group>
                     {detail.data.products.map((p) => {
                       const top = detail.data.products[0]!.amount || 1;
@@ -115,8 +116,8 @@ export function CategoryPage() {
                           key={p.product_id ?? p.name}
                           to={p.product_id ? `/analytics/product/${p.product_id}${search}` : "#"}
                           icon={null}
-                          title={p.name ?? "Bez názvu"}
-                          subtitle={`${p.count}× v tomto období`}
+                          title={p.name ?? t("cp.untitled")}
+                          subtitle={t("cp.countInPeriod", { n: p.count })}
                           amount={p.amount}
                           share={p.amount / top}
                           color={info.color}
@@ -129,15 +130,15 @@ export function CategoryPage() {
 
               {detail.data.stores.length > 0 && (
                 <Section>
-                  <SectionTitle title="Kde" />
+                  <SectionTitle title={t("cp.where")} />
                   <Group>
                     {detail.data.stores.map((s) => (
                       <ShareRow
                         key={s.key}
                         to={`/analytics/store/${encodeURIComponent(s.key)}${search}`}
                         icon={<StoreAvatar name={s.key === "_none" ? null : s.name} className="!size-10" />}
-                        title={s.name}
-                        subtitle={`${s.count} ${plural(s.count, ["položka", "položky", "položiek"])}`}
+                        title={storeLabel(s.name)}
+                        subtitle={tn("shop.itemCount", s.count)}
                         amount={s.amount}
                         share={s.amount / (detail.data.amount || 1)}
                         color={info.color}
@@ -149,15 +150,15 @@ export function CategoryPage() {
 
               {detail.data.receipts.length > 0 && (
                 <Section>
-                  <SectionTitle title="Platby bez bločku" />
+                  <SectionTitle title={t("cp.noReceiptPayments")} />
                   <Group>
                     {detail.data.receipts.map((r) => (
                       <Link key={r.receipt_id} to={`/receipts/${r.receipt_id}`} className="flex items-center gap-3 px-4 py-3 active:bg-pressed">
                         <StoreAvatar name={r.store} className="!size-10" />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium">{r.store}</p>
+                          <p className="truncate font-medium">{storeLabel(r.store)}</p>
                           <p className="text-xs text-text-3">
-                            {formatShortDate(r.date)} · {r.origin === "BANK" ? "z výpisu" : r.origin === "MANUAL" ? "zadané ručne" : "bez rozpisu položiek"}
+                            {formatShortDate(r.date)} · {r.origin === "BANK" ? t("cp.originBank") : r.origin === "MANUAL" ? t("cp.originManual") : t("cp.originNoItems")}
                           </p>
                         </div>
                         <span className="font-semibold tabular-nums">{formatMoney(r.amount)}</span>
@@ -170,7 +171,7 @@ export function CategoryPage() {
 
               {detail.data.items.length > 0 && (
                 <Section>
-                  <SectionTitle title="Nákupy" />
+                  <SectionTitle title={t("sp.purchases")} />
                   <Group>
                     {detail.data.items.map((it) => (
                       <Link
@@ -181,8 +182,8 @@ export function CategoryPage() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate">{it.name}</p>
                           <p className="text-xs text-text-3">
-                            {formatShortDate(it.date)} · {it.store}
-                            {it.discount > 0 ? ` · zľava ${formatMoney(it.discount)}` : ""}
+                            {formatShortDate(it.date)} · {storeLabel(it.store)}
+                            {it.discount > 0 ? ` · ${t("detail.discount", { amount: formatMoney(it.discount) })}` : ""}
                           </p>
                         </div>
                         <span className="font-semibold tabular-nums">{formatMoney(it.line_total)}</span>
@@ -192,7 +193,7 @@ export function CategoryPage() {
                   </Group>
                   {id === "other" && (
                     <p className="mt-2 px-1 text-xs text-text-3">
-                      Klepni na položku a v detaile produktu jej zmeň kategóriu („Upraviť“). Zmena platí pre všetky nákupy toho produktu, aj budúce.
+                      {t("cp.otherHint")}
                     </p>
                   )}
                 </Section>

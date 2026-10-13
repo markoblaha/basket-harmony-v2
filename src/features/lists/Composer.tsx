@@ -1,7 +1,9 @@
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Minus, PenLine, Plus } from "lucide-react";
 import { cx } from "@/components/ui";
+import { t } from "@/i18n";
 import { parseItemInput } from "@/lib/parseItem";
+import { qtyLabel } from "./qty";
 import type { AddOutcome } from "./useSmartAdd";
 
 /**
@@ -54,12 +56,12 @@ export function Composer({
     <form onSubmit={submit} className="flex flex-col gap-2 rounded-[1.125rem] border border-line bg-elevated p-2.5">
       <div className="flex gap-2">
         <label className="min-w-0 flex-1">
-          <span className="sr-only">Čo treba kúpiť</span>
+          <span className="sr-only">{t("composer.label")}</span>
           <input
             ref={input}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={requestMode ? "Čo ešte treba? Pošle sa na schválenie" : "Čo treba kúpiť?"}
+            placeholder={requestMode ? t("composer.placeholderRequest") : t("composer.placeholder")}
             autoComplete="off"
             enterKeyHint="done"
             maxLength={120}
@@ -67,24 +69,24 @@ export function Composer({
           />
         </label>
         <div className="flex h-[3.125rem] shrink-0 items-center rounded-[var(--radius-control)] border border-line bg-bg">
-          <StepButton label="Menej kusov" onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1}>
+          <StepButton label={t("composer.fewer")} onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1}>
             <Minus className="size-4" strokeWidth={2.6} />
           </StepButton>
-          <span className="min-w-6 text-center text-base font-bold" aria-live="polite" aria-label={`${qty} ks`}>
+          <span className="min-w-6 text-center text-base font-bold" aria-live="polite" aria-label={qtyLabel(qty, null)}>
             {qty}
           </span>
-          <StepButton label="Viac kusov" onClick={() => setQty((q) => Math.min(99, q + 1))}>
+          <StepButton label={t("composer.more")} onClick={() => setQty((q) => Math.min(99, q + 1))}>
             <Plus className="size-4" strokeWidth={2.6} />
           </StepButton>
         </div>
       </div>
       <label className="relative block">
-        <span className="sr-only">Detail alebo poznámka</span>
+        <span className="sr-only">{t("composer.noteLabel")}</span>
         <PenLine className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-text-3" aria-hidden />
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Detail · napr. 1,5 % tuku, väčšie balenie"
+          placeholder={t("composer.notePlaceholder")}
           autoComplete="off"
           enterKeyHint="done"
           maxLength={300}
@@ -96,7 +98,7 @@ export function Composer({
         disabled={empty}
         className="h-[3.125rem] rounded-[var(--radius-control)] bg-primary text-[0.9375rem] font-bold text-on-primary transition-[transform,opacity] active:scale-[0.98] disabled:opacity-30 disabled:active:scale-100"
       >
-        {requestMode ? "Poslať na schválenie" : qty > 1 ? `Pridať ${qty} ks` : "Pridať do zoznamu"}
+        {requestMode ? t("composer.submitRequest") : qty > 1 ? t("composer.submitMany", { n: qty }) : t("composer.submit")}
       </button>
     </form>
   );

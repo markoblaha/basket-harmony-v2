@@ -3,12 +3,16 @@
  * domácnosť (Strava, Auto a benzín, Bývanie...). Je to len pohľad – v databáze
  * zostávajú podrobné kategórie, takže sa nič nestratí.
  */
+import { t } from "@/i18n";
+
 export type Area = { id: string; name: string; emoji: string; hue: number; categories: string[] };
 
 export const AREAS: Area[] = [
   {
     id: "food",
-    name: "Strava",
+    get name() {
+      return t("area.food");
+    },
     emoji: "🍽️",
     hue: 140,
     categories: [
@@ -16,17 +20,39 @@ export const AREAS: Area[] = [
       "breakfast", "snacks_sweets", "beverages", "dining",
     ],
   },
-  { id: "alcohol", name: "Alkohol", emoji: "🍷", hue: 350, categories: ["alcohol"] },
-  { id: "household", name: "Drogéria a domácnosť", emoji: "🧴", hue: 290, categories: ["household_cleaning", "personal_care", "home", "pet"] },
-  { id: "kids", name: "Deti", emoji: "🧸", hue: 310, categories: ["baby", "toys_hobby"] },
-  { id: "car", name: "Auto a benzín", emoji: "⛽", hue: 275, categories: ["fuel", "transport"] },
-  { id: "housing", name: "Bývanie a energie", emoji: "🏠", hue: 25, categories: ["housing"] },
-  { id: "telecom", name: "Telefón a predplatné", emoji: "📱", hue: 200, categories: ["telecom"] },
-  { id: "health", name: "Zdravie", emoji: "💊", hue: 0, categories: ["health"] },
-  { id: "clothing", name: "Oblečenie", emoji: "👕", hue: 260, categories: ["clothing"] },
-  { id: "leisure", name: "Voľný čas", emoji: "🎟️", hue: 60, categories: ["leisure", "electronics"] },
-  { id: "finance", name: "Poistenie a poplatky", emoji: "🛡️", hue: 220, categories: ["insurance", "fees"] },
-  { id: "other", name: "Ostatné", emoji: "📦", hue: 280, categories: ["other", "deposit", "_unassigned", "_receipt_discount"] },
+  { id: "alcohol", get name() {
+      return t("area.alcohol");
+    }, emoji: "🍷", hue: 350, categories: ["alcohol"] },
+  { id: "household", get name() {
+      return t("area.household");
+    }, emoji: "🧴", hue: 290, categories: ["household_cleaning", "personal_care", "home", "pet"] },
+  { id: "kids", get name() {
+      return t("area.kids");
+    }, emoji: "🧸", hue: 310, categories: ["baby", "toys_hobby"] },
+  { id: "car", get name() {
+      return t("area.car");
+    }, emoji: "⛽", hue: 275, categories: ["fuel", "transport"] },
+  { id: "housing", get name() {
+      return t("area.housing");
+    }, emoji: "🏠", hue: 25, categories: ["housing"] },
+  { id: "telecom", get name() {
+      return t("area.telecom");
+    }, emoji: "📱", hue: 200, categories: ["telecom"] },
+  { id: "health", get name() {
+      return t("area.health");
+    }, emoji: "💊", hue: 0, categories: ["health"] },
+  { id: "clothing", get name() {
+      return t("area.clothing");
+    }, emoji: "👕", hue: 260, categories: ["clothing"] },
+  { id: "leisure", get name() {
+      return t("area.leisure");
+    }, emoji: "🎟️", hue: 60, categories: ["leisure", "electronics"] },
+  { id: "finance", get name() {
+      return t("area.finance");
+    }, emoji: "🛡️", hue: 220, categories: ["insurance", "fees"] },
+  { id: "other", get name() {
+      return t("area.other");
+    }, emoji: "📦", hue: 280, categories: ["other", "deposit", "_unassigned", "_receipt_discount"] },
 ];
 
 const BY_CATEGORY = new Map(AREAS.flatMap((a) => a.categories.map((c) => [c, a] as const)));

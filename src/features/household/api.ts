@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Row } from "@/lib/database.types";
+import { t } from "@/i18n";
 
 export const keys = {
   households: ["households"] as const,
@@ -56,7 +57,7 @@ export function useMembers(householdId: string) {
   });
   const data: Member[] | undefined =
     members.data &&
-    members.data.map((m) => ({ ...m, display_name: profiles.data?.get(m.user_id) ?? "Člen domácnosti" }));
+    members.data.map((m) => ({ ...m, display_name: profiles.data?.get(m.user_id) ?? t("household.fallbackName") }));
   return { ...members, data };
 }
 

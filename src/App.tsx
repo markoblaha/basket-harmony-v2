@@ -7,8 +7,9 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { HouseholdProvider } from "@/features/household/HouseholdProvider";
 import { JoinPage } from "@/features/household/JoinPage";
-import { MorePage } from "@/features/household/MorePage";
 import { OnboardingPage } from "@/features/household/OnboardingPage";
+import { HouseholdPage } from "@/features/more/HouseholdPage";
+import { MorePage } from "@/features/more/MorePage";
 import { ShoppingPage } from "@/features/lists/ShoppingPage";
 import { AnalyticsLayout } from "@/features/analytics/AnalyticsLayout";
 import { CategoryPage } from "@/features/analytics/CategoryPage";
@@ -77,6 +78,7 @@ export function App() {
           <Route path="analytics/store/:key" element={<StorePage />} />
           <Route path="analytics/product/:id" element={<ProductPage />} />
           <Route path="more" element={<MorePage />} />
+          <Route path="more/household" element={<HouseholdPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

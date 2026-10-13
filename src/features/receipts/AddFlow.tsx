@@ -3,8 +3,9 @@ import { Camera, FileText, Image as ImageIcon, Landmark, PenLine, X } from "luci
 import { Button, IconButton, Sheet, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { CATEGORIES } from "@/lib/categories";
+import { t, tn } from "@/i18n";
 import { MAX_PAGES, useAddManualExpense } from "./api";
-import { parseAmount, plural, readErrorMessage } from "./format";
+import { parseAmount, readErrorMessage } from "./format";
 
 export type PendingKind = "camera" | "files";
 export type Pending = { kind: PendingKind; files: File[] };
@@ -49,37 +50,37 @@ export function AddMenu({
     fn();
   };
   return (
-    <Sheet open={open} onClose={onClose} title="Pridať doklad">
+    <Sheet open={open} onClose={onClose} title={t("add.title")}>
       <div className="flex flex-col gap-2">
         <MenuButton
           icon={<Camera className="size-5" aria-hidden />}
-          title="Odfotiť"
-          hint="Aj dlhý doklad – odfotíš ďalšie strany, kým nie si hotový."
+          title={t("add.camera")}
+          hint={t("add.cameraHint")}
           onClick={pick(onCamera)}
         />
         <MenuButton
           icon={<ImageIcon className="size-5" aria-hidden />}
-          title="Z galérie"
-          hint="Jedna alebo viac fotiek a snímok obrazovky naraz."
+          title={t("add.gallery")}
+          hint={t("add.galleryHint")}
           onClick={pick(onGallery)}
         />
         <MenuButton
           icon={<FileText className="size-5" aria-hidden />}
-          title="PDF alebo súbor"
-          hint="Faktúra alebo potvrdenie objednávky z e-mailu."
+          title={t("add.file")}
+          hint={t("add.fileHint")}
           onClick={pick(onFile)}
         />
-        <p className="mt-2 px-1 text-xs font-semibold uppercase tracking-wide text-text-3">Bez bločku</p>
+        <p className="mt-2 px-1 text-xs font-semibold uppercase tracking-wide text-text-3">{t("add.noReceipt")}</p>
         <MenuButton
           icon={<Landmark className="size-5" aria-hidden />}
-          title="Z bankového výpisu"
-          hint="Platby kartou bez bločku – tankovanie, reštaurácie, e-shopy, účty."
+          title={t("add.statement")}
+          hint={t("add.statementHint")}
           onClick={pick(onStatement)}
         />
         <MenuButton
           icon={<PenLine className="size-5" aria-hidden />}
-          title="Zadať výdavok ručne"
-          hint="Napr. nájom, hotovosť na trhu, čokoľvek bez dokladu."
+          title={t("add.manual")}
+          hint={t("add.manualHint")}
           onClick={pick(onManual)}
         />
       </div>
@@ -139,18 +140,18 @@ export function PendingSheet({
     <Sheet
       open={pending !== null}
       onClose={onClose}
-      title={camera ? `Nový doklad · ${list.length} ${plural(list.length, ["strana", "strany", "strán"])}` : `Pridať ${list.length} súborov`}
+      title={camera ? tn("add.newReceipt", list.length) : tn("add.files", list.length)}
     >
       <div className="flex flex-col gap-4">
         {camera ? (
-          <p className="text-sm text-text-2">Má doklad ešte ďalšiu stranu? Odfoť ju. Keď máš všetko, klepni na „Hotovo“.</p>
+          <p className="text-sm text-text-2">{t("add.pageHint")}</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {option("separate", "Každý súbor je samostatný doklad", `Vznikne ${list.length} dokladov.`)}
-            {option("one", "Všetky súbory sú jeden doklad", "Napr. dlhý bloček alebo faktúra na viacerých fotkách. Prečítajú sa spolu.")}
+            {option("separate", t("add.separate"), tn("add.separateHint", list.length))}
+            {option("one", t("add.together"), t("add.togetherHint"))}
           </div>
         )}
-        <ul className="flex gap-2 overflow-x-auto pb-1 pt-2" aria-label="Vybrané súbory">
+        <ul className="flex gap-2 overflow-x-auto pb-1 pt-2" aria-label={t("add.selectedFiles")}>
           {list.map((f, i) => (
             <li key={`${f.name}-${i}`} className="relative shrink-0">
               <div className="flex h-28 w-20 items-center justify-center overflow-hidden rounded-md bg-surface text-text-3">
@@ -160,7 +161,7 @@ export function PendingSheet({
                 <span className="absolute left-1 top-1 rounded-full bg-black/60 px-1.5 text-xs font-bold text-white">{i + 1}</span>
               )}
               <IconButton
-                label={`Odstrániť ${f.name}`}
+                label={t("add.removeFile", { name: f.name })}
                 onClick={() => onRemove(i)}
                 className="absolute -right-2 -top-2 size-7 bg-elevated shadow"
               >
@@ -169,18 +170,18 @@ export function PendingSheet({
             </li>
           ))}
         </ul>
-        {tooMany && <p className="text-sm text-danger">Jeden doklad môže mať najviac {MAX_PAGES} strán.</p>}
+        {tooMany && <p className="text-sm text-danger">{t("add.tooMany", { max: MAX_PAGES })}</p>}
         <div className="flex flex-col gap-2">
           <Button size="lg" block disabled={list.length === 0 || tooMany} onClick={onStart}>
-            {camera ? "Hotovo – prečítať doklad" : one ? "Pridať ako 1 doklad" : `Pridať ${list.length} dokladov`}
+            {camera ? t("add.readReceipt") : one ? t("add.asOne") : tn("add.receipts", list.length)}
           </Button>
           <Button variant="secondary" block onClick={onAddMore}>
             {camera ? (
               <>
-                <Camera className="size-5" aria-hidden /> Odfotiť ďalšiu stranu
+                <Camera className="size-5" aria-hidden /> {t("add.anotherPage")}
               </>
             ) : (
-              "Pridať ďalšie súbory"
+              t("add.moreFiles")
             )}
           </Button>
         </div>
@@ -208,13 +209,13 @@ function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; hous
   async function submit(e: FormEvent) {
     e.preventDefault();
     const value = parseAmount(amount);
-    if (!name.trim()) return setError("Napíš, za čo alebo komu.");
-    if (value === null || value <= 0) return setError("Suma musí byť kladné číslo, napríklad 650.");
-    if (!date) return setError("Vyber dátum.");
+    if (!name.trim()) return setError(t("manual.nameRequired"));
+    if (value === null || value <= 0) return setError(t("manual.amountInvalid"));
+    if (!date) return setError(t("manual.dateRequired"));
     setError(null);
     try {
       await add.mutateAsync({ name: name.trim(), amount: value, date, categoryId });
-      toast.show("Výdavok pridaný", "success");
+      toast.show(t("manual.added"), "success");
       onClose();
     } catch (err) {
       toast.show(readErrorMessage(err), "error");
@@ -222,16 +223,16 @@ function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; hous
   }
 
   return (
-    <Sheet open onClose={onClose} title="Zadať výdavok">
+    <Sheet open onClose={onClose} title={t("manual.title")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <TextField label="Za čo / komu" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="napr. Nájom, Trh, Kaderník" autoFocus />
+        <TextField label={t("manual.name")} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder={t("manual.namePlaceholder")} autoFocus />
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Suma (€)" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <TextField label="Dátum" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <TextField label={t("manual.amount")} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <TextField label={t("manual.date")} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="manual-category" className="text-sm font-medium text-text-2">
-            Kategória
+            {t("edit.category")}
           </label>
           <select
             id="manual-category"
@@ -252,7 +253,7 @@ function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; hous
           </p>
         )}
         <Button type="submit" size="lg" block loading={add.isPending}>
-          Pridať výdavok
+          {t("manual.submit")}
         </Button>
       </form>
     </Sheet>

@@ -4,6 +4,7 @@ import { Check, Eye, EyeOff, ShoppingBasket } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
 import { Banner, Button, TextField, cx } from "@/components/ui";
+import { LOCALES, t, useLocale } from "@/i18n";
 
 type Mode = "signin" | "signup" | "forgot";
 
@@ -28,7 +29,7 @@ export function AuthPage() {
   useEffect(() => {
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const description = params.get("error_description") ?? hash.get("error_description");
-    if (description) setError(`Prihlásenie cez Google sa nepodarilo: ${description}`);
+    if (description) setError(t("auth.googleFailed", { reason: description }));
   }, [params]);
 
   const switchMode = (m: Mode) => {
@@ -60,15 +61,15 @@ export function AuthPage() {
     setError(null);
     setNotice(null);
     if (!email.trim()) {
-      setError("Zadaj e-mail.");
+      setError(t("auth.errEmail"));
       return;
     }
     if (mode !== "forgot" && password.length < 8) {
-      setError("Heslo musí mať aspoň 8 znakov.");
+      setError(t("auth.errPassword"));
       return;
     }
     if (mode === "signup" && !name.trim()) {
-      setError("Zadaj svoje meno – uvidia ho členovia domácnosti.");
+      setError(t("auth.errName"));
       return;
     }
     setBusy("email");
@@ -85,13 +86,13 @@ export function AuthPage() {
         });
         if (error) throw error;
         if (data.session) navigate(next, { replace: true });
-        else setNotice("Účet je vytvorený. Potvrď ho cez odkaz, ktorý ti prišiel e-mailom.");
+        else setNotice(t("auth.noticeCreated"));
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: `${window.location.origin}/reset-password`,
         });
         if (error) throw error;
-        setNotice("Ak účet s týmto e-mailom existuje, poslali sme naň odkaz na zmenu hesla.");
+        setNotice(t("auth.noticeReset"));
       }
     } catch (err) {
       setError(errorMessage(err));
@@ -112,12 +113,8 @@ export function AuthPage() {
         </div>
 
         <div className="mt-8 max-w-md lg:mt-0">
-          <h1 className="text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] lg:text-5xl">
-            Nákupný zoznam, ktorý vidí celá domácnosť.
-          </h1>
-          <p className="mt-3 text-base leading-relaxed text-[#fbf9f5]/75 lg:mt-5 lg:text-lg">
-            Kto je v obchode, má pred sebou všetko, čo ste doplnili. Aj to, čo pribudlo počas nákupu.
-          </p>
+          <h1 className="text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] lg:text-5xl">{t("auth.heroTitle")}</h1>
+          <p className="mt-3 text-base leading-relaxed text-[#fbf9f5]/75 lg:mt-5 lg:text-lg">{t("auth.heroText")}</p>
         </div>
 
         <ListPreview />
@@ -126,14 +123,15 @@ export function AuthPage() {
       {/* Formulár */}
       <main className="flex items-start justify-center px-5 py-8 lg:items-center lg:px-12">
         <div className="w-full max-w-sm">
+          <LanguageSwitch />
           {mode === "forgot" ? (
             <div className="mb-6">
-              <h2 className="text-2xl font-bold tracking-tight">Zabudnuté heslo</h2>
-              <p className="mt-1 text-text-2">Pošleme ti odkaz, cez ktorý si nastavíš nové heslo.</p>
+              <h2 className="text-2xl font-bold tracking-tight">{t("auth.forgotTitle")}</h2>
+              <p className="mt-1 text-text-2">{t("auth.forgotText")}</p>
             </div>
           ) : (
             <>
-              <div role="tablist" aria-label="Prihlásenie alebo registrácia" className="mb-6 grid grid-cols-2 rounded-xl bg-surface p-1">
+              <div role="tablist" aria-label={t("auth.modeLabel")} className="mb-6 grid grid-cols-2 rounded-xl bg-surface p-1">
                 {(["signin", "signup"] as const).map((m) => (
                   <button
                     key={m}
@@ -146,7 +144,7 @@ export function AuthPage() {
                       mode === m ? "bg-elevated text-text shadow-sm" : "text-text-2",
                     )}
                   >
-                    {m === "signin" ? "Prihlásiť sa" : "Nový účet"}
+                    {m === "signin" ? t("auth.signIn") : t("auth.signUp")}
                   </button>
                 ))}
               </div>
@@ -158,12 +156,12 @@ export function AuthPage() {
                 aria-busy={busy === "google" || undefined}
                 className="flex min-h-13 w-full items-center justify-center gap-3 rounded-[var(--radius-control)] border border-line-strong/70 bg-elevated px-4 text-base font-semibold text-text shadow-sm transition-colors active:bg-pressed disabled:opacity-60"
               >
-                {busy === "google" ? "Presmerúvam na Google…" : "Pokračovať cez Google"}
+                {busy === "google" ? t("auth.googleBusy") : t("auth.google")}
               </button>
 
               <div className="my-6 flex items-center gap-3 text-sm text-text-3">
                 <span className="h-px flex-1 bg-line" />
-                alebo e-mailom
+                {t("auth.orEmail")}
                 <span className="h-px flex-1 bg-line" />
               </div>
             </>
@@ -172,8 +170,8 @@ export function AuthPage() {
           <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
             {mode === "signup" && (
               <TextField
-                label="Tvoje meno"
-                hint="Uvidia ho členovia domácnosti."
+                label={t("auth.nameLabel")}
+                hint={t("auth.nameHint")}
                 autoComplete="given-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -181,7 +179,7 @@ export function AuthPage() {
               />
             )}
             <TextField
-              label="E-mail"
+              label={t("auth.emailLabel")}
               type="email"
               inputMode="email"
               autoComplete="email"
@@ -191,10 +189,10 @@ export function AuthPage() {
             {mode !== "forgot" && (
               <div className="relative">
                 <TextField
-                  label="Heslo"
+                  label={t("auth.passwordLabel")}
                   type={showPassword ? "text" : "password"}
                   autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                  hint={mode === "signup" ? "Aspoň 8 znakov." : undefined}
+                  hint={mode === "signup" ? t("auth.passwordHint") : undefined}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="[&_input]:pr-12"
@@ -202,7 +200,7 @@ export function AuthPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Skryť heslo" : "Zobraziť heslo"}
+                  aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                   aria-pressed={showPassword}
                   className="absolute right-1 top-[1.85rem] flex size-11 items-center justify-center rounded-lg text-text-3 active:bg-pressed"
                 >
@@ -215,19 +213,19 @@ export function AuthPage() {
             {notice && <Banner tone="success">{notice}</Banner>}
 
             <Button type="submit" size="lg" block loading={busy === "email"} disabled={busy !== null}>
-              {mode === "signin" ? "Prihlásiť sa" : mode === "signup" ? "Vytvoriť účet" : "Poslať odkaz"}
+              {mode === "signin" ? t("auth.signIn") : mode === "signup" ? t("auth.createAccount") : t("auth.sendLink")}
             </Button>
           </form>
 
           <div className="mt-4 flex justify-center">
             {mode === "signin" && (
               <Button variant="ghost" onClick={() => switchMode("forgot")}>
-                Zabudol som heslo
+                {t("auth.forgotLink")}
               </Button>
             )}
             {mode === "forgot" && (
               <Button variant="ghost" onClick={() => switchMode("signin")}>
-                Späť na prihlásenie
+                {t("auth.backToSignIn")}
               </Button>
             )}
           </div>
@@ -240,17 +238,17 @@ export function AuthPage() {
 /** Ukážka, ako vyzerá spoločný zoznam počas nákupu. */
 function ListPreview() {
   const rows = [
-    { name: "Mlieko polotučné", meta: "2 l", done: true },
-    { name: "Rožky", meta: "6×", done: true },
-    { name: "Jablká", meta: "1 kg", done: false },
+    { name: t("auth.previewMilk"), meta: "2 l", done: true },
+    { name: t("auth.previewRolls"), meta: "6×", done: true },
+    { name: t("auth.previewApples"), meta: "1 kg", done: false },
   ];
   return (
     <figure
-      aria-label="Ukážka spoločného zoznamu"
+      aria-label={t("auth.previewLabel")}
       className="mt-8 hidden max-w-sm rotate-[-1.5deg] rounded-2xl bg-[#fbf9f5] p-4 text-[#1b1815] shadow-2xl shadow-black/30 sm:block lg:mt-0"
     >
       <div className="mb-3 flex items-baseline justify-between">
-        <span className="font-semibold">Nakupuješ</span>
+        <span className="font-semibold">{t("auth.previewShopping")}</span>
         <span className="text-sm tabular-nums text-[#1b1815]/60">2 / 4</span>
       </div>
       <ul className="divide-y divide-[#1b1815]/10">
@@ -270,14 +268,37 @@ function ListPreview() {
         ))}
       </ul>
       <div className="mt-3 rounded-xl bg-[#ece5f3] p-3">
-        <p className="text-sm text-[#1b1815]/70">Lucia chce pridať</p>
-        <p className="font-semibold">Olivový olej</p>
+        <p className="text-sm text-[#1b1815]/70">{t("auth.previewRequest")}</p>
+        <p className="font-semibold">{t("auth.previewOil")}</p>
         <div className="mt-2 grid grid-cols-2 gap-2 text-center text-sm font-semibold">
-          <span className="rounded-lg bg-white/70 py-1.5">Odmietnuť</span>
-          <span className="rounded-lg bg-[#d2401f] py-1.5 text-white">Pridať</span>
+          <span className="rounded-lg bg-white/70 py-1.5">{t("auth.previewDecline")}</span>
+          <span className="rounded-lg bg-[#d2401f] py-1.5 text-white">{t("auth.previewAdd")}</span>
         </div>
       </div>
     </figure>
+  );
+}
+
+/** Malý prepínač jazyka nad formulárom: nový človek ho potrebuje ešte pred prihlásením. */
+function LanguageSwitch() {
+  const { locale, setLocale } = useLocale();
+  return (
+    <div role="group" aria-label={t("auth.language")} className="mb-5 flex justify-end gap-1">
+      {LOCALES.map((code) => (
+        <button
+          key={code}
+          type="button"
+          onClick={() => setLocale(code)}
+          aria-pressed={locale === code}
+          className={cx(
+            "min-h-9 rounded-lg px-2.5 text-xs font-extrabold tracking-wider transition-colors",
+            locale === code ? "bg-primary text-on-primary" : "text-text-2 active:bg-pressed",
+          )}
+        >
+          {code.toUpperCase()}
+        </button>
+      ))}
+    </div>
   );
 }
 

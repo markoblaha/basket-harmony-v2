@@ -4,11 +4,12 @@ import { AlertTriangle, ChevronDown, Loader2, Plus, Sparkles, Target } from "luc
 import { Banner, Button, ErrorState, Group, Section, Spinner, cx } from "@/components/ui";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { StoreAvatar } from "@/features/receipts/ReceiptRow";
-import { formatMoney, plural, readErrorMessage } from "@/features/receipts/format";
+import { formatMoney, readErrorMessage } from "@/features/receipts/format";
+import { t, tn } from "@/i18n";
 import { useOverview, useProductNormalization, type Overview } from "./api";
 import { BudgetSheet } from "./BudgetSheet";
 import { BarChart, CumulativeChart, ShareBar } from "./charts";
-import { Card, Delta, EmojiBadge, MoreLink, SectionTitle, ShareRow, Stat, categoryInfo, percent, unitLabel } from "./bits";
+import { Card, Delta, EmojiBadge, MoreLink, SectionTitle, ShareRow, Stat, categoryInfo, percent, storeLabel, unitLabel } from "./bits";
 import { daysBetween, monthShort, todayIso, usePeriod, type Period } from "./period";
 import { useAddToList } from "./useAddToList";
 import { groupByArea } from "./areas";
@@ -36,10 +37,10 @@ export function OverviewTab() {
             <p className="text-3xl" aria-hidden>
               🧾
             </p>
-            <p className="mt-2 font-semibold">V tomto období nie sú žiadne doklady</p>
-            <p className="mt-1 text-sm text-text-2">Prepni obdobie šípkami hore alebo pridaj bločky.</p>
+            <p className="mt-2 font-semibold">{t("ov.emptyTitle")}</p>
+            <p className="mt-1 text-sm text-text-2">{t("ov.emptyText")}</p>
             <Link to="/receipts" className="mt-3 inline-block text-sm font-semibold text-primary">
-              Prejsť na bločky
+              {t("ov.goReceipts")}
             </Link>
           </Card>
         </Section>
@@ -54,10 +55,10 @@ export function OverviewTab() {
       )}
 
       <Section>
-        <SectionTitle title="Posledných 12 mesiacov" />
+        <SectionTitle title={t("ov.last12")} />
         <Card>
           <BarChart
-            label="Výdavky po mesiacoch"
+            label={t("ov.monthsChart")}
             data={o.months.map((m) => ({ key: m.month, label: monthShort(Number(m.month.slice(5))), value: m.amount }))}
             activeKey={period.range === "month" ? period.month : null}
             onSelect={(key) => {
@@ -65,18 +66,18 @@ export function OverviewTab() {
               setMonth(key);
             }}
           />
-          <p className="mt-2 text-center text-xs text-text-3">Klepni na mesiac a zobrazí sa jeho prehľad.</p>
+          <p className="mt-2 text-center text-xs text-text-3">{t("ov.tapMonth")}</p>
         </Card>
       </Section>
 
       {!empty && (
         <Section>
-          <SectionTitle title="Podrobnosti" />
+          <SectionTitle title={t("ov.details")} />
           <Card className="grid grid-cols-2 gap-4">
-            <Stat label="Dní s nákupom" value={o.days} />
-            <Stat label="Položiek" value={o.items} />
-            <Stat label="Ušetrené na zľavách" value={formatMoney(o.discounts)} hint="zľavy pri položkách" />
-            <Stat label="Zálohy na obaly" value={formatMoney(o.deposits)} hint="nerátajú sa do výdavkov" />
+            <Stat label={t("ov.statDays")} value={o.days} />
+            <Stat label={t("ov.statItems")} value={o.items} />
+            <Stat label={t("ov.statSaved")} value={formatMoney(o.discounts)} hint={t("ov.statSavedHint")} />
+            <Stat label={t("ov.statDeposits")} value={formatMoney(o.deposits)} hint={t("ov.statDepositsHint")} />
           </Card>
         </Section>
       )}
@@ -88,10 +89,10 @@ function Notices({ o, normalize }: { o: Overview; normalize: ReturnType<typeof u
   const items = [];
   if (normalize.running) {
     items.push(
-      <Banner key="norm" tone="info" title="Zjednocujem produkty z bločkov…">
+      <Banner key="norm" tone="info" title={t("ov.normRunning")}>
         <span className="inline-flex items-center gap-2">
           <Loader2 className="size-4 animate-spin" aria-hidden />
-          {normalize.remaining ? `Zostáva ${normalize.remaining}. ` : ""}Ceny a kategórie sa priebežne spresňujú.
+          {normalize.remaining ? t("ov.normRemaining", { n: normalize.remaining }) : ""}{t("ov.normNote")}
         </span>
       </Banner>,
     );
@@ -100,35 +101,35 @@ function Notices({ o, normalize }: { o: Overview; normalize: ReturnType<typeof u
       <Banner
         key="norm-err"
         tone="warning"
-        title="Produkty sa nepodarilo zjednotiť"
+        title={t("ov.normFailed")}
         action={
           <Button variant="secondary" onClick={() => void normalize.retry()}>
-            Skúsiť znova
+            {t("common.retry")}
           </Button>
         }
       >
         {normalize.error instanceof Error && normalize.error.message === "GEMINI_402"
-          ? "Na účte Gemini došiel kredit. Čísla sú správne, len porovnanie cien a kategórie budú presnejšie po zjednotení."
-          : "Čísla sú správne, len porovnanie cien a kategórie budú presnejšie po zjednotení."}
+          ? t("ov.normCredit")
+          : t("ov.normNumbersOk")}
       </Banner>,
     );
   }
   if (o.pending_review > 0) {
     items.push(
-      <Banner key="review" tone="warning" title={`${o.pending_review} ${plural(o.pending_review, ["doklad čaká", "doklady čakajú", "dokladov čaká"])} na kontrolu`}>
-        Rátajú sa už teraz, ale po kontrole sa čísla ešte môžu mierne zmeniť.{" "}
+      <Banner key="review" tone="warning" title={tn("ov.review", o.pending_review)}>
+        {t("ov.reviewText")}{" "}
         <Link to="/receipts" className="font-semibold underline">
-          Skontrolovať
+          {t("ov.reviewLink")}
         </Link>
       </Banner>,
     );
   }
   if (o.suspect_dates > 0) {
     items.push(
-      <Banner key="dates" tone="info" title={`${o.suspect_dates} ${plural(o.suspect_dates, ["doklad má", "doklady majú", "dokladov má"])} podozrivý dátum`}>
-        Kým dátum nepotvrdíš, nerátajú sa do žiadneho obdobia.{" "}
+      <Banner key="dates" tone="info" title={tn("ov.dates", o.suspect_dates)}>
+        {t("ov.datesText")}{" "}
         <Link to="/receipts" className="font-semibold underline">
-          Opraviť
+          {t("ov.datesLink")}
         </Link>
       </Banner>,
     );
@@ -147,22 +148,22 @@ function Hero({ o, period }: { o: Overview; period: Period }) {
   return (
     <Section>
       <Card>
-        <p className="text-sm text-text-2">Minuté {period.scope === "everyday" ? "na potraviny a domácnosť" : "spolu"}</p>
+        <p className="text-sm text-text-2">{period.scope === "everyday" ? t("ov.spentEveryday") : t("ov.spentAll")}</p>
         <p className="mt-0.5 text-4xl font-bold tracking-tight tabular-nums">{formatMoney(o.total)}</p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
           {before > 0 && <Delta now={o.total} before={before} />}
           {before > 0 && (
             <span className="text-sm text-text-3">
-              {comparable ? `oproti rovnakému dňu (${period.prevLabel})` : `oproti obdobiu ${period.prevLabel}`}
+              {comparable ? t("ov.vsSameDay", { label: period.prevLabel }) : t("ov.vsPeriod", { label: period.prevLabel })}
             </span>
           )}
         </div>
         <p className="mt-2 text-sm text-text-2">
-          {o.receipts} {plural(o.receipts, ["nákup", "nákupy", "nákupov"])} · priemerne {formatMoney(avg)}
+          {tn("ov.purchases", o.receipts, { avg: formatMoney(avg) })}
         </p>
         {projection !== null && (
           <p className="mt-0.5 text-sm text-text-2">
-            Pri tomto tempe približne <span className="font-semibold text-text">{formatMoney(projection)}</span> do konca mesiaca
+            {t("ov.pace1")} <span className="font-semibold text-text">{formatMoney(projection)}</span> {t("ov.pace2")}
           </p>
         )}
         <div className="mt-4">
@@ -176,7 +177,7 @@ function Hero({ o, period }: { o: Overview; period: Period }) {
           />
           <div className="mt-1 flex justify-center gap-4 text-xs text-text-3">
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-0.5 w-4 rounded bg-primary" aria-hidden /> toto obdobie
+              <span className="h-0.5 w-4 rounded bg-primary" aria-hidden /> {t("ov.thisPeriod")}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-0 w-4 border-t-2 border-dashed border-text-3" aria-hidden /> {period.prevLabel}
@@ -205,22 +206,22 @@ function Budgets({ o, current }: { o: Overview; current: boolean }) {
         >
           <Target className="size-5 shrink-0 text-primary" aria-hidden />
           <span className="min-w-0 flex-1">
-            <span className="block font-semibold">Nastaviť mesačný rozpočet</span>
-            <span className="block text-sm text-text-2">Celkový alebo pre vybrané kategórie. Uvidíš, koľko ti zostáva.</span>
+            <span className="block font-semibold">{t("ov.budgetSet")}</span>
+            <span className="block text-sm text-text-2">{t("ov.budgetSetText")}</span>
           </span>
         </button>
       ) : (
         <>
           <SectionTitle
-            title="Rozpočet"
+            title={t("ov.budget")}
             action={
               <button type="button" onClick={() => setOpen(true)} className="text-sm font-semibold text-primary">
-                Upraviť
+                {t("ov.editBudget")}
               </button>
             }
           />
           <Card className="flex flex-col gap-4">
-            {total && <BudgetBar label="Celkom" spent={total.spent} amount={total.amount} daysLeft={current ? daysLeft : undefined} big />}
+            {total && <BudgetBar label={t("ov.budgetTotal")} spent={total.spent} amount={total.amount} daysLeft={current ? daysLeft : undefined} big />}
             {cats.map((b) => {
               const info = categoryInfo(b.category_id!);
               return <BudgetBar key={b.category_id} label={`${info.emoji} ${info.name}`} spent={b.spent} amount={b.amount} />;
@@ -242,7 +243,7 @@ function BudgetBar({ label, spent, amount, daysLeft, big }: { label: string; spe
       <div className="flex items-baseline justify-between gap-2">
         <p className={cx("truncate", big ? "font-semibold" : "text-sm font-medium")}>{label}</p>
         <p className="shrink-0 text-sm tabular-nums text-text-2">
-          <span className="font-semibold text-text">{formatMoney(spent)}</span> z {formatMoney(amount)}
+          <span className="font-semibold text-text">{formatMoney(spent)}</span> {t("ov.of", { amount: formatMoney(amount) })}
         </p>
       </div>
       <div className={cx("mt-1.5 overflow-hidden rounded-full bg-surface", big ? "h-3" : "h-2")}>
@@ -250,8 +251,10 @@ function BudgetBar({ label, spent, amount, daysLeft, big }: { label: string; spe
       </div>
       <p className={cx("mt-1 text-xs", left < 0 ? "font-semibold text-danger" : "text-text-3")}>
         {left < 0
-          ? `Prekročené o ${formatMoney(-left)}`
-          : `Zostáva ${formatMoney(left)}${daysLeft ? ` na ${daysLeft} ${plural(daysLeft, ["deň", "dni", "dní"])} (${formatMoney(left / daysLeft)} na deň)` : ""}`}
+          ? t("ov.over", { amount: formatMoney(-left) })
+          : daysLeft
+            ? tn("ov.leftDays", daysLeft, { amount: formatMoney(left), perDay: formatMoney(left / daysLeft) })
+            : t("ov.left", { amount: formatMoney(left) })}
       </p>
     </div>
   );
@@ -262,7 +265,7 @@ function Insights({ o, search }: { o: Overview; search: string }) {
   if (o.price_changes.length === 0 && o.restock.length === 0) return null;
   return (
     <Section>
-      <SectionTitle title="Ceny a nákupy" />
+      <SectionTitle title={t("ov.pricesTitle")} />
       <div className="flex flex-col gap-3">
         {o.price_changes.length > 0 && (
           <Group>
@@ -284,12 +287,12 @@ function Insights({ o, search }: { o: Overview; search: string }) {
                     <p className="truncate font-medium">{c.name}</p>
                     <p className="truncate text-sm text-text-2">
                       {promo
-                        ? `${c.store_name} · ${formatMoney(c.new_price)}, bežne ${formatMoney(c.old_price)} ${unitLabel(c.basis)}`
-                        : `${c.store_name} · ${formatMoney(c.old_price)} → ${formatMoney(c.new_price)} ${unitLabel(c.basis)}`}
+                        ? t("ov.promoLine", { store: storeLabel(c.store_name), price: formatMoney(c.new_price), old: formatMoney(c.old_price), unit: unitLabel(c.basis) })
+                        : t("ov.changeLine", { store: storeLabel(c.store_name), old: formatMoney(c.old_price), new: formatMoney(c.new_price), unit: unitLabel(c.basis) })}
                     </p>
                   </div>
                   <span className={cx("shrink-0 text-sm font-semibold tabular-nums", up ? "text-warning" : "text-success")}>
-                    {promo ? "akcia" : percent(c.change)}
+                    {promo ? t("ov.promoTag") : percent(c.change)}
                   </span>
                 </Link>
               );
@@ -299,7 +302,7 @@ function Insights({ o, search }: { o: Overview; search: string }) {
         {o.restock.length > 0 && (
           <Card className="p-0">
             <p className="flex items-center gap-2 px-4 pb-1 pt-3 text-sm font-semibold">
-              <Sparkles className="size-4 text-primary" aria-hidden /> Možno ti dochádza
+              <Sparkles className="size-4 text-primary" aria-hidden /> {t("ov.runningLow")}
             </p>
             <div className="divide-y divide-line">
               {o.restock.slice(0, 4).map((r) => {
@@ -311,14 +314,14 @@ function Insights({ o, search }: { o: Overview; search: string }) {
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{r.name}</span>
                         <span className="block truncate text-xs text-text-3">
-                          každých ~{Math.round(r.interval_days)} dní · pred {r.days_since} {plural(r.days_since, ["dňom", "dňami", "dňami"])}
+                          {tn("ov.restockLine", r.days_since, { interval: Math.round(r.interval_days) })}
                         </span>
                       </span>
                     </Link>
                     <button
                       type="button"
-                      aria-label={`Pridať ${r.name} do zoznamu`}
-                      title="Pridať do zoznamu"
+                      aria-label={t("ov.addToListAria", { name: r.name })}
+                      title={t("ov.addToList")}
                       disabled={pending}
                       onClick={() => void addToList(r.name, r.category_id)}
                       className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary active:bg-pressed disabled:opacity-55"
@@ -350,13 +353,13 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
   const positive = list.filter((c) => c.amount > 0);
   const areas = groupByArea(list);
   if (list.length === 0) return null;
-  const compareNote = period.current ? `Zmena oproti rovnakému dňu (${period.prevLabel})` : `Zmena oproti obdobiu ${period.prevLabel}`;
+  const compareNote = period.current ? t("ov.compareSameDay", { label: period.prevLabel }) : t("ov.comparePeriod", { label: period.prevLabel });
   const itemsText = (c: { id: string; items: number }) =>
     c.id.startsWith("_")
-      ? "rozdiel medzi sumou dokladov a položkami"
+      ? t("ov.itemsDiff")
       : c.items > 0
-        ? `${c.items} ${plural(c.items, ["položka", "položky", "položiek"])}`
-        : "platby bez bločku";
+        ? tn("shop.itemCount", c.items)
+        : t("ov.noReceiptPayments");
 
   const categoryRow = (c: (typeof list)[number], top: number, nested = false) => {
     const info = categoryInfo(c.id);
@@ -367,7 +370,7 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
         to={`/analytics/category/${c.id}${search}`}
         icon={nested ? <span className="w-2" /> : <EmojiBadge emoji={info.emoji} color={info.color} />}
         title={nested ? `${info.emoji} ${info.name}` : info.name}
-        subtitle={`${Math.round(share * 100)} % · ${itemsText(c)}`}
+        subtitle={t("ov.catLine", { share: t("fmt.percent", { value: Math.round(share * 100) }), text: itemsText(c) })}
         amount={c.amount}
         share={c.amount / top}
         color={info.color}
@@ -383,9 +386,9 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
   return (
     <Section>
       <SectionTitle
-        title="Na čo išli peniaze"
+        title={t("ov.whereMoney")}
         action={
-          <div role="radiogroup" aria-label="Zobrazenie" className="flex rounded-full bg-surface p-0.5">
+          <div role="radiogroup" aria-label={t("ov.viewAria")} className="flex rounded-full bg-surface p-0.5">
             {(["area", "cat"] as const).map((v) => (
               <button
                 key={v}
@@ -398,7 +401,7 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
                   view === v ? "bg-elevated text-text shadow-sm" : "text-text-2",
                 )}
               >
-                {v === "area" ? "Oblasti" : "Kategórie"}
+                {v === "area" ? t("ov.viewAreas") : t("ov.viewCategories")}
               </button>
             ))}
           </div>
@@ -407,7 +410,7 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
       <Card className="p-0">
         <div className="px-4 pb-1 pt-4">
           <ShareBar
-            label="Podiel na výdavkoch"
+            label={t("ov.shareAria")}
             segments={
               view === "area"
                 ? areas.filter((a) => a.amount > 0).map((a) => ({ id: a.area.id, value: a.amount, color: `oklch(0.68 0.13 ${a.area.hue})` }))
@@ -423,10 +426,13 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
                 const color = `oklch(0.68 0.13 ${a.area.hue})`;
                 const share = o.total > 0 ? a.amount / o.total : 0;
                 const single = a.categories.length === 1 ? a.categories[0]! : null;
-                const subtitle = `${Math.round(share * 100)} % · ${a.categories
-                  .slice(0, 3)
-                  .map((c) => categoryInfo(c.id).name.toLowerCase())
-                  .join(", ")}${a.categories.length > 3 ? "…" : ""}`;
+                const subtitle = t("ov.catLine", {
+                  share: t("fmt.percent", { value: Math.round(share * 100) }),
+                  text: `${a.categories
+                    .slice(0, 3)
+                    .map((c) => categoryInfo(c.id).name.toLowerCase())
+                    .join(", ")}${a.categories.length > 3 ? "…" : ""}`,
+                });
                 if (single) {
                   return (
                     <ShareRow
@@ -478,7 +484,7 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
         </div>
         {view === "cat" && list.length > TOP_CATEGORIES && (
           <button type="button" onClick={() => setAll((v) => !v)} className="w-full border-t border-line px-4 py-3 text-sm font-semibold text-primary active:bg-pressed">
-            {all ? "Zobraziť menej" : `Všetky kategórie (${list.length})`}
+            {all ? t("ov.showLess") : t("ov.allCategories", { n: list.length })}
           </button>
         )}
       </Card>
@@ -486,8 +492,8 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
         <Link to={`/analytics/category/other${search}`} className="mt-2 flex items-center gap-2 px-1 text-sm text-text-2">
           <AlertTriangle className="size-4 shrink-0 text-warning" aria-hidden />
           <span>
-            {o.uncategorized} {plural(o.uncategorized, ["položka je", "položky sú", "položiek je"])} v kategórii Ostatné –{" "}
-            <span className="font-semibold text-primary">zaradiť</span>
+            {tn("ov.uncategorized", o.uncategorized)}{" "}
+            <span className="font-semibold text-primary">{t("ov.sortThem")}</span>
           </span>
         </Link>
       )}
@@ -500,15 +506,15 @@ function Stores({ o, search }: { o: Overview; search: string }) {
   if (o.stores.length === 0) return null;
   return (
     <Section>
-      <SectionTitle title="Kde ste nakupovali" action={o.stores.length > 5 ? <MoreLink to={`/analytics/stores${search}`}>Všetky</MoreLink> : undefined} />
+      <SectionTitle title={t("ov.whereShopped")} action={o.stores.length > 5 ? <MoreLink to={`/analytics/stores${search}`}>{t("ov.allStores")}</MoreLink> : undefined} />
       <Group>
         {o.stores.slice(0, 5).map((s) => (
           <ShareRow
             key={s.key}
             to={`/analytics/store/${encodeURIComponent(s.key)}${search}`}
             icon={<StoreAvatar name={s.key === "_none" ? null : s.name} className="!size-10" />}
-            title={s.name}
-            subtitle={`${s.receipts}× · priemer ${formatMoney(s.receipts ? s.amount / s.receipts : 0)}`}
+            title={storeLabel(s.name)}
+            subtitle={t("ov.storeLine", { count: s.receipts, avg: formatMoney(s.receipts ? s.amount / s.receipts : 0) })}
             amount={s.amount}
             share={s.amount / top}
             color={`var(--color-primary)`}

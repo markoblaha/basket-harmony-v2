@@ -4,6 +4,8 @@ import { Button, Sheet, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { CATEGORIES } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
+import { t } from "@/i18n";
+import { normalizeUnit, unitLabel } from "@/lib/parseItem";
 import { useDeleteItem, useUpdateItem, type Item } from "./api";
 
 /** Úprava položky: názov, množstvo, poznámka, kategória, zmazanie. */
@@ -21,7 +23,7 @@ export function EditItemSheet({ item, listId, onClose }: { item: Item | null; li
     if (!item) return;
     setName(item.name);
     setQuantity(item.quantity != null ? String(item.quantity).replace(".", ",") : "");
-    setUnit(item.unit ?? "");
+    setUnit(item.unit ? unitLabel(item.unit) : "");
     setNote(item.note ?? "");
     setCategoryId(item.category_id);
   }, [item]);
@@ -40,7 +42,7 @@ export function EditItemSheet({ item, listId, onClose }: { item: Item | null; li
         patch: {
           name: name.trim(),
           quantity: qtyNumber,
-          unit: unit.trim() || null,
+          unit: normalizeUnit(unit.trim() || undefined),
           note: note.trim() || null,
           category_id: categoryId,
         },
@@ -53,30 +55,30 @@ export function EditItemSheet({ item, listId, onClose }: { item: Item | null; li
   function destroy() {
     if (!item) return;
     remove.mutate(item.id, {
-      onSuccess: () => toast.show(`„${item.name}“ odstránené`),
+      onSuccess: () => toast.show(t("item.removed", { name: item.name })),
       onError: (err) => toast.show(errorMessage(err), "error"),
     });
     onClose();
   }
 
   return (
-    <Sheet open onClose={onClose} title="Upraviť položku">
+    <Sheet open onClose={onClose} title={t("edit.title")}>
       <form onSubmit={save} className="flex flex-col gap-4">
-        <TextField label="Názov" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} required />
+        <TextField label={t("edit.name")} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} required />
         <div className="grid grid-cols-2 gap-3">
           <TextField
-            label="Množstvo"
+            label={t("edit.quantity")}
             inputMode="decimal"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            error={qtyInvalid ? "Neplatné číslo" : null}
+            error={qtyInvalid ? t("edit.invalidNumber") : null}
           />
-          <TextField label="Jednotka" placeholder="ks, kg, l…" value={unit} onChange={(e) => setUnit(e.target.value)} maxLength={20} />
+          <TextField label={t("edit.unit")} placeholder={t("edit.unitPlaceholder")} value={unit} onChange={(e) => setUnit(e.target.value)} maxLength={20} />
         </div>
-        <TextField label="Poznámka" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
+        <TextField label={t("edit.note")} value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
 
         <fieldset>
-          <legend className="mb-2 text-sm font-medium text-text-2">Kategória</legend>
+          <legend className="mb-2 text-sm font-medium text-text-2">{t("edit.category")}</legend>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map((c) => (
               <button
@@ -93,14 +95,14 @@ export function EditItemSheet({ item, listId, onClose }: { item: Item | null; li
               </button>
             ))}
           </div>
-          <p className="mt-2 text-xs text-text-3">Zmenu kategórie si domácnosť zapamätá pre budúce položky s rovnakým názvom.</p>
+          <p className="mt-2 text-xs text-text-3">{t("edit.categoryHint")}</p>
         </fieldset>
 
         <Button type="submit" size="lg" block disabled={!name.trim() || qtyInvalid}>
-          Uložiť
+          {t("common.save")}
         </Button>
         <Button type="button" variant="danger" block onClick={destroy}>
-          <Trash2 className="size-4" aria-hidden /> Odstrániť položku
+          <Trash2 className="size-4" aria-hidden /> {t("edit.delete")}
         </Button>
       </form>
     </Sheet>

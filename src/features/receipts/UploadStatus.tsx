@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, X } from "lucide-react";
 import { IconButton, cx } from "@/components/ui";
-import { plural } from "./format";
+import { t, tn } from "@/i18n";
 import type { Progress } from "./useBatch";
 
 /** Pás nad spodnou navigáciou: sem patria plávajúce prvky (priebeh nahrávania, tlačidlo +, lišta výberu). */
@@ -18,11 +18,11 @@ export function UploadStatus({ progress, running, onClose }: { progress: Progres
   const c = progress.counts;
   const problems = c.FAILED + c.ERROR;
   const parts = [
-    c.OK > 0 && `${c.OK} v poriadku`,
-    c.NEEDS_REVIEW > 0 && `${c.NEEDS_REVIEW} na kontrolu`,
-    c.DUPLICATE > 0 && `${c.DUPLICATE} už bolo (preskočené)`,
-    c.NOT_A_RECEIPT > 0 && `${c.NOT_A_RECEIPT} nie je nákupný doklad`,
-    problems > 0 && `${problems} sa nepodarilo`,
+    c.OK > 0 && t("upload.ok", { n: c.OK }),
+    c.NEEDS_REVIEW > 0 && t("upload.review", { n: c.NEEDS_REVIEW }),
+    c.DUPLICATE > 0 && t("upload.duplicate", { n: c.DUPLICATE }),
+    c.NOT_A_RECEIPT > 0 && t("upload.notReceipt", { n: c.NOT_A_RECEIPT }),
+    problems > 0 && t("upload.failed", { n: problems }),
   ].filter(Boolean);
   const warn = progress.stopped || problems > 0;
   const percent = progress.total === 0 ? 0 : Math.round((progress.done / progress.total) * 100);
@@ -46,22 +46,21 @@ export function UploadStatus({ progress, running, onClose }: { progress: Progres
         <div className="min-w-0 flex-1 text-sm">
           <p className="font-semibold">
             {running
-              ? `Číta sa ${Math.min(progress.done + 1, progress.total)} z ${progress.total}…`
+              ? t("upload.reading", { current: Math.min(progress.done + 1, progress.total), total: progress.total })
               : progress.stopped
-                ? `Zastavené po ${progress.done} z ${progress.total}`
-                : `Hotovo: ${progress.total} ${plural(progress.total, ["doklad", "doklady", "dokladov"])}`}
+                ? t("upload.stoppedAfter", { done: progress.done, total: progress.total })
+                : tn("upload.doneCount", progress.total)}
           </p>
-          {running && <p className="text-text-2">Môžeš pokojne odísť inde v aplikácii, ale nezatváraj ju.</p>}
+          {running && <p className="text-text-2">{t("upload.leaveHint")}</p>}
           {progress.stopped && (
             <p className="mt-0.5 text-text-2">
-              {progress.stopReason ?? "Spracovanie sa zastavilo."} Už nahraté doklady sú uložené. Po oprave klepni na „Skúsiť znova“
-              a nenahraté súbory pridaj znova (už nahraté sa preskočia).
+              {progress.stopReason ?? t("upload.stoppedDefault")} {t("upload.stoppedHelp")}
             </p>
           )}
           {parts.length > 0 && <p className="mt-0.5 text-text-2">{parts.join(" · ")}</p>}
         </div>
         {!running && (
-          <IconButton label="Zavrieť" onClick={onClose} className="-mr-2 -mt-2">
+          <IconButton label={t("common.close")} onClick={onClose} className="-mr-2 -mt-2">
             <X className="size-5" />
           </IconButton>
         )}

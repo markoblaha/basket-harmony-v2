@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
 import { Banner, Button, Spinner, TextField } from "@/components/ui";
+import { t } from "@/i18n";
 import { useAuth } from "./AuthProvider";
 
 /** Sem vedie odkaz z e-mailu "zabudnuté heslo". Supabase ťa ním dočasne prihlási. */
@@ -18,7 +19,7 @@ export function ResetPasswordPage() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (password.length < 8) {
-      setError("Heslo musí mať aspoň 8 znakov.");
+      setError(t("auth.errPassword"));
       return;
     }
     setBusy(true);
@@ -35,24 +36,24 @@ export function ResetPasswordPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-5 py-10">
-      <h1 className="mb-6 text-2xl font-bold">Nové heslo</h1>
+      <h1 className="mb-6 text-2xl font-bold">{t("auth.resetTitle")}</h1>
       {!session ? (
-        <Banner tone="warning" title="Odkaz je neplatný alebo vypršal">
-          Požiadaj o nový odkaz na prihlasovacej obrazovke.
+        <Banner tone="warning" title={t("auth.resetInvalidTitle")}>
+          {t("auth.resetInvalidText")}
         </Banner>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4">
           <TextField
-            label="Nové heslo"
+            label={t("auth.resetTitle")}
             type="password"
             autoComplete="new-password"
-            hint="Aspoň 8 znakov."
+            hint={t("auth.passwordHint")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
           {error && <Banner tone="danger">{error}</Banner>}
           <Button type="submit" size="lg" block loading={busy}>
-            Uložiť heslo
+            {t("auth.resetSave")}
           </Button>
         </form>
       )}

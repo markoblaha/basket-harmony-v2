@@ -16,6 +16,8 @@ import {
 import { Banner, Button, ErrorState, Group, IconButton, Section, Sheet, Spinner, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { CATEGORIES, category, categoryOrder } from "@/lib/categories";
+import { formatNumber, t, tn } from "@/i18n";
+import { unitLabel } from "@/lib/parseItem";
 import {
   MAX_PAGES,
   useAddReceiptPages,
@@ -32,7 +34,7 @@ import {
 import { ImageViewer } from "./ImageViewer";
 import { ItemSheet } from "./ItemSheet";
 import { StoreAvatar } from "./ReceiptRow";
-import { failureText, formatDate, formatMoney, parseAmount, plural, readErrorMessage, reviewText } from "./format";
+import { failureText, formatDate, formatMoney, parseAmount, readErrorMessage, reviewText } from "./format";
 
 type ItemTarget = { item: ReceiptItem | null; price?: number | null; key: number };
 
@@ -61,7 +63,7 @@ export function ReceiptDetailPage() {
 
   if (query.isPending) return <Spinner />;
   if (query.isError) return <ErrorState error={readErrorMessage(query.error)} onRetry={() => query.refetch()} />;
-  if (!query.data) return <ErrorState error="Tento doklad už neexistuje alebo k nemu nemáš prístup." />;
+  if (!query.data) return <ErrorState error={t("detail.gone")} />;
   const { receipt: r, items: rows } = query.data;
   const pageList = pagesQuery.data && pagesQuery.data.length > 0 ? pagesQuery.data.map((p) => p.image_path) : [r.image_path];
   // Platba z výpisu alebo ručný výdavok: nemá fotku ani položky, má len kategóriu.
@@ -85,19 +87,19 @@ export function ReceiptDetailPage() {
     if (files.length === 0) return;
     await act(
       () => addPages.mutateAsync({ receipt: r, files }),
-      files.length === 1 ? "Strana pridaná, doklad prečítaný znova" : "Strany pridané, doklad prečítaný znova",
+      files.length === 1 ? t("detail.pageAdded") : t("detail.pagesAdded"),
     );
   }
 
   async function onReread() {
     setMenuOpen(false);
-    if (editable && !window.confirm("Doklad sa prečíta znova a položky sa nahradia novým čítaním. Ručné úpravy položiek sa stratia. Pokračovať?")) return;
-    await act(() => reread.mutateAsync(r.id), "Doklad prečítaný znova");
+    if (editable && !window.confirm(t("detail.rereadConfirm"))) return;
+    await act(() => reread.mutateAsync(r.id), t("detail.rereadDone"));
   }
 
   async function onDelete() {
     setMenuOpen(false);
-    if (!window.confirm("Naozaj zmazať tento doklad aj s fotkami?")) return;
+    if (!window.confirm(t("detail.deleteConfirm"))) return;
     await act(async () => {
       await remove.mutateAsync(r);
       navigate("/receipts", { replace: true });
@@ -109,10 +111,10 @@ export function ReceiptDetailPage() {
   return (
     <div className="pb-10">
       <header className="flex items-center justify-between px-2 pt-3">
-        <Link to="/receipts" aria-label="Späť na doklady" className="flex size-11 items-center justify-center rounded-full active:bg-pressed">
+        <Link to="/receipts" aria-label={t("detail.backAria")} className="flex size-11 items-center justify-center rounded-full active:bg-pressed">
           <ArrowLeft className="size-5" />
         </Link>
-        <IconButton label="Ďalšie akcie" onClick={() => setMenuOpen(true)}>
+        <IconButton label={t("detail.more")} onClick={() => setMenuOpen(true)}>
           <MoreHorizontal className="size-6" />
         </IconButton>
       </header>
@@ -123,14 +125,14 @@ export function ReceiptDetailPage() {
             <div className="flex items-start gap-3">
               <StoreAvatar name={r.store_name} className="size-12" />
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-xl font-bold tracking-tight">{r.store_name ?? "Neznámy obchod"}</h1>
+                <h1 className="truncate text-xl font-bold tracking-tight">{r.store_name ?? t("row.unknownStore")}</h1>
                 <p className="text-sm text-text-2">
                   {formatDate(r.purchased_on)}
                   {r.purchased_time ? ` · ${r.purchased_time.slice(0, 5)}` : ""}
                 </p>
               </div>
               {r.status !== "PROCESSING" && (
-                <IconButton label="Upraviť obchod, dátum a sumu" onClick={() => setEditing(true)} className="-mr-2 -mt-1">
+                <IconButton label={t("detail.editAria")} onClick={() => setEditing(true)} className="-mr-2 -mt-1">
                   <Pencil className="size-5" />
                 </IconButton>
               )}
@@ -139,7 +141,7 @@ export function ReceiptDetailPage() {
             {editable && <SumCheck receipt={r} count={rows.length} onAdd={(price) => openItem(null, price)} onEdit={() => setEditing(true)} />}
             {!isDocument && (
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-text-2">
-                <span className="rounded-full bg-surface px-3 py-1">{r.origin === "BANK" ? "🏦 Z bankového výpisu" : "✍️ Zadané ručne"}</span>
+                <span className="rounded-full bg-surface px-3 py-1">{r.origin === "BANK" ? t("detail.fromBank") : t("detail.manualEntry")}</span>
                 {r.category_id && (
                   <Link to={`/analytics/category/${r.category_id}`} className="rounded-full bg-surface px-3 py-1 active:bg-pressed">
                     {category(r.category_id).emoji} {category(r.category_id).name}
@@ -152,11 +154,11 @@ export function ReceiptDetailPage() {
 
         {r.status === "PROCESSING" && (
           <Section>
-            <Banner tone="info" title="Doklad sa číta…">
+            <Banner tone="info" title={t("detail.reading")}>
               <span className="inline-flex items-center gap-2">
-                <Loader2 className="size-4 animate-spin" aria-hidden /> Trvá to zvyčajne niekoľko sekúnd.
+                <Loader2 className="size-4 animate-spin" aria-hidden /> {t("detail.readingHint")}
               </span>
-              {stuck && <p className="mt-1">Trvá to nezvyčajne dlho – skús čítanie spustiť znova cez ⋯ hore.</p>}
+              {stuck && <p className="mt-1">{t("detail.stuck")}</p>}
             </Banner>
           </Section>
         )}
@@ -165,10 +167,10 @@ export function ReceiptDetailPage() {
           <Section>
             <Banner
               tone="danger"
-              title="Doklad sa nepodarilo prečítať"
+              title={t("detail.failedTitle")}
               action={
                 <Button variant="secondary" loading={reread.isPending} onClick={onReread}>
-                  <RefreshCw className="size-4" aria-hidden /> Skúsiť znova
+                  <RefreshCw className="size-4" aria-hidden /> {t("common.retry")}
                 </Button>
               }
             >
@@ -181,26 +183,26 @@ export function ReceiptDetailPage() {
           <Section>
             <Banner
               tone="warning"
-              title="Skontroluj doklad"
+              title={t("detail.checkTitle")}
               action={
                 <Button
                   variant="secondary"
                   loading={confirm.isPending}
-                  onClick={() => act(() => confirm.mutateAsync(r.id), "Doklad potvrdený")}
+                  onClick={() => act(() => confirm.mutateAsync(r.id), t("detail.confirmed"))}
                 >
-                  Je to v poriadku
+                  {t("detail.confirm")}
                 </Button>
               }
             >
               {r.review_reason === "TOTAL_MISMATCH" || r.review_reason === "NO_ITEMS"
-                ? "Oprav položky alebo sumu podľa fotky. Ak sa rozdiel nedá odstrániť (zaokrúhlenie, nečitateľná položka), doklad potvrď."
+                ? t("detail.fixHint")
                 : reviewText(r)}
             </Banner>
           </Section>
         )}
 
         {isDocument && (
-        <Section title={pageList.length > 1 ? `Strany dokladu (${pageList.length})` : "Fotka dokladu"}>
+        <Section title={pageList.length > 1 ? t("detail.pages", { n: pageList.length }) : t("viewer.title")}>
           <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
             {pageList.map((path, i) => (
               <li key={path} className="shrink-0 snap-start">
@@ -216,7 +218,7 @@ export function ReceiptDetailPage() {
                   className="flex h-48 w-32 flex-col items-center justify-center gap-2 rounded-[var(--radius-surface)] border-2 border-dashed border-line-strong/50 px-2 text-center text-sm font-medium text-text-2 active:bg-pressed disabled:opacity-55"
                 >
                   {addPages.isPending ? <Loader2 className="size-6 animate-spin" aria-hidden /> : <Plus className="size-6" aria-hidden />}
-                  Pridať ďalšiu stranu
+                  {t("detail.addPage")}
                 </button>
               </li>
             )}
@@ -225,7 +227,7 @@ export function ReceiptDetailPage() {
         )}
 
         {rows.length > 0 && (
-          <Section title={`Položky (${rows.length})`}>
+          <Section title={t("detail.items", { n: rows.length })}>
             <div className="flex flex-col gap-3">
               {groups.map(([categoryId, list]) => {
                 const cat = category(categoryId);
@@ -253,7 +255,7 @@ export function ReceiptDetailPage() {
         {editable && (
           <Section>
             <Button variant="secondary" block onClick={() => openItem(null)}>
-              <Plus className="size-4" aria-hidden /> Pridať položku
+              <Plus className="size-4" aria-hidden /> {t("ritem.addTitle")}
             </Button>
           </Section>
         )}
@@ -272,13 +274,13 @@ export function ReceiptDetailPage() {
         />
       )}
 
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Akcie s dokladom">
+      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={t("detail.actions")}>
         <div className="flex flex-col gap-2">
           {isDocument && (
             <MenuAction
               icon={<RefreshCw className="size-5" aria-hidden />}
-              title="Prečítať znova"
-              hint="Použi, ak sú údaje zlé. Položky sa nahradia novým čítaním."
+              title={t("detail.reread")}
+              hint={t("detail.rereadHint")}
               disabled={r.status === "PROCESSING" && !stuck}
               onClick={onReread}
             />
@@ -286,8 +288,8 @@ export function ReceiptDetailPage() {
           {isDocument && r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
             <MenuAction
               icon={<Plus className="size-5" aria-hidden />}
-              title="Pridať ďalšiu stranu"
-              hint={`Ak je doklad na viacerých fotkách. Teraz ${pageList.length} ${plural(pageList.length, ["strana", "strany", "strán"])}, najviac ${MAX_PAGES}.`}
+              title={t("detail.addPage")}
+              hint={tn("detail.addPageHint", pageList.length, { max: MAX_PAGES })}
               onClick={() => {
                 setMenuOpen(false);
                 fileInput.current?.click();
@@ -296,8 +298,8 @@ export function ReceiptDetailPage() {
           )}
           <MenuAction
             icon={<Trash2 className="size-5" aria-hidden />}
-            title="Zmazať doklad"
-            hint={isDocument ? "Zmaže doklad aj s fotkami. Nedá sa vrátiť späť." : "Zmaže tento výdavok. Nedá sa vrátiť späť."}
+            title={t("detail.deleteReceipt")}
+            hint={isDocument ? t("detail.deleteReceiptHint") : t("detail.deleteExpenseHint")}
             danger
             onClick={onDelete}
           />
@@ -357,9 +359,9 @@ function SumCheck({
   if (count === 0) {
     return (
       <div className={cx(base, "bg-surface text-text-2")}>
-        <p>Na doklade sa nenašli položky s cenami.</p>
+        <p>{t("sum.noItems")}</p>
         <Button variant="secondary" onClick={() => onAdd(r.total)}>
-          <Plus className="size-4" aria-hidden /> Pridať položku
+          <Plus className="size-4" aria-hidden /> {t("ritem.addTitle")}
         </Button>
       </div>
     );
@@ -368,10 +370,10 @@ function SumCheck({
     return (
       <div className={cx(base, "bg-warning-soft text-warning")}>
         <p className="flex items-center gap-2 font-medium">
-          <AlertTriangle className="size-4 shrink-0" aria-hidden /> Chýba celková suma (súčet položiek je {formatMoney(r.items_sum)}).
+          <AlertTriangle className="size-4 shrink-0" aria-hidden /> {t("sum.noTotal", { sum: formatMoney(r.items_sum) })}
         </p>
         <Button variant="secondary" onClick={onEdit}>
-          Doplniť sumu
+          {t("sum.addTotal")}
         </Button>
       </div>
     );
@@ -381,7 +383,7 @@ function SumCheck({
   if (Math.abs(diff) <= 0.05) {
     return (
       <p className={cx(base, "flex-row items-center gap-2 bg-success-soft font-medium text-success")}>
-        <CheckCircle2 className="size-4 shrink-0" aria-hidden /> Súčet položiek sedí s celkovou sumou
+        <CheckCircle2 className="size-4 shrink-0" aria-hidden /> {t("sum.matches")}
       </p>
     );
   }
@@ -390,18 +392,18 @@ function SumCheck({
       <p className="flex items-start gap-2 font-medium">
         <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
         <span>
-          Položky dávajú {formatMoney(sum)}, na doklade je {formatMoney(r.total)}.{" "}
-          {diff > 0 ? `Chýba ${formatMoney(diff)}.` : `Položky sú o ${formatMoney(-diff)} viac.`}
+          {t("sum.mismatch", { sum: formatMoney(sum), total: formatMoney(r.total) })}{" "}
+          {diff > 0 ? t("sum.missing", { diff: formatMoney(diff) }) : t("sum.over", { diff: formatMoney(-diff) })}
         </span>
       </p>
       <div className="flex flex-wrap gap-2">
         {diff > 0 && (
           <Button variant="secondary" onClick={() => onAdd(diff)}>
-            <Plus className="size-4" aria-hidden /> Pridať chýbajúcu položku
+            <Plus className="size-4" aria-hidden /> {t("sum.addMissing")}
           </Button>
         )}
         <Button variant="secondary" onClick={onEdit}>
-          Opraviť celkovú sumu
+          {t("sum.fixTotal")}
         </Button>
       </div>
     </div>
@@ -409,10 +411,10 @@ function SumCheck({
 }
 
 function ItemRow({ item: it, editable, onClick }: { item: ReceiptItem; editable: boolean; onClick: () => void }) {
-  const amount = it.quantity !== 1 || it.unit ? `${it.quantity} ${it.unit ?? ""}`.trim() : null;
+  const amount = it.quantity !== 1 || it.unit ? `${formatNumber(it.quantity, { maximumFractionDigits: 3 })} ${it.unit ? unitLabel(it.unit) : ""}`.trim() : null;
   const meta = [
     amount && it.unit_price != null ? `${amount} × ${formatMoney(it.unit_price)}` : amount,
-    it.discount > 0 ? `zľava ${formatMoney(it.discount)}` : null,
+    it.discount > 0 ? t("detail.discount", { amount: formatMoney(it.discount) }) : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -440,14 +442,14 @@ function PageCard({ path, label, onOpen }: { path: string; label: string | null;
   const image = useReceiptImage(path);
   const pdf = path.toLowerCase().endsWith(".pdf");
   const box = "relative flex h-48 w-36 items-center justify-center overflow-hidden rounded-[var(--radius-surface)] bg-surface text-text-2";
-  if (image.isError) return <div className={cx(box, "p-3 text-center text-sm")}>Súbor tejto strany sa nenašiel.</div>;
-  if (!image.data) return <div className={cx(box, "animate-pulse")} aria-label="Načítavam" />;
+  if (image.isError) return <div className={cx(box, "p-3 text-center text-sm")}>{t("detail.fileMissing")}</div>;
+  if (!image.data) return <div className={cx(box, "animate-pulse")} aria-label={t("common.loading")} />;
   return pdf ? (
     <a href={image.data} target="_blank" rel="noreferrer" className={cx(box, "flex-col gap-2 font-semibold active:bg-pressed")}>
-      <FileText className="size-8" aria-hidden /> Otvoriť PDF
+      <FileText className="size-8" aria-hidden /> {t("detail.openPdf")}
     </a>
   ) : (
-    <button type="button" onClick={onOpen} className={box} aria-label={label ? `Otvoriť stranu ${label}` : "Otvoriť fotku dokladu"}>
+    <button type="button" onClick={onOpen} className={box} aria-label={label ? t("detail.openPage", { label }) : t("detail.openPhoto")}>
       <img src={image.data} alt="" className="size-full object-cover object-top" />
       {label && <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-bold text-white">{label}</span>}
     </button>
@@ -467,7 +469,7 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
     e.preventDefault();
     const totalNumber = parseAmount(total);
     if (total.trim() !== "" && (totalNumber === null || totalNumber < 0)) {
-      toast.show("Suma musí byť číslo.", "error");
+      toast.show(t("detail.badAmount"), "error");
       return;
     }
     try {
@@ -480,7 +482,7 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
           ...(withCategory ? { category_id: categoryId } : {}),
         },
       });
-      toast.show("Uložené", "success");
+      toast.show(t("detail.saved"), "success");
       onClose();
     } catch (err) {
       toast.show(readErrorMessage(err), "error");
@@ -488,15 +490,15 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title={withCategory ? "Upraviť výdavok" : "Upraviť doklad"}>
+    <Sheet open={open} onClose={onClose} title={withCategory ? t("detail.editExpense") : t("detail.editReceipt")}>
       <form onSubmit={save} className="flex flex-col gap-4">
-        <TextField label="Obchod" value={store} onChange={(e) => setStore(e.target.value)} maxLength={120} />
-        <TextField label="Dátum nákupu" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <TextField label="Celková suma (€)" inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} />
+        <TextField label={t("detail.store")} value={store} onChange={(e) => setStore(e.target.value)} maxLength={120} />
+        <TextField label={t("detail.purchaseDate")} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <TextField label={t("detail.total")} inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} />
         {withCategory && (
           <div className="flex flex-col gap-1.5">
             <label htmlFor="receipt-category" className="text-sm font-medium text-text-2">
-              Kategória
+              {t("edit.category")}
             </label>
             <select
               id="receipt-category"
@@ -513,7 +515,7 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
           </div>
         )}
         <Button type="submit" size="lg" block loading={update.isPending}>
-          Uložiť
+          {t("common.save")}
         </Button>
       </form>
     </Sheet>

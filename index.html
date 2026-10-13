@@ -3,8 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f1ede5" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f1ede5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -14,6 +13,28 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>Basket Harmony</title>
+    <!--
+      Farebný režim a jazyk sa nastavia ešte pred prvým vykreslením, aby pri tmavom
+      režime nebliklo svetlé pozadie. Rovnakú logiku má aj src/theme/ThemeProvider.tsx
+      (voľba "bh.theme": light | dark | system) a src/i18n/core.ts (voľba "bh.locale").
+    -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var theme = null;
+        var locale = null;
+        try {
+          theme = localStorage.getItem("bh.theme");
+          locale = localStorage.getItem("bh.locale");
+        } catch (e) {}
+        var dark = theme === "dark" || (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        root.dataset.theme = dark ? "dark" : "light";
+        root.style.colorScheme = dark ? "dark" : "light";
+        root.lang = locale === "en" ? "en" : "sk";
+        var bar = document.querySelector('meta[name="theme-color"]');
+        if (bar) bar.setAttribute("content", dark ? "#121110" : "#f1ede5");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

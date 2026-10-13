@@ -5,17 +5,18 @@ import { Button, ErrorState, Group, Section, Spinner, cx } from "@/components/ui
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { normalizeName } from "@/lib/categories";
-import { formatMoney, formatShortDate, plural, readErrorMessage } from "@/features/receipts/format";
+import { formatMoney, formatShortDate, readErrorMessage } from "@/features/receipts/format";
+import { t, tn, type Key } from "@/i18n";
 import { useMergeProducts, useProducts, type ProductSummary } from "./api";
-import { Card, EmojiBadge, categoryInfo, percent, sizeLabel, unitLabel } from "./bits";
+import { Card, EmojiBadge, categoryInfo, percent, sizeLabel, storeLabel, unitLabel } from "./bits";
 import { usePeriod } from "./period";
 
 type Sort = "frequent" | "spent" | "change" | "recent";
-const SORTS: { id: Sort; label: string }[] = [
-  { id: "frequent", label: "Najčastejšie" },
-  { id: "spent", label: "Najviac míňam" },
-  { id: "change", label: "Zmena ceny" },
-  { id: "recent", label: "Naposledy" },
+const SORTS: { id: Sort; label: Key }[] = [
+  { id: "frequent", label: "pt.sort.frequent" },
+  { id: "spent", label: "pt.sort.spent" },
+  { id: "change", label: "pt.sort.change" },
+  { id: "recent", label: "pt.sort.recent" },
 ];
 const PAGE = 60;
 
@@ -52,10 +53,10 @@ export function ProductsTab() {
     const [target, ...sources] = picked;
     const names = (products.data ?? []).filter((p) => picked.includes(p.id)).map((p) => p.name);
     if (!target || sources.length === 0) return;
-    if (!window.confirm(`Spojiť ${picked.length} produkty do jedného (${names[0]})? Všetky nákupy a zápisy z bločkov sa presunú k nemu.`)) return;
+    if (!window.confirm(tn("pt.mergeConfirm", picked.length, { name: names[0] ?? "" }))) return;
     try {
       await merge.mutateAsync({ target, sources });
-      toast.show("Produkty spojené", "success");
+      toast.show(t("pt.merged"), "success");
       setSelecting(false);
       setPicked([]);
     } catch (err) {
@@ -79,12 +80,12 @@ export function ProductsTab() {
               setQuery(e.target.value);
               setLimit(PAGE);
             }}
-            placeholder="Hľadať produkt, značku alebo obchod"
-            aria-label="Hľadať produkt"
+            placeholder={t("pt.searchPlaceholder")}
+            aria-label={t("pt.searchAria")}
             className="min-h-11 w-full rounded-full border border-line-strong/40 bg-elevated pl-10 pr-4 text-base outline-none placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/25"
           />
         </div>
-        <div className="mt-2 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Zoradenie">
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1" role="group" aria-label={t("pt.sortAria")}>
           {SORTS.map((s) => (
             <button
               key={s.id}
@@ -96,14 +97,13 @@ export function ProductsTab() {
                 sort === s.id ? "bg-primary text-on-primary" : "bg-surface text-text-2 active:bg-pressed",
               )}
             >
-              {s.label}
+              {t(s.label)}
             </button>
           ))}
         </div>
         <div className="mt-1 flex items-center justify-between gap-2 px-1 text-sm text-text-2">
           <span>
-            {list.length} {plural(list.length, ["produkt", "produkty", "produktov"])}
-            {list.length !== all.length ? ` z ${all.length}` : ""}
+            {list.length !== all.length ? tn("pt.countOf", list.length, { total: all.length }) : tn("pt.count", list.length)}
           </span>
           <button
             type="button"
@@ -113,23 +113,23 @@ export function ProductsTab() {
             }}
             className="font-semibold text-primary"
           >
-            {selecting ? "Zrušiť výber" : "Spojiť rovnaké"}
+            {selecting ? t("pt.cancelSelect") : t("pt.mergeSame")}
           </button>
         </div>
         {selecting && (
           <p className="mt-1 px-1 text-xs text-text-3">
-            Klepni na produkty, ktoré sú to isté (napr. rovnaké mlieko z dvoch obchodov). Prvý vybraný zostane.
+            {t("pt.mergeHint")}
           </p>
         )}
       </Section>
 
       {all.length === 0 ? (
         <Section>
-          <Card className="py-8 text-center text-text-2">Zatiaľ tu nie sú žiadne produkty. Pribudnú s prvými prečítanými bločkami.</Card>
+          <Card className="py-8 text-center text-text-2">{t("pt.empty")}</Card>
         </Section>
       ) : list.length === 0 ? (
         <p className="px-6 py-8 text-center text-text-2">
-          {sort === "change" && !query ? "Zatiaľ nie je s čím porovnať – produkt treba kúpiť aspoň dvakrát v tom istom obchode." : "Nič sa nenašlo."}
+          {sort === "change" && !query ? t("pt.noCompare") : t("pt.nothingFound")}
         </p>
       ) : (
         <Section>
@@ -148,7 +148,7 @@ export function ProductsTab() {
           </Group>
           {list.length > limit && (
             <Button variant="secondary" block className="mt-2" onClick={() => setLimit(limit + PAGE)}>
-              Zobraziť ďalšie ({list.length - limit})
+              {t("pt.more", { n: list.length - limit })}
             </Button>
           )}
         </Section>
@@ -158,7 +158,7 @@ export function ProductsTab() {
         <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30">
           <div className="pointer-events-auto mx-auto max-w-2xl px-4 pb-3">
             <Button block size="lg" className="shadow-lg" disabled={picked.length < 2} loading={merge.isPending} onClick={doMerge}>
-              <Merge className="size-5" aria-hidden /> {picked.length < 2 ? "Vyber aspoň 2 produkty" : `Spojiť ${picked.length} produkty`}
+              <Merge className="size-5" aria-hidden /> {picked.length < 2 ? t("pt.pickTwo") : tn("pt.mergeN", picked.length)}
             </Button>
           </div>
         </div>
@@ -191,20 +191,20 @@ function ProductRow({
         <p className="truncate font-medium">{p.name}</p>
         <p className="truncate text-xs text-text-3">
           {meta ? `${meta} · ` : ""}
-          {p.purchases}× · naposledy {formatShortDate(p.last_date)} · {p.last_store}
+          {t("pt.rowLine", { count: p.purchases, date: formatShortDate(p.last_date), store: storeLabel(p.last_store) })}
         </p>
       </div>
       <div className="flex shrink-0 flex-col items-end">
         {sort === "spent" ? (
           <>
             <span className="font-semibold tabular-nums">{formatMoney(p.spent)}</span>
-            <span className="text-xs text-text-3">spolu za {p.purchases}×</span>
+            <span className="text-xs text-text-3">{t("pt.spentTotal", { n: p.purchases })}</span>
           </>
         ) : (
           <span className="font-semibold tabular-nums">{formatMoney(p.last_price)}</span>
         )}
         {sort === "spent" ? null : p.price_kind === "PROMO" && p.change !== null ? (
-          <span className="text-xs font-semibold text-success">akcia · bežne {formatMoney(p.usual_price)}</span>
+          <span className="text-xs font-semibold text-success">{t("pt.promoUsual", { price: formatMoney(p.usual_price) })}</span>
         ) : p.change !== null && Math.abs(p.change) >= 0.01 ? (
           <span className={cx("text-xs font-semibold tabular-nums", p.change > 0 ? "text-warning" : "text-success")}>
             {p.change > 0 ? "▲" : "▼"} {percent(p.change)}

@@ -1,26 +1,20 @@
 import { errorMessage } from "@/lib/errors";
+import { formatCalendarDate, formatEuro, t } from "@/i18n";
 import type { Receipt } from "./api";
 
-const money = new Intl.NumberFormat("sk-SK", { style: "currency", currency: "EUR" });
-export const formatMoney = (n: number | null | undefined) => (n == null ? "—" : money.format(n));
+export const formatMoney = (n: number | null | undefined) => (n == null ? "—" : formatEuro(n));
 
-/** "2026-09-13" -> "13. 9. 2026" (bez posunu časového pásma). */
+/** "2026-09-13" -> "13. 9. 2026" / "13/09/2026" (bez posunu časového pásma). */
 export function formatDate(iso: string | null): string {
-  if (!iso) return "Bez dátumu";
-  const [y, m, d] = iso.split("-").map(Number);
-  return `${d}. ${m}. ${y}`;
+  if (!iso) return t("receipts.noDate");
+  return formatCalendarDate(iso, { day: "numeric", month: "numeric", year: "numeric" });
 }
 
 /** "2026-10-13" -> "13. 10." (rok len keď nie je tohtoročný). */
 export function formatShortDate(iso: string | null): string {
-  if (!iso) return "Bez dátumu";
-  const [y, m, d] = iso.split("-").map(Number);
-  return y === new Date().getFullYear() ? `${d}. ${m}.` : `${d}. ${m}. ${y}`;
-}
-
-/** Skloňovanie podľa počtu: plural(3, ["doklad", "doklady", "dokladov"]) -> "doklady" */
-export function plural(n: number, forms: [string, string, string]): string {
-  return n === 1 ? forms[0] : n >= 2 && n <= 4 ? forms[1] : forms[2];
+  if (!iso) return t("receipts.noDate");
+  const year = Number(iso.slice(0, 4));
+  return formatCalendarDate(iso, year === new Date().getFullYear() ? { day: "numeric", month: "numeric" } : { day: "numeric", month: "numeric", year: "numeric" });
 }
 
 /** Iniciálky obchodu do farebného kruhu: "Lidl Slovensko" -> "LS", "Tesco" -> "TE". */
@@ -39,84 +33,48 @@ export function storeHue(name: string | null | undefined): number {
   return h;
 }
 
+const REASONS = ["TOTAL_MISMATCH", "NO_ITEMS", "STORE_MISSING", "DATE_SUSPECT", "POSSIBLE_DUPLICATE"] as const;
+type Reason = (typeof REASONS)[number];
+const asReason = (r: string | null | undefined): Reason | null => REASONS.find((x) => x === r) ?? null;
+
 /** Krátky dôvod pre zoznam ("Súčet nesedí"). */
 export function shortReason(r: Receipt): string {
-  switch (r.review_reason) {
-    case "TOTAL_MISMATCH":
-      return "Súčet nesedí";
-    case "NO_ITEMS":
-      return "Bez položiek";
-    case "STORE_MISSING":
-      return "Chýba obchod";
-    case "DATE_SUSPECT":
-      return "Skontrolovať dátum";
-    case "POSSIBLE_DUPLICATE":
-      return "Možná duplicita";
-    default:
-      return "Skontrolovať";
-  }
+  const reason = asReason(r.review_reason);
+  return reason ? t(`receipts.short.${reason}`) : t("receipts.short.default");
 }
 
 /** Čo má človek spraviť ("Doplniť obchod") – jedna konkrétna akcia na riadok schránky. */
 export function nextStep(r: Receipt): string {
-  if (r.status === "FAILED") return r.error_text?.startsWith("NOT_A_RECEIPT") ? "Nie je doklad" : "Čítanie sa nepodarilo";
-  switch (r.review_reason) {
-    case "TOTAL_MISMATCH":
-      return "Skontrolovať súčet";
-    case "NO_ITEMS":
-      return "Doplniť položky";
-    case "STORE_MISSING":
-      return "Doplniť obchod";
-    case "DATE_SUSPECT":
-      return "Skontrolovať dátum";
-    case "POSSIBLE_DUPLICATE":
-      return "Možná duplicita";
-    default:
-      return "Skontrolovať";
-  }
+  if (r.status === "FAILED") return r.error_text?.startsWith("NOT_A_RECEIPT") ? t("receipts.next.NOT_A_RECEIPT") : t("receipts.next.FAILED");
+  const reason = asReason(r.review_reason);
+  return reason ? t(`receipts.next.${reason}`) : t("receipts.next.default");
 }
 
+/** "október 2026" / "October 2026" – mesiac a rok z dátumu "2026-10-13" alebo "2026-10". */
 export function monthLabel(iso: string | null): string {
-  if (!iso) return "Bez dátumu";
-  const [y, m] = iso.split("-").map(Number);
-  const names = ["január", "február", "marec", "apríl", "máj", "jún", "júl", "august", "september", "október", "november", "december"];
-  return `${names[m! - 1]} ${y}`;
+  if (!iso) return t("receipts.noDate");
+  return formatCalendarDate(`${iso.slice(0, 7)}-01`, { month: "long", year: "numeric" });
 }
 
 /** Prečo bloček čaká na kontrolu – vysvetlenie pre človeka. */
 export function reviewText(r: Receipt): string {
-  switch (r.review_reason) {
-    case "TOTAL_MISMATCH":
-      return `Súčet položiek (${formatMoney(r.items_sum)}) nesedí s celkovou sumou (${formatMoney(r.total)}). Porovnaj s fotkou.`;
-    case "NO_ITEMS":
-      return "Nepodarilo sa prečítať položky s cenami (doklad ich možno neobsahuje). Čo sa dalo prečítať, je uložené. Doplň obchod, dátum a sumu cez „Upraviť“ alebo pridaj ďalšiu stranu.";
-    case "STORE_MISSING":
-      return "Na doklade sa nenašiel obchod. Doplň ho cez „Upraviť“. Ak je na ďalšej strane, pridaj ju alebo doklad spoj s ďalším.";
-    case "DATE_SUSPECT":
-      return "Dátum chýba, vyzerá nepravdepodobne alebo je starší ako 18 mesiacov. Skontroluj ho podľa dokladu.";
-    case "POSSIBLE_DUPLICATE":
-      return "Vyzerá to na duplicitu: rovnaký obchod, dátum a suma už v zozname je.";
-    default:
-      return "Skontroluj bloček podľa fotky.";
-  }
+  const reason = asReason(r.review_reason);
+  if (reason === "TOTAL_MISMATCH") return t("receipts.review.TOTAL_MISMATCH", { sum: formatMoney(r.items_sum), total: formatMoney(r.total) });
+  return reason ? t(`receipts.review.${reason}`) : t("receipts.review.default");
 }
 
 /** Chyba čítania zo servera -> veta pre človeka (technický detail zostáva v databáze). */
 export function failureText(error: string | null): string {
-  if (!error) return "Čítanie sa nepodarilo.";
-  if (error.startsWith("NOT_A_RECEIPT")) return "Nepodarilo sa nájsť nákupný doklad s cenami položiek (bloček, faktúru ani potvrdenie objednávky). Ak ho tam vidíš, skús „Prečítať znova“, inak ho zmaž.";
-  if (error.startsWith("GEMINI_402"))
-    return "Na účte služby Gemini došiel predplatený kredit. Dobi kredit v Google AI Studio (Billing) alebo vymeň kľúč, potom spusti čítanie znova.";
-  if (error.startsWith("GEMINI_429")) return "Služba na čítanie je práve preťažená alebo je vyčerpaný limit. Skús o chvíľu.";
-  if (error.startsWith("GEMINI_API_KEY_MISSING")) return "Chýba kľúč služby na čítanie bločkov (GEMINI_API_KEY).";
-  if (error.startsWith("GEMINI_400") || error.startsWith("GEMINI_403") || error.startsWith("GEMINI_404"))
-    return "Služba na čítanie bločkov odmietla požiadavku (nastavenie kľúča alebo modelu).";
-  if (error.startsWith("FILES_TOO_LARGE"))
-    return "Strany dokladu sú spolu príliš veľké. Zmenši ich alebo ich rozdeľ na dva doklady.";
-  if (error.startsWith("IMAGE_MISSING")) return "Súbor sa nenašiel v úložisku.";
-  if (/^GEMINI_(TIMEOUT|NETWORK|EMPTY|BAD_JSON|5\d\d)/.test(error))
-    return "Služba na čítanie sa tentoraz neozvala alebo vrátila nepoužiteľnú odpoveď. Skús čítanie spustiť znova.";
-  return "Čítanie sa nepodarilo. Skús ho spustiť znova.";
+  if (!error) return t("receipts.fail.default");
+  if (error.startsWith("NOT_A_RECEIPT")) return t("receipts.fail.NOT_A_RECEIPT");
+  if (error.startsWith("GEMINI_402")) return t("receipts.fail.GEMINI_402");
+  if (error.startsWith("GEMINI_429")) return t("receipts.fail.GEMINI_429");
+  if (error.startsWith("GEMINI_API_KEY_MISSING")) return t("receipts.fail.GEMINI_API_KEY_MISSING");
+  if (error.startsWith("GEMINI_400") || error.startsWith("GEMINI_403") || error.startsWith("GEMINI_404")) return t("receipts.fail.rejected");
+  if (error.startsWith("FILES_TOO_LARGE")) return t("receipts.fail.FILES_TOO_LARGE");
+  if (error.startsWith("IMAGE_MISSING")) return t("receipts.fail.IMAGE_MISSING");
+  if (/^GEMINI_(TIMEOUT|NETWORK|EMPTY|BAD_JSON|5\d\d)/.test(error)) return t("receipts.fail.transient");
+  return t("receipts.fail.other");
 }
 
 /** Chyba akcie s dokladom -> veta pre človeka (chyby čítania majú vlastné texty, ostatné ide cez errorMessage). */

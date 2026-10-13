@@ -3,7 +3,9 @@
  * aby tlačidlá, polia a hlášky vyzerali a správali sa všade rovnako.
  */
 import { forwardRef, useEffect, useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Info, Loader2, WifiOff, X } from "lucide-react";
+import { Link } from "react-router";
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Info, Loader2, WifiOff, X } from "lucide-react";
+import { t } from "@/i18n";
 
 const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
 export { cx };
@@ -140,17 +142,17 @@ export function Banner({
 export function OfflineBanner() {
   return (
     <div role="status" className="flex items-center gap-2 bg-warning-soft px-4 py-2 text-sm font-medium text-warning">
-      <WifiOff className="size-4" aria-hidden /> Si offline – zmeny sa neuložia, kým sa nepripojíš.
+      <WifiOff className="size-4" aria-hidden /> {t("status.offline")}
     </div>
   );
 }
 
 // ------------------------------------------------------------------ Stavové obrazovky
-export function Spinner({ label = "Načítavam…" }: { label?: string }) {
+export function Spinner({ label }: { label?: string }) {
   return (
     <div role="status" className="flex items-center justify-center gap-2 py-16 text-text-3">
       <Loader2 className="size-5 animate-spin" aria-hidden />
-      <span>{label}</span>
+      <span>{label ?? t("common.loading")}</span>
     </div>
   );
 }
@@ -172,11 +174,11 @@ export function ErrorState({ error, onRetry }: { error: string; onRetry?: () => 
     <div className="p-4">
       <Banner
         tone="danger"
-        title="Nepodarilo sa načítať údaje"
+        title={t("common.loadFailed")}
         action={
           onRetry && (
             <Button variant="secondary" onClick={onRetry}>
-              Skúsiť znova
+              {t("common.retry")}
             </Button>
           )
         }
@@ -188,10 +190,30 @@ export function ErrorState({ error, onRetry }: { error: string; onRetry?: () => 
 }
 
 // ------------------------------------------------------------------ Page
-export function PageHeader({ title, subtitle, trailing }: { title: string; subtitle?: ReactNode; trailing?: ReactNode }) {
+export function PageHeader({
+  title,
+  subtitle,
+  trailing,
+  back,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  trailing?: ReactNode;
+  /** Adresa, kam vedie šípka späť (podstránky sekcie Viac). */
+  back?: string;
+}) {
   return (
     <header className="flex items-start justify-between gap-3 px-4 pb-3 pt-5">
-      <div className="min-w-0">
+      {back && (
+        <Link
+          to={back}
+          aria-label={t("common.back")}
+          className="-ml-2 mt-0.5 grid size-11 shrink-0 place-items-center rounded-[var(--radius-control)] text-text-2 active:bg-pressed"
+        >
+          <ChevronLeft className="size-6" aria-hidden />
+        </Link>
+      )}
+      <div className="min-w-0 flex-1">
         <h1 className="truncate text-[1.75rem] font-extrabold leading-tight tracking-[-0.03em]">{title}</h1>
         {subtitle && <div className="mt-0.5 text-sm text-text-2">{subtitle}</div>}
       </div>
@@ -221,13 +243,19 @@ export function SectionTitle({ children, trailing, className }: { children: Reac
 }
 
 /** Iniciála človeka zo skupiny – fialová patrí len ľuďom. */
-export function Avatar({ name, me, size = "md" }: { name: string; me?: boolean; size?: "sm" | "md" | "lg" }) {
+export function Avatar({ name, me, size = "md" }: { name: string; me?: boolean; size?: "sm" | "md" | "lg" | "xl" }) {
   return (
     <span
       aria-hidden
       className={cx(
         "grid shrink-0 place-items-center font-bold",
-        size === "sm" ? "size-6 rounded-md text-[0.6875rem]" : size === "lg" ? "size-9 rounded-[0.6875rem] text-sm" : "size-7 rounded-lg text-xs",
+        size === "sm"
+          ? "size-6 rounded-md text-[0.6875rem]"
+          : size === "lg"
+            ? "size-9 rounded-[0.6875rem] text-sm"
+            : size === "xl"
+              ? "size-14 rounded-2xl text-xl"
+              : "size-7 rounded-lg text-xs",
         me ? "bg-primary text-on-primary" : "bg-person text-on-primary",
       )}
     >
@@ -241,6 +269,57 @@ export function Group({ children, className }: { children: ReactNode; className?
     <div className={cx("divide-y divide-line overflow-hidden rounded-[var(--radius-surface)] border border-line bg-elevated", className)}>
       {children}
     </div>
+  );
+}
+
+/**
+ * Riadok zoznamu nastavení: ikona, názov, hodnota vpravo a šípka, ak vedie ďalej.
+ * Je odkaz (`to`), tlačidlo (`onClick`) alebo obyčajný riadok; vždy min. 56 px vysoký pre palec.
+ */
+export function Row({
+  icon,
+  label,
+  value,
+  to,
+  onClick,
+  tone = "default",
+  chevron,
+}: {
+  icon?: ReactNode;
+  label: ReactNode;
+  value?: ReactNode;
+  to?: string;
+  onClick?: () => void;
+  tone?: "default" | "danger";
+  /** Šípka vpravo; predvolene sa ukáže pri odkaze. */
+  chevron?: boolean;
+}) {
+  const body = (
+    <>
+      {icon && (
+        <span className={cx("shrink-0", tone === "danger" ? "text-danger" : "text-text-2")} aria-hidden>
+          {icon}
+        </span>
+      )}
+      <span className="min-w-0 flex-1 truncate text-left font-medium">{label}</span>
+      {value != null && <span className="max-w-[55%] shrink-0 truncate text-sm text-text-2">{value}</span>}
+      {(chevron ?? !!to) && <ChevronRight className="size-4 shrink-0 text-text-3" aria-hidden />}
+    </>
+  );
+  const className = cx(
+    "flex min-h-14 w-full items-center gap-3 px-4 text-left transition-colors active:bg-pressed",
+    tone === "danger" && "text-danger",
+  );
+  if (to)
+    return (
+      <Link to={to} className={className}>
+        {body}
+      </Link>
+    );
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {body}
+    </button>
   );
 }
 
@@ -291,7 +370,7 @@ export function Sheet({
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-xl font-extrabold tracking-[-0.02em]">{title}</h2>
           {dismissible && (
-            <IconButton label="Zavrieť" onClick={onClose} className="-mr-2">
+            <IconButton label={t("common.close")} onClick={onClose} className="-mr-2">
               <X className="size-5" />
             </IconButton>
           )}

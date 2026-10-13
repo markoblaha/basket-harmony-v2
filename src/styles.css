@@ -5,7 +5,9 @@
  * Dizajnový systém „Papier“ (v3): teplý papier, atrament a jedna signálna farba.
  * Farby sú "role" (pozadie, povrch, primárna akcia, úspech...), nie konkrétne
  * odtiene – komponenty používajú role, takže tmavý režim („Atrament“) je len
- * iná sada hodnôt.
+ * iná sada hodnôt. Sadu vyberá atribút data-theme na <html>: nastavuje ho
+ * ThemeProvider (a pred prvým vykreslením skript v index.html) podľa voľby
+ * Svetlá / Tmavá / Podľa systému v sekcii Viac.
  *
  * Pravidlá:
  *  - primary (atrament) = potvrdzovacie akcie a aktívne stavy (Pridať, ťuknutá dlaždica)
@@ -79,37 +81,48 @@
   --info-soft: #e3eaf2;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --bg: #121110;
-    --surface: #24211e;
-    --elevated: #1c1a18;
-    --pressed: #2e2a26;
-    --text: #f1ece3;
-    --text-2: #b3aa9e;
-    --text-3: #978e83;
-    --line: #2e2a26;
-    --line-strong: #4a443e;
-    --primary: #f1ece3;
-    --primary-pressed: #d9d2c6;
-    --primary-soft: #2e2a26;
-    --on-primary: #121110;
-    --accent: #ff6a45;
-    --accent-pressed: #e85a37;
-    --accent-soft: #3a1f17;
-    --on-accent: #1a0e0a;
-    --person: #b39ddb;
-    --person-soft: #2d2440;
-    --success: #7fca91;
-    --success-soft: #1e2e22;
-    --warning: #e2b45c;
-    --warning-soft: #33281a;
-    --danger: #ff8a6b;
-    --danger-soft: #3a1f17;
-    --info: #9bb8dc;
-    --info-soft: #1e2733;
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121110;
+  --surface: #24211e;
+  --elevated: #1c1a18;
+  --pressed: #2e2a26;
+  --text: #f1ece3;
+  --text-2: #b3aa9e;
+  --text-3: #978e83;
+  --line: #2e2a26;
+  --line-strong: #4a443e;
+  --primary: #f1ece3;
+  --primary-pressed: #d9d2c6;
+  --primary-soft: #2e2a26;
+  --on-primary: #121110;
+  --accent: #ff6a45;
+  --accent-pressed: #e85a37;
+  --accent-soft: #3a1f17;
+  --on-accent: #1a0e0a;
+  --person: #b39ddb;
+  --person-soft: #2d2440;
+  --success: #7fca91;
+  --success-soft: #1e2e22;
+  --warning: #e2b45c;
+  --warning-soft: #33281a;
+  --danger: #ff8a6b;
+  --danger-soft: #3a1f17;
+  --info: #9bb8dc;
+  --info-soft: #1e2733;
+}
+
+/* Pri ručnom prepnutí témy sa farby na 0,3 s prelínajú; pri štarte appky nie. */
+:root.theme-fade,
+:root.theme-fade *,
+:root.theme-fade *::before,
+:root.theme-fade *::after {
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease,
+    fill 0.3s ease,
+    stroke 0.3s ease !important;
 }
 
 @layer base {

@@ -3,6 +3,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { errorMessage } from "@/lib/errors";
+import { formatNumber, t } from "@/i18n";
 import { useDeleteItem, useUpdateItem, type Item } from "./api";
 import { countOf, isCountable, qtyLabel } from "./qty";
 
@@ -42,7 +43,7 @@ export function PlanList({
     const next = countOf(item.quantity) + delta;
     if (next <= 0) {
       remove.mutate(item.id, {
-        onSuccess: () => toast.show(`„${item.name}“ odstránené`),
+        onSuccess: () => toast.show(t("item.removed", { name: item.name })),
         onError: (err) => toast.show(errorMessage(err), "error"),
       });
       return;
@@ -66,11 +67,11 @@ export function PlanList({
                 fresh.has(item.id) && "[animation:bh-flash_.9s_ease]",
               )}
             >
-              <button type="button" onClick={() => onEdit(item)} className="min-w-0 flex-1 text-left" aria-label={`Upraviť ${item.name}`}>
+              <button type="button" onClick={() => onEdit(item)} className="min-w-0 flex-1 text-left" aria-label={t("item.edit", { name: item.name })}>
                 <span className="block truncate text-[0.96875rem] font-semibold leading-tight">{item.name}</span>
                 {(by || item.note) && (
                   <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[0.78125rem] text-text-2">
-                    {by && <span className="rounded-[0.3125rem] bg-person-soft px-1.5 py-px text-[0.6875rem] font-bold text-person">Pridal(a): {by}</span>}
+                    {by && <span className="rounded-[0.3125rem] bg-person-soft px-1.5 py-px text-[0.6875rem] font-bold text-person">{t("item.addedBy", { name: by })}</span>}
                     {item.note && <span className="truncate">{item.note}</span>}
                   </span>
                 )}
@@ -80,7 +81,7 @@ export function PlanList({
                 <div className="flex shrink-0 items-center rounded-[0.6875rem] border border-line bg-bg">
                   <button
                     type="button"
-                    aria-label={n === 1 ? `Odstrániť ${item.name}` : `Menej: ${item.name}`}
+                    aria-label={n === 1 ? t("item.remove", { name: item.name }) : t("item.fewer", { name: item.name })}
                     onClick={() => change(item, -1)}
                     className={cx("grid size-10 place-items-center rounded-[0.625rem] transition-transform active:scale-[0.85] active:bg-pressed", n === 1 && "text-danger")}
                   >
@@ -89,7 +90,7 @@ export function PlanList({
                   <Bump value={n} />
                   <button
                     type="button"
-                    aria-label={`Viac: ${item.name}`}
+                    aria-label={t("item.more", { name: item.name })}
                     onClick={() => change(item, 1)}
                     className="grid size-10 place-items-center rounded-[0.625rem] transition-transform active:scale-[0.85] active:bg-pressed"
                   >
@@ -124,7 +125,7 @@ export function Bump({ value, className }: { value: number; className?: string }
   const changed = first.current !== value;
   return (
     <span key={value} className={cx("min-w-8 text-center text-[0.9375rem] font-bold", changed && "[animation:bh-pop_.35s_ease]", className)}>
-      {value.toLocaleString("sk-SK", { maximumFractionDigits: 2 })}
+      {formatNumber(value, { maximumFractionDigits: 2 })}
     </span>
   );
 }

@@ -12,8 +12,18 @@ a pri krokoch, ktoré musí urobiť on, píš presne kam kliknúť a prečo.
   pozvánky) sú v SQL funkciách + RLS. Frontend ich len volá a zobrazuje výsledok.
 - **Žiadne surové dotazy v komponentoch.** Prístup k dátam je v `features/*/api.ts`.
 - **Každá chyba musí byť viditeľná** (toast/banner, text cez `lib/errors.ts`).
-- Texty v rozhraní sú po slovensky; vyhýbaj sa skloňovaniu mien v šablónach
-  (píš „Nakupuje: Lucia“, nie „Požiadať Lucia“).
+- **Každý text v rozhraní ide cez `t("kľúč")`** (`src/i18n`), nikdy natvrdo v komponente.
+  Nový text = kľúč v slovenskom aj anglickom slovníku (`src/i18n/sk/<modul>.ts` a
+  `src/i18n/en/<modul>.ts`); slovenský je zdroj pravdy a test v `i18n.test.ts` zlyhá,
+  ak niečo v angličtine chýba. Kľúče majú predponu modulu (`more.`, `shop.`, `stmt.`…),
+  množné číslo sa rieši cez `tn("kľúč", n)` s tvarmi `.one/.few/.other`.
+  Dátumy, čísla a eurá formátuj cez `formatDateTime`/`formatNumber`/`formatEuro`, nie ručne.
+- Predvolený jazyk je slovenčina; jazyk a vzhľad (svetlý/tmavý/podľa systému) sa ukladajú
+  v zariadení (`bh.locale`, `bh.theme`). Farby používaj len cez role z `styles.css`,
+  aby fungovali v oboch vzhľadoch.
+- Texty z databázy a edge funkcií sú kódy, ktoré sa mapujú na `error.*` kľúče
+  (`lib/errors.ts`); do DB nepíš texty určené pre rozhranie.
+- Vyhýbaj sa skloňovaniu mien v šablónach (píš „Nakupuje: Lucia“, nie „Požiadať Lucia“).
 
 ## Databáza
 

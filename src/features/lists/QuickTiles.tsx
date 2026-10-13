@@ -4,6 +4,7 @@ import { Button, Sheet, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
+import { t } from "@/i18n";
 import { useFavoriteTiles, useFrequentItems, useRemoveFavorite, useSaveFavorite, type FavoriteTile, type Item } from "./api";
 import { countOf, qtyLabel } from "./qty";
 import type { FeedEntry } from "./feed";
@@ -14,11 +15,8 @@ const MAX_FAVORITES = 12;
 const COMMIT_MS = 1400;
 const LONG_PRESS_MS = 480;
 
-/** Pre novú domácnosť bez histórie, kým sa naučíme, čo kupujete. */
-const STARTERS = [
-  "Rožky", "Mlieko", "Chlieb", "Banány", "Vajcia", "Maslo", "Jogurt", "Syr",
-  "Šunka", "Paradajky", "Jablká", "Zemiaky", "Cibuľa", "Toaletný papier", "Káva", "Minerálka",
-];
+/** Pre novú domácnosť bez histórie, kým sa naučíme, čo kupujete (v jazyku rozhrania). */
+const starters = () => t("tiles.starters").split("|");
 
 type Pending = Record<string, { n: number; flip: boolean }>;
 
@@ -64,7 +62,7 @@ export function QuickTiles({
   const [pending, setPending] = useState<Pending>({});
   const timers = useRef(new Map<string, number>());
   const committed = useRef(new Set<string>());
-  useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
+  useEffect(() => () => timers.current.forEach((id) => window.clearTimeout(id)), []);
 
   const openByKey = useMemo(() => {
     const m = new Map<string, Item>();
@@ -79,7 +77,7 @@ export function QuickTiles({
   const candidates = useMemo(() => {
     const seen = new Set<string>();
     const out: string[] = [];
-    for (const name of [...(frequent.data ?? []).map((f) => f.name), ...STARTERS]) {
+    for (const name of [...(frequent.data ?? []).map((f) => f.name), ...starters()]) {
       const key = normalizeName(name);
       if (seen.has(key) || openByKey.has(key) || committed.current.has(key)) continue;
       seen.add(key);
@@ -154,14 +152,14 @@ export function QuickTiles({
     try {
       if (existing) {
         await remove.mutateAsync(existing.id);
-        onFeed({ name, tail: "odobraté z obľúbených" });
+        onFeed({ name, tail: t("tiles.feed.unstarred") });
       } else {
         if (favs.length >= MAX_FAVORITES) {
-          toast.show(`Obľúbených môže byť najviac ${MAX_FAVORITES}. Niektorú najprv odober.`, "error");
+          toast.show(t("tiles.maxFavorites", { max: MAX_FAVORITES }), "error");
           return;
         }
         await save.mutateAsync({ label: name, itemName: name, position: nextPosition(favs) });
-        onFeed({ name, tail: "v obľúbených" });
+        onFeed({ name, tail: t("tiles.feed.starred") });
       }
     } catch (err) {
       toast.show(errorMessage(err), "error");
@@ -172,11 +170,11 @@ export function QuickTiles({
 
   return (
     <div>
-      <div role="tablist" aria-label="Rýchle pridanie" className="grid grid-cols-2 rounded-[var(--radius-control)] bg-surface p-[3px]">
+      <div role="tablist" aria-label={t("shop.quickAdd")} className="grid grid-cols-2 rounded-[var(--radius-control)] bg-surface p-[3px]">
         {(
           [
-            ["freq", "Najčastejšie"],
-            ["fav", `Obľúbené · ${favs.length}`],
+            ["freq", t("tiles.frequent")],
+            ["fav", t("tiles.favorites", { n: favs.length })],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -202,11 +200,11 @@ export function QuickTiles({
               const fav = favByKey.has(normalizeName(name));
               return (
                 <div key={`${i}-${slotKeys[i] ?? 0}`} className={cx("relative", (slotKeys[i] ?? 0) > 0 && "[animation:bh-tile-in_.5s_cubic-bezier(.2,.9,.3,1.1)]")}>
-                  <Tile label={name} pending={p} onTap={() => tap(name)} aria={`Pridať ${name}${p ? `, zatiaľ ${p.n} ks` : ""}`} />
+                  <Tile label={name} pending={p} onTap={() => tap(name)} aria={p ? t("tiles.addAriaPending", { name, qty: qtyLabel(p.n, null) }) : t("tiles.addAria", { name })} />
                   <button
                     type="button"
                     onClick={() => toggleStar(name)}
-                    aria-label={fav ? `Odobrať ${name} z obľúbených` : `Pridať ${name} do obľúbených`}
+                    aria-label={fav ? t("tiles.unstar", { name }) : t("tiles.star", { name })}
                     aria-pressed={fav}
                     className={cx(
                       "absolute right-0 top-0 z-[2] grid size-8 place-items-center rounded-bl-[0.625rem] rounded-tr-[0.8125rem]",
@@ -230,7 +228,7 @@ export function QuickTiles({
                       badge={!p && onList ? qtyLabel(countOf(onList.quantity), onList.unit) : undefined}
                       onTap={() => tap(f.item_name)}
                       onLongPress={() => setEditor({ tile: f })}
-                      aria={`Pridať ${f.item_name}. Podržaním upravíš dlaždicu.`}
+                      aria={t("tiles.addFavAria", { name: f.item_name })}
                     />
                   </div>
                 );
@@ -243,17 +241,17 @@ export function QuickTiles({
                   className="flex h-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-[0.8125rem] border border-dashed border-line-strong text-[0.6875rem] font-bold text-accent active:scale-95"
                 >
                   <Plus className="size-[1.125rem]" strokeWidth={2.4} aria-hidden />
-                  Nová
+                  {t("tiles.new")}
                 </button>
               ),
             ]}
       </div>
       <p className="mt-2 px-0.5 text-xs leading-snug text-text-2">
         {tab === "freq"
-          ? "Ťuknutie = +1 ks. Po chvíľke sa pridá a na miesto príde ďalší produkt. Hviezdička uloží do obľúbených."
+          ? t("tiles.hintFrequent")
           : favs.length
-            ? "Tvoje dlaždice ostávajú stále. Podržaním prsta zmeníš text alebo dlaždicu odoberieš."
-            : "Zatiaľ žiadne. Pridaj si ich hviezdičkou v Najčastejších alebo tlačidlom Nová."}
+            ? t("tiles.hintFavorites")
+            : t("tiles.hintNoFavorites")}
       </p>
 
       {editor && (
@@ -263,7 +261,7 @@ export function QuickTiles({
           onSave={async (label, itemName) => {
             try {
               await save.mutateAsync({ id: editor.tile?.id, label, itemName, position: nextPosition(favs) });
-              onFeed({ name: label, tail: "dlaždica uložená" });
+              onFeed({ name: label, tail: t("tiles.feed.saved") });
               setEditor(null);
             } catch (err) {
               toast.show(errorMessage(err), "error");
@@ -272,11 +270,11 @@ export function QuickTiles({
           onRemove={
             editor.tile
               ? async () => {
-                  const t = editor.tile!;
+                  const tile = editor.tile!;
                   setEditor(null);
                   try {
-                    await remove.mutateAsync(t.id);
-                    onFeed({ name: t.label, tail: "odobraté z obľúbených" });
+                    await remove.mutateAsync(tile.id);
+                    onFeed({ name: tile.label, tail: t("tiles.feed.unstarred") });
                   } catch (err) {
                     toast.show(errorMessage(err), "error");
                   }
@@ -401,24 +399,24 @@ function TileEditor({
   }
 
   return (
-    <Sheet open onClose={onClose} title={tile ? "Upraviť dlaždicu" : "Nová obľúbená dlaždica"}>
+    <Sheet open onClose={onClose} title={tile ? t("tiles.editTitle") : t("tiles.newTitle")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-[3.75rem] w-24 shrink-0 items-end overflow-hidden rounded-[0.8125rem] border border-primary bg-bg px-2 pb-2 text-[0.78125rem] font-semibold leading-[1.15]">
-            <span className="line-clamp-2">{finalLabel || "Text dlaždice"}</span>
+            <span className="line-clamp-2">{finalLabel || t("tiles.previewDefault")}</span>
           </div>
-          <p className="text-sm leading-snug text-text-2">Takto bude dlaždica vyzerať. Text si napíš, ako chceš – do zoznamu sa pridá produkt nižšie.</p>
+          <p className="text-sm leading-snug text-text-2">{t("tiles.previewHelp")}</p>
         </div>
-        <TextField label="Text na dlaždici" placeholder="napr. Rožky na raňajky" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={40} autoFocus={!tile} />
-        <TextField label="Pridá do zoznamu" placeholder="Názov produktu" value={itemName} onChange={(e) => setItemName(e.target.value)} maxLength={120} />
+        <TextField label={t("tiles.labelField")} placeholder={t("tiles.labelPlaceholder")} value={label} onChange={(e) => setLabel(e.target.value)} maxLength={40} autoFocus={!tile} />
+        <TextField label={t("tiles.itemField")} placeholder={t("tiles.itemPlaceholder")} value={itemName} onChange={(e) => setItemName(e.target.value)} maxLength={120} />
         <div className="flex gap-2">
           {onRemove && (
             <Button type="button" variant="danger" size="lg" onClick={onRemove}>
-              Odobrať
+              {t("tiles.remove")}
             </Button>
           )}
           <Button type="submit" size="lg" className="flex-1" loading={saving} disabled={!finalName}>
-            Uložiť dlaždicu
+            {t("tiles.save")}
           </Button>
         </div>
       </form>

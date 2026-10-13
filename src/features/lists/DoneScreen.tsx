@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Camera, ChevronDown, RotateCcw } from "lucide-react";
 import { Avatar, cx } from "@/components/ui";
+import { formatDateTime, formatNumber, t } from "@/i18n";
 import type { Item } from "./api";
 import { qtyLabel } from "./qty";
 
@@ -13,8 +14,8 @@ export type ShopSummary = {
   unbought: Item[];
 };
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" });
-const day = (iso: string) => new Date(iso).toLocaleDateString("sk-SK", { weekday: "long", day: "numeric", month: "numeric" });
+const time = (iso: string) => formatDateTime(iso, { hour: "2-digit", minute: "2-digit" });
+const day = (iso: string) => formatDateTime(iso, { weekday: "long", day: "numeric", month: "numeric" });
 
 /**
  * Nákup dokončený. Pokojný súhrn (bez „robotického“ písma), hlavná akcia
@@ -59,36 +60,36 @@ export function DoneScreen({
           </svg>
         </div>
         <h1 className="mt-4.5 text-[2.125rem] font-extrabold leading-[1.05] tracking-[-0.035em] [animation:bh-rise_.5s_ease_.25s_both]">
-          {all ? "Nakúpené. Všetko je v košíku." : "Nákup ukončený."}
+          {all ? t("done.allTitle") : t("done.title")}
         </h1>
         <p className="mt-2 text-[0.9375rem] text-text-2 [animation:bh-rise_.5s_ease_.25s_both]">
           {summary.listName} · {day(summary.endedAt)} · {time(summary.startedAt)} – {time(summary.endedAt)}
         </p>
 
         <div className="mt-5 flex rounded-[1.125rem] border border-line bg-elevated [animation:bh-rise_.5s_ease_.4s_both]">
-          <Stat value={summary.bought.length} label="kúpených" />
+          <Stat value={summary.bought.length} label={t("done.bought")} />
           <span className="my-3 w-px bg-line" aria-hidden />
-          <Stat value={pieces} label="kusov" />
+          <Stat value={pieces} label={t("done.pieces")} />
           <span className="my-3 w-px bg-line" aria-hidden />
           <div className="flex flex-1 flex-col items-center justify-center gap-1 px-1 py-3 text-center">
             <span className="flex">
               {people.slice(0, 3).map(([id], i) => (
                 <span key={id} className={cx(i > 0 && "-ml-2 rounded-lg ring-2 ring-elevated")}>
-                  <Avatar name={id === me ? (names?.get(me) ?? "Ja") : (names?.get(id) ?? "?")} me={id === me} />
+                  <Avatar name={id === me ? (names?.get(me) ?? t("shop.me")) : (names?.get(id) ?? "?")} me={id === me} />
                 </span>
               ))}
             </span>
             <span className="text-xs text-text-2">
-              {people.map(([id, n]) => `${id === me ? "Ty" : (names?.get(id) ?? "Člen")} ${n}`).join(" · ")}
+              {people.map(([id, n]) => `${id === me ? t("done.you") : (names?.get(id) ?? t("done.memberFallback"))} ${n}`).join(" · ")}
             </span>
           </div>
         </div>
 
         {!all && (
           <div className="mt-2.5 rounded-[1.125rem] border border-line bg-elevated p-3.5 [animation:bh-rise_.5s_ease_.4s_both]">
-            <p className="text-[0.8125rem] font-bold text-accent">Nekúpené · {summary.unbought.length}</p>
+            <p className="text-[0.8125rem] font-bold text-accent">{t("done.unbought", { n: summary.unbought.length })}</p>
             <p className="mt-1 text-[0.9375rem] font-semibold">{summary.unbought.map((i) => i.name).join(", ")}</p>
-            <p className="mt-2 border-t border-dashed border-line pt-2 text-[0.8125rem] text-text-2">Ostávajú na zozname na ďalší nákup.</p>
+            <p className="mt-2 border-t border-dashed border-line pt-2 text-[0.8125rem] text-text-2">{t("done.unboughtStay")}</p>
           </div>
         )}
 
@@ -100,9 +101,9 @@ export function DoneScreen({
               onClick={() => setShowBought((v) => !v)}
               className="flex h-12 w-full items-center justify-between text-sm font-semibold"
             >
-              Čo ste kúpili
+              {t("done.whatBought")}
               <span className="flex items-center gap-1 text-text-2">
-                {showBought ? "skryť" : `zobraziť ${summary.bought.length}`}
+                {showBought ? t("done.hide") : t("done.show", { n: summary.bought.length })}
                 <ChevronDown className={cx("size-4 transition-transform", showBought && "rotate-180")} aria-hidden />
               </span>
             </button>
@@ -126,9 +127,9 @@ export function DoneScreen({
             className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-accent text-base font-bold text-on-accent active:scale-[0.98]"
           >
             <Camera className="size-[1.3125rem]" aria-hidden />
-            Odfotiť bloček
+            {t("done.photo")}
           </button>
-          <p className="mx-1 mt-2.5 text-center text-[0.8125rem] leading-snug text-text-2">Z bločku sa doplnia ceny a nákup sa započíta do Prehľadov.</p>
+          <p className="mx-1 mt-2.5 text-center text-[0.8125rem] leading-snug text-text-2">{t("done.photoHint")}</p>
 
           <button
             type="button"
@@ -140,12 +141,12 @@ export function DoneScreen({
               <RotateCcw className={cx("size-[1.125rem]", reopening && "animate-spin")} aria-hidden />
             </span>
             <span className="min-w-0">
-              <span className="block text-[0.9375rem] font-bold">Vrátiť sa k nákupu</span>
-              <span className="block text-[0.8125rem] text-text-2">Niečo ste zabudli? Nákup sa znova otvorí.</span>
+              <span className="block text-[0.9375rem] font-bold">{t("done.reopen")}</span>
+              <span className="block text-[0.8125rem] text-text-2">{t("done.reopenHint")}</span>
             </span>
           </button>
           <button type="button" onClick={onClose} className="mt-1.5 h-12 w-full rounded-xl text-[0.9375rem] font-semibold text-text-2 active:bg-pressed">
-            Hotovo
+            {t("done.close")}
           </button>
         </div>
       </main>
@@ -156,7 +157,7 @@ export function DoneScreen({
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex-1 px-1 py-3 text-center">
-      <b className="block text-2xl font-extrabold tracking-[-0.02em]">{value.toLocaleString("sk-SK", { maximumFractionDigits: 2 })}</b>
+      <b className="block text-2xl font-extrabold tracking-[-0.02em]">{formatNumber(value, { maximumFractionDigits: 2 })}</b>
       <span className="text-[0.8125rem] text-text-2">{label}</span>
     </div>
   );

@@ -4,6 +4,7 @@ import { ChartLine, Trash2 } from "lucide-react";
 import { Button, Sheet, TextField } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { CATEGORIES, guessCategory } from "@/lib/categories";
+import { t } from "@/i18n";
 import { useRemoveReceiptItem, useSaveReceiptItem, type ReceiptItem } from "./api";
 import { parseAmount, readErrorMessage } from "./format";
 
@@ -43,14 +44,14 @@ export function ItemSheet({
     const lineTotal = parseAmount(price);
     const qty = quantity.trim() === "" ? 1 : parseAmount(quantity);
     const disc = discount.trim() === "" ? 0 : parseAmount(discount);
-    if (!name.trim()) return setError("Napíš názov položky.");
-    if (lineTotal === null) return setError("Cena musí byť číslo, napríklad 1,49.");
-    if (qty === null || qty <= 0) return setError("Množstvo musí byť číslo väčšie ako 0.");
-    if (disc === null || disc < 0) return setError("Zľava musí byť číslo (0 alebo viac).");
+    if (!name.trim()) return setError(t("ritem.nameRequired"));
+    if (lineTotal === null) return setError(t("ritem.priceInvalid"));
+    if (qty === null || qty <= 0) return setError(t("ritem.qtyInvalid"));
+    if (disc === null || disc < 0) return setError(t("ritem.discountInvalid"));
     setError(null);
     try {
       await save.mutateAsync({ id: item?.id, name: name.trim(), lineTotal, quantity: qty, discount: disc, categoryId });
-      toast.show(item ? "Položka uložená" : "Položka pridaná", "success");
+      toast.show(item ? t("ritem.saved") : t("ritem.added"), "success");
       onClose();
     } catch (err) {
       toast.show(readErrorMessage(err), "error");
@@ -61,7 +62,7 @@ export function ItemSheet({
     if (!item) return;
     try {
       await remove.mutateAsync(item.id);
-      toast.show("Položka zmazaná", "success");
+      toast.show(t("ritem.deleted"), "success");
       onClose();
     } catch (err) {
       toast.show(readErrorMessage(err), "error");
@@ -69,22 +70,22 @@ export function ItemSheet({
   }
 
   return (
-    <Sheet open onClose={onClose} title={item ? "Upraviť položku" : "Pridať položku"}>
+    <Sheet open onClose={onClose} title={item ? t("edit.title") : t("ritem.addTitle")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <TextField label="Názov" value={name} onChange={(e) => changeName(e.target.value)} maxLength={200} autoFocus={!item} />
+        <TextField label={t("edit.name")} value={name} onChange={(e) => changeName(e.target.value)} maxLength={200} autoFocus={!item} />
         <TextField
-          label="Cena za riadok (€) – po zľave, ako si zaplatil"
+          label={t("ritem.price")}
           inputMode="decimal"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
         />
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Množstvo" inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-          <TextField label="Zľava (€)" inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+          <TextField label={t("edit.quantity")} inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+          <TextField label={t("ritem.discount")} inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value)} />
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="item-category" className="text-sm font-medium text-text-2">
-            Kategória
+            {t("edit.category")}
           </label>
           <select
             id="item-category"
@@ -109,16 +110,16 @@ export function ItemSheet({
         )}
         {item?.product_id && (
           <Link to={`/analytics/product/${item.product_id}`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
-            <ChartLine className="size-4" aria-hidden /> Vývoj ceny a porovnanie obchodov
+            <ChartLine className="size-4" aria-hidden /> {t("ritem.priceHistory")}
           </Link>
         )}
         <div className="flex flex-col gap-2">
           <Button type="submit" size="lg" block loading={save.isPending}>
-            Uložiť
+            {t("common.save")}
           </Button>
           {item && (
             <Button type="button" variant="danger" block loading={remove.isPending} onClick={onRemove}>
-              <Trash2 className="size-4" aria-hidden /> Zmazať položku
+              <Trash2 className="size-4" aria-hidden /> {t("ritem.delete")}
             </Button>
           )}
         </div>

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Button, Sheet, TextField } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
+import { t } from "@/i18n";
 import { formatMoney, parseAmount, readErrorMessage } from "@/features/receipts/format";
 import { useSetBudget, type Overview } from "./api";
 import { categoryInfo } from "./bits";
@@ -33,13 +34,13 @@ function BudgetForm({ onClose, overview }: { onClose: () => void; overview: Over
     const changes: { categoryId: string | null; amount: number | null }[] = [];
     for (const [key, text] of Object.entries(values)) {
       const amount = text.trim() === "" ? null : parseAmount(text);
-      if (text.trim() !== "" && (amount === null || amount <= 0)) return setError("Rozpočet musí byť kladné číslo, napríklad 600.");
+      if (text.trim() !== "" && (amount === null || amount <= 0)) return setError(t("budget.invalid"));
       if ((existing.get(key) ?? null) !== amount) changes.push({ categoryId: key === "*" ? null : key, amount });
     }
     setError(null);
     try {
       await save.mutateAsync(changes);
-      toast.show("Rozpočet uložený", "success");
+      toast.show(t("budget.saved"), "success");
       onClose();
     } catch (err) {
       toast.show(readErrorMessage(err), "error");
@@ -47,17 +48,17 @@ function BudgetForm({ onClose, overview }: { onClose: () => void; overview: Over
   }
 
   return (
-    <Sheet open onClose={onClose} title="Mesačný rozpočet">
+    <Sheet open onClose={onClose} title={t("budget.title")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <p className="text-sm text-text-2">Nechaj pole prázdne, ak rozpočet nechceš. Platí pre každý mesiac.</p>
+        <p className="text-sm text-text-2">{t("budget.hint")}</p>
         <TextField
-          label="Celkom za mesiac (€)"
+          label={t("budget.total")}
           inputMode="decimal"
           value={values["*"] ?? ""}
           onChange={(e) => setValues({ ...values, "*": e.target.value })}
-          hint={`Tento mesiac zatiaľ ${formatMoney(overview.total)}`}
+          hint={t("budget.sofar", { amount: formatMoney(overview.total) })}
         />
-        {categories.length > 0 && <p className="text-sm font-semibold text-text-2">Kategórie</p>}
+        {categories.length > 0 && <p className="text-sm font-semibold text-text-2">{t("budget.categories")}</p>}
         {categories.map((id) => {
           const info = categoryInfo(id);
           return (
@@ -67,7 +68,7 @@ function BudgetForm({ onClose, overview }: { onClose: () => void; overview: Over
               inputMode="decimal"
               value={values[id] ?? ""}
               onChange={(e) => setValues({ ...values, [id]: e.target.value })}
-              hint={spent.get(id) ? `Tento mesiac zatiaľ ${formatMoney(spent.get(id)!)}` : undefined}
+              hint={spent.get(id) ? t("budget.sofar", { amount: formatMoney(spent.get(id)!) }) : undefined}
             />
           );
         })}
@@ -77,7 +78,7 @@ function BudgetForm({ onClose, overview }: { onClose: () => void; overview: Over
           </p>
         )}
         <Button type="submit" size="lg" block loading={save.isPending}>
-          Uložiť
+          {t("common.save")}
         </Button>
       </form>
     </Sheet>

@@ -5,8 +5,9 @@ import { Banner, Button, Group, Section, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { CATEGORIES } from "@/lib/categories";
+import { t, tn } from "@/i18n";
 import { readStatement, useImportBankPayments, type StatementMatch, type StatementRow } from "./api";
-import { formatMoney, formatShortDate, plural, readErrorMessage } from "./format";
+import { formatMoney, formatShortDate, readErrorMessage } from "./format";
 
 type Loaded = { rows: StatementRow[]; matches: Map<number, StatementMatch>; fileHash: string };
 
@@ -83,10 +84,7 @@ export function StatementImportPage() {
         })),
       );
       const skipped = selected.length - (n ?? 0);
-      toast.show(
-        `Pridané: ${n} ${plural(n ?? 0, ["platba", "platby", "platieb"])}${skipped > 0 ? ` (${skipped} už boli pridané skôr)` : ""}`,
-        "success",
-      );
+      toast.show(tn("stmt.added", n ?? 0) + (skipped > 0 ? t("stmt.skipped", { n: skipped }) : ""), "success");
       navigate("/receipts", { replace: true });
     } catch (err) {
       toast.show(readErrorMessage(err), "error");
@@ -102,7 +100,7 @@ export function StatementImportPage() {
             type="button"
             role="checkbox"
             aria-checked={on}
-            aria-label={`Pridať ${r.merchant} ${formatMoney(r.amount)}`}
+            aria-label={t("stmt.addAria", { merchant: r.merchant, amount: formatMoney(r.amount) })}
             onClick={() => toggle(r.idx)}
             className={cx(
               "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border-2",
@@ -123,7 +121,7 @@ export function StatementImportPage() {
           </p>
           {selectable && on && (
             <select
-              aria-label="Kategória"
+              aria-label={t("edit.category")}
               value={categories[r.idx] ?? r.category_id}
               onChange={(e) => setCategories({ ...categories, [r.idx]: e.target.value })}
               className="mt-2 min-h-9 w-full rounded-[var(--radius-control)] border border-line-strong/50 bg-elevated px-2 text-sm"
@@ -143,29 +141,24 @@ export function StatementImportPage() {
   return (
     <div className="pb-40">
       <header className="flex items-center gap-1 px-2 pt-3">
-        <Link to="/receipts" aria-label="Späť na bločky" className="flex size-11 items-center justify-center rounded-full active:bg-pressed">
+        <Link to="/receipts" aria-label={t("stmt.back")} className="flex size-11 items-center justify-center rounded-full active:bg-pressed">
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="text-xl font-bold tracking-tight">Bankový výpis</h1>
+        <h1 className="text-xl font-bold tracking-tight">{t("stmt.title")}</h1>
       </header>
 
       <div className="mt-2 flex flex-col gap-5">
         {!data && !reading && (
           <Section>
             <div className="rounded-[var(--radius-surface)] bg-elevated p-5 shadow-sm">
-              <p className="font-semibold">Pridaj platby, ku ktorým nemáš bloček</p>
-              <p className="mt-1 text-sm text-text-2">
-                Nahraj výpis z internet bankingu (PDF, CSV alebo snímku obrazovky). Aplikácia z neho vyberie platby kartou –
-                tankovanie, reštaurácie, e-shopy – a ukáže ti ich na potvrdenie. Platby, ku ktorým už bloček máš, sa
-                nezarátajú dvakrát.
-              </p>
+              <p className="font-semibold">{t("stmt.introTitle")}</p>
+              <p className="mt-1 text-sm text-text-2">{t("stmt.introText")}</p>
               <Button size="lg" block className="mt-4" onClick={() => input.current?.click()}>
-                <FileUp className="size-5" aria-hidden /> Vybrať výpis
+                <FileUp className="size-5" aria-hidden /> {t("stmt.choose")}
               </Button>
               <p className="mt-3 flex items-start gap-2 text-xs text-text-3">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-                Výpis sa nikde neukladá. Uložia sa len platby, ktoré potvrdíš (obchod, dátum, suma, kategória) – bez čísla účtu a
-                zostatku. Najspoľahlivejší je CSV export.
+                {t("stmt.privacy")}
               </p>
             </div>
           </Section>
@@ -176,8 +169,8 @@ export function StatementImportPage() {
             <div className="flex items-center gap-3 rounded-[var(--radius-surface)] bg-elevated p-5 shadow-sm">
               <Loader2 className="size-6 shrink-0 animate-spin text-primary" aria-hidden />
               <div>
-                <p className="font-semibold">Čítam výpis…</p>
-                <p className="text-sm text-text-2">Dlhší výpis môže trvať do minúty. Nezatváraj aplikáciu.</p>
+                <p className="font-semibold">{t("stmt.reading")}</p>
+                <p className="text-sm text-text-2">{t("stmt.readingHint")}</p>
               </div>
             </div>
           </Section>
@@ -187,10 +180,10 @@ export function StatementImportPage() {
           <Section>
             <Banner
               tone="danger"
-              title="Výpis sa nepodarilo spracovať"
+              title={t("stmt.failed")}
               action={
                 <Button variant="secondary" onClick={() => input.current?.click()}>
-                  Skúsiť iný súbor
+                  {t("stmt.otherFile")}
                 </Button>
               }
             >
@@ -203,30 +196,29 @@ export function StatementImportPage() {
           <>
             <Section>
               <p className="px-1 text-sm text-text-2">
-                Našiel som {data.rows.length} {plural(data.rows.length, ["pohyb", "pohyby", "pohybov"])}. Skontroluj, čo pridať, a
-                prípadne zmeň kategóriu.
+                {tn("stmt.found", data.rows.length)}
               </p>
             </Section>
 
             <ImportGroup
-              title={`Nákupy bez bločku (${groups.purchases.length})`}
-              hint="Predvolene vybrané. Odškrtni, čo nechceš."
-              empty="Žiadne – ku všetkým nákupom už bločky máš."
+              title={t("stmt.purchases", { n: groups.purchases.length })}
+              hint={t("stmt.purchasesHint")}
+              empty={t("stmt.purchasesEmpty")}
             >
               {groups.purchases.map((r) => row(r))}
             </ImportGroup>
 
             {groups.bills.length > 0 && (
               <ImportGroup
-                title={`Účty a pravidelné platby (${groups.bills.length})`}
-                hint="Nájom, energie, mobil, poistenie… Zaškrtni, ak ich chceš vidieť v rodinnom rozpočte."
+                title={t("stmt.bills", { n: groups.bills.length })}
+                hint={t("stmt.billsHint")}
               >
                 {groups.bills.map((r) => row(r))}
               </ImportGroup>
             )}
 
             {groups.matched.length > 0 && (
-              <ImportGroup title={`Už máš bloček (${groups.matched.length})`} hint="Tieto sa nepridajú, aby sa nákup nezarátal dvakrát.">
+              <ImportGroup title={t("stmt.matched", { n: groups.matched.length })} hint={t("stmt.matchedHint")}>
                 {groups.matched.map((r) => {
                   const m = data.matches.get(r.idx)!;
                   return (
@@ -235,8 +227,9 @@ export function StatementImportPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{r.merchant}</p>
                         <p className="truncate text-xs text-text-3">
-                          {formatShortDate(r.date)} · doklad: {m.store_name ?? "bez obchodu"}
-                          {m.purchased_on ? `, ${formatShortDate(m.purchased_on)}` : ""}
+                          {m.purchased_on
+                            ? t("stmt.matchedLineDated", { date: formatShortDate(r.date), store: m.store_name ?? t("stmt.noStore"), receiptDate: formatShortDate(m.purchased_on) })
+                            : t("stmt.matchedLine", { date: formatShortDate(r.date), store: m.store_name ?? t("stmt.noStore") })}
                         </p>
                       </div>
                       <span className="font-semibold tabular-nums">{formatMoney(r.amount)}</span>
@@ -255,12 +248,12 @@ export function StatementImportPage() {
                   aria-expanded={showOther}
                   className="flex w-full items-center justify-between px-1 text-sm font-semibold text-text-2"
                 >
-                  Prevody, výbery a poplatky ({groups.other.length})
+                  {t("stmt.other", { n: groups.other.length })}
                   <ChevronDown className={cx("size-4 transition-transform", showOther && "rotate-180")} aria-hidden />
                 </button>
                 {showOther && (
                   <>
-                    <p className="mb-2 mt-1 px-1 text-xs text-text-3">Bežne sa nezapočítavajú (presun peňazí, nie výdavok). Zaškrtni, ak niektorý je výdavok.</p>
+                    <p className="mb-2 mt-1 px-1 text-xs text-text-3">{t("stmt.otherHint")}</p>
                     <Group>{groups.other.map((r) => row(r))}</Group>
                   </>
                 )}
@@ -270,8 +263,7 @@ export function StatementImportPage() {
             {groups.incoming.length > 0 && (
               <Section>
                 <p className="px-1 text-xs text-text-3">
-                  {groups.incoming.length} {plural(groups.incoming.length, ["príjem sa", "príjmy sa", "príjmov sa"])} nezapočítava (výplata,
-                  vrátenia, prevody na účet).
+                  {tn("stmt.incoming", groups.incoming.length)}
                 </p>
               </Section>
             )}
@@ -286,8 +278,8 @@ export function StatementImportPage() {
           <div className="pointer-events-auto mx-auto max-w-2xl px-4 pb-3">
             <Button block size="lg" className="shadow-lg" disabled={selected.length === 0} loading={importer.isPending} onClick={doImport}>
               {selected.length === 0
-                ? "Nič nie je vybrané"
-                : `Pridať ${selected.length} ${plural(selected.length, ["platbu", "platby", "platieb"])} · ${formatMoney(selectedSum)}`}
+                ? t("stmt.nothingSelected")
+                : tn("stmt.addPayments", selected.length, { sum: formatMoney(selectedSum) })}
             </Button>
           </div>
         </div>

@@ -5,13 +5,14 @@ import { Button, EmptyState, ErrorState, Group, PageHeader, Section, Spinner, cx
 import { useToast } from "@/components/toast";
 import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
+import { t, tn } from "@/i18n";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { MAX_PAGES, isStale, needsAttention, useDeleteReceipt, useMergeReceipts, useReceipts, type Receipt } from "./api";
 import { AddMenu, ManualExpenseSheet, PendingSheet, type Pending, type PendingMode } from "./AddFlow";
 import { ReceiptRow } from "./ReceiptRow";
 import { Dock, UploadStatus } from "./UploadStatus";
 import { useBatch } from "./useBatch";
-import { formatDate, formatMoney, monthLabel, plural, readErrorMessage } from "./format";
+import { formatDate, formatMoney, monthLabel, readErrorMessage } from "./format";
 
 type Filter = "all" | "review" | "ok";
 const INBOX_PREVIEW = 4;
@@ -112,12 +113,12 @@ export function ReceiptsPage() {
   }
 
   async function doMerge() {
-    if (picked.length > MAX_PAGES) return toast.show(`Spojiť sa dá najviac ${MAX_PAGES} dokladov naraz.`, "error");
-    const text = `Spojiť ${picked.length} dokladov do jedného? Prvý vybraný zostane a ostatné sa doň pridajú ako ďalšie strany (ich fotky sa zachovajú). Spojený doklad sa potom prečíta znova.`;
+    if (picked.length > MAX_PAGES) return toast.show(t("rpage.mergeMax", { max: MAX_PAGES }), "error");
+    const text = t("rpage.mergeConfirm", { n: picked.length });
     if (!window.confirm(text)) return;
     try {
       await merge.mutateAsync(picked);
-      toast.show("Doklady sú spojené a znova prečítané", "success");
+      toast.show(t("rpage.merged"), "success");
       cancelSelect();
     } catch (err) {
       toast.show(readErrorMessage(err), "error");
@@ -125,7 +126,7 @@ export function ReceiptsPage() {
   }
 
   async function doDelete() {
-    const text = `Naozaj zmazať ${picked.length} ${plural(picked.length, ["doklad", "doklady", "dokladov"])} aj s fotkami? Toto sa nedá vrátiť späť.`;
+    const text = tn("rpage.deleteConfirm", picked.length);
     if (!window.confirm(text)) return;
     let failed = 0;
     for (const id of picked) {
@@ -137,8 +138,8 @@ export function ReceiptsPage() {
         failed++;
       }
     }
-    if (failed > 0) toast.show(`${failed} dokladov sa nepodarilo zmazať.`, "error");
-    else toast.show("Zmazané", "success");
+    if (failed > 0) toast.show(t("rpage.deleteFailed", { n: failed }), "error");
+    else toast.show(t("rpage.deleted"), "success");
     cancelSelect();
   }
 
@@ -160,16 +161,16 @@ export function ReceiptsPage() {
   return (
     <>
       <PageHeader
-        title="Bločky"
-        subtitle={all.length > 0 ? `${all.length} ${plural(all.length, ["doklad", "doklady", "dokladov"])} v domácnosti` : undefined}
+        title={t("nav.receipts")}
+        subtitle={all.length > 0 ? tn("rpage.subtitle", all.length) : undefined}
         trailing={
           selecting ? (
             <Button variant="ghost" onClick={cancelSelect}>
-              Zrušiť
+              {t("common.cancel")}
             </Button>
           ) : all.length >= 2 ? (
             <Button variant="ghost" onClick={() => startSelecting()} disabled={busy}>
-              Vybrať
+              {t("rpage.select")}
             </Button>
           ) : undefined
         }
@@ -181,9 +182,8 @@ export function ReceiptsPage() {
         ) : receipts.isError ? (
           <ErrorState error={errorMessage(receipts.error)} onRetry={() => receipts.refetch()} />
         ) : all.length === 0 ? (
-          <EmptyState icon="🧾" title="Zatiaľ žiadne doklady">
-            Klepni na „Pridať“ a odfoť bloček, vyber fotky alebo snímky obrazovky, alebo pridaj PDF faktúru. Umelá inteligencia z
-            nich prečíta obchod, dátum a všetky položky s cenami.
+          <EmptyState icon="🧾" title={t("rpage.emptyTitle")}>
+            {t("rpage.emptyText")}
           </EmptyState>
         ) : (
           <>
@@ -197,11 +197,11 @@ export function ReceiptsPage() {
                     <p className="text-sm text-text-2">{month.label}</p>
                     <p className="text-3xl font-bold tabular-nums">{formatMoney(month.total)}</p>
                     <p className="text-sm text-text-2">
-                      {month.count} {plural(month.count, ["nákup", "nákupy", "nákupov"])}
+                      {tn("rpage.purchases", month.count)}
                     </p>
                   </div>
                   <span className="flex items-center gap-0.5 text-sm font-semibold text-primary">
-                    Prehľady <ChevronRight className="size-4" aria-hidden />
+                    {t("nav.analytics")} <ChevronRight className="size-4" aria-hidden />
                   </span>
                 </Link>
               </Section>
@@ -215,8 +215,8 @@ export function ReceiptsPage() {
                     type="search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Hľadať obchod, dátum alebo sumu"
-                    aria-label="Hľadať doklad"
+                    placeholder={t("rpage.searchPlaceholder")}
+                    aria-label={t("rpage.searchAria")}
                     className="min-h-11 w-full rounded-full border border-line-strong/40 bg-elevated pl-10 pr-4 text-base outline-none placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/25"
                   />
                 </div>
@@ -225,32 +225,32 @@ export function ReceiptsPage() {
 
             {(attention.length > 0 || filter !== "all") && (
               <Section>
-                <div className="flex flex-wrap gap-2" role="group" aria-label="Filter dokladov">
+                <div className="flex flex-wrap gap-2" role="group" aria-label={t("rpage.filterAria")}>
                   <Chip active={filter === "all"} onClick={() => setFilter("all")}>
-                    Všetky
+                    {t("rpage.filterAll")}
                   </Chip>
                   <Chip active={filter === "review"} onClick={() => setFilter("review")}>
-                    Na kontrolu ({attention.length})
+                    {t("rpage.filterReview", { n: attention.length })}
                   </Chip>
                   <Chip active={filter === "ok"} onClick={() => setFilter("ok")}>
-                    V poriadku
+                    {t("rpage.filterOk")}
                   </Chip>
                 </div>
               </Section>
             )}
 
             {inbox.length > 0 && (
-              <Section title={`Čaká na teba (${attention.length})`}>
+              <Section title={t("rpage.inbox", { n: attention.length })}>
                 <Group>{inbox.map((r) => row(r, true))}</Group>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {attention.length > INBOX_PREVIEW && (
                     <Button variant="secondary" onClick={() => setInboxOpen((v) => !v)}>
-                      {inboxOpen ? "Zbaliť" : `Ukázať všetkých ${attention.length}`}
+                      {inboxOpen ? t("rpage.collapse") : t("rpage.showAll", { n: attention.length })}
                     </Button>
                   )}
                   {failedCount > 0 && (
                     <Button variant="secondary" loading={batch.running} disabled={busy} onClick={() => void batch.retry(all)}>
-                      Skúsiť znova nepodarené ({failedCount})
+                      {t("rpage.retryFailed", { n: failedCount })}
                     </Button>
                   )}
                 </div>
@@ -260,14 +260,14 @@ export function ReceiptsPage() {
             {flat && filter === "review" && failedCount > 0 && (
               <Section>
                 <Button variant="secondary" loading={batch.running} disabled={busy} onClick={() => void batch.retry(all)}>
-                  Skúsiť znova nepodarené ({failedCount})
+                  {t("rpage.retryFailed", { n: failedCount })}
                 </Button>
               </Section>
             )}
 
             {listed.length === 0 && flat ? (
               <p className="px-6 py-10 text-center text-text-2">
-                {searching ? "Nič sa nenašlo. Skús iné slovo." : filter === "review" ? "Nič nečaká na kontrolu. 🎉" : "Zatiaľ tu nič nie je."}
+                {searching ? t("rpage.nothingFound") : filter === "review" ? t("rpage.nothingToReview") : t("rpage.nothingHere")}
               </p>
             ) : (
               groups.map(([label, list]) => (
@@ -286,15 +286,15 @@ export function ReceiptsPage() {
           <div className="w-full rounded-[var(--radius-surface)] bg-elevated p-3 shadow-lg">
             <p className="px-1 text-sm text-text-2">
               {picked.length === 0
-                ? "Klepaj na doklady, ktoré chceš spojiť alebo zmazať."
-                : `Vybrané: ${picked.length}. Pri spájaní prvý vybraný zostane a ostatné sa doň pridajú ako ďalšie strany.`}
+                ? t("rpage.selectHint")
+                : t("rpage.selected", { n: picked.length })}
             </p>
             <div className="mt-2 flex gap-2">
               <Button block disabled={picked.length < 2 || busy} loading={merge.isPending} onClick={doMerge}>
-                <Merge className="size-5" aria-hidden /> Spojiť
+                <Merge className="size-5" aria-hidden /> {t("rpage.merge")}
               </Button>
               <Button variant="danger" disabled={picked.length < 1 || busy} loading={remove.isPending} onClick={doDelete}>
-                <Trash2 className="size-5" aria-hidden /> Zmazať
+                <Trash2 className="size-5" aria-hidden /> {t("common.delete")}
               </Button>
             </div>
           </div>
@@ -305,7 +305,7 @@ export function ReceiptsPage() {
             disabled={batch.running}
             className="flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-base font-semibold text-on-primary shadow-lg active:bg-primary-pressed disabled:opacity-55"
           >
-            <Plus className="size-6" aria-hidden /> Pridať
+            <Plus className="size-6" aria-hidden /> {t("rpage.add")}
           </button>
         )}
       </Dock>
@@ -374,7 +374,7 @@ function monthSummary(list: Receipt[]): { label: string; total: number; count: n
   const inMonth = dated.filter((r) => r.purchased_on!.startsWith(key));
   const nowKey = new Date().toISOString().slice(0, 7);
   return {
-    label: key === nowKey ? "Tento mesiac" : monthLabel(`${key}-01`),
+    label: key === nowKey ? t("rpage.thisMonth") : monthLabel(`${key}-01`),
     total: inMonth.reduce((sum, r) => sum + (r.total ?? 0), 0),
     count: inMonth.length,
   };

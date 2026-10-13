@@ -1,14 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAmount, plural, storeHue, storeInitials } from "./format";
-
-describe("plural", () => {
-  it("skloňuje podľa počtu", () => {
-    expect(plural(1, ["doklad", "doklady", "dokladov"])).toBe("doklad");
-    expect(plural(3, ["doklad", "doklady", "dokladov"])).toBe("doklady");
-    expect(plural(5, ["doklad", "doklady", "dokladov"])).toBe("dokladov");
-    expect(plural(0, ["doklad", "doklady", "dokladov"])).toBe("dokladov");
-  });
-});
+import { parseAmount, storeHue, storeInitials } from "./format";
 
 describe("storeInitials / storeHue", () => {
   it("robí iniciálky", () => {

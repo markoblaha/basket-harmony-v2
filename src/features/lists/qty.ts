@@ -4,7 +4,8 @@
  * (kg, l…) z rýchleho zadávania („jablká 1,5 kg“) sa len zobrazia – na ne
  * sa tlačidlá nehodia, menia sa v úprave položky.
  */
-import { formatQuantity } from "@/lib/parseItem";
+import { formatNumber } from "@/i18n";
+import { formatQuantity, unitLabel } from "@/lib/parseItem";
 import { normalizeName } from "@/lib/categories";
 
 export function isCountable(unit: string | null | undefined): boolean {
@@ -15,20 +16,13 @@ export function countOf(quantity: number | null | undefined): number {
   return quantity && quantity > 0 ? Number(quantity) : 1;
 }
 
-/** „3 ks“, „1 bal“, „1,5 kg“ */
+/** „3 ks“, „1 bal“, „1,5 kg“ (v angličtine „3 pcs“, „1 pack“, „1.5 kg“) */
 export function qtyLabel(quantity: number | null | undefined, unit: string | null | undefined): string {
   if (isCountable(unit)) {
-    const n = countOf(quantity).toLocaleString("sk-SK", { maximumFractionDigits: 2 });
-    return `${n} ${unit === "bal" ? "bal" : "ks"}`;
+    const n = formatNumber(countOf(quantity), { maximumFractionDigits: 2 });
+    return `${n} ${unitLabel(unit === "bal" ? "bal" : "ks")}`;
   }
   return formatQuantity(quantity ?? null, unit ?? null) ?? "";
-}
-
-/** 1 položka · 2 položky · 5 položiek */
-export function itemsWord(n: number): string {
-  if (n === 1) return "položka";
-  if (n >= 2 && n <= 4) return "položky";
-  return "položiek";
 }
 
 export function sameProduct(a: string, b: string): boolean {

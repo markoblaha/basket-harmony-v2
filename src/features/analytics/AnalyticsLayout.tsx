@@ -1,12 +1,13 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { IconButton, cx } from "@/components/ui";
+import { t, type Key } from "@/i18n";
 import { usePeriod, type Range, type Scope } from "./period";
 
-const TABS = [
-  { to: "/analytics", label: "Prehľad", end: true },
-  { to: "/analytics/products", label: "Produkty", end: false },
-  { to: "/analytics/stores", label: "Obchody", end: false },
+const TABS: { to: string; label: Key; end: boolean }[] = [
+  { to: "/analytics", label: "tab.overview", end: true },
+  { to: "/analytics/products", label: "tab.products", end: false },
+  { to: "/analytics/stores", label: "tab.stores", end: false },
 ];
 
 /** Rám Prehľadov: nadpis, tri časti a (okrem Produktov) výber obdobia. */
@@ -17,15 +18,15 @@ export function AnalyticsLayout() {
   return (
     <div className="pb-10">
       <header className="px-4 pb-2 pt-5">
-        <h1 className="text-2xl font-bold tracking-tight">Prehľady</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("nav.analytics")}</h1>
       </header>
-      <nav aria-label="Časti prehľadov" className="px-4">
+      <nav aria-label={t("tab.aria")} className="px-4">
         <div className="grid grid-cols-3 gap-1 rounded-full bg-surface p-1">
-          {TABS.map((t) => (
+          {TABS.map((tab) => (
             <NavLink
-              key={t.to}
-              to={`${t.to}${search}`}
-              end={t.end}
+              key={tab.to}
+              to={`${tab.to}${search}`}
+              end={tab.end}
               className={({ isActive }) =>
                 cx(
                   "flex min-h-10 items-center justify-center rounded-full text-sm font-semibold transition-colors",
@@ -33,7 +34,7 @@ export function AnalyticsLayout() {
                 )
               }
             >
-              {t.label}
+              {t(tab.label)}
             </NavLink>
           ))}
         </div>
@@ -44,10 +45,10 @@ export function AnalyticsLayout() {
   );
 }
 
-const RANGES: { id: Range; label: string }[] = [
-  { id: "month", label: "Mesiac" },
-  { id: "3m", label: "3 mesiace" },
-  { id: "year", label: "Rok" },
+const RANGES: { id: Range; label: Key }[] = [
+  { id: "month", label: "range.month" },
+  { id: "3m", label: "range.3m" },
+  { id: "year", label: "range.year" },
 ];
 
 /** Výber obdobia: šípky medzi obdobiami, dĺžka obdobia a čo rátať (všetko / len potraviny a domácnosť). */
@@ -56,26 +57,26 @@ export function PeriodBar() {
   return (
     <div className="sticky top-0 z-20 mt-3 bg-bg/95 px-4 pb-2 pt-1 backdrop-blur">
       <div className="flex items-center justify-between gap-2">
-        <IconButton label="Predchádzajúce obdobie" onClick={() => step(-1)}>
+        <IconButton label={t("period.prev")} onClick={() => step(-1)}>
           <ChevronLeft className="size-5" />
         </IconButton>
         <p className="min-w-0 truncate text-center text-lg font-semibold first-letter:uppercase" aria-live="polite">
           {period.label}
         </p>
-        <IconButton label="Ďalšie obdobie" onClick={() => step(1)} disabled={period.isLatest} className="disabled:opacity-30">
+        <IconButton label={t("period.next")} onClick={() => step(1)} disabled={period.isLatest} className="disabled:opacity-30">
           <ChevronRight className="size-5" />
         </IconButton>
       </div>
       <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
-        <Segmented value={period.range} options={RANGES} onChange={setRange} label="Dĺžka obdobia" />
+        <Segmented value={period.range} options={RANGES.map((r) => ({ id: r.id, label: t(r.label) }))} onChange={setRange} label={t("range.aria")} />
         <Segmented<Scope>
           value={period.scope}
           options={[
-            { id: "all", label: "Všetko" },
-            { id: "everyday", label: "Potraviny a domácnosť" },
+            { id: "all", label: t("scope.all") },
+            { id: "everyday", label: t("scope.everyday") },
           ]}
           onChange={setScope}
-          label="Čo rátať"
+          label={t("scope.aria")}
         />
       </div>
     </div>
@@ -122,7 +123,7 @@ export function BackHeader({ fallback, title }: { fallback: string; title?: stri
     <header className="flex items-center gap-1 px-2 pt-3">
       <button
         type="button"
-        aria-label="Späť"
+        aria-label={t("common.back")}
         onClick={() => (location.key !== "default" ? navigate(-1) : navigate(fallback))}
         className="flex size-11 items-center justify-center rounded-full active:bg-pressed"
       >

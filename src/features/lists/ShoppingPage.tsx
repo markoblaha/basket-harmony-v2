@@ -6,7 +6,8 @@ import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
-import { errorCode, errorMessage } from "@/lib/errors";
+import { errorMessage } from "@/lib/errors";
+import { formatDateTime, t, tn, type Key } from "@/i18n";
 import { useListPriceHints, type PriceHint } from "@/features/analytics/api";
 import { formatMoney } from "@/features/receipts/format";
 import { useActiveSession, useEndShopping, useItems, useLists, useRequests, useStartShopping, useUpdateItem, type Item } from "./api";
@@ -19,17 +20,20 @@ import { PlanList } from "./PlanList";
 import { QuickTiles } from "./QuickTiles";
 import { RequestCard } from "./RequestCard";
 import { ShoppingMode } from "./ShoppingMode";
-import { itemsWord, qtyLabel } from "./qty";
+import { qtyLabel } from "./qty";
 import { useSmartAdd } from "./useSmartAdd";
 
 /** Krátka veta s cenou z bločkov: "naposledy 1,19 € (Lidl) · lacnejšie: Tesco". */
 function priceHint(h: PriceHint | undefined): string | undefined {
   if (!h) return undefined;
   const cheaper = h.cheapest_store && h.cheapest_store !== h.last_store && h.cheapest_unit < h.last_unit - 0.005;
-  return `naposledy ${formatMoney(h.last_price)} (${h.last_store})${cheaper ? ` · lacnejšie: ${h.cheapest_store}` : ""}`;
+  const price = formatMoney(h.last_price);
+  return cheaper
+    ? t("shop.price.lastCheaper", { price, store: h.last_store, cheaper: h.cheapest_store })
+    : t("shop.price.last", { price, store: h.last_store });
 }
 
-const today = () => new Date().toLocaleDateString("sk-SK", { weekday: "long", day: "numeric", month: "numeric" });
+const today = () => formatDateTime(new Date(), { weekday: "long", day: "numeric", month: "numeric" });
 
 /** Prerušený nákup si pamätáme v tomto okne prehliadača (po zatvorení aplikácie sa obnoví režim nákupu). */
 const interruptKey = (sessionId: string) => `bh.interrupted.${sessionId}`;
@@ -85,7 +89,7 @@ export function ShoppingPage() {
   const active = session.data ?? null;
   const iAmShopping = !!active && active.shopper_id === me;
   const someoneElse = !!active && !iAmShopping;
-  const shopperName = active ? (names?.get(active.shopper_id) ?? "Člen domácnosti") : null;
+  const shopperName = active ? (names?.get(active.shopper_id) ?? t("household.fallbackName")) : null;
 
   const [interrupted, setInterrupted] = useState(false);
   useEffect(() => {
@@ -114,8 +118,8 @@ export function ShoppingPage() {
   const hintMap = useMemo(() => {
     const m = new Map<string, string>();
     hints.data?.forEach((h, id) => {
-      const t = priceHint(h);
-      if (t) m.set(id, t);
+      const text = priceHint(h);
+      if (text) m.set(id, text);
     });
     return m;
   }, [hints.data]);
@@ -131,7 +135,7 @@ export function ShoppingPage() {
       await start.mutateAsync();
       setCartSince(null);
     } catch (err) {
-      toast.show(errorCode(err) === "SESSION_ALREADY_ACTIVE" ? "Práve nakupuje niekto iný." : errorMessage(err), "error");
+      toast.show(errorMessage(err), "error");
     }
   }
 
@@ -162,7 +166,7 @@ export function ShoppingPage() {
       setCartSince(summary.startedAt);
       setSummary(null);
     } catch (err) {
-      toast.show(errorCode(err) === "SESSION_ALREADY_ACTIVE" ? "Práve nakupuje niekto iný." : errorMessage(err), "error");
+      toast.show(errorMessage(err), "error");
     }
   }
 
@@ -170,9 +174,9 @@ export function ShoppingPage() {
   if (lists.isError) return <ErrorState error={errorMessage(lists.error)} onRetry={() => lists.refetch()} />;
   if (!list || !listId) {
     return (
-      <EmptyState icon="📝" title="Žiadny zoznam">
+      <EmptyState icon="📝" title={t("shop.emptyTitle")}>
         <Button className="mt-4" onClick={() => setListsOpen(true)}>
-          Vytvoriť zoznam
+          {t("shop.createList")}
         </Button>
         <ListsSheet open={listsOpen} onClose={() => setListsOpen(false)} householdId={household.id} lists={[]} currentId="" onSelect={(id) => navigate(`/lists/${id}`)} />
       </EmptyState>
@@ -226,11 +230,11 @@ export function ShoppingPage() {
         <button type="button" onClick={() => setListsOpen(true)} className="-ml-1 min-w-0 flex-1 rounded-xl px-1 text-left active:bg-pressed">
           <span className="flex items-center gap-1">
             <h1 className="truncate text-[1.75rem] font-extrabold leading-tight tracking-[-0.03em]">{list.name}</h1>
-            <ChevronDown className="size-5 shrink-0 text-text-3" aria-label="Zmeniť zoznam" />
+            <ChevronDown className="size-5 shrink-0 text-text-3" aria-label={t("shop.changeList")} />
           </span>
           <span className="block text-[0.8125rem] font-medium text-text-2">{today()}</span>
         </button>
-        <span className="flex items-center gap-2 rounded-xl border border-line bg-elevated py-1.5 pl-1.5 pr-2.5 text-sm font-semibold" aria-label={`Domácnosť ${household.name}`}>
+        <span className="flex items-center gap-2 rounded-xl border border-line bg-elevated py-1.5 pl-1.5 pr-2.5 text-sm font-semibold" aria-label={t("shop.householdLabel", { name: household.name })}>
           <span className="flex">
             {memberIds.slice(0, 3).map((id, i) => (
               <span key={id} className={cx(i > 0 && "-ml-2 rounded-lg ring-2 ring-elevated")}>
@@ -249,9 +253,9 @@ export function ShoppingPage() {
               <Play className="size-[1.125rem]" fill="currentColor" aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[0.9375rem] font-bold">Rozpracovaný nákup</span>
+              <span className="block text-[0.9375rem] font-bold">{t("shop.inProgress.title")}</span>
               <span className="block text-[0.8125rem] opacity-70">
-                {doneInSession} v košíku · zostáva {open.length} · pokračovať
+                {t("shop.inProgress.text", { done: doneInSession, left: open.length })}
               </span>
             </span>
             <ArrowRight className="mr-1 size-[1.125rem] opacity-70" aria-hidden />
@@ -261,9 +265,9 @@ export function ShoppingPage() {
           <div role="status" className="flex items-center gap-3 rounded-2xl border border-person/30 bg-person-soft p-3 text-sm">
             <Avatar name={shopperName ?? "?"} />
             <p className="min-w-0 text-text-2">
-              <b className="text-text">Nakupuje: {shopperName}</b>
+              <b className="text-text">{t("shop.shopperNow", { name: shopperName ?? "" })}</b>
               <br />
-              Čo teraz pridáš, pošle sa na schválenie.
+              {t("shop.requestsHint")}
             </p>
           </div>
         )}
@@ -273,7 +277,7 @@ export function ShoppingPage() {
 
       {someoneElse && myRequests.length > 0 && (
         <section className="mt-5 px-4">
-          <SectionTitle>Tvoje žiadosti</SectionTitle>
+          <SectionTitle>{t("shop.yourRequests")}</SectionTitle>
           <div className="divide-y divide-dashed divide-line overflow-hidden rounded-2xl border border-line bg-elevated">
             {myRequests.map((r) => (
               <div key={r.id} className="px-3.5 py-2.5">
@@ -298,18 +302,18 @@ export function ShoppingPage() {
         <section className="mt-5 px-4">
           <SectionTitle className="text-accent">
             <span className="size-2 rounded-full bg-accent [animation:bh-pulse_1.6s_ease_infinite]" aria-hidden />
-            Čaká na schválenie
+            {t("shop.waitingApproval")}
           </SectionTitle>
           <div className="divide-y divide-dashed divide-line overflow-hidden rounded-2xl border border-line bg-elevated">
             {pendingForMe.map((r) => (
-              <RequestCard key={r.id} request={r} listId={listId} who={(r.requested_by && names?.get(r.requested_by)) || "Člen domácnosti"} />
+              <RequestCard key={r.id} request={r} listId={listId} who={(r.requested_by && names?.get(r.requested_by)) || t("household.fallbackName")} />
             ))}
           </div>
         </section>
       )}
 
       <section className="mt-5 px-4">
-        <SectionTitle>Rýchle pridanie</SectionTitle>
+        <SectionTitle>{t("shop.quickAdd")}</SectionTitle>
         <QuickTiles
           householdId={household.id}
           items={all}
@@ -326,7 +330,7 @@ export function ShoppingPage() {
             </span>
           }
         >
-          Na zozname
+          {t("shop.onList")}
         </SectionTitle>
         {items.isPending ? (
           <Spinner />
@@ -334,7 +338,7 @@ export function ShoppingPage() {
           <ErrorState error={errorMessage(items.error)} onRetry={() => items.refetch()} />
         ) : open.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line-strong px-5 py-6 text-center text-sm text-text-2">
-            Zatiaľ prázdne. Napíš položku alebo ťukni na dlaždicu.
+            {t("shop.emptyList")}
           </div>
         ) : (
           <PlanList listId={listId} items={open} names={names} me={me} hints={hintMap} onEdit={setEditing} />
@@ -348,7 +352,7 @@ export function ShoppingPage() {
               aria-expanded={showPurchased}
               className="flex min-h-10 items-center gap-1 px-0.5 text-[0.8125rem] font-bold text-text-2"
             >
-              Nedávno kúpené ({recent.length})
+              {t("shop.recentlyBought", { n: recent.length })}
               <ChevronDown className={cx("size-4 transition-transform", showPurchased && "rotate-180")} aria-hidden />
             </button>
             {showPurchased && (
@@ -362,7 +366,7 @@ export function ShoppingPage() {
                         update.mutate(
                           { id: item.id, patch: { status: "OPEN" } },
                           {
-                            onSuccess: () => feed.push({ name: item.name, tail: "späť na zozname" }),
+                            onSuccess: () => feed.push({ name: item.name, tail: t("shop.backOnList") }),
                             onError: (err) => toast.show(errorMessage(err), "error"),
                           },
                         )
@@ -373,7 +377,7 @@ export function ShoppingPage() {
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 px-0.5 text-xs text-text-3">Ťuknutím položku vrátiš do zoznamu.</p>
+                <p className="mt-2 px-0.5 text-xs text-text-3">{t("shop.tapToRestore")}</p>
               </>
             )}
           </div>
@@ -385,7 +389,7 @@ export function ShoppingPage() {
         <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-2xl border-t border-line bg-bg px-4 pb-3 pt-2.5">
           {someoneElse ? (
             <div className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-line bg-elevated text-sm font-semibold text-text-2">
-              <Avatar name={shopperName ?? "?"} size="sm" /> Nakupuje: {shopperName}
+              <Avatar name={shopperName ?? "?"} size="sm" /> {t("shop.shopperNow", { name: shopperName ?? "" })}
             </div>
           ) : (
             <button
@@ -394,9 +398,9 @@ export function ShoppingPage() {
               disabled={start.isPending}
               className="flex h-14 w-full items-center justify-between rounded-2xl bg-accent pl-[1.125rem] pr-2 text-base font-bold text-on-accent transition-transform active:scale-[0.98] disabled:opacity-60"
             >
-              {iAmShopping ? "Pokračovať v nákupe" : "Začať nákup"}
+              {iAmShopping ? t("shop.continue") : t("shop.start")}
               <span className="flex h-10 items-center gap-2 rounded-[0.6875rem] bg-black/15 px-3 text-sm font-semibold">
-                {open.length} {itemsWord(open.length)}
+                {tn("shop.itemCount", open.length)}
                 <ArrowRight className="size-4" strokeWidth={2.4} aria-hidden />
               </span>
             </button>
@@ -420,12 +424,12 @@ export function ShoppingPage() {
 }
 
 function RequestStatus({ status }: { status: string }) {
-  const map: Record<string, [string, string]> = {
-    PENDING: ["čaká", "bg-warning-soft text-warning"],
-    ACCEPTED: ["pridané ✓", "bg-success-soft text-success"],
-    REJECTED: ["zahodené", "bg-danger-soft text-danger"],
-    EXPIRED: ["prepadlo", "bg-surface text-text-3"],
+  const map: Record<string, [Key, string]> = {
+    PENDING: ["request.status.PENDING", "bg-warning-soft text-warning"],
+    ACCEPTED: ["request.status.ACCEPTED", "bg-success-soft text-success"],
+    REJECTED: ["request.status.REJECTED", "bg-danger-soft text-danger"],
+    EXPIRED: ["request.status.EXPIRED", "bg-surface text-text-3"],
   };
-  const [label, cls] = map[status] ?? ["?", ""];
-  return <span className={cx("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold", cls)}>{label}</span>;
+  const [label, cls] = map[status] ?? [null, ""];
+  return <span className={cx("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold", cls)}>{label ? t(label) : "?"}</span>;
 }

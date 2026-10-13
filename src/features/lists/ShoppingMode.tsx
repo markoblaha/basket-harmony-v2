@@ -4,6 +4,7 @@ import { Avatar, Sheet, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { CATEGORIES, categoryOrder } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
+import { formatDateTime, t } from "@/i18n";
 import { useUpdateItem, type AdditionRequest, type Item, type Session, type ShoppingList } from "./api";
 import { RequestCard } from "./RequestCard";
 import { qtyLabel } from "./qty";
@@ -14,7 +15,7 @@ const FUNNEL_MS = 760;
 const AUTO_FINISH_MS = 1500;
 const TOAST_MS = 3200;
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" });
+const time = (iso: string) => formatDateTime(iso, { hour: "2-digit", minute: "2-digit" });
 
 type Toast = { id: number; name: string; rest: string; undo?: Item; out?: boolean };
 
@@ -65,7 +66,7 @@ export function ShoppingMode({
   const timers = useRef<number[]>([]);
   const autoFinish = useRef<number | null>(null);
   const toastSeq = useRef(1);
-  useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
+  useEffect(() => () => timers.current.forEach((id) => window.clearTimeout(id)), []);
   // Najnovší stav pre časovače (inak by videli stav z chvíle ťuknutia).
   const itemsRef = useRef(items);
   itemsRef.current = items;
@@ -108,9 +109,9 @@ export function ShoppingMode({
     setAllFlash(false);
   }
 
-  function showToast(t: Omit<Toast, "id">) {
+  function showToast(entry: Omit<Toast, "id">) {
     const id = toastSeq.current++;
-    setToast({ ...t, id });
+    setToast({ ...entry, id });
     timers.current.push(
       window.setTimeout(() => setToast((cur) => (cur?.id === id ? { ...cur, out: true } : cur)), TOAST_MS),
       window.setTimeout(() => setToast((cur) => (cur?.id === id ? null : cur)), TOAST_MS + 350),
@@ -139,13 +140,13 @@ export function ShoppingMode({
         const remaining = itemsRef.current.filter((i) => i.status === "OPEN" && i.id !== item.id && !leavingRef.current.has(i.id)).length;
         if (remaining === 0 && !autoFinish.current) {
           setAllFlash(true);
-          showToast({ name: "Všetko je v košíku", rest: "· uzatváram nákup", undo: item });
+          showToast({ name: t("mode.allInCart"), rest: t("mode.closing"), undo: item });
           autoFinish.current = window.setTimeout(() => {
             autoFinish.current = null;
             onFinishRef.current();
           }, AUTO_FINISH_MS);
         } else {
-          showToast({ name: item.name, rest: "je v košíku", undo: item });
+          showToast({ name: item.name, rest: t("mode.itemInCart"), undo: item });
         }
       }, FUNNEL_MS),
     );
@@ -158,25 +159,25 @@ export function ShoppingMode({
   }
 
   const request = pending[0];
-  const requester = request ? (request.requested_by && names?.get(request.requested_by)) || "Člen domácnosti" : "";
+  const requester = request ? (request.requested_by && names?.get(request.requested_by)) || t("household.fallbackName") : "";
 
   return (
     <div className="fixed inset-0 z-[45] mx-auto flex max-w-2xl flex-col bg-bg pt-safe animate-rise">
       <header className="flex items-center gap-1 py-3 pl-1 pr-3">
-        <button type="button" aria-label="Späť – pozastaviť alebo prerušiť" onClick={() => setSheet(true)} className="grid size-11 place-items-center rounded-xl active:bg-pressed">
+        <button type="button" aria-label={t("mode.backAria")} onClick={() => setSheet(true)} className="grid size-11 place-items-center rounded-xl active:bg-pressed">
           <ChevronLeft className="size-6" aria-hidden />
         </button>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[1.75rem] font-extrabold leading-none tracking-[-0.03em]">{list.name}</h1>
           <p className="mt-1 flex items-center gap-1.5 text-[0.8125rem] font-medium text-text-2">
             <span className="size-[7px] rounded-full bg-success [animation:bh-pulse_1.8s_ease_infinite]" aria-hidden />
-            Nakupuješ od {time(session.started_at)}
+            {t("mode.since", { time: time(session.started_at) })}
           </p>
         </div>
-        <Avatar name={names?.get(me) ?? "Ja"} me />
+        <Avatar name={names?.get(me) ?? t("shop.me")} me />
         <button
           type="button"
-          aria-label="Pozastaviť alebo prerušiť nákup"
+          aria-label={t("mode.pauseAria")}
           onClick={() => setSheet(true)}
           className="ml-1.5 grid size-11 place-items-center rounded-xl border border-line bg-elevated active:bg-pressed"
         >
@@ -203,7 +204,7 @@ export function ShoppingMode({
                     <LongPressButton
                       onTap={() => buy(item)}
                       onLongPress={() => onEdit(item)}
-                      aria-label={`Kúpené: ${item.name}, ${qtyLabel(item.quantity, item.unit)}. Podržaním upravíš.`}
+                      aria-label={t("mode.boughtAria", { name: item.name, qty: qtyLabel(item.quantity, item.unit) })}
                       className={cx(
                         "relative flex min-h-[4.125rem] w-full items-center gap-3.5 rounded-2xl border border-line bg-elevated px-3.5 py-3 text-left",
                         isLeaving && "pointer-events-none z-[5] [animation:bh-funnel_.78s_cubic-bezier(.5,0,.7,.25)_forwards]",
@@ -223,7 +224,7 @@ export function ShoppingMode({
                         <span className="block text-base font-semibold leading-tight">{item.name}</span>
                         {(by || item.note) && (
                           <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[0.8125rem] text-text-2">
-                            {by && <span className="rounded-[0.3125rem] bg-person-soft px-1.5 py-px text-[0.6875rem] font-bold text-person">Pridal(a): {by}</span>}
+                            {by && <span className="rounded-[0.3125rem] bg-person-soft px-1.5 py-px text-[0.6875rem] font-bold text-person">{t("item.addedBy", { name: by })}</span>}
                             {item.note && <span>{item.note}</span>}
                           </span>
                         )}
@@ -240,18 +241,18 @@ export function ShoppingMode({
 
         {left === 0 && !allFlash && total > 0 && (
           <div className="mt-5 rounded-2xl border border-line bg-elevated px-5 py-6 text-center">
-            <p className="text-lg font-extrabold tracking-[-0.02em]">Všetko je v košíku</p>
-            <p className="mt-1.5 text-sm leading-snug text-text-2">Ťuknutím na položku dole ju vrátiš do zoznamu. Keď si hotový, stlač Dokončiť.</p>
+            <p className="text-lg font-extrabold tracking-[-0.02em]">{t("mode.allInCart")}</p>
+            <p className="mt-1.5 text-sm leading-snug text-text-2">{t("mode.allInCartHint")}</p>
           </div>
         )}
         {total === 0 && (
-          <div className="mt-8 text-center text-text-2">Zoznam je prázdny. Prerušením sa vrátiš k plánovaniu.</div>
+          <div className="mt-8 text-center text-text-2">{t("mode.emptyList")}</div>
         )}
 
         {inCart.length > 0 && (
           <section className="mt-7">
             <h2 className="mb-2.5 flex items-center gap-2 px-0.5 text-[0.8125rem] font-bold text-text-2">
-              V košíku · ťuknutím vrátiš
+              {t("mode.inCartHeading")}
               <span className="h-px flex-1 bg-line" aria-hidden />
             </h2>
             <div className="flex flex-wrap gap-1.5">
@@ -260,7 +261,7 @@ export function ShoppingMode({
                   key={item.id}
                   type="button"
                   onClick={() => back(item)}
-                  aria-label={`Vrátiť do zoznamu: ${item.name}`}
+                  aria-label={t("mode.putBackAria", { name: item.name })}
                   className="inline-flex h-9 items-center gap-1.5 rounded-[0.625rem] border border-dashed border-line-strong pl-1.5 pr-2.5 text-[0.8125rem] font-medium text-text-2 line-through decoration-text-3 [animation:bh-tile-in_.45s_cubic-bezier(.2,.9,.3,1.3)]"
                 >
                   <span className="grid size-[1.375rem] place-items-center rounded-[0.4375rem] bg-accent text-on-accent no-underline">
@@ -292,11 +293,11 @@ export function ShoppingMode({
               type="button"
               onClick={() => {
                 back(toast.undo!);
-                setToast((t) => (t ? { ...t, out: true } : t));
+                setToast((cur) => (cur ? { ...cur, out: true } : cur));
               }}
               className="h-[2.125rem] shrink-0 rounded-[0.5625rem] bg-primary px-3 text-[0.8125rem] font-bold text-on-primary"
             >
-              Vrátiť
+              {t("mode.undo")}
             </button>
           )}
           <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-accent [animation:bh-shrink_3.2s_linear_forwards]" />
@@ -318,7 +319,7 @@ export function ShoppingMode({
               {done}
               <span className="opacity-50">/{total}</span>
             </span>
-            <span className="truncate text-[0.8125rem] opacity-75">{left === 0 ? "všetko v košíku" : `v košíku · zostáva ${left}`}</span>
+            <span className="truncate text-[0.8125rem] opacity-75">{left === 0 ? t("mode.dockAll") : t("mode.dockLeft", { left })}</span>
           </div>
           <Progress done={done} total={total} light={allFlash} />
         </div>
@@ -332,7 +333,7 @@ export function ShoppingMode({
               left === 0 ? "bg-accent text-on-accent" : "border-[1.5px] border-on-primary/25",
             )}
           >
-            {left === 0 ? "Dokončiť" : "Ukončiť"}
+            {left === 0 ? t("mode.finish") : t("mode.end")}
             <ArrowRight className="size-[0.9375rem]" strokeWidth={2.6} aria-hidden />
           </button>
         )}
@@ -340,20 +341,20 @@ export function ShoppingMode({
 
       {/* Žiadosť naživo – vyjde zhora */}
       {request && !paused && (
-        <div className="absolute inset-x-2.5 top-[calc(env(safe-area-inset-top)+0.625rem)] z-20 [animation:bh-slide-down_.55s_cubic-bezier(.2,.9,.3,1.15)]" role="alertdialog" aria-label="Nová žiadosť o pridanie">
+        <div className="absolute inset-x-2.5 top-[calc(env(safe-area-inset-top)+0.625rem)] z-20 [animation:bh-slide-down_.55s_cubic-bezier(.2,.9,.3,1.15)]" role="alertdialog" aria-label={t("mode.newRequest")}>
           <RequestCard key={request.id} request={request} listId={list.id} who={requester} tone="ink" more={pending.length - 1} />
         </div>
       )}
 
-      <Sheet open={sheet} onClose={() => setSheet(false)} title="Prestávka v nákupe?">
+      <Sheet open={sheet} onClose={() => setSheet(false)} title={t("mode.sheetTitle")}>
         <p className="-mt-1 mb-3 text-sm text-text-2">
-          V košíku máš {done} z {total}. Nič sa nestratí.
+          {t("mode.sheetCount", { done, total })}
         </p>
         <div className="flex flex-col gap-2">
           <SheetOption
             icon={<Pause className="size-[1.125rem]" strokeWidth={2.6} />}
-            title="Pozastaviť"
-            hint="Ostaneš tu, obrazovka počká, kým budeš pokračovať"
+            title={t("mode.pause")}
+            hint={t("mode.pauseHint")}
             onClick={() => {
               setSheet(false);
               setPaused(true);
@@ -361,30 +362,30 @@ export function ShoppingMode({
           />
           <SheetOption
             icon={<CornerUpLeft className="size-[1.125rem]" />}
-            title="Prerušiť a vrátiť sa k zoznamu"
-            hint="Kúpené ostanú označené, v nákupe pokračuješ neskôr"
+            title={t("mode.interrupt")}
+            hint={t("mode.interruptHint")}
             onClick={() => {
               setSheet(false);
               onInterrupt();
             }}
           />
           <button type="button" onClick={() => setSheet(false)} className="mt-1 h-12 rounded-xl text-[0.9375rem] font-semibold text-text-2 active:bg-pressed">
-            Pokračovať v nákupe
+            {t("shop.continue")}
           </button>
         </div>
       </Sheet>
 
       {paused && (
-        <div className="absolute inset-0 z-30 flex animate-fade flex-col items-center justify-center gap-2.5 bg-bg/90 p-8 text-center backdrop-blur-md" role="dialog" aria-label="Nákup pozastavený">
+        <div className="absolute inset-0 z-30 flex animate-fade flex-col items-center justify-center gap-2.5 bg-bg/90 p-8 text-center backdrop-blur-md" role="dialog" aria-label={t("mode.pausedAria")}>
           <span className="grid size-16 place-items-center rounded-[1.25rem] bg-primary text-on-primary">
             <Pause className="size-6" strokeWidth={2.6} aria-hidden />
           </span>
-          <p className="mt-1.5 text-2xl font-extrabold tracking-[-0.02em]">Nákup je pozastavený</p>
+          <p className="mt-1.5 text-2xl font-extrabold tracking-[-0.02em]">{t("mode.pausedTitle")}</p>
           <p className="max-w-xs text-sm leading-relaxed text-text-2">
-            V košíku máš {done} z {total}. Ostatní ďalej pridávajú – ich žiadosti uvidíš po návrate.
+            {t("mode.pausedText", { done, total })}
           </p>
           <button type="button" onClick={() => setPaused(false)} className="mt-3 h-[3.25rem] rounded-[0.875rem] bg-primary px-7 text-[0.9375rem] font-bold text-on-primary active:scale-[0.98]">
-            Pokračovať v nákupe
+            {t("shop.continue")}
           </button>
         </div>
       )}

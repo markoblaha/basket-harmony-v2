@@ -3,6 +3,7 @@
  * tlačidlo Späť vráti presne tam, kde si bol, a obdobie platí aj na detailoch.
  */
 import { useSearchParams } from "react-router";
+import { formatCalendarDate, t } from "@/i18n";
 
 export type Range = "month" | "3m" | "year";
 export type Scope = "all" | "everyday";
@@ -24,12 +25,13 @@ export type Period = {
   isLatest: boolean;
 };
 
-const MONTHS = ["január", "február", "marec", "apríl", "máj", "jún", "júl", "august", "september", "október", "november", "december"];
-const MONTHS_SHORT = ["jan", "feb", "mar", "apr", "máj", "jún", "júl", "aug", "sep", "okt", "nov", "dec"];
-export const monthShort = (m: number) => MONTHS_SHORT[m - 1]!;
-export const monthName = (m: number) => MONTHS[m - 1]!;
-
 const pad = (n: number) => String(n).padStart(2, "0");
+
+/** Názvy mesiacov dodáva Intl podľa jazyka rozhrania ("marec" / "March", "mar" / "Mar"). */
+const monthDate = (m: number) => `2000-${pad(m)}-01`;
+export const monthShort = (m: number) => formatCalendarDate(monthDate(m), { month: "short" }).replace(/\.$/, "").replace(/^Sept$/, "Sep");
+export const monthName = (m: number) => formatCalendarDate(monthDate(m), { month: "long" });
+
 const iso = (y: number, m: number, d: number) => `${y}-${pad(m)}-${pad(d)}`;
 const lastDay = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 /** Posun mesiaca: shift(2026, 1, -2) -> [2025, 11] */
@@ -64,7 +66,7 @@ export function computePeriod(range: Range, month: string, scope: Scope): Period
     prevFrom = iso(psy, psm, 1);
     prevTo = iso(py, pm, lastDay(py, pm));
     label = sy === y ? `${monthShort(sm)} – ${monthShort(m)} ${y}` : `${monthShort(sm)} ${sy} – ${monthShort(m)} ${y}`;
-    prevLabel = "predchádzajúce 3 mesiace";
+    prevLabel = t("period.prev3m");
   } else {
     from = iso(y, 1, 1);
     to = iso(y, 12, 31);

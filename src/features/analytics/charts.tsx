@@ -6,6 +6,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import { cx } from "@/components/ui";
 import { formatMoney } from "@/features/receipts/format";
+import { formatCalendarDate, t } from "@/i18n";
+import { storeLabel } from "./bits";
 import { daysBetween } from "./period";
 
 function useWidth<T extends HTMLElement>() {
@@ -22,10 +24,7 @@ function useWidth<T extends HTMLElement>() {
   return [ref, width] as const;
 }
 
-const shortDate = (iso: string) => {
-  const [, m, d] = iso.split("-").map(Number);
-  return `${d}. ${m}.`;
-};
+const shortDate = (iso: string) => formatCalendarDate(iso, { day: "numeric", month: "numeric" });
 const addDays = (iso: string, n: number) => new Date(Date.parse(iso + "T00:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
 
 /** Kumulatívne výdavky v období: plná čiara = teraz, prerušovaná = predchádzajúce obdobie k rovnakému dňu. */
@@ -87,7 +86,7 @@ export function CumulativeChart({
           prev: prev[hi] ?? null,
         }
       : null;
-  const summary = `Výdavky k ${shortDate(addDays(from, lastIndex))}: ${formatMoney(cur.at(-1) ?? 0)}, v predchádzajúcom období k rovnakému dňu ${formatMoney(prev[lastIndex] ?? 0)}.`;
+  const summary = t("chart.summary", { date: shortDate(addDays(from, lastIndex)), now: formatMoney(cur.at(-1) ?? 0), prev: formatMoney(prev[lastIndex] ?? 0) });
 
   return (
     <div
@@ -132,8 +131,8 @@ export function CumulativeChart({
           style={{ left: Math.min(Math.max(x(hi!), 70), w - 70) }}
         >
           <p className="font-semibold">{shortDate(tip.date)}</p>
-          {tip.cur != null && <p>Teraz: {formatMoney(tip.cur)}</p>}
-          {tip.prev != null && <p className="opacity-75">Predtým: {formatMoney(tip.prev)}</p>}
+          {tip.cur != null && <p>{t("chart.now", { amount: formatMoney(tip.cur) })}</p>}
+          {tip.prev != null && <p className="opacity-75">{t("chart.before", { amount: formatMoney(tip.prev) })}</p>}
         </div>
       )}
     </div>
@@ -251,12 +250,12 @@ export function PriceChart({ points, unitLabel }: { points: PricePoint[]; unitLa
   const sel = points.find((p) => p.key === selected);
 
   return (
-    <div ref={ref} className="relative select-none" role="img" aria-label={`Cena v čase, priemer ${formatMoney(avg)} ${unitLabel}`}>
+    <div ref={ref} className="relative select-none" role="img" aria-label={t("chart.priceAria", { avg: formatMoney(avg), unit: unitLabel })}>
       {width > 0 && (
         <svg width={w} height={h} className="block overflow-visible">
           <line x1={0} x2={w} y1={y(avg)} y2={y(avg)} className="stroke-text-3" strokeDasharray="3 4" strokeWidth={1} />
           <text x={w} y={y(avg) - 5} textAnchor="end" className="fill-text-3 text-[11px]">
-            priemer {formatMoney(avg)}
+            {t("chart.avg", { avg: formatMoney(avg) })}
           </text>
           {points.map((p) => {
             const px = x(Date.parse(p.date));
@@ -292,11 +291,11 @@ export function PriceChart({ points, unitLabel }: { points: PricePoint[]; unitLa
           style={{ left: Math.min(Math.max(x(Date.parse(sel.date)), 80), w - 80), top: 0 }}
         >
           <p className="font-semibold">
-            {shortDate(sel.date)} · {sel.store}
+            {shortDate(sel.date)} · {storeLabel(sel.store)}
           </p>
           <p>
             {formatMoney(sel.shelf)} {unitLabel}
-            {sel.paid < sel.shelf - 0.005 ? ` · v akcii ${formatMoney(sel.paid)}` : ""}
+            {sel.paid < sel.shelf - 0.005 ? ` · ${t("chart.promo", { price: formatMoney(sel.paid) })}` : ""}
           </p>
         </div>
       )}

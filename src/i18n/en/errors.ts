@@ -1,0 +1,36 @@
+import type { skErrors } from "../sk/errors";
+
+export const enErrors: Record<keyof typeof skErrors, string> = {
+  "error.NOT_AUTHENTICATED": "Your session has expired. Please sign in again.",
+  "error.NOT_FOUND": "This item no longer exists or you don't have access to it.",
+  "error.FORBIDDEN": "You don't have permission to do this.",
+  "error.VALIDATION": "Check the details you entered.",
+  "error.INVALID_INPUT": "The message is empty or too long (300 characters at most).",
+  "error.LIST_ARCHIVED": "This list is archived.",
+  "error.SESSION_ALREADY_ACTIVE": "Someone else is shopping right now.",
+  "error.INVITATION_INVALID": "This invitation isn't valid.",
+  "error.INVITATION_USED": "This invitation has already been used.",
+  "error.INVITATION_EXPIRED": "This invitation has expired. Ask for a new one.",
+  "error.TOO_MANY_PAGES": "A receipt can have 8 pages at most.",
+  "error.PAGE_ALREADY_EXISTS": "This page is already in the app (possibly in another receipt).",
+  "error.FILE_TOO_LARGE": "The file is too large (10 MB at most). Make it smaller or take a photo of it.",
+  "error.STATEMENT_READ_FAILED": "Couldn't read the statement. Try again, or use the PDF or CSV from your online banking.",
+  "error.NOT_A_STATEMENT": "No bank statement (a list of account transactions) was found in the file.",
+  "error.GEMINI_402": "The Gemini service account has run out of credit. Top it up in Google AI Studio.",
+  "error.PRODUCT_EXISTS": "A product like this already exists. Use “Merge” instead.",
+  // Supabase Auth
+  "error.invalid_credentials": "Incorrect email or password.",
+  "error.user_already_exists": "An account with this email already exists. Try signing in.",
+  "error.email_exists": "An account with this email already exists. Try signing in.",
+  "error.weak_password": "The password is too weak. Use at least 8 characters.",
+  "error.over_email_send_rate_limit": "Too many emails in a short time. Try again in a moment.",
+  "error.over_request_rate_limit": "Too many attempts. Wait a moment and try again.",
+  "error.email_address_not_authorized": "We can't send email to this address yet.",
+  "error.same_password": "The new password must be different from the old one.",
+  // Recognised from the wording of the error
+  "error.offline": "You're offline. Check your internet connection.",
+  "error.unreachable": "The server is unreachable. Check your connection and try again.",
+  "error.missingFunction": "This function isn't deployed in the database yet. The latest SQL file (migration) needs to be run.",
+  "error.providerDisabled": "Sign-in with Google isn't enabled yet. Use email for now.",
+  "error.generic": "Something went wrong. Try again.",
+};

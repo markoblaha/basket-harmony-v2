@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useToast } from "@/components/toast";
 import { errorMessage } from "@/lib/errors";
+import { t } from "@/i18n";
 import { useAddItem, useUpdateItem, type Item } from "./api";
 import { countOf, isCountable, qtyLabel, sameProduct } from "./qty";
 import type { FeedEntry } from "./feed";
@@ -46,7 +47,7 @@ export function useSmartAdd({
             id: existing.id,
             patch: { quantity, ...(input.note ? { note: input.note } : {}) },
           });
-          onFeed({ name: existing.name, qty: label, tail: `spolu ${qtyLabel(quantity, existing.unit)}` });
+          onFeed({ name: existing.name, qty: label, tail: t("feed.total", { qty: qtyLabel(quantity, existing.unit) }) });
           return "MERGED";
         } catch (err) {
           toast.show(errorMessage(err), "error");
@@ -56,7 +57,7 @@ export function useSmartAdd({
 
       try {
         const result = await add.mutateAsync({ listId, name, quantity: input.quantity ?? null, unit, note: input.note ?? null });
-        onFeed({ name, qty: label, tail: result.kind === "REQUEST" ? "poslané na schválenie" : "na zozname" });
+        onFeed({ name, qty: label, tail: result.kind === "REQUEST" ? t("feed.sentForApproval") : t("feed.onList") });
         return result.kind;
       } catch (err) {
         toast.show(errorMessage(err), "error");
