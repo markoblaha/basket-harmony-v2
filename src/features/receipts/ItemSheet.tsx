@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { Trash2 } from "lucide-react";
+import { Link } from "react-router";
+import { ChartLine, Trash2 } from "lucide-react";
 import { Button, Sheet, TextField } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { CATEGORIES, guessCategory } from "@/lib/categories";
@@ -105,6 +106,11 @@ export function ItemSheet({
           <p role="alert" className="text-sm text-danger">
             {error}
           </p>
+        )}
+        {item?.product_id && (
+          <Link to={`/analytics/product/${item.product_id}`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+            <ChartLine className="size-4" aria-hidden /> Vývoj ceny a porovnanie obchodov
+          </Link>
         )}
         <div className="flex flex-col gap-2">
           <Button type="submit" size="lg" block loading={save.isPending}>

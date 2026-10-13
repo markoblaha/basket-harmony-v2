@@ -476,6 +476,31 @@ begin
   if err = 'NOT_FOUND' then report := report || E'ok: cudzí nespojí cudzie doklady\n';
   else report := report || 'FAIL: cudzí merge -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
 
+  -- ------------------------------------------------- analytika (migrácia 20)
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.receipt_items where household_id = h and product_id is null;
+  if n = 0 then report := report || E'ok: každá položka bločku má produkt\n';
+  else report := report || 'FAIL: položky bez produktu ' || n || E'\n'; fails := fails + 1; end if;
+  res := public.analytics_overview(h, '2020-01-01', current_date, '2019-01-01', '2019-12-31', 'all');
+  if (res ->> 'total')::numeric > 0
+     and abs((select coalesce(sum((x ->> 'amount')::numeric), 0) from jsonb_array_elements(res -> 'categories') x)
+             - (res ->> 'total')::numeric) < 0.01 then
+    report := report || E'ok: prehľad – kategórie spolu dajú celkovú sumu\n';
+  else report := report || 'FAIL: prehľad ' || left(res::text, 200) || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null;
+  begin perform public.analytics_overview(h, '2020-01-01', current_date, '2019-01-01', '2019-12-31'); exception when others then err := sqlerrm; end;
+  if err = 'FORBIDDEN' then report := report || E'ok: cudzí nevidí prehľady inej domácnosti\n';
+  else report := report || 'FAIL: cudzí prehľad -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  select count(*) into n from public.products where household_id = h;
+  if n = 0 then report := report || E'ok: cudzí nevidí produkty inej domácnosti\n';
+  else report := report || E'FAIL: cudzí vidí produkty\n'; fails := fails + 1; end if;
+  execute 'reset role';
+
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);

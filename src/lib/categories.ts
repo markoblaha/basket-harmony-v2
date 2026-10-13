@@ -5,22 +5,31 @@
  * vchode, pečivo, chladené... drogéria na konci.
  */
 export const CATEGORIES = [
-  { id: "produce", name: "Ovocie a zelenina", emoji: "🥦" },
-  { id: "bakery", name: "Pečivo", emoji: "🥖" },
-  { id: "dairy_eggs", name: "Mliečne a vajcia", emoji: "🥛" },
-  { id: "deli_chilled", name: "Údeniny a chladené", emoji: "🧀" },
-  { id: "meat_fish", name: "Mäso a ryby", emoji: "🥩" },
-  { id: "frozen", name: "Mrazené", emoji: "🧊" },
-  { id: "pantry", name: "Trvanlivé potraviny", emoji: "🥫" },
-  { id: "breakfast", name: "Raňajky, káva a čaj", emoji: "☕" },
-  { id: "snacks_sweets", name: "Sladkosti a slané", emoji: "🍫" },
-  { id: "beverages", name: "Nápoje", emoji: "🧃" },
-  { id: "alcohol", name: "Alkohol", emoji: "🍷" },
-  { id: "household_cleaning", name: "Domácnosť a čistenie", emoji: "🧽" },
-  { id: "personal_care", name: "Drogéria", emoji: "🧴" },
-  { id: "baby", name: "Pre deti", emoji: "🍼" },
-  { id: "pet", name: "Zvieratá", emoji: "🐾" },
-  { id: "other", name: "Ostatné", emoji: "🛒" },
+  { id: "produce", name: "Ovocie a zelenina", emoji: "🥦", hue: 140 },
+  { id: "bakery", name: "Pečivo", emoji: "🥖", hue: 70 },
+  { id: "dairy_eggs", name: "Mliečne a vajcia", emoji: "🥛", hue: 230 },
+  { id: "deli_chilled", name: "Údeniny a chladené", emoji: "🧀", hue: 35 },
+  { id: "meat_fish", name: "Mäso a ryby", emoji: "🥩", hue: 15 },
+  { id: "frozen", name: "Mrazené", emoji: "🧊", hue: 210 },
+  { id: "pantry", name: "Trvanlivé potraviny", emoji: "🥫", hue: 55 },
+  { id: "breakfast", name: "Raňajky, káva a čaj", emoji: "☕", hue: 45 },
+  { id: "snacks_sweets", name: "Sladkosti a slané", emoji: "🍫", hue: 330 },
+  { id: "beverages", name: "Nápoje", emoji: "🧃", hue: 190 },
+  { id: "alcohol", name: "Alkohol", emoji: "🍷", hue: 350 },
+  { id: "household_cleaning", name: "Domácnosť a čistenie", emoji: "🧽", hue: 170 },
+  { id: "personal_care", name: "Drogéria", emoji: "🧴", hue: 290 },
+  { id: "health", name: "Zdravie a lekáreň", emoji: "💊", hue: 0 },
+  { id: "baby", name: "Pre deti", emoji: "🍼", hue: 310 },
+  { id: "pet", name: "Zvieratá", emoji: "🐾", hue: 90 },
+  { id: "clothing", name: "Oblečenie a obuv", emoji: "👕", hue: 260 },
+  { id: "home", name: "Domov a vybavenie", emoji: "🛋️", hue: 25 },
+  { id: "toys_hobby", name: "Hračky a hobby", emoji: "🧸", hue: 100 },
+  { id: "electronics", name: "Elektronika", emoji: "🔌", hue: 245 },
+  { id: "fuel", name: "Pohonné hmoty", emoji: "⛽", hue: 275 },
+  { id: "dining", name: "Jedlo von", emoji: "🍽️", hue: 60 },
+  { id: "fees", name: "Doprava a poplatky", emoji: "📦", hue: 200 },
+  { id: "deposit", name: "Zálohy", emoji: "♻️", hue: 150 },
+  { id: "other", name: "Ostatné", emoji: "🛒", hue: 280 },
 ] as const;
 
 export type CategoryId = (typeof CATEGORIES)[number]["id"];
@@ -53,6 +62,15 @@ export function normalizeName(value: string): string {
  * zapamätá a nabudúce má prednosť pred týmto odhadom.
  */
 const KEYWORDS: Record<Exclude<CategoryId, "other">, string[]> = {
+  health: ["ibalgin", "paralen", "nurofen", "liek", "tablet", "sirup proti", "nahrast", "obvaz", "teplomer", "magnez", "vitamin c", "vitamin d"],
+  clothing: ["tricko", "mikina", "nohavic", "ponozk", "pancuch", "bunda", "sveter", "pulover", "obuv", "topanky", "tenisk", "podprsenk", "spodn", "pyzam"],
+  home: ["hrnc", "panvic", "tanier", "pohar", "pribor", "noz", "vesiak", "ramik", "dekorac", "uterak", "obliecka", "vank", "kvetinac", "stolik"],
+  toys_hobby: ["hracka", "hracky", "lego", "puzzle", "plastelin", "modelovac", "pastelk", "farbick", "zosit", "pero", "lopta", "stavebnic", "hrazdick"],
+  electronics: ["kabel", "nabijack", "sluchadl", "usb", "adapter", "klavesnic", "powerbank"],
+  fuel: ["nafta", "diesel", "benzin", "natural 95", "natural 98", "lpg", "adblue"],
+  dining: ["menu", "obed", "restaurac", "bufet", "kebab", "burger"],
+  fees: ["doprava", "postovne", "postovn", "balne", "poplatok", "kurier", "alzabox", "dorucen"],
+  deposit: ["zaloha", "zaloh", "zalohovan", "vratn"],
   produce: [
     "jablk", "hrusk", "banan", "pomaranc", "mandarin", "citron", "limet", "grep", "kiwi", "hrozn",
     "jahod", "malin", "cucoried", "ceresn", "visn", "slivk", "broskyn", "marhul", "melon", "ananas",

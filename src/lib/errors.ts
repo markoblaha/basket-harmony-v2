@@ -14,6 +14,7 @@ const MESSAGES: Record<string, string> = {
   TOO_MANY_PAGES: "Doklad môže mať najviac 8 strán.",
   PAGE_ALREADY_EXISTS: "Táto strana už v aplikácii je (možno v inom doklade).",
   FILE_TOO_LARGE: "Súbor je príliš veľký (najviac 10 MB). Zmenši ho alebo ho odfoť.",
+  PRODUCT_EXISTS: "Taký produkt už existuje. Použi radšej „Spojiť“.",
   INVITATION_USED: "Táto pozvánka už bola použitá.",
   INVITATION_EXPIRED: "Platnosť pozvánky vypršala. Požiadaj o novú.",
   // Supabase Auth

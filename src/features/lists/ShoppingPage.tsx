@@ -19,11 +19,20 @@ import {
   useUpdateItem,
   type Item,
 } from "./api";
+import { useListPriceHints, type PriceHint } from "@/features/analytics/api";
+import { formatMoney } from "@/features/receipts/format";
 import { AddItemBar } from "./AddItemBar";
 import { EditItemSheet } from "./EditItemSheet";
 import { ItemRow } from "./ItemRow";
 import { ListsSheet } from "./ListsSheet";
 import { RequestSheet } from "./RequestSheet";
+
+/** Krátka veta s cenou z bločkov: "naposledy 1,19 € (Lidl) · lacnejšie: Tesco". */
+function priceHint(h: PriceHint | undefined): string | undefined {
+  if (!h) return undefined;
+  const cheaper = h.cheapest_store && h.cheapest_store !== h.last_store && h.cheapest_unit < h.last_unit - 0.005;
+  return `naposledy ${formatMoney(h.last_price)} (${h.last_store})${cheaper ? ` · lacnejšie: ${h.cheapest_store}` : ""}`;
+}
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" });
 
@@ -38,6 +47,7 @@ export function ShoppingPage() {
   const list = lists.data?.find((l) => l.id === listId);
 
   const items = useItems(listId);
+  const hints = useListPriceHints(listId);
   const session = useActiveSession(listId);
   const requests = useRequests(listId, session.data?.id);
   const names = useProfiles().data;
@@ -207,6 +217,7 @@ export function ShoppingPage() {
                     item={item}
                     large={iAmShopping}
                     addedBy={item.added_by && item.added_by !== me ? names?.get(item.added_by) : undefined}
+                    hint={priceHint(hints.data?.get(item.id))}
                     onToggle={() => toggle(item)}
                     onEdit={() => setEditing(item)}
                   />

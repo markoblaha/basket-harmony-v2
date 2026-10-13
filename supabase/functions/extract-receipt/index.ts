@@ -22,7 +22,8 @@ const json = (body: unknown, status = 200) =>
 
 const CATEGORIES = [
   "produce", "bakery", "dairy_eggs", "deli_chilled", "meat_fish", "frozen", "pantry", "breakfast",
-  "snacks_sweets", "beverages", "alcohol", "household_cleaning", "personal_care", "baby", "pet", "other",
+  "snacks_sweets", "beverages", "alcohol", "household_cleaning", "personal_care", "health", "baby", "pet",
+  "clothing", "home", "toys_hobby", "electronics", "fuel", "dining", "fees", "deposit", "other",
 ];
 
 // Modely: bežné čítanie, záložný model (ak prvý nie je dostupný) a silnejší model na druhé čítanie.
@@ -53,9 +54,9 @@ Pravidlá:
 - total: konečná suma na zaplatenie presne tak, ako je vytlačená na doklade (Spolu, Celkom, K úhrade, Na zaplatenie). Prepíš ju z dokladu, nepočítaj ju zo súčtu položiek. Pri dlhom doklade je na úplnom konci – nezabudni ju.
 - items: každý nakúpený riadok v poradí z dokladu. name presne podľa dokladu. quantity a unit: pri kusoch quantity = počet a unit "ks"; pri vážených veciach quantity = hmotnosť a unit "kg". unit_price = cena za jednotku. line_total = suma, ktorú si zákazník za riadok naozaj zaplatil PO zľave a S DPH (ak je na faktúre cena bez DPH aj s DPH, použi s DPH); ak cena riadku na doklade nie je, daj null.
 - Riadky so zľavou (Zľava, Akcia, Kupón, Lidl Plus) pripoj k položke, ktorej patria: zníž jej line_total a do discount daj kladnú sumu zľavy. Ak zľava patrí celému nákupu, nepridávaj ju ako položku, len ju sčítaj do discount_total.
-- Doprava, balné a iné poplatky sú samostatné položky (category_id other). Položka s nulovou cenou (darček, kupón na budúci nákup) sa neuvádza.
-- Záloha na obaly: samostatná položka "Záloha na obal" (category_id other). Vrátená záloha je položka so zápornou sumou.
-- category_id vyber z povolených hodnôt podľa druhu tovaru.
+- Doprava, poštovné, balné a iné poplatky sú samostatné položky (category_id fees). Položka s nulovou cenou (darček, kupón na budúci nákup) sa neuvádza.
+- Záloha na obaly: samostatná položka "Záloha na obal" (category_id deposit). Vrátená záloha je položka so zápornou sumou (tiež deposit).
+- category_id vyber z povolených hodnôt podľa druhu tovaru: health = lieky, vitamíny, zdravotnícke potreby; baby = plienky, detská výživa a potreby pre deti; clothing = oblečenie a obuv; home = vybavenie domácnosti, kuchynské potreby, dekorácie; toys_hobby = hračky, hobby, kancelária; electronics = elektronika; fuel = pohonné hmoty; dining = jedlo a pitie v reštaurácii či bufete; household_cleaning = čistiace a pracie prostriedky; other len ak nič nesedí.
 - Kontrola pred odpoveďou: sčítaj line_total všetkých položiek; má sa rovnať total. Ak nie, vráť sa k dokladu a nájdi chýbajúci alebo zle prečítaný riadok, kým to nesedí. Ak súčet nevie sedieť ani po dôkladnej kontrole (doklad je poškodený alebo nečitateľný), vráť čo čítaš a nič nedopočítavaj.
 Vymýšľať údaje je zakázané: čo nevidíš, daj null.`;
 

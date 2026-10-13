@@ -15,11 +15,11 @@ import { supabase } from "@/lib/supabase";
 export type RealtimeStatus = "connecting" | "live" | "reconnecting";
 
 const TABLE_KEYS: Record<string, string[][]> = {
-  shopping_list_items: [["items"]],
+  shopping_list_items: [["items"], ["analytics", "hints"]],
   shopping_lists: [["lists"]],
   shopping_sessions: [["session"], ["requests"]],
   addition_requests: [["requests"], ["items"]],
-  receipts: [["receipts"], ["receipt"]],
+  receipts: [["receipts"], ["receipt"], ["analytics"]],
   household_members: [["members"], ["profiles"], ["households"]],
 };
 

@@ -10,7 +10,13 @@ import { JoinPage } from "@/features/household/JoinPage";
 import { MorePage } from "@/features/household/MorePage";
 import { OnboardingPage } from "@/features/household/OnboardingPage";
 import { ShoppingPage } from "@/features/lists/ShoppingPage";
-import { AnalyticsPage } from "@/features/placeholders";
+import { AnalyticsLayout } from "@/features/analytics/AnalyticsLayout";
+import { CategoryPage } from "@/features/analytics/CategoryPage";
+import { OverviewTab } from "@/features/analytics/OverviewTab";
+import { ProductPage } from "@/features/analytics/ProductPage";
+import { ProductsTab } from "@/features/analytics/ProductsTab";
+import { StorePage } from "@/features/analytics/StorePage";
+import { StoresTab } from "@/features/analytics/StoresTab";
 import { ReceiptsPage } from "@/features/receipts/ReceiptsPage";
 import { ReceiptDetailPage } from "@/features/receipts/ReceiptDetailPage";
 
@@ -60,7 +66,14 @@ export function App() {
           <Route path="lists/:listId" element={<ShoppingPage />} />
           <Route path="receipts" element={<ReceiptsPage />} />
           <Route path="receipts/:id" element={<ReceiptDetailPage />} />
-          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="analytics" element={<AnalyticsLayout />}>
+            <Route index element={<OverviewTab />} />
+            <Route path="products" element={<ProductsTab />} />
+            <Route path="stores" element={<StoresTab />} />
+          </Route>
+          <Route path="analytics/category/:id" element={<CategoryPage />} />
+          <Route path="analytics/store/:key" element={<StorePage />} />
+          <Route path="analytics/product/:id" element={<ProductPage />} />
           <Route path="more" element={<MorePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -11,12 +11,15 @@ import type { Item } from "./api";
 export function ItemRow({
   item,
   addedBy,
+  hint,
   large,
   onToggle,
   onEdit,
 }: {
   item: Item;
   addedBy?: string;
+  /** Cena z bločkov (naposledy a kde je lacnejšie). */
+  hint?: string;
   large?: boolean;
   onToggle: () => void;
   onEdit: () => void;
@@ -52,6 +55,7 @@ export function ItemRow({
               {[item.note, addedBy && `pridal(a) ${addedBy}`].filter(Boolean).join(" · ")}
             </span>
           )}
+          {hint && !purchased && <span className="block truncate text-xs text-text-3">{hint}</span>}
         </span>
         {qty && (
           <span className={cx("shrink-0 rounded-full bg-surface px-2.5 py-0.5 text-sm font-semibold tabular-nums", purchased ? "text-text-3" : "text-text-2")}>

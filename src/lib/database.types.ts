@@ -45,7 +45,7 @@ export type Database = {
         Relationships: [];
       };
       categories: {
-        Row: { emoji: string; id: string; name: string; sort_order: number };
+        Row: { emoji: string; everyday: boolean; id: string; name: string; sort_order: number };
         Insert: never;
         Update: never;
         Relationships: [];
@@ -104,12 +104,45 @@ export type Database = {
           line_total: number;
           name_key: string;
           position: number;
+          product_id: string | null;
           quantity: number;
           raw_name: string;
           receipt_id: string;
           unit: string | null;
           unit_price: number | null;
         };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      products: {
+        Row: {
+          brand: string | null;
+          category_id: string;
+          category_manual: boolean;
+          created_at: string;
+          household_id: string;
+          id: string;
+          merged_into: string | null;
+          name: string;
+          normalized: boolean;
+          product_key: string;
+          size_unit: "g" | "ml" | "ks" | null;
+          size_value: number | null;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      product_aliases: {
+        Row: { household_id: string; name_key: string; product_id: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      budgets: {
+        Row: { amount: number | null; category_id: string | null; household_id: string; id: string; updated_at: string };
         Insert: never;
         Update: never;
         Relationships: [];
@@ -228,6 +261,34 @@ export type Database = {
       end_shopping: { Args: { p_session_id: string }; Returns: SessionRow };
       invitation_preview: { Args: { p_token: string }; Returns: Json };
       leave_household: { Args: { p_household_id: string }; Returns: undefined };
+      analytics_overview: {
+        Args: { p_from: string; p_household_id: string; p_prev_from: string; p_prev_to: string; p_scope?: string; p_to: string };
+        Returns: Json;
+      };
+      analytics_category: {
+        Args: { p_category_id: string; p_from: string; p_household_id: string; p_prev_from: string; p_prev_to: string; p_to: string };
+        Returns: Json;
+      };
+      analytics_store: {
+        Args: { p_from: string; p_household_id: string; p_prev_from: string; p_prev_to: string; p_store_key: string; p_to: string };
+        Returns: Json;
+      };
+      analytics_products: { Args: { p_household_id: string }; Returns: Json };
+      analytics_product: { Args: { p_product_id: string }; Returns: Json };
+      list_price_hints: { Args: { p_list_id: string }; Returns: Json };
+      set_budget: { Args: { p_amount: number | null; p_category_id: string | null; p_household_id: string }; Returns: undefined };
+      update_product: {
+        Args: {
+          p_brand: string | null;
+          p_category_id: string;
+          p_name: string;
+          p_product_id: string;
+          p_size_unit: string | null;
+          p_size_value: number | null;
+        };
+        Returns: Database["public"]["Tables"]["products"]["Row"];
+      };
+      merge_products: { Args: { p_sources: string[]; p_target: string }; Returns: string };
       save_receipt_item: {
         Args: {
           p_category_id?: string;
