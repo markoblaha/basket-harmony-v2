@@ -70,6 +70,13 @@ export function useReceiptImage(path: string | undefined) {
 export type UploadOutcome = "NEW" | "DUPLICATE" | "OK" | "NEEDS_REVIEW" | "FAILED" | "NOT_A_RECEIPT";
 
 export const isNotAReceiptError = (e: unknown) => e instanceof Error && e.message.startsWith("NOT_A_RECEIPT");
+/**
+ * Chyba, pri ktorej nemá zmysel pokračovať ďalšími dokladmi (došiel kredit, zlý alebo chýbajúci kľúč).
+ * Všetko ostatné (jeden nečitateľný doklad, výpadok) sa týka len jedného dokladu.
+ */
+export const isGlobalFailure = (message: string | null | undefined) =>
+  !!message && /^(GEMINI_(401|402|403)|GEMINI_API_KEY_MISSING)/.test(message);
+export const isReceiptPdf = (r: Pick<Receipt, "image_path">) => r.image_path.toLowerCase().endsWith(".pdf");
 export const isNotAReceipt = (r: Receipt) => r.status === "FAILED" && !!r.error_text?.startsWith("NOT_A_RECEIPT");
 
 async function sha256Hex(file: Blob): Promise<string> {
@@ -77,18 +84,20 @@ async function sha256Hex(file: Blob): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function extensionOf(file: File): "jpg" | "png" | "webp" | "heic" {
+function extensionOf(file: File): "jpg" | "png" | "webp" | "heic" | "pdf" {
   const t = file.type.toLowerCase();
+  if (t.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")) return "pdf";
   if (t.includes("png")) return "png";
   if (t.includes("webp")) return "webp";
   if (t.includes("heic") || t.includes("heif")) return "heic";
   return "jpg";
 }
 
-/** Príliš veľkú fotku (nad limit úložiska) zmenšíme; bežné fotky idú v pôvodnej podobe. */
+/** Príliš veľkú fotku (nad limit úložiska) zmenšíme; bežné fotky a PDF idú v pôvodnej podobe. */
 async function fitForUpload(file: File): Promise<Blob> {
   const LIMIT = 9 * 1024 * 1024;
   if (file.size <= LIMIT) return file;
+  if (extensionOf(file) === "pdf") throw new Error("FILE_TOO_LARGE");
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, 3000 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -130,9 +139,15 @@ export async function uploadReceiptFile(householdId: string, file: File): Promis
   const reg = data[0]!;
   if (reg.already_exists) return "DUPLICATE";
 
-  const body = await fitForUpload(file);
+  let body: Blob;
+  try {
+    body = await fitForUpload(file);
+  } catch (err) {
+    await supabase.from("receipts").delete().eq("id", reg.receipt_id); // bez súboru by ostal prázdny riadok
+    throw err;
+  }
   const up = await supabase.storage.from("receipts").upload(reg.path, body, {
-    contentType: body.type || "image/jpeg",
+    contentType: body.type || (extensionOf(file) === "pdf" ? "application/pdf" : "image/jpeg"),
   });
   if (up.error) {
     // Bez fotky by bloček zostal prázdny a ďalší pokus by ho brał ako duplicitu.
@@ -142,7 +157,9 @@ export async function uploadReceiptFile(householdId: string, file: File): Promis
   try {
     return await extractReceipt(reg.receipt_id);
   } catch (e) {
-    // dôvod je uložený pri bločku, zobrazí sa v zozname
+    // Globálna chyba (kredit, kľúč) ide ďalej, aby sa dávka zastavila a človek videl dôvod.
+    if (e instanceof Error && isGlobalFailure(e.message)) throw e;
+    // Ostatné: dôvod je uložený pri bločku, zobrazí sa v zozname.
     return isNotAReceiptError(e) ? "NOT_A_RECEIPT" : "FAILED";
   }
 }

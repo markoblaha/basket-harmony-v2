@@ -8,6 +8,7 @@ import { errorMessage } from "@/lib/errors";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import {
   extractReceipt,
+  isGlobalFailure,
   isNotAReceipt,
   isNotAReceiptError,
   uploadReceiptFile,
@@ -15,14 +16,22 @@ import {
   type Receipt,
   type UploadOutcome,
 } from "./api";
-import { formatDate, formatMoney, monthLabel } from "./format";
+import { failureText, formatDate, formatMoney, monthLabel } from "./format";
 
-type Progress = { total: number; done: number; counts: Record<UploadOutcome | "ERROR", number>; stopped?: boolean };
+type Progress = {
+  total: number;
+  done: number;
+  counts: Record<UploadOutcome | "ERROR", number>;
+  stopped?: boolean;
+  /** Prečo sa dávka zastavila (veta pre človeka). */
+  stopReason?: string;
+};
 /**
- * Po tomto počte technických chýb za sebou spracovanie zastavíme – ide takmer iste o rovnakú príčinu
- * (kľúč, kredit, limit). Fotka, na ktorej nie je bloček, je iný prípad: ostatné sa spracujú ďalej.
+ * Jeden problémový doklad dávku nezastaví. Zastavíme ju len keď:
+ *  - došiel kredit alebo je zlý kľúč (zastaví sa hneď, ďalšie doklady by zlyhali tiež), alebo
+ *  - zlyhalo viac technických pokusov za sebou (výpadok služby alebo siete).
  */
-const STOP_AFTER_FAILURES = 3;
+const STOP_AFTER_FAILURES = 5;
 const EMPTY_COUNTS = { NEW: 0, DUPLICATE: 0, OK: 0, NEEDS_REVIEW: 0, FAILED: 0, NOT_A_RECEIPT: 0, ERROR: 0 };
 
 export function ReceiptsPage() {
@@ -55,21 +64,29 @@ export function ReceiptsPage() {
         state.counts.ERROR++;
         lastError = err;
         streak++;
+        if (err instanceof Error && isGlobalFailure(err.message)) {
+          state.stopped = true;
+          state.stopReason = failureText(err.message);
+        }
       }
       state.done++;
-      if (streak >= STOP_AFTER_FAILURES && state.done < state.total) state.stopped = true;
+      if (streak >= STOP_AFTER_FAILURES && state.done < state.total && !state.stopped) {
+        state.stopped = true;
+        state.stopReason = `${STOP_AFTER_FAILURES} dokladov za sebou sa nepodarilo prečítať, takže ide pravdepodobne o výpadok služby. Skús to o chvíľu.`;
+      }
       setProgress({ ...state, counts: { ...state.counts } });
       qc.invalidateQueries({ queryKey: ["receipts"] });
       if (state.stopped) break;
     }
-    if (lastError) toast.show(errorMessage(lastError), "error");
+    if (lastError && !state.stopReason) toast.show(errorMessage(lastError), "error");
   }
 
   /** Znova prečíta všetky bločky, ktoré skončili chybou (fotky už sú nahraté). */
   async function retryFailed() {
-    // Najprv tie, ktoré zlyhali technicky (kredit, preťaženie); fotky bez bločku až nakoniec.
+    // Najprv tie, ktoré zlyhali technicky (kredit, preťaženie); súbory bez dokladu až nakoniec.
+    // Zaseknuté (čítanie sa začalo, ale nikdy neskončilo) berieme tiež.
     const failed = (receipts.data ?? [])
-      .filter((r) => r.status === "FAILED")
+      .filter((r) => r.status === "FAILED" || isStale(r))
       .sort((a, b) => Number(isNotAReceipt(a)) - Number(isNotAReceipt(b)));
     if (failed.length === 0) return;
     const state: Progress = { total: failed.length, done: 0, counts: { ...EMPTY_COUNTS } };
@@ -86,10 +103,18 @@ export function ReceiptsPage() {
         } else {
           state.counts.FAILED++;
           streak++;
+          const message = err instanceof Error ? err.message : "";
+          if (isGlobalFailure(message)) {
+            state.stopped = true;
+            state.stopReason = failureText(message);
+          }
         }
       }
       state.done++;
-      if (streak >= STOP_AFTER_FAILURES && state.done < state.total) state.stopped = true;
+      if (streak >= STOP_AFTER_FAILURES && state.done < state.total && !state.stopped) {
+        state.stopped = true;
+        state.stopReason = `${STOP_AFTER_FAILURES} dokladov za sebou sa nepodarilo prečítať, takže ide pravdepodobne o výpadok služby. Skús to o chvíľu.`;
+      }
       setProgress({ ...state, counts: { ...state.counts } });
       qc.invalidateQueries({ queryKey: ["receipts"] });
       if (state.stopped) break;
@@ -97,9 +122,10 @@ export function ReceiptsPage() {
   }
 
   const all = receipts.data ?? [];
-  const failedCount = all.filter((r) => r.status === "FAILED").length;
-  const reviewCount = all.filter((r) => r.status === "NEEDS_REVIEW" || r.status === "FAILED").length;
-  const visible = onlyReview ? all.filter((r) => r.status === "NEEDS_REVIEW" || r.status === "FAILED") : all;
+  const failedCount = all.filter((r) => r.status === "FAILED" || isStale(r)).length;
+  const needsAttention = (r: Receipt) => r.status === "NEEDS_REVIEW" || r.status === "FAILED" || isStale(r);
+  const reviewCount = all.filter(needsAttention).length;
+  const visible = onlyReview ? all.filter(needsAttention) : all;
   const groups = groupByMonth(visible);
 
   return (
@@ -112,7 +138,7 @@ export function ReceiptsPage() {
             <Button onClick={() => input.current?.click()} disabled={running}>
               <Camera className="size-5" aria-hidden /> Pridať
             </Button>
-            <input ref={input} type="file" accept="image/*" multiple hidden onChange={onPick} />
+            <input ref={input} type="file" accept="image/*,application/pdf" multiple hidden onChange={onPick} />
           </>
         }
       />
@@ -138,7 +164,7 @@ export function ReceiptsPage() {
                 </div>
               }
             >
-              Súčet položiek nesedí s celkovou sumou alebo sa údaje nepodarilo prečítať.
+              Súčet položiek nesedí s celkovou sumou, údaje sa nepodarilo prečítať alebo je niečo podozrivé. Otvor doklad a porovnaj s fotkou.
             </Banner>
           </Section>
         )}
@@ -149,8 +175,8 @@ export function ReceiptsPage() {
           <ErrorState error={errorMessage(receipts.error)} onRetry={() => receipts.refetch()} />
         ) : all.length === 0 ? (
           <EmptyState icon="🧾" title="Zatiaľ žiadne bločky">
-            Klepni na „Pridať“ a vyber fotky bločkov (aj viac naraz). Umelá inteligencia z nich prečíta obchod, dátum a
-            všetky položky s cenami.
+            Klepni na „Pridať“ a vyber fotky bločkov, snímky obrazovky alebo PDF faktúry (aj viac naraz). Umelá inteligencia
+            z nich prečíta obchod, dátum a všetky položky s cenami.
           </EmptyState>
         ) : (
           groups.map(([month, list]) => (
@@ -168,6 +194,9 @@ export function ReceiptsPage() {
   );
 }
 
+/** Čítanie sa začalo, ale server ho nikdy nedokončil (napr. zavretá aplikácia, výpadok). */
+const isStale = (r: Receipt) => r.status === "PROCESSING" && Date.now() - new Date(r.updated_at).getTime() > 3 * 60_000;
+
 function groupByMonth(list: Receipt[]): [string, Receipt[]][] {
   const map = new Map<string, Receipt[]>();
   for (const r of list) {
@@ -178,7 +207,7 @@ function groupByMonth(list: Receipt[]): [string, Receipt[]][] {
 }
 
 function ReceiptRow({ receipt: r }: { receipt: Receipt }) {
-  const stale = r.status === "PROCESSING" && Date.now() - new Date(r.updated_at).getTime() > 3 * 60_000;
+  const stale = isStale(r);
   return (
     <Link to={`/receipts/${r.id}`} className="flex min-h-16 items-center gap-3 px-4 py-3 active:bg-pressed">
       <div className="min-w-0 flex-1">
@@ -225,20 +254,20 @@ function UploadProgress({ progress, running, onClose }: { progress: Progress; ru
             ? `Spracúvam ${progress.done + 1} z ${progress.total}…`
             : progress.stopped
               ? `Zastavené po ${progress.done} z ${progress.total}`
-              : `Hotovo: ${progress.total} fotiek`
+              : `Hotovo: ${progress.total} súborov`
         }
         action={!running && <Button variant="secondary" onClick={onClose}>Zavrieť</Button>}
       >
         {progress.stopped && (
           <p className="font-medium">
-            Zastavil som spracovanie, lebo {STOP_AFTER_FAILURES} bločky za sebou zlyhali. Zvyšok sa nenahral. Dôvod je v detaile
-            bločku (otvor ho v zozname).
+            {progress.stopReason ?? "Spracovanie sa zastavilo."} Už nahraté doklady sú v poriadku uložené. Po oprave klikni
+            na „Skúsiť znova nepodarené“ a nenahraté súbory vyber znova (už nahraté sa preskočia).
           </p>
         )}
         {running ? "Nechaj túto stránku otvorenú, kým sa všetko nespracuje. Jeden bloček trvá niekoľko sekúnd." : null}
         {parts.length > 0 && <p>{parts.join(" · ")}</p>}
         {!running && c.FAILED + c.ERROR > 0 && (
-          <p className="mt-1">Nepodarené otvor v zozname (označené červene) a skús čítanie spustiť znova.</p>
+          <p className="mt-1">Nepodarené nájdeš v zozname (označené červene). Dôvod je v detaile dokladu.</p>
         )}
       </Banner>
     </Section>

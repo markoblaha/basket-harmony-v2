@@ -11,6 +11,7 @@ const MESSAGES: Record<string, string> = {
   LIST_ARCHIVED: "Zoznam je archivovaný.",
   SESSION_ALREADY_ACTIVE: "Práve nakupuje niekto iný.",
   INVITATION_INVALID: "Pozvánka je neplatná.",
+  FILE_TOO_LARGE: "Súbor je príliš veľký (najviac 10 MB). Zmenši ho alebo ho odfoť.",
   INVITATION_USED: "Táto pozvánka už bola použitá.",
   INVITATION_EXPIRED: "Platnosť pozvánky vypršala. Požiadaj o novú.",
   // Supabase Auth

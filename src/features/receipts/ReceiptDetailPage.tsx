@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ArrowLeft, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Banner, Button, ErrorState, Group, IconButton, Section, Sheet, Spinner, TextField } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { errorMessage } from "@/lib/errors";
 import { category } from "@/lib/categories";
 import {
+  isReceiptPdf,
   useConfirmReceipt,
   useDeleteReceipt,
   useReceipt,
@@ -121,7 +122,19 @@ export function ReceiptDetailPage() {
           </Section>
         )}
 
-        {image.data && (
+        {image.data && isReceiptPdf(r) && (
+          <Section>
+            <a
+              href={image.data}
+              target="_blank"
+              rel="noreferrer"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-surface)] bg-surface px-4 py-3 font-semibold active:bg-pressed"
+            >
+              <FileText className="size-5" aria-hidden /> Otvoriť PDF doklad
+            </a>
+          </Section>
+        )}
+        {image.data && !isReceiptPdf(r) && (
           <Section>
             <button type="button" onClick={() => setPhotoOpen(true)} className="block w-full overflow-hidden rounded-[var(--radius-surface)] bg-surface">
               <img src={image.data} alt="Fotka bločku" className="max-h-64 w-full object-cover object-top" />

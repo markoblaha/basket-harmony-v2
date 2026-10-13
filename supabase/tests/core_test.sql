@@ -287,6 +287,14 @@ begin
   if rg.already_exists and rg.receipt_id = rc1 then
     report := report || E'ok: tá istá fotka sa druhýkrát neprijme (duplicita)\n';
   else report := report || E'FAIL: duplicitná fotka prešla\n'; fails := fails + 1; end if;
+  select * into rg from public.register_receipt(h, repeat('d', 64), 'pdf');
+  if rg.path like h::text || '/%.pdf' and not rg.already_exists then
+    report := report || E'ok: PDF doklad (faktúra) sa zaregistruje\n';
+  else report := report || E'FAIL: PDF register_receipt\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.register_receipt(h, repeat('e', 64), 'exe'); exception when others then err := sqlerrm; end;
+  if err = 'VALIDATION' then report := report || E'ok: iný typ súboru ako obrázok alebo PDF sa odmietne\n';
+  else report := report || 'FAIL: register_receipt exe -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
   err := null;
   begin perform public.save_receipt_extraction(rc1, '{}'::jsonb); exception when others then err := sqlerrm; end;
   if err like 'permission denied%' then report := report || E'ok: používateľ nemôže sám zapísať výsledok čítania\n';
@@ -335,6 +343,12 @@ begin
     'items', jsonb_build_array(jsonb_build_object('name', 'Mlieko', 'line_total', 1.20, 'category_id', 'dairy_eggs'))));
   if rrec.review_reason = 'DATE_SUSPECT' then report := report || E'ok: dátum v budúcnosti -> kontrola\n';
   else report := report || 'FAIL: dátum v budúcnosti -> ' || coalesce(rrec.review_reason, 'OK') || E'\n'; fails := fails + 1; end if;
+
+  rrec := public.save_receipt_extraction(rc1, jsonb_build_object(
+    'store_name', 'Lidl', 'purchased_on', (current_date - 700)::text, 'total', 1.20,
+    'items', jsonb_build_array(jsonb_build_object('name', 'Mlieko', 'line_total', 1.20, 'category_id', 'dairy_eggs'))));
+  if rrec.review_reason = 'DATE_SUSPECT' then report := report || E'ok: dátum starší ako 18 mesiacov -> kontrola\n';
+  else report := report || 'FAIL: starý dátum -> ' || coalesce(rrec.review_reason, 'OK') || E'\n'; fails := fails + 1; end if;
 
   rrec := public.save_receipt_extraction(rc1, jsonb_build_object(
     'store_name', 'Lidl', 'purchased_on', '2026-09-13', 'total', 1.20,
