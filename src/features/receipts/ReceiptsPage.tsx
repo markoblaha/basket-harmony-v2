@@ -6,10 +6,12 @@ import { Banner, Button, EmptyState, ErrorState, Group, PageHeader, Section, Spi
 import { useToast } from "@/components/toast";
 import { errorMessage } from "@/lib/errors";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { uploadReceiptFile, useReceipts, type Receipt, type UploadOutcome } from "./api";
+import { extractReceipt, uploadReceiptFile, useReceipts, type Receipt, type UploadOutcome } from "./api";
 import { formatDate, formatMoney, monthLabel } from "./format";
 
-type Progress = { total: number; done: number; counts: Record<UploadOutcome | "ERROR", number> };
+type Progress = { total: number; done: number; counts: Record<UploadOutcome | "ERROR", number>; stopped?: boolean };
+/** Po tomto počte neúspechov za sebou spracovanie zastavíme – ide takmer iste o rovnakú príčinu (kľúč, kredit, limit). */
+const STOP_AFTER_FAILURES = 3;
 const EMPTY_COUNTS = { NEW: 0, DUPLICATE: 0, OK: 0, NEEDS_REVIEW: 0, FAILED: 0, ERROR: 0 };
 
 export function ReceiptsPage() {
@@ -21,7 +23,7 @@ export function ReceiptsPage() {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [onlyReview, setOnlyReview] = useState(false);
 
-  const running = progress !== null && progress.done < progress.total;
+  const running = progress !== null && !progress.stopped && progress.done < progress.total;
 
   /** Fotky nahrávame po jednej: server číta jednu naraz a nepreťažíme limity služby. */
   async function onPick(e: ChangeEvent<HTMLInputElement>) {
@@ -31,22 +33,52 @@ export function ReceiptsPage() {
     const state: Progress = { total: files.length, done: 0, counts: { ...EMPTY_COUNTS } };
     setProgress({ ...state, counts: { ...state.counts } });
     let lastError: unknown = null;
+    let streak = 0;
     for (const file of files) {
       try {
         const outcome = await uploadReceiptFile(household.id, file);
         state.counts[outcome]++;
+        streak = outcome === "FAILED" ? streak + 1 : 0;
       } catch (err) {
         state.counts.ERROR++;
         lastError = err;
+        streak++;
       }
       state.done++;
+      if (streak >= STOP_AFTER_FAILURES && state.done < state.total) state.stopped = true;
       setProgress({ ...state, counts: { ...state.counts } });
       qc.invalidateQueries({ queryKey: ["receipts"] });
+      if (state.stopped) break;
     }
     if (lastError) toast.show(errorMessage(lastError), "error");
   }
 
+  /** Znova prečíta všetky bločky, ktoré skončili chybou (fotky už sú nahraté). */
+  async function retryFailed() {
+    const failed = (receipts.data ?? []).filter((r) => r.status === "FAILED");
+    if (failed.length === 0) return;
+    const state: Progress = { total: failed.length, done: 0, counts: { ...EMPTY_COUNTS } };
+    setProgress({ ...state, counts: { ...state.counts } });
+    let streak = 0;
+    for (const r of failed) {
+      try {
+        const status = await extractReceipt(r.id);
+        state.counts[status]++;
+        streak = 0;
+      } catch {
+        state.counts.FAILED++;
+        streak++;
+      }
+      state.done++;
+      if (streak >= STOP_AFTER_FAILURES && state.done < state.total) state.stopped = true;
+      setProgress({ ...state, counts: { ...state.counts } });
+      qc.invalidateQueries({ queryKey: ["receipts"] });
+      if (state.stopped) break;
+    }
+  }
+
   const all = receipts.data ?? [];
+  const failedCount = all.filter((r) => r.status === "FAILED").length;
   const reviewCount = all.filter((r) => r.status === "NEEDS_REVIEW" || r.status === "FAILED").length;
   const visible = onlyReview ? all.filter((r) => r.status === "NEEDS_REVIEW" || r.status === "FAILED") : all;
   const groups = groupByMonth(visible);
@@ -72,12 +104,19 @@ export function ReceiptsPage() {
         {reviewCount > 0 && (
           <Section>
             <Banner
-              tone="warning"
+              tone={failedCount > 0 ? "danger" : "warning"}
               title={`${reviewCount} ${reviewCount === 1 ? "bloček čaká" : reviewCount < 5 ? "bločky čakajú" : "bločkov čaká"} na kontrolu`}
               action={
-                <Button variant="secondary" onClick={() => setOnlyReview((v) => !v)}>
-                  {onlyReview ? "Ukázať všetky" : "Ukázať len tieto"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {failedCount > 0 && (
+                    <Button loading={running} disabled={running} onClick={retryFailed}>
+                      Skúsiť znova nepodarené ({failedCount})
+                    </Button>
+                  )}
+                  <Button variant="secondary" onClick={() => setOnlyReview((v) => !v)}>
+                    {onlyReview ? "Ukázať všetky" : "Ukázať len tieto"}
+                  </Button>
+                </div>
               }
             >
               Súčet položiek nesedí s celkovou sumou alebo sa údaje nepodarilo prečítať.
@@ -158,10 +197,22 @@ function UploadProgress({ progress, running, onClose }: { progress: Progress; ru
   return (
     <Section>
       <Banner
-        tone={running ? "info" : c.FAILED + c.ERROR > 0 ? "warning" : "success"}
-        title={running ? `Spracúvam ${progress.done + 1} z ${progress.total}…` : `Hotovo: ${progress.total} fotiek`}
+        tone={running ? "info" : progress.stopped || c.FAILED + c.ERROR > 0 ? "warning" : "success"}
+        title={
+          running
+            ? `Spracúvam ${progress.done + 1} z ${progress.total}…`
+            : progress.stopped
+              ? `Zastavené po ${progress.done} z ${progress.total}`
+              : `Hotovo: ${progress.total} fotiek`
+        }
         action={!running && <Button variant="secondary" onClick={onClose}>Zavrieť</Button>}
       >
+        {progress.stopped && (
+          <p className="font-medium">
+            Zastavil som spracovanie, lebo {STOP_AFTER_FAILURES} bločky za sebou zlyhali. Zvyšok sa nenahral. Dôvod je v detaile
+            bločku (otvor ho v zozname).
+          </p>
+        )}
         {running ? "Nechaj túto stránku otvorenú, kým sa všetko nespracuje. Jeden bloček trvá niekoľko sekúnd." : null}
         {parts.length > 0 && <p>{parts.join(" · ")}</p>}
         {!running && c.FAILED + c.ERROR > 0 && (

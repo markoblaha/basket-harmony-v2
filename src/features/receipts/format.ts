@@ -37,6 +37,8 @@ export function reviewText(r: Receipt): string {
 export function failureText(error: string | null): string {
   if (!error) return "Čítanie sa nepodarilo.";
   if (error.startsWith("NOT_A_RECEIPT")) return "Na fotke nie je pokladničný bloček.";
+  if (error.startsWith("GEMINI_402"))
+    return "Na účte služby Gemini došiel predplatený kredit. Dobi kredit v Google AI Studio (Billing) alebo vymeň kľúč, potom spusti čítanie znova.";
   if (error.startsWith("GEMINI_429")) return "Služba na čítanie je práve preťažená alebo je vyčerpaný limit. Skús o chvíľu.";
   if (error.startsWith("GEMINI_API_KEY_MISSING")) return "Chýba kľúč služby na čítanie bločkov (GEMINI_API_KEY).";
   if (error.startsWith("GEMINI_400") || error.startsWith("GEMINI_403") || error.startsWith("GEMINI_404"))
