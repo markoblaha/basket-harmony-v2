@@ -168,7 +168,6 @@ export function ListSheet({
             onChange={(e) => setName(e.target.value)}
             placeholder={t("lsheet.wherePlaceholder")}
             maxLength={60}
-            autoFocus={!editing}
             autoComplete="off"
             className="h-[3.25rem] w-full rounded-[var(--radius-control)] border border-line bg-bg px-3.5 text-base font-semibold outline-none transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-text-3 focus:border-primary focus:ring-3 focus:ring-primary/10"
           />
