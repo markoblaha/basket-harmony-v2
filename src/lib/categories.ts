@@ -5,6 +5,7 @@
  * vchode, pečivo, chladené... drogéria na konci.
  */
 export const CATEGORIES = [
+  { id: "groceries", name: "Nákup potravín (bez rozpisu)", emoji: "🧺", hue: 120 },
   { id: "produce", name: "Ovocie a zelenina", emoji: "🥦", hue: 140 },
   { id: "bakery", name: "Pečivo", emoji: "🥖", hue: 70 },
   { id: "dairy_eggs", name: "Mliečne a vajcia", emoji: "🥛", hue: 230 },
@@ -26,9 +27,14 @@ export const CATEGORIES = [
   { id: "toys_hobby", name: "Hračky a hobby", emoji: "🧸", hue: 100 },
   { id: "electronics", name: "Elektronika", emoji: "🔌", hue: 245 },
   { id: "fuel", name: "Pohonné hmoty", emoji: "⛽", hue: 275 },
+  { id: "transport", name: "Auto a doprava", emoji: "🚗", hue: 230 },
   { id: "dining", name: "Jedlo von", emoji: "🍽️", hue: 60 },
+  { id: "leisure", name: "Voľný čas", emoji: "🎟️", hue: 80 },
   { id: "fees", name: "Doprava a poplatky", emoji: "📦", hue: 200 },
   { id: "deposit", name: "Zálohy", emoji: "♻️", hue: 150 },
+  { id: "housing", name: "Bývanie a energie", emoji: "🏠", hue: 25 },
+  { id: "telecom", name: "Telefón, internet a predplatné", emoji: "📱", hue: 200 },
+  { id: "insurance", name: "Poistenie a financie", emoji: "🛡️", hue: 220 },
   { id: "other", name: "Ostatné", emoji: "🛒", hue: 280 },
 ] as const;
 
@@ -62,6 +68,12 @@ export function normalizeName(value: string): string {
  * zapamätá a nabudúce má prednosť pred týmto odhadom.
  */
 const KEYWORDS: Record<Exclude<CategoryId, "other">, string[]> = {
+  groceries: [],
+  transport: ["parkovan", "dialnicn", "znamka", "umyvanie auta", "autoumyv"],
+  leisure: ["vstupenk", "listok do kina", "kino"],
+  housing: ["najom", "najomne", "elektrin", "plyn", "voda a stocne"],
+  telecom: ["netflix", "spotify", "predplatne", "kredit na mobil"],
+  insurance: ["poistenie", "poistk"],
   health: ["ibalgin", "paralen", "nurofen", "liek", "tablet", "sirup proti", "nahrast", "obvaz", "teplomer", "magnez", "vitamin c", "vitamin d"],
   clothing: ["tricko", "mikina", "nohavic", "ponozk", "pancuch", "bunda", "sveter", "pulover", "obuv", "topanky", "tenisk", "podprsenk", "spodn", "pyzam"],
   home: ["hrnc", "panvic", "tanier", "pohar", "pribor", "noz", "vesiak", "ramik", "dekorac", "uterak", "obliecka", "vank", "kvetinac", "stolik"],

@@ -25,10 +25,13 @@ export function StoreAvatar({ name, className }: { name: string | null; classNam
 /** Malý náhľad prvej strany – v režime výberu, aby bolo vidno, ktoré doklady patria k sebe. */
 function Thumb({ receipt }: { receipt: Receipt }) {
   const pdf = isReceiptPdf(receipt);
-  const image = useReceiptImage(pdf ? undefined : receipt.image_path);
+  const noFile = receipt.origin !== "RECEIPT";
+  const image = useReceiptImage(pdf || noFile ? undefined : receipt.image_path);
   return (
     <div className="flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface text-text-3">
-      {pdf ? (
+      {noFile ? (
+        <span className="text-lg" aria-hidden>{receipt.origin === "BANK" ? "🏦" : "✍️"}</span>
+      ) : pdf ? (
         <FileText className="size-5" aria-hidden />
       ) : image.data ? (
         <img src={image.data} alt="" loading="lazy" decoding="async" className="size-full object-cover object-top" />
@@ -94,7 +97,10 @@ export function ReceiptRow({
       {stale ? "Zaseklo sa – skús znova" : nextStep(r)}
     </span>
   ) : (
-    <span className="text-text-2">{formatShortDate(r.purchased_on)}</span>
+    <span className="text-text-2">
+      {formatShortDate(r.purchased_on)}
+      {r.origin === "BANK" ? " · z výpisu" : r.origin === "MANUAL" ? " · zadané ručne" : ""}
+    </span>
   );
 
   const body = (

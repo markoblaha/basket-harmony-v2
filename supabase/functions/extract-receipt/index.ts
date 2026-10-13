@@ -23,7 +23,7 @@ const json = (body: unknown, status = 200) =>
 const CATEGORIES = [
   "produce", "bakery", "dairy_eggs", "deli_chilled", "meat_fish", "frozen", "pantry", "breakfast",
   "snacks_sweets", "beverages", "alcohol", "household_cleaning", "personal_care", "health", "baby", "pet",
-  "clothing", "home", "toys_hobby", "electronics", "fuel", "dining", "fees", "deposit", "other",
+  "clothing", "home", "toys_hobby", "electronics", "fuel", "transport", "dining", "leisure", "fees", "deposit", "other",
 ];
 
 // Modely: bežné čítanie, záložný model (ak prvý nie je dostupný) a silnejší model na druhé čítanie.
@@ -54,9 +54,10 @@ Pravidlá:
 - total: konečná suma na zaplatenie presne tak, ako je vytlačená na doklade (Spolu, Celkom, K úhrade, Na zaplatenie). Prepíš ju z dokladu, nepočítaj ju zo súčtu položiek. Pri dlhom doklade je na úplnom konci – nezabudni ju.
 - items: každý nakúpený riadok v poradí z dokladu. name presne podľa dokladu. quantity a unit: pri kusoch quantity = počet a unit "ks"; pri vážených veciach quantity = hmotnosť a unit "kg". unit_price = cena za jednotku. line_total = suma, ktorú si zákazník za riadok naozaj zaplatil PO zľave a S DPH (ak je na faktúre cena bez DPH aj s DPH, použi s DPH); ak cena riadku na doklade nie je, daj null.
 - Riadky so zľavou (Zľava, Akcia, Kupón, Lidl Plus) pripoj k položke, ktorej patria: zníž jej line_total a do discount daj kladnú sumu zľavy. Ak zľava patrí celému nákupu, nepridávaj ju ako položku, len ju sčítaj do discount_total.
+- Pohonné hmoty (nafta, benzín, LPG): quantity = počet litrov, unit "l", unit_price = cena za liter, category_id fuel.
 - Doprava, poštovné, balné a iné poplatky sú samostatné položky (category_id fees). Položka s nulovou cenou (darček, kupón na budúci nákup) sa neuvádza.
 - Záloha na obaly: samostatná položka "Záloha na obal" (category_id deposit). Vrátená záloha je položka so zápornou sumou (tiež deposit).
-- category_id vyber z povolených hodnôt podľa druhu tovaru: health = lieky, vitamíny, zdravotnícke potreby; baby = plienky, detská výživa a potreby pre deti; clothing = oblečenie a obuv; home = vybavenie domácnosti, kuchynské potreby, dekorácie; toys_hobby = hračky, hobby, kancelária; electronics = elektronika; fuel = pohonné hmoty; dining = jedlo a pitie v reštaurácii či bufete; household_cleaning = čistiace a pracie prostriedky; other len ak nič nesedí.
+- category_id vyber z povolených hodnôt podľa druhu tovaru: health = lieky, vitamíny, zdravotnícke potreby; baby = plienky, detská výživa a potreby pre deti; clothing = oblečenie a obuv; home = vybavenie domácnosti, kuchynské potreby, dekorácie; toys_hobby = hračky, hobby, kancelária; electronics = elektronika; fuel = pohonné hmoty; transport = parkovanie, diaľničná známka, umývanie a servis auta, MHD; leisure = vstupenky, kino, šport; dining = jedlo a pitie v reštaurácii či bufete; household_cleaning = čistiace a pracie prostriedky; other len ak nič nesedí.
 - Kontrola pred odpoveďou: sčítaj line_total všetkých položiek; má sa rovnať total. Ak nie, vráť sa k dokladu a nájdi chýbajúci alebo zle prečítaný riadok, kým to nesedí. Ak súčet nevie sedieť ani po dôkladnej kontrole (doklad je poškodený alebo nečitateľný), vráť čo čítaš a nič nedopočítavaj.
 Vymýšľať údaje je zakázané: čo nevidíš, daj null.`;
 
@@ -268,6 +269,22 @@ function problemText(s: Saved): string | null {
   }
 }
 
+/** Spustí zjednotenie produktov (funkcia normalize-products) po odoslaní odpovede. */
+function normalizeInBackground(url: string, token: string, householdId: string) {
+  const task = fetch(`${url}/functions/v1/normalize-products`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      apikey: Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ household_id: householdId }),
+  }).then((r) => r.body?.cancel()).catch((e) => console.error("extract-receipt normalize", String(e)));
+  // deno-lint-ignore no-explicit-any
+  const runtime = (globalThis as any).EdgeRuntime;
+  if (runtime?.waitUntil) runtime.waitUntil(task);
+}
+
 const compact = (x: Extraction) =>
   (Array.isArray(x.items) ? x.items : [])
     .map((it: Record<string, unknown>) => `${it.name} | ${it.quantity ?? 1} | ${it.line_total}`)
@@ -300,7 +317,7 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
   const { data: receipt, error: receiptError } = await asUser
-    .from("receipts").select("id, image_path").eq("id", receiptId).maybeSingle();
+    .from("receipts").select("id, image_path, household_id").eq("id", receiptId).maybeSingle();
   if (receiptError || !receipt) return json({ error: "NOT_FOUND" }, 404);
 
   const save = async (payload: Extraction): Promise<Saved> => {
@@ -381,6 +398,9 @@ Deno.serve(async (req) => {
         console.error("extract-receipt second pass", receiptId, e instanceof Error ? e.message : String(e));
       }
     }
+
+    // Nové produkty z tohto dokladu zjednotíme na pozadí (odpoveď aplikácii tým nečaká).
+    normalizeInBackground(url, token, receipt.household_id);
 
     return json({ status: saved.status, review_reason: saved.review_reason, ms: Date.now() - started });
   } catch (e) {

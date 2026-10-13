@@ -356,7 +356,7 @@ export function useUpdateReceipt() {
       patch,
     }: {
       id: string;
-      patch: { store_name?: string | null; purchased_on?: string | null; total?: number | null };
+      patch: { store_name?: string | null; purchased_on?: string | null; total?: number | null; category_id?: string | null };
     }) => {
       const { error } = await supabase.from("receipts").update(patch).eq("id", id);
       if (error) throw error;
@@ -383,6 +383,99 @@ export function useDeleteReceipt() {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["receipts"] });
       qc.invalidateQueries({ queryKey: ["receipt"] });
+    },
+  });
+}
+
+// ------------------------------------------------------------------ bankový výpis a ručné výdavky
+
+export type StatementRow = {
+  idx: number;
+  date: string;
+  amount: number;
+  direction: "out" | "in";
+  merchant: string;
+  description: string | null;
+  kind: "purchase" | "bill" | "transfer" | "cash" | "income" | "fee" | "other";
+  category_id: string;
+};
+export type StatementMatch = { idx: number; receipt_id: string; store_name: string | null; purchased_on: string | null; origin: string };
+
+const fileToBase64 = (file: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error ?? new Error("READ_FAILED"));
+    reader.readAsDataURL(file);
+  });
+
+/**
+ * Výpis pošleme na server (funkcia read-statement), ten ho prečíta cez AI a vráti pohyby.
+ * Súbor sa nikde neukladá. Potom databáza nájde pohyby, ku ktorým už bloček máme.
+ */
+export async function readStatement(householdId: string, file: File) {
+  if (file.size > 10 * 1024 * 1024) throw new Error("FILE_TOO_LARGE");
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const isText = ext === "csv" || ext === "txt" || file.type.startsWith("text/");
+  const body = isText
+    ? { household_id: householdId, text: await file.text() }
+    : { household_id: householdId, file_b64: await fileToBase64(file), ext: ext === "jpeg" ? "jpg" : ext || "pdf" };
+  const { data, error } = await supabase.functions.invoke("read-statement", { body });
+  if (error) {
+    let detail = "";
+    try {
+      detail = JSON.stringify(await (error as { context?: Response }).context?.json());
+    } catch {
+      /* bez detailu */
+    }
+    if (detail.includes("GEMINI_402")) throw new Error("GEMINI_402");
+    if (detail.includes("FILES_TOO_LARGE")) throw new Error("FILE_TOO_LARGE");
+    throw new Error("STATEMENT_READ_FAILED");
+  }
+  const result = data as { is_statement: boolean; transactions: StatementRow[] };
+  if (!result.is_statement) throw new Error("NOT_A_STATEMENT");
+  const rows = result.transactions;
+  const { data: matches, error: matchError } = await supabase.rpc("preview_bank_payments", {
+    p_household_id: householdId,
+    p_rows: rows.filter((r) => r.direction === "out").map((r) => ({ idx: r.idx, date: r.date, amount: r.amount })),
+  });
+  if (matchError) throw matchError;
+  const fileHash = await sha256Hex(file);
+  return { rows, matches: new Map((matches as StatementMatch[]).map((m) => [m.idx, m])), fileHash };
+}
+
+export function useImportBankPayments(householdId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: { date: string; amount: number; merchant: string; category_id: string; ref: string }[]) => {
+      const { data, error } = await supabase.rpc("import_bank_payments", { p_household_id: householdId, p_rows: rows });
+      if (error) throw error;
+      return data;
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["receipts"] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
+    },
+  });
+}
+
+export function useAddManualExpense(householdId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string; date: string; amount: number; categoryId: string }) => {
+      const { data, error } = await supabase.rpc("add_manual_expense", {
+        p_household_id: householdId,
+        p_name: input.name,
+        p_date: input.date,
+        p_amount: input.amount,
+        p_category_id: input.categoryId,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["receipts"] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }

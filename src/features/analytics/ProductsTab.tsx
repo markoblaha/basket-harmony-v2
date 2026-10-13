@@ -40,7 +40,8 @@ export function ProductsTab() {
     const by: Record<Sort, (a: ProductSummary, b: ProductSummary) => number> = {
       frequent: (a, b) => b.purchases - a.purchases || b.last_date.localeCompare(a.last_date),
       spent: (a, b) => b.spent - a.spent,
-      change: (a, b) => Math.abs(b.change ?? 0) - Math.abs(a.change ?? 0),
+      change: (a, b) =>
+        Number(a.price_kind === "PROMO") - Number(b.price_kind === "PROMO") || Math.abs(b.change ?? 0) - Math.abs(a.change ?? 0),
       recent: (a, b) => b.last_date.localeCompare(a.last_date),
     };
     const sorted = [...filtered].sort(by[sort]);
@@ -138,6 +139,7 @@ export function ProductsTab() {
                 key={p.id}
                 p={p}
                 search={search}
+                sort={sort}
                 selecting={selecting}
                 order={picked.indexOf(p.id)}
                 onToggle={() => setPicked(picked.includes(p.id) ? picked.filter((x) => x !== p.id) : [...picked, p.id])}
@@ -168,12 +170,14 @@ export function ProductsTab() {
 function ProductRow({
   p,
   search,
+  sort,
   selecting,
   order,
   onToggle,
 }: {
   p: ProductSummary;
   search: string;
+  sort: Sort;
   selecting: boolean;
   order: number;
   onToggle: () => void;
@@ -191,8 +195,17 @@ function ProductRow({
         </p>
       </div>
       <div className="flex shrink-0 flex-col items-end">
-        <span className="font-semibold tabular-nums">{formatMoney(p.last_price)}</span>
-        {p.change !== null && Math.abs(p.change) >= 0.01 ? (
+        {sort === "spent" ? (
+          <>
+            <span className="font-semibold tabular-nums">{formatMoney(p.spent)}</span>
+            <span className="text-xs text-text-3">spolu za {p.purchases}×</span>
+          </>
+        ) : (
+          <span className="font-semibold tabular-nums">{formatMoney(p.last_price)}</span>
+        )}
+        {sort === "spent" ? null : p.price_kind === "PROMO" && p.change !== null ? (
+          <span className="text-xs font-semibold text-success">akcia · bežne {formatMoney(p.usual_price)}</span>
+        ) : p.change !== null && Math.abs(p.change) >= 0.01 ? (
           <span className={cx("text-xs font-semibold tabular-nums", p.change > 0 ? "text-warning" : "text-success")}>
             {p.change > 0 ? "▲" : "▼"} {percent(p.change)}
           </span>

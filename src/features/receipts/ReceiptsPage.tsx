@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ChevronRight, Merge, Plus, Search, Trash2 } from "lucide-react";
 import { Button, EmptyState, ErrorState, Group, PageHeader, Section, Spinner, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
@@ -7,7 +7,7 @@ import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { MAX_PAGES, isStale, needsAttention, useDeleteReceipt, useMergeReceipts, useReceipts, type Receipt } from "./api";
-import { AddMenu, PendingSheet, type Pending, type PendingMode } from "./AddFlow";
+import { AddMenu, ManualExpenseSheet, PendingSheet, type Pending, type PendingMode } from "./AddFlow";
 import { ReceiptRow } from "./ReceiptRow";
 import { Dock, UploadStatus } from "./UploadStatus";
 import { useBatch } from "./useBatch";
@@ -28,6 +28,8 @@ export function ReceiptsPage() {
   const galleryInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const navigate = useNavigate();
   const [pending, setPending] = useState<Pending | null>(null);
   const [mode, setMode] = useState<PendingMode>("separate");
   const [filter, setFilter] = useState<Filter>("all");
@@ -313,7 +315,10 @@ export function ReceiptsPage() {
         onCamera={() => cameraInput.current?.click()}
         onGallery={() => galleryInput.current?.click()}
         onFile={() => fileInput.current?.click()}
+        onStatement={() => navigate("/receipts/statement")}
+        onManual={() => setManualOpen(true)}
       />
+      <ManualExpenseSheet open={manualOpen} onClose={() => setManualOpen(false)} householdId={household.id} />
       <PendingSheet
         pending={pending}
         mode={mode}

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router";
-import { AlertTriangle, Loader2, Plus, Sparkles, Target } from "lucide-react";
+import { Link, useSearchParams } from "react-router";
+import { AlertTriangle, ChevronDown, Loader2, Plus, Sparkles, Target } from "lucide-react";
 import { Banner, Button, ErrorState, Group, Section, Spinner, cx } from "@/components/ui";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { StoreAvatar } from "@/features/receipts/ReceiptRow";
@@ -11,6 +11,7 @@ import { BarChart, CumulativeChart, ShareBar } from "./charts";
 import { Card, Delta, EmojiBadge, MoreLink, SectionTitle, ShareRow, Stat, categoryInfo, percent, unitLabel } from "./bits";
 import { daysBetween, monthShort, todayIso, usePeriod, type Period } from "./period";
 import { useAddToList } from "./useAddToList";
+import { groupByArea } from "./areas";
 
 const TOP_CATEGORIES = 6;
 
@@ -47,7 +48,7 @@ export function OverviewTab() {
           <Hero o={o} period={period} />
           {period.range === "month" && <Budgets o={o} current={period.current} />}
           <Insights o={o} search={search} />
-          <Categories o={o} search={search} />
+          <Categories o={o} search={search} period={period} />
           <Stores o={o} search={search} />
         </>
       )}
@@ -261,12 +262,13 @@ function Insights({ o, search }: { o: Overview; search: string }) {
   if (o.price_changes.length === 0 && o.restock.length === 0) return null;
   return (
     <Section>
-      <SectionTitle title="Čo sa zmenilo" />
+      <SectionTitle title="Ceny a nákupy" />
       <div className="flex flex-col gap-3">
         {o.price_changes.length > 0 && (
           <Group>
-            {o.price_changes.slice(0, 5).map((c) => {
+            {o.price_changes.slice(0, 6).map((c) => {
               const up = c.change > 0;
+              const promo = c.kind === "PROMO";
               return (
                 <Link key={c.product_id} to={`/analytics/product/${c.product_id}${search}`} className="flex items-center gap-3 px-4 py-3 active:bg-pressed">
                   <span
@@ -276,15 +278,19 @@ function Insights({ o, search }: { o: Overview; search: string }) {
                       up ? "bg-warning-soft text-warning" : "bg-success-soft text-success",
                     )}
                   >
-                    {up ? "▲" : "▼"}
+                    {promo ? "🏷️" : up ? "▲" : "▼"}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{c.name}</p>
                     <p className="truncate text-sm text-text-2">
-                      {c.store_name} · {formatMoney(c.old_price)} → {formatMoney(c.new_price)} {unitLabel(c.basis)}
+                      {promo
+                        ? `${c.store_name} · ${formatMoney(c.new_price)}, bežne ${formatMoney(c.old_price)} ${unitLabel(c.basis)}`
+                        : `${c.store_name} · ${formatMoney(c.old_price)} → ${formatMoney(c.new_price)} ${unitLabel(c.basis)}`}
                     </p>
                   </div>
-                  <span className={cx("shrink-0 text-sm font-semibold tabular-nums", up ? "text-warning" : "text-success")}>{percent(c.change)}</span>
+                  <span className={cx("shrink-0 text-sm font-semibold tabular-nums", up ? "text-warning" : "text-success")}>
+                    {promo ? "akcia" : percent(c.change)}
+                  </span>
                 </Link>
               );
             })}
@@ -330,47 +336,147 @@ function Insights({ o, search }: { o: Overview; search: string }) {
   );
 }
 
-function Categories({ o, search }: { o: Overview; search: string }) {
+function Categories({ o, search, period }: { o: Overview; search: string; period: Period }) {
+  const [params, setParams] = useSearchParams();
+  const view = params.get("v") === "cat" ? "cat" : "area";
+  const setView = (v: "cat" | "area") => {
+    const next = new URLSearchParams(params);
+    next.set("v", v);
+    setParams(next, { replace: true });
+  };
   const [all, setAll] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
   const list = o.categories.filter((c) => c.amount !== 0);
   const positive = list.filter((c) => c.amount > 0);
-  const top = positive[0]?.amount ?? 1;
-  const shown = all ? list : list.slice(0, TOP_CATEGORIES);
+  const areas = groupByArea(list);
   if (list.length === 0) return null;
+  const compareNote = period.current ? `Zmena oproti rovnakému dňu (${period.prevLabel})` : `Zmena oproti obdobiu ${period.prevLabel}`;
+  const itemsText = (c: { id: string; items: number }) =>
+    c.id.startsWith("_")
+      ? "rozdiel medzi sumou dokladov a položkami"
+      : c.items > 0
+        ? `${c.items} ${plural(c.items, ["položka", "položky", "položiek"])}`
+        : "platby bez bločku";
+
+  const categoryRow = (c: (typeof list)[number], top: number, nested = false) => {
+    const info = categoryInfo(c.id);
+    const share = o.total > 0 ? c.amount / o.total : 0;
+    return (
+      <ShareRow
+        key={c.id}
+        to={`/analytics/category/${c.id}${search}`}
+        icon={nested ? <span className="w-2" /> : <EmojiBadge emoji={info.emoji} color={info.color} />}
+        title={nested ? `${info.emoji} ${info.name}` : info.name}
+        subtitle={`${Math.round(share * 100)} % · ${itemsText(c)}`}
+        amount={c.amount}
+        share={c.amount / top}
+        color={info.color}
+        prev={c.prev_amount}
+      />
+    );
+  };
+
+  const shown = all ? list : list.slice(0, TOP_CATEGORIES);
+  const topCat = positive[0]?.amount ?? 1;
+  const topArea = areas[0]?.amount || 1;
+
   return (
     <Section>
-      <SectionTitle title="Na čo išli peniaze" />
+      <SectionTitle
+        title="Na čo išli peniaze"
+        action={
+          <div role="radiogroup" aria-label="Zobrazenie" className="flex rounded-full bg-surface p-0.5">
+            {(["area", "cat"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={view === v}
+                onClick={() => setView(v)}
+                className={cx(
+                  "min-h-8 rounded-full px-3 text-xs font-semibold",
+                  view === v ? "bg-elevated text-text shadow-sm" : "text-text-2",
+                )}
+              >
+                {v === "area" ? "Oblasti" : "Kategórie"}
+              </button>
+            ))}
+          </div>
+        }
+      />
       <Card className="p-0">
         <div className="px-4 pb-1 pt-4">
           <ShareBar
-            label="Podiel kategórií na výdavkoch"
-            segments={positive.map((c) => ({ id: c.id, value: c.amount, color: categoryInfo(c.id).color }))}
+            label="Podiel na výdavkoch"
+            segments={
+              view === "area"
+                ? areas.filter((a) => a.amount > 0).map((a) => ({ id: a.area.id, value: a.amount, color: `oklch(0.68 0.13 ${a.area.hue})` }))
+                : positive.map((c) => ({ id: c.id, value: c.amount, color: categoryInfo(c.id).color }))
+            }
           />
+          <p className="mt-2 text-xs text-text-3">{compareNote}</p>
         </div>
         <div className="divide-y divide-line">
-          {shown.map((c) => {
-            const info = categoryInfo(c.id);
-            const share = o.total > 0 ? c.amount / o.total : 0;
-            return (
-              <ShareRow
-                key={c.id}
-                to={`/analytics/category/${c.id}${search}`}
-                icon={<EmojiBadge emoji={info.emoji} color={info.color} />}
-                title={info.name}
-                subtitle={
-                  c.id.startsWith("_")
-                    ? "rozdiel medzi sumou dokladov a položkami"
-                    : `${Math.round(share * 100)} % · ${c.items} ${plural(c.items, ["položka", "položky", "položiek"])}`
+          {view === "cat"
+            ? shown.map((c) => categoryRow(c, topCat))
+            : areas.map((a) => {
+                const color = `oklch(0.68 0.13 ${a.area.hue})`;
+                const share = o.total > 0 ? a.amount / o.total : 0;
+                const single = a.categories.length === 1 ? a.categories[0]! : null;
+                const subtitle = `${Math.round(share * 100)} % · ${a.categories
+                  .slice(0, 3)
+                  .map((c) => categoryInfo(c.id).name.toLowerCase())
+                  .join(", ")}${a.categories.length > 3 ? "…" : ""}`;
+                if (single) {
+                  return (
+                    <ShareRow
+                      key={a.area.id}
+                      to={`/analytics/category/${single.id}${search}`}
+                      icon={<EmojiBadge emoji={a.area.emoji} color={color} />}
+                      title={a.area.name}
+                      subtitle={subtitle}
+                      amount={a.amount}
+                      share={a.amount / topArea}
+                      color={color}
+                      prev={a.prev}
+                    />
+                  );
                 }
-                amount={c.amount}
-                share={c.amount / top}
-                color={info.color}
-                prev={c.prev_amount}
-              />
-            );
-          })}
+                const isOpen = open === a.area.id;
+                return (
+                  <div key={a.area.id}>
+                    <button
+                      type="button"
+                      aria-expanded={isOpen}
+                      onClick={() => setOpen(isOpen ? null : a.area.id)}
+                      className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left active:bg-pressed"
+                    >
+                      <EmojiBadge emoji={a.area.emoji} color={color} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="truncate font-medium">{a.area.name}</p>
+                          <p className="shrink-0 font-semibold tabular-nums">{formatMoney(a.amount)}</p>
+                        </div>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface">
+                          <div className="h-full rounded-full" style={{ width: `${Math.max(2, Math.min(100, (a.amount / topArea) * 100))}%`, background: color }} />
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-2 text-xs text-text-3">
+                          <span className="truncate">{subtitle}</span>
+                          <Delta now={a.amount} before={a.prev} className="!text-xs" compact />
+                        </div>
+                      </div>
+                      <ChevronDown className={cx("size-4 shrink-0 text-text-3 transition-transform", isOpen && "rotate-180")} aria-hidden />
+                    </button>
+                    {isOpen && (
+                      <div className="divide-y divide-line border-t border-line bg-surface/50">
+                        {a.categories.sort((x, y) => y.amount - x.amount).map((c) => categoryRow(c, a.categories[0]!.amount || 1, true))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
         </div>
-        {list.length > TOP_CATEGORIES && (
+        {view === "cat" && list.length > TOP_CATEGORIES && (
           <button type="button" onClick={() => setAll((v) => !v)} className="w-full border-t border-line px-4 py-3 text-sm font-semibold text-primary active:bg-pressed">
             {all ? "Zobraziť menej" : `Všetky kategórie (${list.length})`}
           </button>

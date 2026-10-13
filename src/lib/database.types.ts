@@ -163,6 +163,7 @@ export type Database = {
       };
       receipts: {
         Row: {
+          category_id: string | null;
           created_at: string;
           currency: string;
           discount_total: number | null;
@@ -173,6 +174,7 @@ export type Database = {
           image_checksum: string;
           image_path: string;
           items_sum: number | null;
+          origin: "RECEIPT" | "BANK" | "MANUAL";
           purchased_on: string | null;
           purchased_time: string | null;
           review_reason: string | null;
@@ -185,7 +187,7 @@ export type Database = {
           uploaded_by: string | null;
         };
         Insert: never;
-        Update: { purchased_on?: string | null; store_name?: string | null; total?: number | null };
+        Update: { category_id?: string | null; purchased_on?: string | null; store_name?: string | null; total?: number | null };
         Relationships: [];
       };
       shopping_list_items: {
@@ -287,6 +289,12 @@ export type Database = {
           p_size_value: number | null;
         };
         Returns: Database["public"]["Tables"]["products"]["Row"];
+      };
+      preview_bank_payments: { Args: { p_household_id: string; p_rows: Json }; Returns: Json };
+      import_bank_payments: { Args: { p_household_id: string; p_rows: Json }; Returns: number };
+      add_manual_expense: {
+        Args: { p_amount: number; p_category_id: string; p_date: string; p_household_id: string; p_name: string };
+        Returns: string;
       };
       merge_products: { Args: { p_sources: string[]; p_target: string }; Returns: string };
       save_receipt_item: {

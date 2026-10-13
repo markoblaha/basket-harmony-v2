@@ -47,7 +47,8 @@ export function StorePage() {
               </div>
               {d.prev_amount > 0 && (
                 <p className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-text-3">
-                  <Delta now={d.amount} before={d.prev_amount} /> oproti obdobiu {period.prevLabel} ({d.prev_receipts}×)
+                  <Delta now={d.amount} before={d.prev_amount} />{" "}
+                  {period.current ? `oproti rovnakému dňu (${period.prevLabel})` : `oproti obdobiu ${period.prevLabel}`} ({d.prev_receipts}×)
                 </p>
               )}
               <div className="mt-4">

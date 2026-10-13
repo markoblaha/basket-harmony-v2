@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Banner, Button, ErrorState, Group, IconButton, Section, Sheet, Spinner, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
-import { category, categoryOrder } from "@/lib/categories";
+import { CATEGORIES, category, categoryOrder } from "@/lib/categories";
 import {
   MAX_PAGES,
   useAddReceiptPages,
@@ -64,7 +64,9 @@ export function ReceiptDetailPage() {
   if (!query.data) return <ErrorState error="Tento doklad už neexistuje alebo k nemu nemáš prístup." />;
   const { receipt: r, items: rows } = query.data;
   const pageList = pagesQuery.data && pagesQuery.data.length > 0 ? pagesQuery.data.map((p) => p.image_path) : [r.image_path];
-  const editable = r.status === "OK" || r.status === "NEEDS_REVIEW";
+  // Platba z výpisu alebo ručný výdavok: nemá fotku ani položky, má len kategóriu.
+  const isDocument = r.origin === "RECEIPT";
+  const editable = isDocument && (r.status === "OK" || r.status === "NEEDS_REVIEW");
   const startedAt = new Date(r.updated_at).getTime();
   const stuck = r.status === "PROCESSING" && Date.now() - startedAt > 3 * 60_000;
 
@@ -135,6 +137,16 @@ export function ReceiptDetailPage() {
             </div>
             <p className="mt-3 text-4xl font-bold tabular-nums">{formatMoney(r.total)}</p>
             {editable && <SumCheck receipt={r} count={rows.length} onAdd={(price) => openItem(null, price)} onEdit={() => setEditing(true)} />}
+            {!isDocument && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-text-2">
+                <span className="rounded-full bg-surface px-3 py-1">{r.origin === "BANK" ? "🏦 Z bankového výpisu" : "✍️ Zadané ručne"}</span>
+                {r.category_id && (
+                  <Link to={`/analytics/category/${r.category_id}`} className="rounded-full bg-surface px-3 py-1 active:bg-pressed">
+                    {category(r.category_id).emoji} {category(r.category_id).name}
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </Section>
 
@@ -187,6 +199,7 @@ export function ReceiptDetailPage() {
           </Section>
         )}
 
+        {isDocument && (
         <Section title={pageList.length > 1 ? `Strany dokladu (${pageList.length})` : "Fotka dokladu"}>
           <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
             {pageList.map((path, i) => (
@@ -209,6 +222,7 @@ export function ReceiptDetailPage() {
             )}
           </ul>
         </Section>
+        )}
 
         {rows.length > 0 && (
           <Section title={`Položky (${rows.length})`}>
@@ -260,14 +274,16 @@ export function ReceiptDetailPage() {
 
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Akcie s dokladom">
         <div className="flex flex-col gap-2">
-          <MenuAction
-            icon={<RefreshCw className="size-5" aria-hidden />}
-            title="Prečítať znova"
-            hint="Použi, ak sú údaje zlé. Položky sa nahradia novým čítaním."
-            disabled={r.status === "PROCESSING" && !stuck}
-            onClick={onReread}
-          />
-          {r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
+          {isDocument && (
+            <MenuAction
+              icon={<RefreshCw className="size-5" aria-hidden />}
+              title="Prečítať znova"
+              hint="Použi, ak sú údaje zlé. Položky sa nahradia novým čítaním."
+              disabled={r.status === "PROCESSING" && !stuck}
+              onClick={onReread}
+            />
+          )}
+          {isDocument && r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
             <MenuAction
               icon={<Plus className="size-5" aria-hidden />}
               title="Pridať ďalšiu stranu"
@@ -281,7 +297,7 @@ export function ReceiptDetailPage() {
           <MenuAction
             icon={<Trash2 className="size-5" aria-hidden />}
             title="Zmazať doklad"
-            hint="Zmaže doklad aj s fotkami. Nedá sa vrátiť späť."
+            hint={isDocument ? "Zmaže doklad aj s fotkami. Nedá sa vrátiť späť." : "Zmaže tento výdavok. Nedá sa vrátiť späť."}
             danger
             onClick={onDelete}
           />
@@ -444,6 +460,8 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
   const [store, setStore] = useState(receipt.store_name ?? "");
   const [date, setDate] = useState(receipt.purchased_on ?? "");
   const [total, setTotal] = useState(receipt.total != null ? String(receipt.total) : "");
+  const [categoryId, setCategoryId] = useState(receipt.category_id ?? "other");
+  const withCategory = receipt.origin !== "RECEIPT";
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -455,7 +473,12 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
     try {
       await update.mutateAsync({
         id: receipt.id,
-        patch: { store_name: store.trim() || null, purchased_on: date || null, total: totalNumber },
+        patch: {
+          store_name: store.trim() || null,
+          purchased_on: date || null,
+          total: totalNumber,
+          ...(withCategory ? { category_id: categoryId } : {}),
+        },
       });
       toast.show("Uložené", "success");
       onClose();
@@ -465,11 +488,30 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="Upraviť doklad">
+    <Sheet open={open} onClose={onClose} title={withCategory ? "Upraviť výdavok" : "Upraviť doklad"}>
       <form onSubmit={save} className="flex flex-col gap-4">
         <TextField label="Obchod" value={store} onChange={(e) => setStore(e.target.value)} maxLength={120} />
         <TextField label="Dátum nákupu" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <TextField label="Celková suma (€)" inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} />
+        {withCategory && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="receipt-category" className="text-sm font-medium text-text-2">
+              Kategória
+            </label>
+            <select
+              id="receipt-category"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+            >
+              {CATEGORIES.filter((c) => c.id !== "deposit").map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.emoji} {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <Button type="submit" size="lg" block loading={update.isPending}>
           Uložiť
         </Button>

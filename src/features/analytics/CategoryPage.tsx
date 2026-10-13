@@ -44,8 +44,24 @@ export function CategoryPage() {
               {detail.data.prev_amount > 0 && (
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-text-3">
                   <Delta now={detail.data.amount} before={detail.data.prev_amount} invert={id === "_receipt_discount"} />
-                  oproti obdobiu {period.prevLabel} ({formatMoney(detail.data.prev_amount)})
+                  {period.current ? `oproti rovnakému dňu (${period.prevLabel})` : `oproti obdobiu ${period.prevLabel}`}:{" "}
+                  {formatMoney(detail.data.prev_amount)}
                 </p>
+              )}
+              {detail.data.liters !== null && detail.data.liters > 0 && (
+                <div className="mt-3 grid grid-cols-2 gap-3 rounded-[var(--radius-control)] bg-surface p-3">
+                  <div>
+                    <p className="text-xs text-text-3">Natankované</p>
+                    <p className="text-lg font-semibold tabular-nums">{detail.data.liters.toLocaleString("sk-SK")} l</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-text-3">Priemerná cena</p>
+                    <p className="text-lg font-semibold tabular-nums">
+                      {(detail.data.per_liter ?? 0).toLocaleString("sk-SK", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} € / l
+                    </p>
+                  </div>
+                  <p className="col-span-2 text-xs text-text-3">Z bločkov z pumpy. Platby z výpisu litre neobsahujú.</p>
+                </div>
               )}
               <div className="mt-4">
                 <BarChart
@@ -126,6 +142,27 @@ export function CategoryPage() {
                         share={s.amount / (detail.data.amount || 1)}
                         color={info.color}
                       />
+                    ))}
+                  </Group>
+                </Section>
+              )}
+
+              {detail.data.receipts.length > 0 && (
+                <Section>
+                  <SectionTitle title="Platby bez bločku" />
+                  <Group>
+                    {detail.data.receipts.map((r) => (
+                      <Link key={r.receipt_id} to={`/receipts/${r.receipt_id}`} className="flex items-center gap-3 px-4 py-3 active:bg-pressed">
+                        <StoreAvatar name={r.store} className="!size-10" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{r.store}</p>
+                          <p className="text-xs text-text-3">
+                            {formatShortDate(r.date)} · {r.origin === "BANK" ? "z výpisu" : r.origin === "MANUAL" ? "zadané ručne" : "bez rozpisu položiek"}
+                          </p>
+                        </div>
+                        <span className="font-semibold tabular-nums">{formatMoney(r.amount)}</span>
+                        <ChevronRight className="size-4 text-text-3" aria-hidden />
+                      </Link>
                     ))}
                   </Group>
                 </Section>

@@ -21,6 +21,8 @@ export type Overview = {
   prev_total: number;
   prev_receipts: number;
   offset_days: number | null;
+  /** Posledný deň minulého obdobia, s ktorým sa porovnáva (pri prebiehajúcom období "k rovnakému dňu"). */
+  prev_cut: string;
   prev_to_date: number | null;
   daily: { d: string; a: number }[];
   prev_daily: { d: string; a: number }[];
@@ -31,9 +33,12 @@ export type Overview = {
     product_id: string;
     name: string;
     basis: Basis;
+    /** Obvyklá cena v tomto obchode (stredná hodnota predchádzajúcich nákupov). */
     old_price: number;
     new_price: number;
     change: number;
+    /** CHANGE = trvalá zmena ceny, PROMO = jednorazová akcia. */
+    kind: "CHANGE" | "PROMO";
     store_name: string;
     purchased_on: string;
   }[];
@@ -70,7 +75,11 @@ export type CategoryDetail = {
     line_total: number;
     discount: number;
   }[];
-  receipts: { receipt_id: string; date: string; store: string; amount: number; total: number }[];
+  receipts: { receipt_id: string; date: string; store: string; amount: number; total: number; origin?: string }[];
+  prev_cut: string;
+  /** Natankované litre a priemerná cena za liter (palivo). */
+  liters: number | null;
+  per_liter: number | null;
 };
 
 export type StoreDetail = {
@@ -101,6 +110,8 @@ export type ProductSummary = {
   unit_price: number | null;
   basis: Basis;
   change: number | null;
+  price_kind: "CHANGE" | "PROMO" | null;
+  usual_price: number | null;
 };
 
 export type ProductDetail = {

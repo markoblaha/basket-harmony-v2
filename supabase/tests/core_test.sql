@@ -501,6 +501,33 @@ begin
   else report := report || E'FAIL: cudzí vidí produkty\n'; fails := fails + 1; end if;
   execute 'reset role';
 
+  -- ------------------------------------------------- rodinné financie (migrácia 21)
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  perform public.add_manual_expense(h, 'Nájom', current_date, 650, 'housing');
+  select count(*) into n from public.receipts where household_id = h and origin = 'MANUAL' and category_id = 'housing';
+  if n = 1 then report := report || E'ok: ručný výdavok s kategóriou\n';
+  else report := report || E'FAIL: ručný výdavok\n'; fails := fails + 1; end if;
+  n := public.import_bank_payments(h, jsonb_build_array(jsonb_build_object(
+    'date', current_date, 'amount', 45.5, 'merchant', 'OMV', 'category_id', 'fuel', 'ref', 'test:1')));
+  n2 := public.import_bank_payments(h, jsonb_build_array(jsonb_build_object(
+    'date', current_date, 'amount', 45.5, 'merchant', 'OMV', 'category_id', 'fuel', 'ref', 'test:1')));
+  if n = 1 and n2 = 0 then report := report || E'ok: platba z výpisu sa pridá raz, opakovaný import ju nezdvojí\n';
+  else report := report || 'FAIL: import výpisu ' || n || '/' || n2 || E'\n'; fails := fails + 1; end if;
+  res := public.analytics_overview(h, '2020-01-01', current_date, '2019-01-01', '2019-12-31', 'all');
+  if abs((select coalesce(sum((x ->> 'amount')::numeric), 0) from jsonb_array_elements(res -> 'categories') x)
+         - (res ->> 'total')::numeric) < 0.01 then
+    report := report || E'ok: aj s platbami bez bločku dajú kategórie celkovú sumu\n';
+  else report := report || E'FAIL: súčet kategórií s platbami\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null;
+  begin perform public.add_manual_expense(h, 'X', current_date, 1, 'housing'); exception when others then err := sqlerrm; end;
+  if err = 'FORBIDDEN' then report := report || E'ok: cudzí nepridá výdavok do cudzej domácnosti\n';
+  else report := report || 'FAIL: cudzí výdavok -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);

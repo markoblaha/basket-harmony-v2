@@ -1,8 +1,10 @@
-import { useEffect, useMemo, type ReactNode } from "react";
-import { Camera, FileText, Image as ImageIcon, X } from "lucide-react";
-import { Button, IconButton, Sheet, cx } from "@/components/ui";
-import { MAX_PAGES } from "./api";
-import { plural } from "./format";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { Camera, FileText, Image as ImageIcon, Landmark, PenLine, X } from "lucide-react";
+import { Button, IconButton, Sheet, TextField, cx } from "@/components/ui";
+import { useToast } from "@/components/toast";
+import { CATEGORIES } from "@/lib/categories";
+import { MAX_PAGES, useAddManualExpense } from "./api";
+import { parseAmount, plural, readErrorMessage } from "./format";
 
 export type PendingKind = "camera" | "files";
 export type Pending = { kind: PendingKind; files: File[] };
@@ -31,12 +33,16 @@ export function AddMenu({
   onCamera,
   onGallery,
   onFile,
+  onStatement,
+  onManual,
 }: {
   open: boolean;
   onClose: () => void;
   onCamera: () => void;
   onGallery: () => void;
   onFile: () => void;
+  onStatement: () => void;
+  onManual: () => void;
 }) {
   const pick = (fn: () => void) => () => {
     onClose();
@@ -62,6 +68,19 @@ export function AddMenu({
           title="PDF alebo súbor"
           hint="Faktúra alebo potvrdenie objednávky z e-mailu."
           onClick={pick(onFile)}
+        />
+        <p className="mt-2 px-1 text-xs font-semibold uppercase tracking-wide text-text-3">Bez bločku</p>
+        <MenuButton
+          icon={<Landmark className="size-5" aria-hidden />}
+          title="Z bankového výpisu"
+          hint="Platby kartou bez bločku – tankovanie, reštaurácie, e-shopy, účty."
+          onClick={pick(onStatement)}
+        />
+        <MenuButton
+          icon={<PenLine className="size-5" aria-hidden />}
+          title="Zadať výdavok ručne"
+          hint="Napr. nájom, hotovosť na trhu, čokoľvek bez dokladu."
+          onClick={pick(onManual)}
         />
       </div>
     </Sheet>
@@ -166,6 +185,76 @@ export function PendingSheet({
           </Button>
         </div>
       </div>
+    </Sheet>
+  );
+}
+
+/** Ručne zadaný výdavok bez dokladu (nájom, trh, hotovosť). */
+export function ManualExpenseSheet({ open, onClose, householdId }: { open: boolean; onClose: () => void; householdId: string }) {
+  return open ? <ManualExpenseForm onClose={onClose} householdId={householdId} /> : null;
+}
+
+function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; householdId: string }) {
+  const add = useAddManualExpense(householdId);
+  const toast = useToast();
+  const today = new Date();
+  const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(iso);
+  const [categoryId, setCategoryId] = useState("housing");
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const value = parseAmount(amount);
+    if (!name.trim()) return setError("Napíš, za čo alebo komu.");
+    if (value === null || value <= 0) return setError("Suma musí byť kladné číslo, napríklad 650.");
+    if (!date) return setError("Vyber dátum.");
+    setError(null);
+    try {
+      await add.mutateAsync({ name: name.trim(), amount: value, date, categoryId });
+      toast.show("Výdavok pridaný", "success");
+      onClose();
+    } catch (err) {
+      toast.show(readErrorMessage(err), "error");
+    }
+  }
+
+  return (
+    <Sheet open onClose={onClose} title="Zadať výdavok">
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <TextField label="Za čo / komu" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="napr. Nájom, Trh, Kaderník" autoFocus />
+        <div className="grid grid-cols-2 gap-3">
+          <TextField label="Suma (€)" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <TextField label="Dátum" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="manual-category" className="text-sm font-medium text-text-2">
+            Kategória
+          </label>
+          <select
+            id="manual-category"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+          >
+            {CATEGORIES.filter((c) => c.id !== "deposit").map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.emoji} {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {error && (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        )}
+        <Button type="submit" size="lg" block loading={add.isPending}>
+          Pridať výdavok
+        </Button>
+      </form>
     </Sheet>
   );
 }
