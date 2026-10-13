@@ -8,6 +8,7 @@ const MESSAGES: Record<string, string> = {
   NOT_FOUND: "Táto vec už neexistuje alebo k nej nemáš prístup.",
   FORBIDDEN: "Na túto akciu nemáš oprávnenie.",
   VALIDATION: "Skontroluj zadané údaje.",
+  INVALID_INPUT: "Správa je prázdna alebo príliš dlhá (najviac 300 znakov).",
   LIST_ARCHIVED: "Zoznam je archivovaný.",
   SESSION_ALREADY_ACTIVE: "Práve nakupuje niekto iný.",
   INVITATION_INVALID: "Pozvánka je neplatná.",

@@ -35,6 +35,8 @@ export type Database = {
           quantity: number | null;
           requested_by: string | null;
           requested_for: string;
+          responded_at: string | null;
+          response_note: string | null;
           resulting_item_id: string | null;
           session_id: string;
           status: Database["public"]["Enums"]["request_status"];
@@ -54,6 +56,20 @@ export type Database = {
         Row: { category_id: string; household_id: string; name_key: string; updated_at: string };
         Insert: never;
         Update: never;
+        Relationships: [];
+      };
+      favorite_tiles: {
+        Row: {
+          created_at: string;
+          household_id: string;
+          id: string;
+          item_name: string;
+          label: string;
+          position: number;
+          user_id: string;
+        };
+        Insert: { household_id: string; item_name: string; label: string; position?: number };
+        Update: { item_name?: string; label?: string; position?: number };
         Relationships: [];
       };
       household_invitations: {
@@ -323,6 +339,11 @@ export type Database = {
         Returns: { already_exists: boolean; owner_receipt_id: string; path: string }[];
       };
       reject_request: { Args: { p_request_id: string }; Returns: Json };
+      reply_request: { Args: { p_message: string; p_request_id: string }; Returns: undefined };
+      frequent_items: {
+        Args: { p_household_id: string; p_limit?: number };
+        Returns: { category_id: string; name: string; times: number }[];
+      };
       remove_member: { Args: { p_household_id: string; p_user_id: string }; Returns: undefined };
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };
       start_shopping: { Args: { p_list_id: string }; Returns: SessionRow };

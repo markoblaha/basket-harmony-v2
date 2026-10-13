@@ -47,7 +47,7 @@ export function AppShell() {
       </main>
       <nav
         aria-label="Hlavná navigácia"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-elevated/95 pb-safe backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-elevated/95 pb-safe backdrop-blur-md"
       >
         <ul className="mx-auto grid max-w-2xl grid-cols-4">
           {TABS.map(({ to, label, icon: Icon, match }) => (
@@ -56,11 +56,13 @@ export function AppShell() {
                 to={to}
                 aria-current={match(pathname) ? "page" : undefined}
                 className={cx(
-                  "flex h-16 flex-col items-center justify-center gap-0.5 text-xs font-medium",
-                  match(pathname) ? "text-primary" : "text-text-3",
+                  "flex h-16 flex-col items-center justify-center gap-1 text-[0.6875rem] font-semibold transition-colors",
+                  match(pathname) ? "text-text" : "text-text-2",
                 )}
               >
-                <Icon className="size-6" aria-hidden />
+                <span className={cx("grid h-7 w-12 place-items-center rounded-full transition-colors", match(pathname) && "bg-accent-soft text-accent")}>
+                  <Icon className="size-[1.375rem]" strokeWidth={2} aria-hidden />
+                </span>
                 {label}
               </NavLink>
             </li>

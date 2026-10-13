@@ -12,12 +12,16 @@ export type ShoppingList = Row<"shopping_lists">;
 export type Item = Row<"shopping_list_items">;
 export type Session = Row<"shopping_sessions">;
 export type AdditionRequest = Row<"addition_requests">;
+export type FavoriteTile = Row<"favorite_tiles">;
+export type FrequentItem = { name: string; times: number; category_id: string };
 
 export const listKeys = {
   lists: (hid: string) => ["lists", hid] as const,
   items: (listId: string) => ["items", listId] as const,
   session: (listId: string) => ["session", listId] as const,
   requests: (listId: string) => ["requests", listId] as const,
+  frequent: (hid: string) => ["frequent", hid] as const,
+  favorites: (hid: string) => ["favorites", hid] as const,
 };
 
 /** Kúpené položky zobrazujeme ešte 7 dní (dajú sa vrátiť do zoznamu). */
@@ -127,6 +131,7 @@ export function useAddItem() {
     onSuccess: (_r, input) => {
       qc.invalidateQueries({ queryKey: listKeys.items(input.listId) });
       qc.invalidateQueries({ queryKey: listKeys.requests(input.listId) });
+      qc.invalidateQueries({ queryKey: ["frequent"] });
     },
   });
 }
@@ -259,5 +264,92 @@ export function useDecideRequest(listId: string) {
       qc.invalidateQueries({ queryKey: listKeys.requests(listId) });
       qc.invalidateQueries({ queryKey: listKeys.items(listId) });
     },
+  });
+}
+
+/** Nakupujúci pošle krátku odpoveď tomu, kto žiada („Nemajú to“). */
+export function useReplyRequest(listId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, message }: { id: string; message: string }) => {
+      const { error } = await supabase.rpc("reply_request", { p_request_id: id, p_message: message });
+      if (error) throw error;
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: listKeys.requests(listId) }),
+  });
+}
+
+// ------------------------------------------------------------------ rýchle pridanie
+
+/** Produkty domácnosti podľa toho, ako často sa dávajú do zoznamu (pre rotujúce dlaždice). */
+export function useFrequentItems(householdId: string) {
+  return useQuery({
+    queryKey: listKeys.frequent(householdId),
+    queryFn: async (): Promise<FrequentItem[]> => {
+      const { data, error } = await supabase.rpc("frequent_items", { p_household_id: householdId, p_limit: 60 });
+      if (error) throw error;
+      return (data ?? []).map((r) => ({ name: r.name, times: Number(r.times), category_id: r.category_id }));
+    },
+    staleTime: 60_000,
+  });
+}
+
+/** Moje obľúbené dlaždice (každý člen má vlastné). */
+export function useFavoriteTiles(householdId: string) {
+  return useQuery({
+    queryKey: listKeys.favorites(householdId),
+    queryFn: async (): Promise<FavoriteTile[]> => {
+      const { data, error } = await supabase
+        .from("favorite_tiles")
+        .select("*")
+        .eq("household_id", householdId)
+        .order("position")
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useSaveFavorite(householdId: string) {
+  const qc = useQueryClient();
+  const key = listKeys.favorites(householdId);
+  return useMutation({
+    mutationFn: async (input: { id?: string; label: string; itemName: string; position?: number }) => {
+      if (input.id) {
+        const { error } = await supabase
+          .from("favorite_tiles")
+          .update({ label: input.label, item_name: input.itemName })
+          .eq("id", input.id);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase
+        .from("favorite_tiles")
+        .insert({ household_id: householdId, label: input.label, item_name: input.itemName, position: input.position ?? 0 });
+      if (error) throw error;
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+export function useRemoveFavorite(householdId: string) {
+  const qc = useQueryClient();
+  const key = listKeys.favorites(householdId);
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("favorite_tiles").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<FavoriteTile[]>(key);
+      qc.setQueryData<FavoriteTile[]>(key, (tiles) => tiles?.filter((t) => t.id !== id));
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previous) qc.setQueryData(key, ctx.previous);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 }

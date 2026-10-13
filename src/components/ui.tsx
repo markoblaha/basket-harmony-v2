@@ -9,15 +9,16 @@ const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boo
 export { cx };
 
 // ------------------------------------------------------------------ Button
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "success";
+type Variant = "primary" | "accent" | "secondary" | "ghost" | "danger" | "success";
 type Size = "md" | "lg";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-primary text-on-primary active:bg-primary-pressed",
-  secondary: "bg-surface text-text active:bg-pressed",
+  accent: "bg-accent text-on-accent active:bg-accent-pressed",
+  secondary: "border border-line bg-elevated text-text active:bg-pressed",
   ghost: "bg-transparent text-text-2 active:bg-pressed",
-  danger: "bg-danger-soft text-danger active:brightness-95",
-  success: "bg-success text-white active:brightness-95",
+  danger: "border border-line bg-elevated text-danger active:bg-danger-soft",
+  success: "bg-success text-on-primary active:brightness-95",
 };
 
 export const Button = forwardRef<
@@ -30,8 +31,8 @@ export const Button = forwardRef<
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cx(
-        "inline-flex select-none items-center justify-center gap-2 rounded-[var(--radius-control)] font-semibold transition-colors",
-        "disabled:cursor-not-allowed disabled:opacity-55",
+        "inline-flex select-none items-center justify-center gap-2 rounded-[var(--radius-control)] font-semibold transition-[transform,background-color,opacity] active:scale-[0.98]",
+        "disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
         size === "lg" ? "min-h-14 px-5 text-base" : "min-h-11 px-4 text-[0.95rem]",
         block && "w-full",
         VARIANTS[variant],
@@ -56,7 +57,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cx(
-        "inline-flex size-11 shrink-0 items-center justify-center rounded-full text-text-2 active:bg-pressed",
+        "inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-text-2 active:bg-pressed",
         className,
       )}
       {...rest}
@@ -85,8 +86,8 @@ export const TextField = forwardRef<
         aria-describedby={describedBy}
         className={cx(
           "min-h-12 rounded-[var(--radius-control)] border bg-elevated px-3.5 text-base text-text placeholder:text-text-3",
-          "outline-none focus:border-primary focus:ring-2 focus:ring-primary/25",
-          error ? "border-danger" : "border-line-strong/60",
+          "outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-3 focus:ring-primary/10",
+          error ? "border-danger" : "border-line",
         )}
         {...rest}
       />
@@ -191,7 +192,7 @@ export function PageHeader({ title, subtitle, trailing }: { title: string; subti
   return (
     <header className="flex items-start justify-between gap-3 px-4 pb-3 pt-5">
       <div className="min-w-0">
-        <h1 className="truncate text-2xl font-bold tracking-tight">{title}</h1>
+        <h1 className="truncate text-[1.75rem] font-extrabold leading-tight tracking-[-0.03em]">{title}</h1>
         {subtitle && <div className="mt-0.5 text-sm text-text-2">{subtitle}</div>}
       </div>
       {trailing}
@@ -202,15 +203,42 @@ export function PageHeader({ title, subtitle, trailing }: { title: string; subti
 export function Section({ title, children, className }: { title?: string; children: ReactNode; className?: string }) {
   return (
     <section className={cx("px-4", className)}>
-      {title && <h2 className="mb-2 px-1 text-sm font-semibold text-text-2">{title}</h2>}
+      {title && <SectionTitle>{title}</SectionTitle>}
       {children}
     </section>
   );
 }
 
+/** Nadpis sekcie s jemnou linkou – „Rýchle pridanie ────“. */
+export function SectionTitle({ children, trailing, className }: { children: ReactNode; trailing?: ReactNode; className?: string }) {
+  return (
+    <h2 className={cx("mb-2.5 flex items-center gap-2 px-0.5 text-[0.8125rem] font-bold text-text-2", className)}>
+      {children}
+      {trailing}
+      <span className="h-px flex-1 bg-line" aria-hidden />
+    </h2>
+  );
+}
+
+/** Iniciála človeka zo skupiny – fialová patrí len ľuďom. */
+export function Avatar({ name, me, size = "md" }: { name: string; me?: boolean; size?: "sm" | "md" | "lg" }) {
+  return (
+    <span
+      aria-hidden
+      className={cx(
+        "grid shrink-0 place-items-center font-bold",
+        size === "sm" ? "size-6 rounded-md text-[0.6875rem]" : size === "lg" ? "size-9 rounded-[0.6875rem] text-sm" : "size-7 rounded-lg text-xs",
+        me ? "bg-primary text-on-primary" : "bg-person text-on-primary",
+      )}
+    >
+      {(name.trim()[0] ?? "?").toUpperCase()}
+    </span>
+  );
+}
+
 export function Group({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cx("divide-y divide-line overflow-hidden rounded-[var(--radius-surface)] bg-elevated shadow-sm", className)}>
+    <div className={cx("divide-y divide-line overflow-hidden rounded-[var(--radius-surface)] border border-line bg-elevated", className)}>
       {children}
     </div>
   );
@@ -251,20 +279,23 @@ export function Sheet({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/40" onClick={dismissible ? onClose : undefined} aria-hidden />
+      <div className="absolute inset-0 animate-fade bg-black/35" onClick={dismissible ? onClose : undefined} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-modal)] bg-elevated pb-safe shadow-xl sm:rounded-[var(--radius-modal)]"
+        className="relative max-h-[90dvh] w-full max-w-lg animate-sheet overflow-y-auto rounded-t-[var(--radius-modal)] bg-elevated pb-safe shadow-xl sm:rounded-[var(--radius-modal)]"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 bg-elevated px-5 pb-2 pt-4">
-          <h2 className="text-lg font-semibold">{title}</h2>
+        <div className="sticky top-0 z-10 bg-elevated px-5 pb-2 pt-2.5">
+          <div className="mx-auto mb-2.5 h-[5px] w-10 rounded-full bg-line" aria-hidden />
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-xl font-extrabold tracking-[-0.02em]">{title}</h2>
           {dismissible && (
             <IconButton label="Zavrieť" onClick={onClose} className="-mr-2">
               <X className="size-5" />
             </IconButton>
           )}
+          </div>
         </div>
         <div className="px-5 pb-5">{children}</div>
       </div>

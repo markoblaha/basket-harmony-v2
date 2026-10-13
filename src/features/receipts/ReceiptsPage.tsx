@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { ChevronRight, Merge, Plus, Search, Trash2 } from "lucide-react";
 import { Button, EmptyState, ErrorState, Group, PageHeader, Section, Spinner, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
@@ -27,7 +27,12 @@ export function ReceiptsPage() {
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  // Príchod z obrazovky „Nákup dokončený“ (?pridat=1) rovno otvorí ponuku na pridanie bločku.
+  const [params, setParams] = useSearchParams();
+  const [menuOpen, setMenuOpen] = useState(() => params.get("pridat") === "1");
+  useEffect(() => {
+    if (params.get("pridat")) setParams({}, { replace: true });
+  }, [params, setParams]);
   const [manualOpen, setManualOpen] = useState(false);
   const navigate = useNavigate();
   const [pending, setPending] = useState<Pending | null>(null);

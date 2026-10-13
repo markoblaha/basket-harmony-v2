@@ -22,15 +22,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] flex flex-col items-center gap-2 px-4"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(9.25rem+env(safe-area-inset-bottom))] z-[60] flex flex-col items-center gap-2 px-4"
       >
         {toasts.map((t) => (
           <div
             key={t.id}
             role={t.tone === "error" ? "alert" : "status"}
             className={cx(
-              "max-w-md rounded-full px-4 py-2.5 text-sm font-medium shadow-lg",
-              t.tone === "error" ? "bg-danger text-white" : t.tone === "success" ? "bg-success text-white" : "bg-text text-bg",
+              "max-w-md animate-rise rounded-[0.875rem] px-4 py-3 text-sm font-semibold shadow-lg",
+              t.tone === "error" ? "bg-danger text-on-primary" : "bg-primary text-on-primary",
             )}
           >
             {t.text}

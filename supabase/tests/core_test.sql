@@ -528,6 +528,61 @@ begin
   else report := report || 'FAIL: cudzí výdavok -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
   execute 'reset role';
 
+  -- ------------------------------------------------- nákup v3 (migrácia 22)
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  insert into public.shopping_lists (household_id, name) values (h, 'Test v3') returning id into lb;
+  perform public.add_item(lb, 'Banány', 3);
+  perform public.add_item(lb, 'banány', 1);
+  perform public.add_item(lb, 'Rožok', 6);
+  select times into n from public.frequent_items(h) where public.name_key(name) = 'banany';
+  if n >= 2 then report := report || E'ok: najčastejšie položky zrátajú rovnaký produkt spolu\n';
+  else report := report || 'FAIL: frequent_items banány = ' || coalesce(n::text, 'null') || E'\n'; fails := fails + 1; end if;
+  insert into public.favorite_tiles (household_id, label, item_name) values (h, 'Banány pre malého', 'Banány');
+  s1 := public.start_shopping(lb);
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.favorite_tiles;
+  if n = 0 then report := report || E'ok: obľúbené dlaždice vidí iba ich majiteľ\n';
+  else report := report || E'FAIL: cudzie dlaždice viditeľné\n'; fails := fails + 1; end if;
+  res := public.add_item(lb, 'Kefír', 2, null, 'ten zelený');
+  req_id := (res ->> 'id')::uuid;
+  err := null;
+  begin perform public.reply_request(req_id, 'ja odpovedám sám sebe'); exception when others then err := sqlerrm; end;
+  if err = 'FORBIDDEN' then report := report || E'ok: na žiadosť odpovedá iba nakupujúci\n';
+  else report := report || 'FAIL: žiadateľ odpovedal -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  perform public.reply_request(req_id, 'Beriem, ale iba jeden');
+  select response_note into txt from public.addition_requests where id = req_id;
+  if txt = 'Beriem, ale iba jeden' then report := report || E'ok: nakupujúci pošle odpoveď na žiadosť\n';
+  else report := report || E'FAIL: odpoveď sa neuložila\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.reply_request(req_id, '   '); exception when others then err := sqlerrm; end;
+  if err = 'INVALID_INPUT' then report := report || E'ok: prázdna odpoveď sa neuloží\n';
+  else report := report || 'FAIL: prázdna odpoveď -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  perform public.end_shopping(s1.id);
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null;
+  begin perform public.reply_request(req_id, 'cudzí'); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí neodpovie na cudziu žiadosť\n';
+  else report := report || 'FAIL: cudzí reply -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin insert into public.favorite_tiles (household_id, label, item_name) values (h, 'X', 'X'); exception when others then err := sqlerrm; end;
+  if err is not null then report := report || E'ok: cudzí nevloží dlaždicu do cudzej domácnosti\n';
+  else report := report || E'FAIL: cudzia dlaždica prešla\n'; fails := fails + 1; end if;
+  select count(*) into n from public.frequent_items(h);
+  if n = 0 then report := report || E'ok: cudzí nevidí najčastejšie položky inej domácnosti\n';
+  else report := report || E'FAIL: frequent_items cudzej domácnosti\n'; fails := fails + 1; end if;
+
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);

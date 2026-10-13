@@ -103,9 +103,9 @@ export function AuthPage() {
   return (
     <div className="min-h-dvh bg-bg lg:grid lg:grid-cols-[1.05fr_1fr]">
       {/* Ľavá strana / horná časť: čo aplikácia robí */}
-      <aside className="relative overflow-hidden bg-[#4a2347] px-6 pb-10 pt-[calc(env(safe-area-inset-top)+2rem)] text-[#fbf6f0] lg:flex lg:flex-col lg:justify-between lg:px-14 lg:py-14">
+      <aside className="relative overflow-hidden bg-[#1b1815] px-6 pb-10 pt-[calc(env(safe-area-inset-top)+2rem)] text-[#fbf9f5] lg:flex lg:flex-col lg:justify-between lg:px-14 lg:py-14">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-[#fbf6f0] text-[#4a2347]">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-[#fbf9f5] text-[#1b1815]">
             <ShoppingBasket className="size-6" aria-hidden />
           </div>
           <span className="text-lg font-semibold tracking-tight">Basket Harmony</span>
@@ -115,7 +115,7 @@ export function AuthPage() {
           <h1 className="text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] lg:text-5xl">
             Nákupný zoznam, ktorý vidí celá domácnosť.
           </h1>
-          <p className="mt-3 text-base leading-relaxed text-[#fbf6f0]/75 lg:mt-5 lg:text-lg">
+          <p className="mt-3 text-base leading-relaxed text-[#fbf9f5]/75 lg:mt-5 lg:text-lg">
             Kto je v obchode, má pred sebou všetko, čo ste doplnili. Aj to, čo pribudlo počas nákupu.
           </p>
         </div>
@@ -247,34 +247,34 @@ function ListPreview() {
   return (
     <figure
       aria-label="Ukážka spoločného zoznamu"
-      className="mt-8 hidden max-w-sm rotate-[-1.5deg] rounded-2xl bg-[#fbf6f0] p-4 text-[#2b1f29] shadow-2xl shadow-black/30 sm:block lg:mt-0"
+      className="mt-8 hidden max-w-sm rotate-[-1.5deg] rounded-2xl bg-[#fbf9f5] p-4 text-[#1b1815] shadow-2xl shadow-black/30 sm:block lg:mt-0"
     >
       <div className="mb-3 flex items-baseline justify-between">
         <span className="font-semibold">Nakupuješ</span>
-        <span className="text-sm tabular-nums text-[#2b1f29]/60">2 / 4</span>
+        <span className="text-sm tabular-nums text-[#1b1815]/60">2 / 4</span>
       </div>
-      <ul className="divide-y divide-[#2b1f29]/10">
+      <ul className="divide-y divide-[#1b1815]/10">
         {rows.map((r) => (
           <li key={r.name} className="flex items-center gap-3 py-2.5">
             <span
               className={cx(
                 "flex size-6 items-center justify-center rounded-full border-2",
-                r.done ? "border-[#1f7a5a] bg-[#1f7a5a] text-white" : "border-[#2b1f29]/30",
+                r.done ? "border-[#d2401f] bg-[#d2401f] text-white" : "border-[#1b1815]/30",
               )}
             >
               {r.done && <Check className="size-3.5" strokeWidth={3} />}
             </span>
-            <span className={cx("flex-1", r.done && "text-[#2b1f29]/45 line-through")}>{r.name}</span>
-            <span className="text-sm text-[#2b1f29]/55">{r.meta}</span>
+            <span className={cx("flex-1", r.done && "text-[#1b1815]/45 line-through")}>{r.name}</span>
+            <span className="text-sm text-[#1b1815]/55">{r.meta}</span>
           </li>
         ))}
       </ul>
-      <div className="mt-3 rounded-xl bg-[#fdf0d5] p-3">
-        <p className="text-sm text-[#2b1f29]/70">Lucia chce pridať</p>
+      <div className="mt-3 rounded-xl bg-[#ece5f3] p-3">
+        <p className="text-sm text-[#1b1815]/70">Lucia chce pridať</p>
         <p className="font-semibold">Olivový olej</p>
         <div className="mt-2 grid grid-cols-2 gap-2 text-center text-sm font-semibold">
           <span className="rounded-lg bg-white/70 py-1.5">Odmietnuť</span>
-          <span className="rounded-lg bg-[#1f7a5a] py-1.5 text-white">Pridať</span>
+          <span className="rounded-lg bg-[#d2401f] py-1.5 text-white">Pridať</span>
         </div>
       </div>
     </figure>

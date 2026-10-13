@@ -1,31 +1,26 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ChevronDown, ShoppingCart } from "lucide-react";
-import { Banner, Button, EmptyState, ErrorState, Group, Sheet, Spinner, cx } from "@/components/ui";
+import { ArrowRight, ChevronDown, Play } from "lucide-react";
+import { Avatar, Button, EmptyState, ErrorState, SectionTitle, Spinner, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
-import { CATEGORIES, categoryOrder } from "@/lib/categories";
 import { errorCode, errorMessage } from "@/lib/errors";
-import { formatQuantity } from "@/lib/parseItem";
-import {
-  useActiveSession,
-  useEndShopping,
-  useItems,
-  useLists,
-  useRequests,
-  useStartShopping,
-  useUpdateItem,
-  type Item,
-} from "./api";
 import { useListPriceHints, type PriceHint } from "@/features/analytics/api";
 import { formatMoney } from "@/features/receipts/format";
-import { AddItemBar } from "./AddItemBar";
+import { useActiveSession, useEndShopping, useItems, useLists, useRequests, useStartShopping, useUpdateItem, type Item } from "./api";
+import { AddFeed, useFeed } from "./feed";
+import { Composer } from "./Composer";
+import { DoneScreen, type ShopSummary } from "./DoneScreen";
 import { EditItemSheet } from "./EditItemSheet";
-import { ItemRow } from "./ItemRow";
 import { ListsSheet } from "./ListsSheet";
-import { RequestSheet } from "./RequestSheet";
+import { PlanList } from "./PlanList";
+import { QuickTiles } from "./QuickTiles";
+import { RequestCard } from "./RequestCard";
+import { ShoppingMode } from "./ShoppingMode";
+import { itemsWord, qtyLabel } from "./qty";
+import { useSmartAdd } from "./useSmartAdd";
 
 /** Krátka veta s cenou z bločkov: "naposledy 1,19 € (Lidl) · lacnejšie: Tesco". */
 function priceHint(h: PriceHint | undefined): string | undefined {
@@ -34,8 +29,32 @@ function priceHint(h: PriceHint | undefined): string | undefined {
   return `naposledy ${formatMoney(h.last_price)} (${h.last_store})${cheaper ? ` · lacnejšie: ${h.cheapest_store}` : ""}`;
 }
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" });
+const today = () => new Date().toLocaleDateString("sk-SK", { weekday: "long", day: "numeric", month: "numeric" });
 
+/** Prerušený nákup si pamätáme v tomto okne prehliadača (po zatvorení aplikácie sa obnoví režim nákupu). */
+const interruptKey = (sessionId: string) => `bh.interrupted.${sessionId}`;
+function readFlag(key: string): boolean {
+  try {
+    return sessionStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+function writeFlag(key: string, on: boolean) {
+  try {
+    if (on) sessionStorage.setItem(key, "1");
+    else sessionStorage.removeItem(key);
+  } catch {
+    /* súkromné okno – nevadí */
+  }
+}
+
+/**
+ * Karta Nákup. Tri stavy jednej obrazovky:
+ *  1. Plánovanie – pridávanie (pole + dlaždice), žiadosti, zoznam ako účtenka.
+ *  2. Práve nakupujem – celá obrazovka (ShoppingMode).
+ *  3. Nákup dokončený – súhrn s návratom k nákupu (DoneScreen).
+ */
 export function ShoppingPage() {
   const { household } = useHousehold();
   const me = useUserId();
@@ -57,36 +76,95 @@ export function ShoppingPage() {
 
   const [editing, setEditing] = useState<Item | null>(null);
   const [listsOpen, setListsOpen] = useState(false);
-  const [confirmEnd, setConfirmEnd] = useState(false);
-  const [summary, setSummary] = useState<{ bought: number; left: number } | null>(null);
   const [showPurchased, setShowPurchased] = useState(false);
+  const [summary, setSummary] = useState<ShopSummary | null>(null);
+  /** Pri znovuotvorení nákupu ukážeme v košíku aj veci z pôvodného nákupu. */
+  const [cartSince, setCartSince] = useState<string | null>(null);
+  const feed = useFeed();
 
   const active = session.data ?? null;
   const iAmShopping = !!active && active.shopper_id === me;
   const someoneElse = !!active && !iAmShopping;
   const shopperName = active ? (names?.get(active.shopper_id) ?? "Člen domácnosti") : null;
 
-  const { groups, purchased, openCount } = useMemo(() => {
-    const all = items.data ?? [];
-    const open = all.filter((i) => i.status === "OPEN");
-    const byCategory = new Map<string, Item[]>();
-    for (const item of open) {
-      const arr = byCategory.get(item.category_id) ?? [];
-      arr.push(item);
-      byCategory.set(item.category_id, arr);
-    }
-    const groups = [...byCategory.entries()]
-      .sort(([a], [b]) => categoryOrder(a) - categoryOrder(b))
-      .map(([id, list]) => ({ category: CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1]!, items: list }));
-    const since = active ? new Date(active.started_at).getTime() : 0;
-    const purchased = all
-      .filter((i) => i.status === "PURCHASED" && (!active || new Date(i.purchased_at ?? 0).getTime() >= since))
-      .sort((a, b) => (b.purchased_at ?? "").localeCompare(a.purchased_at ?? ""));
-    return { groups, purchased, openCount: open.length };
-  }, [items.data, active]);
+  const [interrupted, setInterrupted] = useState(false);
+  useEffect(() => {
+    setInterrupted(active ? readFlag(interruptKey(active.id)) : false);
+  }, [active?.id]);
+  const interrupt = useCallback(() => {
+    if (active) writeFlag(interruptKey(active.id), true);
+    setInterrupted(true);
+  }, [active]);
+  const resume = useCallback(() => {
+    if (active) writeFlag(interruptKey(active.id), false);
+    setInterrupted(false);
+  }, [active]);
 
+  const all = items.data ?? [];
+  // Pre automatické ukončenie: časovač musí vidieť najnovší stav, nie stav spred 1,5 s.
+  const latest = useRef({ all, active, cartSince });
+  latest.current = { all, active, cartSince };
+  const open = useMemo(() => all.filter((i) => i.status === "OPEN").sort((a, b) => b.created_at.localeCompare(a.created_at)), [all]);
+  const recent = useMemo(
+    () => all.filter((i) => i.status === "PURCHASED").sort((a, b) => (b.purchased_at ?? "").localeCompare(a.purchased_at ?? "")),
+    [all],
+  );
   const pendingForMe = (requests.data ?? []).filter((r) => r.status === "PENDING" && r.requested_for === me);
   const myRequests = (requests.data ?? []).filter((r) => r.requested_by === me);
+  const hintMap = useMemo(() => {
+    const m = new Map<string, string>();
+    hints.data?.forEach((h, id) => {
+      const t = priceHint(h);
+      if (t) m.set(id, t);
+    });
+    return m;
+  }, [hints.data]);
+
+  const smartAdd = useSmartAdd({ listId: listId ?? "none", items: all, someoneElseShopping: someoneElse, onFeed: feed.push });
+
+  async function startShopping() {
+    if (iAmShopping) {
+      resume();
+      return;
+    }
+    try {
+      await start.mutateAsync();
+      setCartSince(null);
+    } catch (err) {
+      toast.show(errorCode(err) === "SESSION_ALREADY_ACTIVE" ? "Práve nakupuje niekto iný." : errorMessage(err), "error");
+    }
+  }
+
+  async function finish() {
+    const { all, active, cartSince } = latest.current;
+    if (!active || end.isPending) return;
+    const since = Math.min(new Date(active.started_at).getTime(), cartSince ? new Date(cartSince).getTime() : Infinity);
+    const snapshot: ShopSummary = {
+      listName: list?.name ?? "",
+      startedAt: cartSince ?? active.started_at,
+      endedAt: new Date().toISOString(),
+      bought: all.filter((i) => i.status === "PURCHASED" && new Date(i.purchased_at ?? 0).getTime() >= since),
+      unbought: all.filter((i) => i.status === "OPEN"),
+    };
+    try {
+      await end.mutateAsync(active.id);
+      writeFlag(interruptKey(active.id), false);
+      setSummary(snapshot);
+    } catch (err) {
+      toast.show(errorMessage(err), "error");
+    }
+  }
+
+  async function reopen() {
+    if (!summary) return;
+    try {
+      await start.mutateAsync();
+      setCartSince(summary.startedAt);
+      setSummary(null);
+    } catch (err) {
+      toast.show(errorCode(err) === "SESSION_ALREADY_ACTIVE" ? "Práve nakupuje niekto iný." : errorMessage(err), "error");
+    }
+  }
 
   if (lists.isPending) return <Spinner />;
   if (lists.isError) return <ErrorState error={errorMessage(lists.error)} onRetry={() => lists.refetch()} />;
@@ -101,171 +179,232 @@ export function ShoppingPage() {
     );
   }
 
-  function toggle(item: Item) {
-    update.mutate(
-      { id: item.id, patch: { status: item.status === "OPEN" ? "PURCHASED" : "OPEN" } },
-      { onError: (err) => toast.show(errorMessage(err), "error") },
+  if (summary) {
+    return (
+      <DoneScreen
+        summary={summary}
+        names={names}
+        me={me}
+        onReopen={reopen}
+        reopening={start.isPending}
+        onClose={() => {
+          setSummary(null);
+          setCartSince(null);
+        }}
+      />
     );
   }
 
-  async function startShopping() {
-    try {
-      await start.mutateAsync();
-    } catch (err) {
-      toast.show(errorCode(err) === "SESSION_ALREADY_ACTIVE" ? "Práve nakupuje niekto iný." : errorMessage(err), "error");
-    }
+  if (iAmShopping && active && !interrupted) {
+    return (
+      <>
+        <ShoppingMode
+          list={list}
+          items={all}
+          session={active}
+          cartSince={cartSince}
+          pending={pendingForMe}
+          names={names}
+          me={me}
+          hints={hintMap}
+          onEdit={setEditing}
+          onInterrupt={interrupt}
+          onFinish={finish}
+          finishing={end.isPending}
+        />
+        <EditItemSheet key={editing?.id} item={editing} listId={listId} onClose={() => setEditing(null)} />
+      </>
+    );
   }
 
-  async function endShopping() {
-    if (!active) return;
-    const bought = purchased.length;
-    try {
-      await end.mutateAsync(active.id);
-      setConfirmEnd(false);
-      setSummary({ bought, left: openCount });
-    } catch (err) {
-      toast.show(errorMessage(err), "error");
-    }
-  }
-
-  const total = openCount + purchased.length;
+  const memberIds = names ? [...names.keys()] : [];
+  const doneInSession = active ? recent.filter((i) => new Date(i.purchased_at ?? 0) >= new Date(active.started_at)).length : 0;
 
   return (
-    <div className={cx("pb-4", (iAmShopping || (!active && openCount > 0)) && "pb-24")}>
-      {/* Hlavička */}
-      <header className="px-4 pb-3 pt-5">
-        <button type="button" onClick={() => setListsOpen(true)} className="-ml-1 flex max-w-full items-center gap-1 rounded-lg px-1 text-left active:bg-pressed">
-          <h1 className="truncate text-2xl font-bold tracking-tight">{list.name}</h1>
-          <ChevronDown className="size-5 shrink-0 text-text-3" aria-label="Zmeniť zoznam" />
+    <div className="pb-24">
+      <header className="flex items-center gap-2 px-4 pb-3 pt-4">
+        <button type="button" onClick={() => setListsOpen(true)} className="-ml-1 min-w-0 flex-1 rounded-xl px-1 text-left active:bg-pressed">
+          <span className="flex items-center gap-1">
+            <h1 className="truncate text-[1.75rem] font-extrabold leading-tight tracking-[-0.03em]">{list.name}</h1>
+            <ChevronDown className="size-5 shrink-0 text-text-3" aria-label="Zmeniť zoznam" />
+          </span>
+          <span className="block text-[0.8125rem] font-medium text-text-2">{today()}</span>
         </button>
-        <p className="text-sm text-text-2">{household.name}</p>
+        <span className="flex items-center gap-2 rounded-xl border border-line bg-elevated py-1.5 pl-1.5 pr-2.5 text-sm font-semibold" aria-label={`Domácnosť ${household.name}`}>
+          <span className="flex">
+            {memberIds.slice(0, 3).map((id, i) => (
+              <span key={id} className={cx(i > 0 && "-ml-2 rounded-lg ring-2 ring-elevated")}>
+                <Avatar name={names?.get(id) ?? "?"} me={id === me} />
+              </span>
+            ))}
+          </span>
+          <span className="max-w-28 truncate">{household.name}</span>
+        </span>
       </header>
 
-      {/* Stav nákupu */}
-      {iAmShopping && active && (
-        <div className="sticky top-0 z-20 mx-4 mb-3 rounded-[var(--radius-surface)] bg-primary p-4 text-on-primary shadow-md">
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-80">Nakupuješ</p>
-          <div className="mt-1 flex items-baseline justify-between">
-            <p className="text-2xl font-bold tabular-nums">
-              {purchased.length} / {total}
+      <div className="flex flex-col gap-2.5 px-4">
+        {iAmShopping && interrupted && active && (
+          <button type="button" onClick={resume} className="flex items-center gap-3 rounded-2xl bg-primary p-2.5 pl-3 text-left text-on-primary animate-rise">
+            <span className="grid size-[2.375rem] shrink-0 place-items-center rounded-[0.6875rem] bg-accent text-on-accent">
+              <Play className="size-[1.125rem]" fill="currentColor" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[0.9375rem] font-bold">Rozpracovaný nákup</span>
+              <span className="block text-[0.8125rem] opacity-70">
+                {doneInSession} v košíku · zostáva {open.length} · pokračovať
+              </span>
+            </span>
+            <ArrowRight className="mr-1 size-[1.125rem] opacity-70" aria-hidden />
+          </button>
+        )}
+        {someoneElse && (
+          <div role="status" className="flex items-center gap-3 rounded-2xl border border-person/30 bg-person-soft p-3 text-sm">
+            <Avatar name={shopperName ?? "?"} />
+            <p className="min-w-0 text-text-2">
+              <b className="text-text">Nakupuje: {shopperName}</b>
+              <br />
+              Čo teraz pridáš, pošle sa na schválenie.
             </p>
-            <p className="text-sm opacity-80">od {time(active.started_at)}</p>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-on-primary/25" aria-hidden>
-            <div className="h-full rounded-full bg-on-primary transition-[width]" style={{ width: `${total ? (purchased.length / total) * 100 : 0}%` }} />
-          </div>
-        </div>
-      )}
-      {someoneElse && active && (
-        <div className="mx-4 mb-3">
-          <Banner tone="warning" title={`Nakupuje: ${shopperName}`}>
-            Od {time(active.started_at)}. Čo teraz pridáš, pošle sa ako žiadosť – v obchode ju schváli alebo odmietne.
-          </Banner>
-        </div>
-      )}
+        )}
 
-      {/* Pridanie */}
-      <div className="mb-4 px-4">
-        <AddItemBar listId={listId} shopperName={someoneElse ? shopperName : null} />
+        <Composer requestMode={someoneElse} onAdd={smartAdd} />
       </div>
 
-      {/* Moje žiadosti počas cudzieho nákupu */}
       {someoneElse && myRequests.length > 0 && (
-        <section className="mb-4 px-4">
-          <h2 className="mb-2 px-1 text-sm font-semibold text-text-2">Tvoje žiadosti</h2>
-          <Group>
+        <section className="mt-5 px-4">
+          <SectionTitle>Tvoje žiadosti</SectionTitle>
+          <div className="divide-y divide-dashed divide-line overflow-hidden rounded-2xl border border-line bg-elevated">
             {myRequests.map((r) => (
-              <div key={r.id} className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
-                <span className="truncate">
-                  {r.name} {formatQuantity(r.quantity, r.unit) && <span className="text-text-3">· {formatQuantity(r.quantity, r.unit)}</span>}
-                </span>
-                <RequestStatus status={r.status} />
+              <div key={r.id} className="px-3.5 py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate font-semibold">
+                    {r.name} <span className="font-normal text-text-2">· {qtyLabel(r.quantity, r.unit)}</span>
+                  </span>
+                  <RequestStatus status={r.status} />
+                </div>
+                {r.response_note && (
+                  <p className="mt-1.5 inline-block rounded-xl rounded-bl-sm bg-person-soft px-2.5 py-1.5 text-[0.8125rem] text-text">
+                    {shopperName}: {r.response_note}
+                  </p>
+                )}
               </div>
             ))}
-          </Group>
+          </div>
         </section>
       )}
 
-      {/* Položky */}
-      {items.isPending ? (
-        <Spinner />
-      ) : items.isError ? (
-        <ErrorState error={errorMessage(items.error)} onRetry={() => items.refetch()} />
-      ) : openCount === 0 && purchased.length === 0 ? (
-        <EmptyState icon="🧺" title="Zoznam je prázdny">
-          Napíš prvú položku do poľa vyššie. Kategóriu doplníme sami.
-        </EmptyState>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {openCount === 0 && iAmShopping && (
-            <div className="px-4">
-              <Banner tone="success" title="Všetko kúpené!">
-                Ukonči nákup tlačidlom dole.
-              </Banner>
-            </div>
-          )}
-          {groups.map(({ category, items: groupItems }) => (
-            <section key={category.id} className="px-4" aria-label={category.name}>
-              <h2 className="mb-1.5 flex items-center gap-2 px-1 text-sm font-semibold text-text-2">
-                <span aria-hidden>{category.emoji}</span> {category.name}
-                <span className="font-normal text-text-3">{groupItems.length}</span>
-              </h2>
-              <Group>
-                {groupItems.map((item) => (
-                  <ItemRow
-                    key={item.id}
-                    item={item}
-                    large={iAmShopping}
-                    addedBy={item.added_by && item.added_by !== me ? names?.get(item.added_by) : undefined}
-                    hint={priceHint(hints.data?.get(item.id))}
-                    onToggle={() => toggle(item)}
-                    onEdit={() => setEditing(item)}
-                  />
-                ))}
-              </Group>
-            </section>
-          ))}
+      {iAmShopping && interrupted && pendingForMe.length > 0 && (
+        <section className="mt-5 px-4">
+          <SectionTitle className="text-accent">
+            <span className="size-2 rounded-full bg-accent [animation:bh-pulse_1.6s_ease_infinite]" aria-hidden />
+            Čaká na schválenie
+          </SectionTitle>
+          <div className="divide-y divide-dashed divide-line overflow-hidden rounded-2xl border border-line bg-elevated">
+            {pendingForMe.map((r) => (
+              <RequestCard key={r.id} request={r} listId={listId} who={(r.requested_by && names?.get(r.requested_by)) || "Člen domácnosti"} />
+            ))}
+          </div>
+        </section>
+      )}
 
-          {purchased.length > 0 && (
-            <section className="px-4">
-              {iAmShopping ? (
-                <h2 className="mb-1.5 px-1 text-sm font-semibold text-success">✓ V košíku ({purchased.length})</h2>
-              ) : (
-                <button type="button" onClick={() => setShowPurchased((v) => !v)} aria-expanded={showPurchased} className="mb-1.5 flex min-h-10 items-center gap-1 px-1 text-sm font-semibold text-text-2">
-                  Nedávno kúpené ({purchased.length})
-                  <ChevronDown className={cx("size-4 transition-transform", showPurchased && "rotate-180")} aria-hidden />
-                </button>
-              )}
-              {(iAmShopping || showPurchased) && (
-                <Group>
-                  {purchased.map((item) => (
-                    <ItemRow key={item.id} item={item} large={iAmShopping} onToggle={() => toggle(item)} onEdit={() => setEditing(item)} />
+      <section className="mt-5 px-4">
+        <SectionTitle>Rýchle pridanie</SectionTitle>
+        <QuickTiles
+          householdId={household.id}
+          items={all}
+          onFeed={feed.push}
+          onAdd={(name, count) => void smartAdd({ name, quantity: count, unit: null, note: null })}
+        />
+      </section>
+
+      <section className="mt-5 px-4">
+        <SectionTitle
+          trailing={
+            <span key={open.length} className="grid h-[1.375rem] min-w-[1.375rem] place-items-center rounded-[0.4375rem] bg-surface px-1.5 text-xs font-bold text-text [animation:bh-pop_.45s_ease]">
+              {open.length}
+            </span>
+          }
+        >
+          Na zozname
+        </SectionTitle>
+        {items.isPending ? (
+          <Spinner />
+        ) : items.isError ? (
+          <ErrorState error={errorMessage(items.error)} onRetry={() => items.refetch()} />
+        ) : open.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-line-strong px-5 py-6 text-center text-sm text-text-2">
+            Zatiaľ prázdne. Napíš položku alebo ťukni na dlaždicu.
+          </div>
+        ) : (
+          <PlanList listId={listId} items={open} names={names} me={me} hints={hintMap} onEdit={setEditing} />
+        )}
+
+        {recent.length > 0 && !active && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setShowPurchased((v) => !v)}
+              aria-expanded={showPurchased}
+              className="flex min-h-10 items-center gap-1 px-0.5 text-[0.8125rem] font-bold text-text-2"
+            >
+              Nedávno kúpené ({recent.length})
+              <ChevronDown className={cx("size-4 transition-transform", showPurchased && "rotate-180")} aria-hidden />
+            </button>
+            {showPurchased && (
+              <>
+                <div className="flex flex-wrap gap-1.5">
+                  {recent.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() =>
+                        update.mutate(
+                          { id: item.id, patch: { status: "OPEN" } },
+                          {
+                            onSuccess: () => feed.push({ name: item.name, tail: "späť na zozname" }),
+                            onError: (err) => toast.show(errorMessage(err), "error"),
+                          },
+                        )
+                      }
+                      className="h-9 rounded-[0.625rem] border border-dashed border-line-strong px-2.5 text-[0.8125rem] font-medium text-text-2 line-through decoration-text-3"
+                    >
+                      {item.name}
+                    </button>
                   ))}
-                </Group>
-              )}
-              {!iAmShopping && showPurchased && <p className="mt-2 px-1 text-xs text-text-3">Klepnutím na položku ju vrátiš do zoznamu.</p>}
-            </section>
-          )}
-        </div>
-      )}
+                </div>
+                <p className="mt-2 px-0.5 text-xs text-text-3">Ťuknutím položku vrátiš do zoznamu.</p>
+              </>
+            )}
+          </div>
+        )}
+      </section>
 
-      {/* Spodné tlačidlo */}
-      {(iAmShopping || (!active && openCount > 0)) && (
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-2xl bg-gradient-to-t from-bg via-bg to-transparent px-4 pb-3 pt-6">
-          {iAmShopping ? (
-            <Button size="lg" block variant={openCount === 0 ? "primary" : "secondary"} onClick={() => setConfirmEnd(true)} className={openCount ? "border border-line-strong/50" : undefined}>
-              Ukončiť nákup
-            </Button>
+      {/* Hlavná akcia obrazovky (rumelka) */}
+      {(open.length > 0 || iAmShopping) && (
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-2xl border-t border-line bg-bg px-4 pb-3 pt-2.5">
+          {someoneElse ? (
+            <div className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-line bg-elevated text-sm font-semibold text-text-2">
+              <Avatar name={shopperName ?? "?"} size="sm" /> Nakupuje: {shopperName}
+            </div>
           ) : (
-            <Button size="lg" block loading={start.isPending} onClick={startShopping}>
-              <ShoppingCart className="size-5" aria-hidden /> Začať nákup
-            </Button>
+            <button
+              type="button"
+              onClick={startShopping}
+              disabled={start.isPending}
+              className="flex h-14 w-full items-center justify-between rounded-2xl bg-accent pl-[1.125rem] pr-2 text-base font-bold text-on-accent transition-transform active:scale-[0.98] disabled:opacity-60"
+            >
+              {iAmShopping ? "Pokračovať v nákupe" : "Začať nákup"}
+              <span className="flex h-10 items-center gap-2 rounded-[0.6875rem] bg-black/15 px-3 text-sm font-semibold">
+                {open.length} {itemsWord(open.length)}
+                <ArrowRight className="size-4" strokeWidth={2.4} aria-hidden />
+              </span>
+            </button>
           )}
         </div>
       )}
 
-      {/* Okná */}
-      {iAmShopping && <RequestSheet listId={listId} pending={pendingForMe} names={names} />}
+      <AddFeed entries={feed.entries} />
       <EditItemSheet key={editing?.id} item={editing} listId={listId} onClose={() => setEditing(null)} />
       <ListsSheet
         key={listId}
@@ -276,32 +415,6 @@ export function ShoppingPage() {
         currentId={listId}
         onSelect={(id) => navigate(`/lists/${id}`)}
       />
-      <Sheet open={confirmEnd} onClose={() => setConfirmEnd(false)} title="Ukončiť nákup?">
-        <div className="flex flex-col gap-4">
-          <p className="text-text-2">
-            Kúpené: <strong className="text-text">{purchased.length}</strong>. Nekúpené ({openCount}) ostanú v zozname na budúce
-            nakupovanie.
-          </p>
-          {pendingForMe.length > 0 && <Banner tone="warning">Nevybavené žiadosti ({pendingForMe.length}) prepadnú.</Banner>}
-          <Button size="lg" block loading={end.isPending} onClick={endShopping}>
-            Ukončiť nákup
-          </Button>
-          <Button variant="ghost" block onClick={() => setConfirmEnd(false)}>
-            Ešte nakupujem
-          </Button>
-        </div>
-      </Sheet>
-      <Sheet open={!!summary} onClose={() => setSummary(null)} title="Nákup ukončený">
-        <div className="flex flex-col gap-4">
-          <p className="text-text-2">
-            Kúpené: <strong className="text-text">{summary?.bought}</strong> · Ostáva v zozname: <strong className="text-text">{summary?.left}</strong>
-          </p>
-          <Banner tone="info">Pridávanie bločkov k nákupu pribudne v ďalšej verzii aplikácie.</Banner>
-          <Button size="lg" block onClick={() => setSummary(null)}>
-            Hotovo
-          </Button>
-        </div>
-      </Sheet>
     </div>
   );
 }
@@ -310,7 +423,7 @@ function RequestStatus({ status }: { status: string }) {
   const map: Record<string, [string, string]> = {
     PENDING: ["čaká", "bg-warning-soft text-warning"],
     ACCEPTED: ["pridané ✓", "bg-success-soft text-success"],
-    REJECTED: ["odmietnuté", "bg-danger-soft text-danger"],
+    REJECTED: ["zahodené", "bg-danger-soft text-danger"],
     EXPIRED: ["prepadlo", "bg-surface text-text-3"],
   };
   const [label, cls] = map[status] ?? ["?", ""];

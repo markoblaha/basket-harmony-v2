@@ -15,7 +15,8 @@ import { supabase } from "@/lib/supabase";
 export type RealtimeStatus = "connecting" | "live" | "reconnecting";
 
 const TABLE_KEYS: Record<string, string[][]> = {
-  shopping_list_items: [["items"], ["analytics", "hints"]],
+  shopping_list_items: [["items"], ["analytics", "hints"], ["frequent"]],
+  favorite_tiles: [["favorites"]],
   shopping_lists: [["lists"]],
   shopping_sessions: [["session"], ["requests"]],
   addition_requests: [["requests"], ["items"]],
@@ -41,7 +42,7 @@ export function useHouseholdRealtime(householdId: string): RealtimeStatus {
     }
     // Mazanie sa podľa domácnosti filtrovať nedá (zmazaný riadok už nemá obsah,
     // príde len jeho ID). Počúvame preto mazanie bez filtra a len obnovíme zoznam.
-    for (const table of ["shopping_list_items", "shopping_lists", "receipts"]) {
+    for (const table of ["shopping_list_items", "shopping_lists", "receipts", "favorite_tiles"]) {
       channel.on("postgres_changes", { event: "DELETE", schema: "public", table }, () => {
         for (const queryKey of TABLE_KEYS[table]!) qc.invalidateQueries({ queryKey });
       });
