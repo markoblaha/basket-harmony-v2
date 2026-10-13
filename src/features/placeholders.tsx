@@ -1,21 +1,6 @@
 import { EmptyState, PageHeader } from "@/components/ui";
 
-/**
- * Obrazovky, ktoré pribudnú v ďalších etapách. Zámerne neukazujú vymyslené
- * údaje – len poctivo hovoria, čo príde.
- */
-export function ReceiptsPage() {
-  return (
-    <>
-      <PageHeader title="Bločky" />
-      <EmptyState icon="🧾" title="Pripravujeme">
-        Odfotíš bloček a umelá inteligencia z neho prečíta obchod, dátum aj všetky položky s cenami. Prenesieme sem aj tvojich
-        38 bločkov zo starej aplikácie.
-      </EmptyState>
-    </>
-  );
-}
-
+/** Prehľady pribudnú v ďalšej etape; zatiaľ poctivo hovoria, čo príde (žiadne vymyslené údaje). */
 export function AnalyticsPage() {
   return (
     <>

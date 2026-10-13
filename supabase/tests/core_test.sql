@@ -16,6 +16,7 @@ declare
   res jsonb; res2 jsonb; inv jsonb; inv2 jsonb;
   s1 public.shopping_sessions; s2 public.shopping_sessions;
   item_id uuid; req_id uuid; n int; n2 int; txt text; err text;
+  rc1 uuid; rc2 uuid; rg record; rrec public.receipts;
   report text := '';
   fails int := 0;
 begin
@@ -272,6 +273,114 @@ begin
   if res ->> 'kind' = 'ITEM' and txt = 'EXPIRED' then
     report := report || E'ok: po vypršaní nákupu sa položky znova pridávajú normálne\n';
   else report := report || 'FAIL: po vypršaní ' || res::text || ' ' || txt || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- bločky
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select * into rg from public.register_receipt(h, repeat('a', 64));
+  rc1 := rg.receipt_id;
+  if rc1 is not null and not rg.already_exists and rg.path like h::text || '/%' then
+    report := report || E'ok: fotka bločku sa zaregistruje do priečinka domácnosti\n';
+  else report := report || E'FAIL: register_receipt\n'; fails := fails + 1; end if;
+  select * into rg from public.register_receipt(h, repeat('a', 64));
+  if rg.already_exists and rg.receipt_id = rc1 then
+    report := report || E'ok: tá istá fotka sa druhýkrát neprijme (duplicita)\n';
+  else report := report || E'FAIL: duplicitná fotka prešla\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.save_receipt_extraction(rc1, '{}'::jsonb); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: používateľ nemôže sám zapísať výsledok čítania\n';
+  else report := report || 'FAIL: save_receipt_extraction z prehliadača -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null;
+  begin perform public.register_receipt(h, repeat('b', 64)); exception when others then err := sqlerrm; end;
+  if err = 'FORBIDDEN' then report := report || E'ok: cudzí nenahrá bloček do cudzej domácnosti\n';
+  else report := report || 'FAIL: cudzí register_receipt -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  select count(*) into n from public.receipts where id = rc1;
+  if n = 0 then report := report || E'ok: cudzí nevidí bločky inej domácnosti\n';
+  else report := report || E'FAIL: cudzí vidí bloček\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.confirm_receipt(rc1); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepotvrdí bloček\n';
+  else report := report || 'FAIL: cudzí confirm_receipt -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  -- výsledok čítania (volá server) – kontrola súčtu, dátumu, duplicít
+  execute 'reset role';
+  rrec := public.save_receipt_extraction(rc1, jsonb_build_object(
+    'store_name', 'Lidl', 'purchased_on', '2026-09-13', 'total', 3.50,
+    'items', jsonb_build_array(
+      jsonb_build_object('name', 'Mlieko', 'line_total', 1.20, 'category_id', 'dairy_eggs'),
+      jsonb_build_object('name', 'Chlieb', 'line_total', 2.30, 'category_id', 'neexistuje'))));
+  select count(*) into n from public.receipt_items where receipt_id = rc1;
+  if rrec.status = 'OK' and n = 2 and rrec.items_sum = 3.50 then
+    report := report || E'ok: súčet sedí -> bloček je v poriadku\n';
+  else report := report || 'FAIL: súčet sedí -> ' || rrec.status::text || E'\n'; fails := fails + 1; end if;
+  select category_id into txt from public.receipt_items where receipt_id = rc1 and raw_name = 'Chlieb';
+  if txt = 'other' then report := report || E'ok: neznáma kategória sa zmení na "other"\n';
+  else report := report || 'FAIL: neznáma kategória -> ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+
+  rrec := public.save_receipt_extraction(rc1, jsonb_build_object(
+    'store_name', 'Lidl', 'purchased_on', '2026-09-13', 'total', 3.50,
+    'items', jsonb_build_array(jsonb_build_object('name', 'Mlieko', 'line_total', 1.20, 'category_id', 'dairy_eggs'))));
+  select count(*) into n from public.receipt_items where receipt_id = rc1;
+  if rrec.status = 'NEEDS_REVIEW' and rrec.review_reason = 'TOTAL_MISMATCH' and n = 1 then
+    report := report || E'ok: súčet nesedí -> kontrola; opakované čítanie nahradí položky\n';
+  else report := report || 'FAIL: nezhoda súčtu -> ' || rrec.status::text || ' ' || coalesce(rrec.review_reason, '-') || ' ' || n || E'\n'; fails := fails + 1; end if;
+
+  rrec := public.save_receipt_extraction(rc1, jsonb_build_object(
+    'store_name', 'Lidl', 'purchased_on', '2031-01-01', 'total', 1.20,
+    'items', jsonb_build_array(jsonb_build_object('name', 'Mlieko', 'line_total', 1.20, 'category_id', 'dairy_eggs'))));
+  if rrec.review_reason = 'DATE_SUSPECT' then report := report || E'ok: dátum v budúcnosti -> kontrola\n';
+  else report := report || 'FAIL: dátum v budúcnosti -> ' || coalesce(rrec.review_reason, 'OK') || E'\n'; fails := fails + 1; end if;
+
+  rrec := public.save_receipt_extraction(rc1, jsonb_build_object(
+    'store_name', 'Lidl', 'purchased_on', '2026-09-13', 'total', 1.20,
+    'items', jsonb_build_array(jsonb_build_object('name', 'Mlieko', 'line_total', 1.20, 'category_id', 'dairy_eggs'))));
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select * into rg from public.register_receipt(h, repeat('c', 64));
+  rc2 := rg.receipt_id;
+  execute 'reset role';
+  rrec := public.save_receipt_extraction(rc2, jsonb_build_object(
+    'store_name', 'LIDL', 'purchased_on', '2026-09-13', 'total', 1.20,
+    'items', jsonb_build_array(jsonb_build_object('name', 'Mlieko', 'line_total', 1.20, 'category_id', 'dairy_eggs'))));
+  if rrec.review_reason = 'POSSIBLE_DUPLICATE' and rrec.duplicate_of = rc1 then
+    report := report || E'ok: rovnaký obchod, dátum a suma -> podozrenie na duplicitu\n';
+  else report := report || 'FAIL: duplicita -> ' || coalesce(rrec.review_reason, 'OK') || E'\n'; fails := fails + 1; end if;
+
+  -- člen potvrdí, cudzí nemôže upravovať ani mazať
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  perform public.confirm_receipt(rc2);
+  select status::text into txt from public.receipts where id = rc2;
+  if txt = 'OK' then report := report || E'ok: člen domácnosti potvrdí bloček po kontrole\n';
+  else report := report || 'FAIL: confirm_receipt -> ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+  update public.receipts set total = 9.99 where id = rc2;
+  select * into rrec from public.receipts where id = rc2;
+  if rrec.total = 9.99 then report := report || E'ok: člen opraví sumu bločku\n';
+  else report := report || E'FAIL: oprava sumy\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  update public.receipts set total = 0 where id = rc2;
+  get diagnostics n = row_count;
+  delete from public.receipts where id = rc2;
+  get diagnostics n2 = row_count;
+  if n = 0 and n2 = 0 then report := report || E'ok: cudzí nemôže upraviť ani zmazať cudzí bloček\n';
+  else report := report || 'FAIL: cudzí upravil/zmazal ' || n || '/' || n2 || E'\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  delete from public.receipts where id = rc2;
+  get diagnostics n = row_count;
+  select count(*) into n2 from public.receipt_items where receipt_id = rc2;
+  if n = 1 and n2 = 0 then report := report || E'ok: člen zmaže bloček aj s položkami\n';
+  else report := report || 'FAIL: mazanie bločku ' || n || '/' || n2 || E'\n'; fails := fails + 1; end if;
 
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';

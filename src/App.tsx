@@ -10,7 +10,9 @@ import { JoinPage } from "@/features/household/JoinPage";
 import { MorePage } from "@/features/household/MorePage";
 import { OnboardingPage } from "@/features/household/OnboardingPage";
 import { ShoppingPage } from "@/features/lists/ShoppingPage";
-import { AnalyticsPage, ReceiptsPage } from "@/features/placeholders";
+import { AnalyticsPage } from "@/features/placeholders";
+import { ReceiptsPage } from "@/features/receipts/ReceiptsPage";
+import { ReceiptDetailPage } from "@/features/receipts/ReceiptDetailPage";
 
 /** Stránky dostupné iba po prihlásení. Neprihláseného pošle na prihlásenie a potom späť. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -57,6 +59,7 @@ export function App() {
           <Route index element={<ShoppingPage />} />
           <Route path="lists/:listId" element={<ShoppingPage />} />
           <Route path="receipts" element={<ReceiptsPage />} />
+          <Route path="receipts/:id" element={<ReceiptDetailPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="more" element={<MorePage />} />
         </Route>

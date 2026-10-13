@@ -95,6 +95,52 @@ export type Database = {
         Update: { display_name?: string };
         Relationships: [];
       };
+      receipt_items: {
+        Row: {
+          category_id: string;
+          discount: number;
+          household_id: string;
+          id: string;
+          line_total: number;
+          name_key: string;
+          position: number;
+          quantity: number;
+          raw_name: string;
+          receipt_id: string;
+          unit: string | null;
+          unit_price: number | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      receipts: {
+        Row: {
+          created_at: string;
+          currency: string;
+          discount_total: number | null;
+          duplicate_of: string | null;
+          error_text: string | null;
+          household_id: string;
+          id: string;
+          image_checksum: string;
+          image_path: string;
+          items_sum: number | null;
+          purchased_on: string | null;
+          purchased_time: string | null;
+          review_reason: string | null;
+          source: string;
+          status: Database["public"]["Enums"]["receipt_status"];
+          store_key: string | null;
+          store_name: string | null;
+          total: number | null;
+          updated_at: string;
+          uploaded_by: string | null;
+        };
+        Insert: never;
+        Update: { purchased_on?: string | null; store_name?: string | null; total?: number | null };
+        Relationships: [];
+      };
       shopping_list_items: {
         Row: {
           added_by: string | null;
@@ -162,11 +208,16 @@ export type Database = {
         };
         Returns: Json;
       };
+      confirm_receipt: { Args: { p_receipt_id: string }; Returns: undefined };
       create_household: { Args: { p_name: string }; Returns: string };
       create_invitation: { Args: { p_household_id: string }; Returns: Json };
       end_shopping: { Args: { p_session_id: string }; Returns: SessionRow };
       invitation_preview: { Args: { p_token: string }; Returns: Json };
       leave_household: { Args: { p_household_id: string }; Returns: undefined };
+      register_receipt: {
+        Args: { p_checksum: string; p_ext?: string; p_household_id: string; p_source?: string };
+        Returns: { already_exists: boolean; path: string; receipt_id: string }[];
+      };
       reject_request: { Args: { p_request_id: string }; Returns: Json };
       remove_member: { Args: { p_household_id: string; p_user_id: string }; Returns: undefined };
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };
@@ -176,6 +227,7 @@ export type Database = {
       invitation_status: "PENDING" | "ACCEPTED" | "REVOKED";
       item_status: "OPEN" | "PURCHASED";
       member_role: "OWNER" | "MEMBER";
+      receipt_status: "PROCESSING" | "OK" | "NEEDS_REVIEW" | "FAILED";
       request_status: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
       session_status: "ACTIVE" | "ENDED" | "EXPIRED";
     };
