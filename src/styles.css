@@ -197,3 +197,65 @@
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
 }
+
+/* ------------------------------------------------------------------ hlasový nákup
+ * Položka „spadne“ zhora a dopadne na vrch zoznamu; ostatné pri dopade poskočia
+ * a obrazovka sa jemne otrasie (dopad je v 64 % animácie = 0,42 s – vtedy aj vibrácia).
+ * Animácie s „-a/-b“ sú dvojičky: striedaním mena sa animácia spustí znova.
+ */
+@keyframes bh-fall {
+  0% { transform: translateY(-105vh); opacity: 0; animation-timing-function: cubic-bezier(0.62, 0, 0.88, 0.42); }
+  6% { opacity: 1; }
+  64% { transform: translateY(0) scaleY(0.93); animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
+  80% { transform: translateY(-5px) scaleY(1.01); }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes bh-push-a { 0%, 62% { transform: none; } 72% { transform: translateY(8px); } 86% { transform: translateY(-1px); } 100% { transform: none; } }
+@keyframes bh-push-b { 0%, 62% { transform: none; } 72% { transform: translateY(8px); } 86% { transform: translateY(-1px); } 100% { transform: none; } }
+@keyframes bh-shake-a { 30% { transform: translateY(3px); } 60% { transform: translateY(-1.5px); } }
+@keyframes bh-shake-b { 30% { transform: translateY(3px); } 60% { transform: translateY(-1.5px); } }
+@keyframes bh-bump-a { from { transform: translateY(-9px); opacity: 0.1; } }
+@keyframes bh-bump-b { from { transform: translateY(-9px); opacity: 0.1; } }
+@keyframes bh-glow-a { from { opacity: 0.16; } to { opacity: 0; } }
+@keyframes bh-glow-b { from { opacity: 0.16; } to { opacity: 0; } }
+@keyframes bh-gone { to { opacity: 0; transform: translateX(-36px); max-height: 0; margin-bottom: 0; } }
+@keyframes bh-countdown { to { stroke-dashoffset: 125.7; } }
+@keyframes bh-wave { to { transform: translateX(-390px); } }
+@keyframes bh-amp { from { transform: scaleY(0.45); } to { transform: scaleY(1); } }
+@keyframes bh-hint { 0% { opacity: 0; transform: translateY(4px); } 12%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes bh-leave { to { opacity: 0; transform: translateY(-24px); } }
+@keyframes bh-sheet-out { to { transform: translateY(70%) scale(0.92); opacity: 0; } }
+@keyframes bh-think { 50% { opacity: 0.35; } }
+
+.vo-fall { transform-origin: 50% 100%; animation: bh-fall 0.66s both; }
+.vo-push-a { animation: bh-push-a 0.66s; }
+.vo-push-b { animation: bh-push-b 0.66s; }
+.vo-shake-a { animation: bh-shake-a 0.3s; }
+.vo-shake-b { animation: bh-shake-b 0.3s; }
+.vo-bump-a { animation: bh-bump-a 0.45s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.vo-bump-b { animation: bh-bump-b 0.45s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.vo-glow-a { animation: bh-glow-a 1s ease-out; }
+.vo-glow-b { animation: bh-glow-b 1s ease-out; }
+.vo-gone { animation: bh-gone 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; overflow: hidden; }
+.vo-ring { stroke-dasharray: 125.7; animation: bh-countdown 3s linear forwards; }
+.vo-hint { animation: bh-hint 4s both; }
+.vo-leave { animation: bh-leave 0.35s cubic-bezier(0.5, 0, 0.75, 0) both; }
+.vo-out { animation: bh-sheet-out 0.45s cubic-bezier(0.5, 0, 0.75, 0) both; }
+.vo-snap { transition: transform 0.45s cubic-bezier(0.2, 1.3, 0.35, 1); }
+.vo-think { animation: bh-think 1.1s ease-in-out infinite; }
+
+/* Vlna hlasu: tri vrstvy s rôznym tempom; amplitúdu riadi stav (ticho, reč, pauza). */
+.vo-wave path { fill: none; stroke-linecap: round; }
+.vo-wave .w1 { stroke: var(--accent); stroke-width: 2; animation: bh-wave 2.4s linear infinite; }
+.vo-wave .w2 { stroke: var(--text); stroke-opacity: 0.16; stroke-width: 1.5; animation: bh-wave 4.2s linear infinite reverse; }
+.vo-wave .w3 { stroke: var(--accent); stroke-opacity: 0.3; stroke-width: 1; animation: bh-wave 3.1s linear infinite; }
+.vo-wave g { transform-origin: 0 32px; transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.vo-wave.idle .g1 { transform: scaleY(0.16); }
+.vo-wave.idle .g2 { transform: scaleY(0.3); }
+.vo-wave.idle .g3 { transform: scaleY(0.22); }
+.vo-wave.talk .g1 { animation: bh-amp 0.45s ease-in-out infinite alternate; }
+.vo-wave.talk .g3 { animation: bh-amp 0.62s ease-in-out infinite alternate-reverse; }
+.vo-wave.talk .g2 { transform: scaleY(0.9); }
+.vo-wave.think .g1 { transform: scaleY(0.5); }
+.vo-wave.think .g2, .vo-wave.think .g3 { transform: scaleY(0.25); }
+.vo-wave.off g { transform: scaleY(0.02); }
