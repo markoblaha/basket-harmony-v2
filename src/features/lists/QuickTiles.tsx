@@ -208,7 +208,7 @@ export function QuickTiles({
                     aria-pressed={fav}
                     className={cx(
                       "absolute right-0 top-0 z-[2] grid size-8 place-items-center rounded-bl-[0.625rem] rounded-tr-[0.8125rem]",
-                      fav ? "text-accent" : p ? "text-on-primary/50" : "text-line-strong",
+                      fav ? "text-accent-text" : p ? "text-on-primary/50" : "text-line-strong",
                     )}
                   >
                     <Star key={String(fav)} className={cx("size-[0.9375rem]", "[animation:bh-tile-in_.45s_cubic-bezier(.2,.9,.3,1.6)]")} fill={fav ? "currentColor" : "none"} strokeWidth={2} aria-hidden />
@@ -238,7 +238,7 @@ export function QuickTiles({
                   key="new"
                   type="button"
                   onClick={() => setEditor({ tile: null })}
-                  className="flex h-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-[0.8125rem] border border-dashed border-line-strong text-[0.6875rem] font-bold text-accent active:scale-95"
+                  className="flex h-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-[0.8125rem] border border-dashed border-line-strong text-[0.6875rem] font-bold text-accent-text active:scale-95"
                 >
                   <Plus className="size-[1.125rem]" strokeWidth={2.4} aria-hidden />
                   {t("tiles.new")}

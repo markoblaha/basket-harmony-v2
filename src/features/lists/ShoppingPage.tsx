@@ -226,7 +226,7 @@ export function ShoppingPage() {
           <ChevronLeft className="size-6" aria-hidden />
         </button>
         <button type="button" onClick={() => setSettingsOpen(true)} className="min-w-0 flex-1 rounded-xl px-1 text-left active:bg-pressed" aria-label={t("trip.editAria", { name: list.name })}>
-          <h1 className="truncate text-[1.75rem] font-extrabold leading-tight tracking-[-0.03em]">{list.name}</h1>
+          <h1 className="break-words text-[1.75rem] font-extrabold leading-tight tracking-[-0.03em]">{list.name}</h1>
           <span className="flex items-center gap-1.5 truncate text-[0.8125rem] font-medium text-text-2">
             {list.is_private && (
               <span className="flex items-center gap-1 rounded-md bg-surface px-1.5 py-px text-[0.6875rem] font-bold">
@@ -273,7 +273,7 @@ export function ShoppingPage() {
             <button
               type="button"
               onClick={() => navigate(`/receipts?pridat=1&nakup=${list.id}`)}
-              className={cx("flex h-9 shrink-0 items-center gap-1.5 rounded-[0.625rem] px-2.5 text-[0.8125rem] font-bold", list.receipt_state === "LATER" ? "bg-accent-soft text-accent" : "border border-line")}
+              className={cx("flex h-9 shrink-0 items-center gap-1.5 rounded-[0.625rem] px-2.5 text-[0.8125rem] font-bold", list.receipt_state === "LATER" ? "bg-accent-soft text-accent-text" : "border border-line")}
             >
               <Camera className="size-4" aria-hidden /> {list.receipt_state === "LATER" ? t("trip.completeReceipt") : t("trip.addReceipt")}
             </button>
@@ -335,7 +335,7 @@ export function ShoppingPage() {
 
       {iAmShopping && interrupted && pendingForMe.length > 0 && (
         <section className="mt-5 px-4">
-          <SectionTitle className="text-accent">
+          <SectionTitle className="text-accent-text">
             <span className="size-2 rounded-full bg-accent [animation:bh-pulse_1.6s_ease_infinite]" aria-hidden />
             {t("shop.waitingApproval")}
           </SectionTitle>

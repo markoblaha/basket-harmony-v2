@@ -100,7 +100,7 @@ function TabItem({ tab, active, before }: { tab: Tab; active: boolean; before: R
             active ? "text-text" : "text-text-2",
           )}
         >
-          <span className={cx("grid h-7 w-12 place-items-center rounded-full transition-colors", active && "bg-accent-soft text-accent")}>
+          <span className={cx("grid h-7 w-12 place-items-center rounded-full transition-colors", active && "bg-accent-soft text-accent-text")}>
             <Icon className="size-[1.375rem]" strokeWidth={2} aria-hidden />
           </span>
           {t(tab.label)}

@@ -4,6 +4,7 @@ import { Avatar, Sheet, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { CATEGORIES, categoryOrder } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
+import { shortName } from "@/lib/shortName";
 import { formatDateTime, t } from "@/i18n";
 import { useUpdateItem, type AdditionRequest, type Item, type Session, type ShoppingList } from "./api";
 import { RequestCard } from "./RequestCard";
@@ -224,7 +225,7 @@ export function ShoppingMode({
                         <span className="block text-base font-semibold leading-tight">{item.name}</span>
                         {(by || item.note) && (
                           <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[0.8125rem] text-text-2">
-                            {by && <span className="rounded-[0.3125rem] bg-person-soft px-1.5 py-px text-[0.6875rem] font-bold text-person">{t("item.addedBy", { name: by })}</span>}
+                            {by && <span className="rounded-[0.3125rem] bg-person-soft px-1.5 py-px text-[0.6875rem] font-bold text-person">{t("item.addedBy", { name: shortName(by) })}</span>}
                             {item.note && <span>{item.note}</span>}
                           </span>
                         )}

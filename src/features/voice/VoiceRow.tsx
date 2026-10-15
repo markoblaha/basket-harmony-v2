@@ -177,7 +177,7 @@ export function VoiceRow({
           <span className="text-[0.6875rem] text-text-2">{unit}</span>
         </span>
         <span className={cx("min-w-0 flex-1 transition-opacity", confirming && "opacity-30")}>
-          <span className={cx("block truncate text-[1.0625rem] font-semibold", editing && "text-accent")}>{item.name}</span>
+          <span className={cx("block truncate text-[1.0625rem] font-semibold", editing && "text-accent-text")}>{item.name}</span>
           <span className="mt-0.5 flex items-center gap-1.5 text-[0.78rem] text-text-2">
             <span aria-hidden className="inline-block size-[7px] rounded-full" style={{ background: `oklch(0.64 0.12 ${hue})` }} />
             {category(item.categoryId ?? "other").name.toLowerCase()}
@@ -241,7 +241,7 @@ function Chip({ children, onClick, voice }: { children: ReactNode; onClick: () =
       onClick={onClick}
       className={cx(
         "inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-elevated px-4 text-sm font-semibold active:scale-[0.97]",
-        voice ? "border-accent text-accent" : "border-line",
+        voice ? "border-accent text-accent-text" : "border-line",
       )}
     >
       {children}

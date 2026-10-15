@@ -3,6 +3,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { errorMessage } from "@/lib/errors";
+import { shortName } from "@/lib/shortName";
 import { formatNumber, t } from "@/i18n";
 import { useDeleteItem, useUpdateItem, type Item } from "./api";
 import { countOf, isCountable, qtyLabel } from "./qty";
@@ -71,7 +72,7 @@ export function PlanList({
                 <span className="block truncate text-[0.96875rem] font-semibold leading-tight">{item.name}</span>
                 {(by || item.note) && (
                   <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[0.78125rem] text-text-2">
-                    {by && <span className="rounded-[0.3125rem] bg-person-soft px-1.5 py-px text-[0.6875rem] font-bold text-person">{t("item.addedBy", { name: by })}</span>}
+                    {by && <span className="rounded-[0.3125rem] bg-person-soft px-1.5 py-px text-[0.6875rem] font-bold text-person">{t("item.addedBy", { name: shortName(by) })}</span>}
                     {item.note && <span className="truncate">{item.note}</span>}
                   </span>
                 )}

@@ -257,7 +257,7 @@ function ListPreview() {
             <span
               className={cx(
                 "flex size-6 items-center justify-center rounded-full border-2",
-                r.done ? "border-[#d2401f] bg-[#d2401f] text-white" : "border-[#1b1815]/30",
+                r.done ? "border-[#eea58b] bg-[#eea58b] text-[#3b1a0f]" : "border-[#1b1815]/30",
               )}
             >
               {r.done && <Check className="size-3.5" strokeWidth={3} />}
@@ -272,7 +272,7 @@ function ListPreview() {
         <p className="font-semibold">{t("auth.previewOil")}</p>
         <div className="mt-2 grid grid-cols-2 gap-2 text-center text-sm font-semibold">
           <span className="rounded-lg bg-white/70 py-1.5">{t("auth.previewDecline")}</span>
-          <span className="rounded-lg bg-[#d2401f] py-1.5 text-white">{t("auth.previewAdd")}</span>
+          <span className="rounded-lg bg-[#eea58b] py-1.5 text-[#3b1a0f]">{t("auth.previewAdd")}</span>
         </div>
       </div>
     </figure>

@@ -11,8 +11,8 @@ import { LOCALES, t, useLocale, type Key, type Locale } from "@/i18n";
 import { useTheme, type ThemePreference } from "@/theme/ThemeProvider";
 
 const PALETTE = {
-  light: { bg: "#f1ede5", card: "#fbf9f5", mute: "#cfc8bb", ink: "#1b1815", accent: "#d2401f" },
-  dark: { bg: "#121110", card: "#24211e", mute: "#4a443e", ink: "#f1ece3", accent: "#ff6a45" },
+  light: { bg: "#f1ede5", card: "#fbf9f5", mute: "#cfc8bb", ink: "#1b1815", accent: "#eea58b" },
+  dark: { bg: "#121110", card: "#24211e", mute: "#4a443e", ink: "#f1ece3", accent: "#eba188" },
 } as const;
 
 /** Miniatúra obrazovky: nadpis, tri riadky zoznamu (jeden odškrtnutý) a hlavné tlačidlo. */

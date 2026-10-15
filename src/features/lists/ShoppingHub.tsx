@@ -6,6 +6,7 @@ import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
 import { errorMessage } from "@/lib/errors";
+import { shortName } from "@/lib/shortName";
 import { useHubSessions, useListStats, useLists, type ListStats, type Session, type ShoppingList } from "./api";
 import { dayLabel, isOverdue } from "./dates";
 import { ListSheet } from "./ListSheet";
@@ -56,7 +57,7 @@ export function ShoppingHub() {
           <h1 className="text-[1.75rem] font-extrabold leading-none tracking-[-0.03em]">{t("nav.shopping")}</h1>
           <p className="mt-1.5 text-[0.8125rem] font-medium text-text-2">
             {open.length ? tn("hub.openCount", open.length) : t("hub.noneOpen")}
-            {missingReceipts > 0 && <span className="text-accent"> · {t("hub.missingReceipts", { n: missingReceipts })}</span>}
+            {missingReceipts > 0 && <span className="text-accent-text"> · {t("hub.missingReceipts", { n: missingReceipts })}</span>}
           </p>
         </div>
         <span className="flex items-center gap-2 rounded-xl border border-line bg-elevated py-1.5 pl-1.5 pr-2.5 text-sm font-semibold">
@@ -124,7 +125,7 @@ export function ShoppingHub() {
                     </span>
                     <span className="min-w-0">
                       <span className="flex items-center gap-1.5 font-semibold">
-                        <span className="truncate">{l.name}</span>
+                        <span className="break-words">{l.name}</span>
                         {l.is_private && <Lock className="size-3.5 shrink-0 text-text-3" aria-label={t("hub.private")} />}
                       </span>
                       <span className="block text-[0.8125rem] text-text-2">
@@ -187,22 +188,22 @@ function ListCard({
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h2 className="truncate text-xl font-extrabold tracking-[-0.02em]">{list.name}</h2>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h2 className="min-w-0 break-words text-xl font-extrabold tracking-[-0.02em]">{list.name}</h2>
             {list.is_private ? (
               <span className={cx("flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-bold", live ? "bg-on-primary/15" : "bg-surface text-text-2")}>
                 <Lock className="size-3" aria-hidden /> {t("trip.onlyMe")}
               </span>
             ) : (
               creatorName &&
-              list.created_by !== me && <span className={cx("shrink-0 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-bold", live ? "bg-on-primary/15" : "bg-person-soft text-person")}>{t("hub.createdBy", { name: creatorName })}</span>
+              list.created_by !== me && <span className={cx("shrink-0 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-bold", live ? "bg-on-primary/15" : "bg-person-soft text-person")}>{t("hub.createdBy", { name: shortName(creatorName) })}</span>
             )}
           </div>
           <p className={cx("mt-0.5 text-[0.8125rem]", live ? "opacity-75" : "text-text-2")}>
             {live ? (
               <span className="font-semibold">{mine ? t("hub.shoppingNow") : t("hub.shopping", { name: shopperName ?? "" })}</span>
             ) : list.planned_for ? (
-              <span className={cx(isOverdue(list.planned_for) && "font-semibold text-accent")}>
+              <span className={cx(isOverdue(list.planned_for) && "font-semibold text-accent-text")}>
                 {isOverdue(list.planned_for) ? t("hub.planned", { day: dayLabel(list.planned_for) }) : dayLabel(list.planned_for)}
               </span>
             ) : (
@@ -247,7 +248,7 @@ function ReceiptChip({ list, onAdd }: { list: ShoppingList; onAdd: () => void })
       <button
         type="button"
         onClick={onAdd}
-        className="flex h-9 shrink-0 items-center gap-1.5 rounded-[0.625rem] bg-accent-soft px-2.5 text-[0.8125rem] font-bold text-accent"
+        className="flex h-9 shrink-0 items-center gap-1.5 rounded-[0.625rem] bg-accent-soft px-2.5 text-[0.8125rem] font-bold text-accent-text"
       >
         <Camera className="size-4" aria-hidden /> {t("trip.completeReceipt")}
       </button>
