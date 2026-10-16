@@ -9,6 +9,9 @@
   // ostala nedotknutá.
   "workers_dev": true,
   "preview_urls": true,
+  // Testovacie vetvy staví Cloudflare príkazom `wrangler preview`, ktorý tento
+  // blok vyžaduje. Prázdny = testovacia verzia má rovnaké nastavenia ako ostrá.
+  "previews": {},
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
