@@ -109,7 +109,7 @@ export function CumulativeChart({
           {cur.length > 0 && (
             <path d={line(cur)} fill="none" className="stroke-primary" strokeWidth={2.75} strokeLinejoin="round" strokeLinecap="round" />
           )}
-          {cur.length > 0 && <circle cx={x(cur.length - 1)} cy={y(cur.at(-1)!)} r={4.5} className="fill-primary stroke-elevated" strokeWidth={2} />}
+          {cur.length > 0 && <circle cx={x(cur.length - 1)} cy={y(cur.at(-1)!)} r={4.5} className="fill-primary stroke-surface" strokeWidth={2} />}
           {hi !== null && (
             <>
               <line x1={x(hi)} x2={x(hi)} y1={padTop - 6} y2={y(0)} className="stroke-text-3" strokeWidth={1} />
@@ -117,17 +117,17 @@ export function CumulativeChart({
               {tip?.prev != null && <circle cx={x(hi)} cy={y(tip.prev)} r={3.5} className="fill-text-3" />}
             </>
           )}
-          <text x={2} y={h - 4} className="fill-text-3 text-[11px]">
+          <text x={2} y={h - 4} className="fill-text-3 text-xs">
             {shortDate(from)}
           </text>
-          <text x={w - 2} y={h - 4} textAnchor="end" className="fill-text-3 text-[11px]">
+          <text x={w - 2} y={h - 4} textAnchor="end" className="fill-text-3 text-xs">
             {shortDate(to)}
           </text>
         </svg>
       )}
       {tip && (
         <div
-          className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-text px-2.5 py-1.5 text-xs text-bg shadow-lg"
+          className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-inverse px-3 py-2 text-xs text-on-inverse shadow-raised"
           style={{ left: Math.min(Math.max(x(hi!), 70), w - 70) }}
         >
           <p className="font-semibold">{shortDate(tip.date)}</p>
@@ -175,7 +175,7 @@ export function BarChart({
             >
               <span
                 className={cx(
-                  "block w-full rounded-t-md transition-[height,background-color] duration-300",
+                  "block w-full rounded-t-sm transition-[height,background-color] duration-300",
                   isActive ? "bg-primary" : "bg-primary/25 group-active:bg-primary/40",
                   d.value === 0 && "bg-line",
                 )}
@@ -185,11 +185,11 @@ export function BarChart({
           );
         })}
       </div>
-      <div className="mt-1.5 flex gap-1">
+      <div className="mt-2 flex gap-1">
         {data.map((d) => (
           <span
             key={d.key}
-            className={cx("min-w-0 flex-1 truncate text-center text-[11px]", d.key === activeKey ? "font-semibold text-text" : "text-text-3")}
+            className={cx("min-w-0 flex-1 truncate text-center text-xs", d.key === activeKey ? "font-semibold text-text" : "text-text-3")}
           >
             {d.label}
           </span>
@@ -254,7 +254,7 @@ export function PriceChart({ points, unitLabel }: { points: PricePoint[]; unitLa
       {width > 0 && (
         <svg width={w} height={h} className="block overflow-visible">
           <line x1={0} x2={w} y1={y(avg)} y2={y(avg)} className="stroke-text-3" strokeDasharray="3 4" strokeWidth={1} />
-          <text x={w} y={y(avg) - 5} textAnchor="end" className="fill-text-3 text-[11px]">
+          <text x={w} y={y(avg) - 5} textAnchor="end" className="fill-text-3 text-xs">
             {t("chart.avg", { avg: formatMoney(avg) })}
           </text>
           {points.map((p) => {
@@ -270,24 +270,24 @@ export function PriceChart({ points, unitLabel }: { points: PricePoint[]; unitLa
                   cx={px}
                   cy={y(p.shelf)}
                   r={isSel ? 8 : 6}
-                  fill={promo ? "var(--color-elevated)" : p.color}
+                  fill={promo ? "var(--surface)" : p.color}
                   stroke={p.color}
                   strokeWidth={promo ? 2.5 : 2}
                 />
               </g>
             );
           })}
-          <text x={padX} y={h - 5} className="fill-text-3 text-[11px]">
+          <text x={padX} y={h - 5} className="fill-text-3 text-xs">
             {shortDate(new Date(tMin).toISOString().slice(0, 10))}
           </text>
-          <text x={w - padX} y={h - 5} textAnchor="end" className="fill-text-3 text-[11px]">
+          <text x={w - padX} y={h - 5} textAnchor="end" className="fill-text-3 text-xs">
             {shortDate(new Date(tMax).toISOString().slice(0, 10))}
           </text>
         </svg>
       )}
       {sel && (
         <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-text px-2.5 py-1.5 text-xs text-bg shadow-lg"
+          className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-inverse px-3 py-2 text-xs text-on-inverse shadow-raised"
           style={{ left: Math.min(Math.max(x(Date.parse(sel.date)), 80), w - 80), top: 0 }}
         >
           <p className="font-semibold">

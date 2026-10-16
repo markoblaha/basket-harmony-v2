@@ -25,7 +25,7 @@ export const skLists = {
   "shop.itemCount.few": "{n} položky",
   "shop.itemCount.other": "{n} položiek",
   "request.status.PENDING": "čaká",
-  "request.status.ACCEPTED": "pridané ✓",
+  "request.status.ACCEPTED": "pridané",
   "request.status.REJECTED": "zahodené",
   "request.status.EXPIRED": "prepadlo",
   "item.removed": "„{name}“ odstránené",

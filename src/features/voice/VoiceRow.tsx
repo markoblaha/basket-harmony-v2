@@ -124,15 +124,15 @@ export function VoiceRow({
   return (
     <li
       className={cx(
-        "relative mb-1.5 max-h-72 list-none",
+        "relative mb-2 max-h-72 list-none",
         leaving ? "vo-gone" : anim.fall ? "vo-fall" : anim.push && `vo-push-${anim.push}`,
       )}
     >
       <div
         aria-hidden
         className={cx(
-          "absolute inset-0 flex items-center justify-between rounded-[1.125rem] px-5 text-[0.8125rem] font-bold transition-colors",
-          dx > ARM ? "bg-success text-on-primary" : dx < -ARM ? "bg-primary text-on-primary" : "text-text-2",
+          "absolute inset-0 flex items-center justify-between rounded-2xl px-6 text-footnote font-semibold transition-colors",
+          dx > ARM ? "bg-success-solid text-on-success-solid" : dx < -ARM ? "bg-primary text-on-primary" : "text-text-2",
         )}
       >
         <span style={{ opacity: rOp }} className={dx > ARM ? "" : "text-success"}>
@@ -157,28 +157,28 @@ export function VoiceRow({
         aria-label={t("voice.rowAria", { name: item.name, qty: `${num} ${unit}` })}
         style={{ transform: `translateX(${Math.round(dx)}px)`, touchAction: "pan-y" }}
         className={cx(
-          "relative flex min-h-16 w-full select-none items-center gap-3.5 overflow-hidden py-2.5 pl-2 pr-4 text-left",
+          "relative flex min-h-16 w-full select-none items-center gap-4 overflow-hidden py-3 pl-2 pr-4 text-left",
           !dragging && "vo-snap",
-          issue ? "rounded-t-[1.125rem] bg-warning-soft" : "rounded-[1.125rem] bg-elevated",
-          editing && "shadow-[inset_0_0_0_1.5px_var(--accent)]",
+          issue ? "rounded-t-2xl bg-warning-soft" : "rounded-2xl bg-surface",
+          editing && "shadow-[inset_0_0_0_1.5px_var(--primary)]",
         )}
       >
-        {anim.glow && <span aria-hidden className={cx("pointer-events-none absolute inset-0 bg-success opacity-0", `vo-glow-${anim.glow}`)} />}
+        {anim.glow && <span aria-hidden className={cx("pointer-events-none absolute inset-0 bg-success-solid opacity-0", `vo-glow-${anim.glow}`)} />}
         <span className={cx("flex w-14 shrink-0 flex-col items-center gap-0.5 transition-opacity", confirming && "opacity-30")}>
           <span
             className={cx(
-              "inline-block text-[1.625rem] font-bold leading-none tracking-[-0.03em]",
+              "inline-block text-2xl font-semibold leading-none",
               item.quantity == null && item.status === "needs_qty" && "text-warning",
               anim.bump && `vo-bump-${anim.bump}`,
             )}
           >
             {num}
           </span>
-          <span className="text-[0.6875rem] text-text-2">{unit}</span>
+          <span className="text-xs text-text-2">{unit}</span>
         </span>
         <span className={cx("min-w-0 flex-1 transition-opacity", confirming && "opacity-30")}>
-          <span className={cx("block truncate text-[1.0625rem] font-semibold", editing && "text-accent-text")}>{item.name}</span>
-          <span className="mt-0.5 flex items-center gap-1.5 text-[0.78rem] text-text-2">
+          <span className={cx("block truncate text-lg font-semibold", editing && "text-primary")}>{item.name}</span>
+          <span className="mt-0.5 flex items-center gap-2 text-footnote text-text-2">
             <span aria-hidden className="inline-block size-[7px] rounded-full" style={{ background: `oklch(0.64 0.12 ${hue})` }} />
             {category(item.categoryId ?? "other").name.toLowerCase()}
           </span>
@@ -201,11 +201,11 @@ export function VoiceRow({
       )}
 
       {issue && (
-        <div className="rounded-b-[1.125rem] bg-warning-soft pb-3.5 pl-[4.5rem] pr-3.5">
-          <p className="mb-2.5 text-[0.8rem] font-semibold text-warning">
+        <div className="rounded-b-2xl bg-warning-soft pb-4 pl-[4.5rem] pr-4">
+          <p className="mb-3 text-footnote font-semibold text-warning">
             {item.status === "needs_qty" ? t("voice.needsQty") : t("voice.unclearAsk")}
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {item.status === "needs_qty"
               ? (
                   [
@@ -240,8 +240,8 @@ function Chip({ children, onClick, voice }: { children: ReactNode; onClick: () =
       type="button"
       onClick={onClick}
       className={cx(
-        "inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-elevated px-4 text-sm font-semibold active:scale-[0.97]",
-        voice ? "border-accent text-accent-text" : "border-line",
+        "inline-flex min-h-11 items-center gap-2 rounded-full border bg-surface px-4 text-sm font-semibold active:scale-[0.97]",
+        voice ? "border-primary text-primary" : "border-line",
       )}
     >
       {children}

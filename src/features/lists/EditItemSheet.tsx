@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Trash2 } from "lucide-react";
 import { Button, Sheet, TextField, cx } from "@/components/ui";
+import { CategoryGlyph } from "@/components/CategoryIcon";
 import { useToast } from "@/components/toast";
 import { CATEGORIES } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
@@ -87,11 +88,11 @@ export function EditItemSheet({ item, listId, onClose }: { item: Item | null; li
                 aria-pressed={categoryId === c.id}
                 onClick={() => setCategoryId(c.id)}
                 className={cx(
-                  "min-h-10 rounded-full border px-3 text-sm",
-                  categoryId === c.id ? "border-primary bg-primary-soft font-semibold text-primary" : "border-line bg-surface text-text-2",
+                  "inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm transition-colors duration-[120ms]",
+                  categoryId === c.id ? "bg-primary-soft font-strong text-primary shadow-[inset_0_0_0_1.5px_var(--primary)]" : "bg-sunken text-text-2",
                 )}
               >
-                <span aria-hidden>{c.emoji}</span> {c.name}
+                <CategoryGlyph id={c.id} className="size-4" /> {c.name}
               </button>
             ))}
           </div>

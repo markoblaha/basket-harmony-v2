@@ -34,7 +34,7 @@ export function JoinPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-5 py-10">
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-10">
       {preview.isPending && <Spinner label={t("join.checking")} />}
       {preview.isError && <Banner tone="danger">{errorMessage(preview.error)}</Banner>}
       {preview.data && preview.data.state === "VALID" && (
@@ -44,7 +44,7 @@ export function JoinPage() {
           </div>
           <div>
             <p className="text-text-2">{t("join.invitedBy", { name: preview.data.invited_by ?? t("join.someone") })}</p>
-            <h1 className="text-2xl font-bold">{preview.data.household_name}</h1>
+            <h1 className="text-2xl font-semibold">{preview.data.household_name}</h1>
           </div>
           <p className="text-sm text-text-2">{t("join.willShare")}</p>
           {accept.isError && <Banner tone="danger">{errorMessage(accept.error)}</Banner>}

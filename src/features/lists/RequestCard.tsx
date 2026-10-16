@@ -73,24 +73,27 @@ export function RequestCard({
   const cat = category(request.category_id);
 
   return (
-    <div className={cx(ink ? "rounded-[1.375rem] bg-primary p-3.5 text-on-primary shadow-[0_22px_50px_rgb(0_0_0/0.4)]" : "p-3.5", className)}>
-      <div className="flex items-start gap-2.5">
+    <div className={cx(ink ? "rounded-2xl bg-elevated p-4 shadow-raised" : "p-4", className)}>
+      <div className="flex items-start gap-3">
         <Avatar name={who} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className={cx("text-[0.8125rem] font-semibold", ink ? "opacity-70" : "text-text-2")}>
-            {t("request.wants")} <b className={ink ? "" : "text-text"}>{who}</b>
+          <p className="flex flex-wrap items-center gap-x-2 text-footnote font-medium text-text-2">
+            {ink && <span className="rounded-sm bg-person-soft px-2 py-px text-xs font-strong text-person">{t("mode.newRequest")}</span>}
+            <span>
+              {t("request.wants")} <b className="font-strong text-text">{who}</b>
+            </span>
             {more > 0 && <span className="font-normal"> · {t("request.others", { n: more })}</span>}
           </p>
           <div className="mt-0.5 flex items-baseline justify-between gap-2">
-            <span className="text-lg font-extrabold leading-tight tracking-[-0.01em]">{request.name}</span>
-            <span className="shrink-0 text-base font-bold">{qty}</span>
+            <span className="text-lg font-semibold">{request.name}</span>
+            <span className="shrink-0 text-base font-strong">{qty}</span>
           </div>
-          <p className={cx("mt-0.5 text-[0.8125rem]", ink ? "opacity-65" : "text-text-2")}>
+          <p className="mt-0.5 text-footnote text-text-2">
             {request.note ? `„${request.note}“ · ` : ""}
             {cat.name}
           </p>
           {request.response_note && (
-            <p className={cx("mt-1.5 inline-block rounded-xl rounded-br-sm px-2.5 py-1.5 text-[0.8125rem]", ink ? "bg-on-primary/12" : "bg-surface")}>
+            <p className="mt-2 inline-block rounded-xl rounded-br-sm bg-sunken px-3 py-2 text-footnote">
               {t("request.yourReply")} {request.response_note}
             </p>
           )}
@@ -98,24 +101,21 @@ export function RequestCard({
       </div>
 
       {replyOpen && (
-        <div className="mt-3 flex flex-col gap-2 [animation:bh-rise_.3s_ease]">
-          <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
+        <div className="mt-3 flex flex-col gap-2 animate-rise">
+          <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
             {QUICK.map((q) => (
               <button
                 key={q}
                 type="button"
                 onClick={() => send(t(q))}
-                className={cx(
-                  "h-[2.125rem] shrink-0 rounded-[0.5625rem] border px-2.5 text-[0.8125rem] font-semibold",
-                  ink ? "border-on-primary/20 bg-on-primary/8" : "border-line bg-elevated",
-                )}
+                className="h-11 shrink-0 rounded-full bg-sunken px-4 text-footnote font-strong active:bg-pressed"
               >
                 {t(q)}
               </button>
             ))}
           </div>
           <form
-            className="flex gap-1.5"
+            className="flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               send(text);
@@ -128,16 +128,13 @@ export function RequestCard({
               aria-label={t("request.replyAria", { who })}
               maxLength={300}
               autoFocus
-              className={cx(
-                "h-[2.625rem] min-w-0 flex-1 rounded-[0.6875rem] border px-3 text-sm outline-none",
-                ink ? "border-on-primary/20 bg-on-primary/8 placeholder:text-on-primary/50" : "border-line bg-elevated placeholder:text-text-3 focus:border-primary",
-              )}
+              className="h-11 min-w-0 flex-1 rounded-lg border border-line-strong/60 bg-elevated px-3 text-sm outline-none placeholder:text-text-3 focus:border-primary"
             />
             <button
               type="submit"
               aria-label={t("request.send")}
               disabled={!text.trim() || reply.isPending}
-              className={cx("grid h-[2.625rem] w-11 shrink-0 place-items-center rounded-[0.6875rem] disabled:opacity-40", ink ? "bg-on-primary text-primary" : "bg-primary text-on-primary")}
+              className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary text-on-primary disabled:opacity-40"
             >
               <Send className="size-[1.0625rem]" aria-hidden />
             </button>
@@ -145,15 +142,12 @@ export function RequestCard({
         </div>
       )}
 
-      <div className="mt-3 flex gap-1.5">
+      <div className="mt-3 flex gap-2">
         <button
           type="button"
           disabled={!!busy}
           onClick={() => answer(false)}
-          className={cx(
-            "h-11 rounded-xl border px-3.5 text-sm font-bold disabled:opacity-50",
-            ink ? "border-on-primary/20 text-accent" : "border-line bg-elevated text-danger",
-          )}
+          className="h-11 rounded-xl bg-sunken px-4 text-sm font-strong text-danger active:bg-pressed disabled:opacity-50"
         >
           {t("request.dismiss")}
         </button>
@@ -162,7 +156,7 @@ export function RequestCard({
           aria-label={t("request.reply")}
           aria-expanded={replyOpen}
           onClick={() => setReplyOpen((v) => !v)}
-          className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-xl border", ink ? "border-on-primary/20" : "border-line bg-elevated", replyOpen && "ring-2 ring-accent")}
+          className={cx("grid size-11 shrink-0 place-items-center rounded-xl bg-sunken text-text-2 active:bg-pressed", replyOpen && "bg-primary-soft text-primary")}
         >
           <MessageSquare className="size-[1.0625rem]" aria-hidden />
         </button>
@@ -170,12 +164,9 @@ export function RequestCard({
           type="button"
           disabled={!!busy}
           onClick={() => answer(true)}
-          className={cx(
-            "flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl text-sm font-bold disabled:opacity-50",
-            ink ? "bg-on-primary text-primary" : "bg-primary text-on-primary",
-          )}
+          className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-strong text-on-primary active:bg-primary-pressed disabled:opacity-50"
         >
-          <Check className="size-4" strokeWidth={2.8} aria-hidden />
+          <Check className="size-4" strokeWidth={2.4} aria-hidden />
           {busy === "yes" ? t("request.adding") : t("request.add")}
         </button>
       </div>

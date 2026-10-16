@@ -2,22 +2,31 @@
 @import "@fontsource-variable/onest";
 
 /*
- * Dizajnový systém „Papier“ (v3): teplý papier, atrament a jedna signálna farba.
- * Farby sú "role" (pozadie, povrch, primárna akcia, úspech...), nie konkrétne
- * odtiene – komponenty používajú role, takže tmavý režim („Atrament“) je len
- * iná sada hodnôt. Sadu vyberá atribút data-theme na <html>: nastavuje ho
- * ThemeProvider (a pred prvým vykreslením skript v index.html) podľa voľby
- * Svetlá / Tmavá / Podľa systému v sekcii Viac.
+ * Dizajnový systém „Šalvia“: pokojné, farebne tónované povrchy, jedna petrolejová
+ * akcentová farba a presná typografia. Farby sú "role" (pozadie, karta, hlavná
+ * akcia, úspech...), nie konkrétne odtiene – komponenty používajú role, takže
+ * tmavá téma je len iná sada hodnôt. Sadu vyberá atribút data-theme na <html>
+ * (ThemeProvider a skript v index.html podľa voľby Svetlá / Tmavá / Podľa systému).
  *
+ * Vrstvy (líšia sa svetlosťou, nie orámovaním):
+ *   bg (plátno) → surface (karta) → elevated (spodný panel, menu, plávajúca lišta)
+ *   sunken = zapustená plocha (dráha prepínača, pole, prázdna dlaždica)
  * Pravidlá:
- *  - primary (atrament) = potvrdzovacie akcie a aktívne stavy (Pridať, ťuknutá dlaždica)
- *  - accent (rumelka)   = najviac JEDNA hlavná akcia na obrazovke (Začať nákup, Odfotiť bloček)
- *  - person (fialová)   = výhradne ľudia zo skupiny (kto pridal, kto žiada)
+ *  - primary          = jediná akcentová farba: hlavná akcia, zaškrtnutie, aktívny stav
+ *  - inverse          = krátke hlášky (toast, „Pridané: …“), nie tlačidlá
+ *  - person           = ľudia zo skupiny a žiadosti čakajúce na schválenie
+ *  - X / X-soft / X-solid = stav: text a ikona / podklad / plný odznak. Plné odznaky
+ *    idú v rebríku svetlosti warning > success > person > danger, takže sa rozlíšia
+ *    aj bez farby; stav vždy nesie aj ikonu alebo slovo.
+ * Kontrast textu: text, text-2, text-3 a všetky X na X-soft majú aspoň 4,5:1.
+ * „@theme inline“: triedy (bg-surface…) čítajú premennú priamo, takže fungujú aj vo
+ * vnorenej téme (data-theme-scope – náhľady tém v sekcii Viac, panel prihlásenia).
  */
-@theme {
+@theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-elevated: var(--elevated);
+  --color-sunken: var(--sunken);
   --color-pressed: var(--pressed);
   --color-text: var(--text);
   --color-text-2: var(--text-2);
@@ -28,91 +37,173 @@
   --color-primary-pressed: var(--primary-pressed);
   --color-primary-soft: var(--primary-soft);
   --color-on-primary: var(--on-primary);
-  --color-accent: var(--accent);
-  --color-accent-pressed: var(--accent-pressed);
-  --color-accent-soft: var(--accent-soft);
-  --color-accent-text: var(--accent-text);
-  --color-on-accent: var(--on-accent);
+  --color-inverse: var(--inverse);
+  --color-on-inverse: var(--on-inverse);
   --color-person: var(--person);
   --color-person-soft: var(--person-soft);
+  --color-person-solid: var(--person-solid);
+  --color-on-person-solid: var(--on-person-solid);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
+  --color-success-solid: var(--success-solid);
+  --color-on-success-solid: var(--on-success-solid);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+  --color-warning-solid: var(--warning-solid);
+  --color-on-warning-solid: var(--on-warning-solid);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-danger-solid: var(--danger-solid);
+  --color-on-danger-solid: var(--on-danger-solid);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
+  --color-scrim: var(--scrim);
 
+  /* Zaoblenia: 8 štítky · 12 ovládacie prvky · 16 karty · 24 spodný panel. */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
   --radius-control: 0.75rem;
   --radius-surface: 1rem;
-  --radius-modal: 1.625rem;
+  --radius-modal: 1.5rem;
+
+  /* Typografická škála (veľkosť / riadkovanie / rozostup). Váhy: 400 text, 550 tlačidlá, 600 nadpisy. */
+  --text-overline: 0.6875rem;
+  --text-overline--line-height: 0.875rem;
+  --text-overline--letter-spacing: 0.06em;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-footnote: 0.8125rem;
+  --text-footnote--line-height: 1.125rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-callout: 0.9375rem;
+  --text-callout--line-height: 1.375rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.5rem;
+  --text-lg--letter-spacing: -0.01em;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.75rem;
+  --text-xl--letter-spacing: -0.015em;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 2.125rem;
+  --text-2xl--letter-spacing: -0.02em;
+  --text-3xl: 2.125rem;
+  --text-3xl--line-height: 2.5rem;
+  --text-3xl--letter-spacing: -0.025em;
+
+  --font-weight-strong: 550;
+
+  /* Tiene: karta len jemne, plávajúce prvky a spodný panel výraznejšie. */
+  --shadow-card: var(--elev-card);
+  --shadow-raised: var(--elev-raised);
+  --shadow-overlay: var(--elev-overlay);
+  --shadow-sm: var(--elev-card);
+  --shadow: var(--elev-card);
+  --shadow-lg: var(--elev-raised);
+  --shadow-xl: var(--elev-overlay);
+  --shadow-2xl: var(--elev-overlay);
+
+  /* Pohyb: rýchly a tichý. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --default-transition-duration: 120ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   --font-sans: "Onest Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-:root {
+/* Svetlá téma „Šalvia“: bledé šalviové povrchy, žiadna čistá biela. */
+:root,
+[data-theme-scope="light"] {
   color-scheme: light;
-  --bg: #f1ede5;
-  --surface: #e7e1d6;
-  --elevated: #fbf9f5;
-  --pressed: #e0d9cd;
-  --text: #1b1815;
-  --text-2: #5f584f;
-  --text-3: #726a60;
-  --line: #ddd6ca;
-  --line-strong: #b9b1a5;
-  --primary: #1b1815;
-  --primary-pressed: #000000;
-  --primary-soft: #e5dfd4;
-  --on-primary: #fbf9f5;
-  --accent: #eea58b;
-  --accent-pressed: #e49479;
-  --accent-soft: #fae6dd;
-  --accent-text: #a4482c;
-  --on-accent: #3b1a0f;
-  --person: #6b4e8f;
-  --person-soft: #ece5f3;
-  --success: #2e6a3b;
-  --success-soft: #e2eedf;
-  --warning: #855700;
-  --warning-soft: #f5ead2;
-  --danger: #b0341b;
-  --danger-soft: #fbe3da;
-  --info: #3a5a80;
-  --info-soft: #e3eaf2;
+  --bg: #dfe6df;
+  --surface: #eff4ef;
+  --elevated: #f7faf7;
+  --sunken: #d5ddd5;
+  --pressed: #d9e1d8;
+  --line: #ced5cd;
+  --line-strong: #808980;
+  --text: #192019;
+  --text-2: #464e46;
+  --text-3: #586058;
+  --primary: #005e67;
+  --primary-pressed: #004d54;
+  --primary-soft: #cae6e7;
+  --on-primary: #f1f8f9;
+  --inverse: #222a22;
+  --on-inverse: #edf2ed;
+  --warning: #895709;
+  --warning-soft: #fdedc9;
+  --warning-solid: #f1bf5b;
+  --on-warning-solid: #362207;
+  --success: #2a6736;
+  --success-soft: #d0ecd2;
+  --success-solid: #57ab66;
+  --on-success-solid: #07210c;
+  --danger: #901f1a;
+  --danger-soft: #f8d5cf;
+  --danger-solid: #901f1a;
+  --on-danger-solid: #fef4f3;
+  --person: #4b2c74;
+  --person-soft: #ded6ef;
+  --person-solid: #7555a8;
+  --on-person-solid: #fbf9fe;
+  --info: #2d557d;
+  --info-soft: #d7e5f3;
+  --scrim: rgb(16 24 18 / 0.42);
+  --elev-card: 0 1px 2px rgb(25 32 25 / 0.06);
+  --elev-raised: 0 8px 24px -6px rgb(25 32 25 / 0.2), 0 2px 6px rgb(25 32 25 / 0.06);
+  --elev-overlay: 0 -12px 40px -12px rgb(25 32 25 / 0.28);
 }
 
-:root[data-theme="dark"] {
+/* Tmavá téma „Noc“: hlboká modrozelená, tri úrovne povrchov, žiadna čistá čierna. */
+:root[data-theme="dark"],
+[data-theme-scope="dark"] {
   color-scheme: dark;
-  --bg: #121110;
-  --surface: #24211e;
-  --elevated: #1c1a18;
-  --pressed: #2e2a26;
-  --text: #f1ece3;
-  --text-2: #b3aa9e;
-  --text-3: #978e83;
-  --line: #2e2a26;
-  --line-strong: #4a443e;
-  --primary: #f1ece3;
-  --primary-pressed: #d9d2c6;
-  --primary-soft: #2e2a26;
-  --on-primary: #121110;
-  --accent: #eba188;
-  --accent-pressed: #de907a;
-  --accent-soft: #35241e;
-  --accent-text: #f0ab93;
-  --on-accent: #2a130b;
-  --person: #b39ddb;
-  --person-soft: #2d2440;
-  --success: #7fca91;
-  --success-soft: #1e2e22;
-  --warning: #e2b45c;
-  --warning-soft: #33281a;
-  --danger: #ff8a6b;
-  --danger-soft: #3a1f17;
-  --info: #9bb8dc;
-  --info-soft: #1e2733;
+  --bg: #0f1c1d;
+  --surface: #172627;
+  --elevated: #213132;
+  --sunken: #122021;
+  --pressed: #263637;
+  --line: #2b3a3b;
+  --line-strong: #6a7b7c;
+  --text: #e6efef;
+  --text-2: #b6c4c5;
+  --text-3: #9ba9aa;
+  --primary: #8fc6c4;
+  --primary-pressed: #7cb4b2;
+  --primary-soft: #1c3e3f;
+  --on-primary: #051c1e;
+  --inverse: #dde7e7;
+  --on-inverse: #101d1e;
+  --warning: #f9d280;
+  --warning-soft: #483619;
+  --warning-solid: #f5cb70;
+  --on-warning-solid: #311d03;
+  --success: #8fd598;
+  --success-soft: #1f3724;
+  --success-solid: #79c685;
+  --on-success-solid: #07210c;
+  --danger: #f79689;
+  --danger-soft: #4a231f;
+  --danger-solid: #a8372e;
+  --on-danger-solid: #fcf3f1;
+  --person: #c2afe7;
+  --person-soft: #322843;
+  --person-solid: #977cc5;
+  --on-person-solid: #140d20;
+  --info: #a1cae8;
+  --info-soft: #1d3343;
+  --scrim: rgb(2 8 9 / 0.6);
+  --elev-card: 0 0 0 1px rgb(230 239 239 / 0.04);
+  --elev-raised: 0 10px 28px -6px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(230 239 239 / 0.06);
+  --elev-overlay: 0 -12px 40px -8px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(230 239 239 / 0.07);
 }
 
 /* Pri ručnom prepnutí témy sa farby na 0,3 s prelínajú; pri štarte appky nie. */
@@ -135,8 +226,8 @@
   }
   body {
     min-height: 100dvh;
-    background: var(--color-bg);
-    color: var(--color-text);
+    background: var(--bg);
+    color: var(--text);
     font-family: var(--font-sans);
     line-height: 1.5;
     font-variant-numeric: tabular-nums;
@@ -144,8 +235,13 @@
     -webkit-font-smoothing: antialiased;
   }
   :focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
   }
 }
 
@@ -165,50 +261,47 @@
   }
 }
 
-/* ------------------------------------------------------------------ pohyb (v3)
- * Spoločné animácie celej aplikácie. Dĺžky zodpovedajú dizajn systému:
- * potvrdenie 0,45 s pružne, lievik do košíka 0,78 s, prechod obrazoviek 0,45 s.
+/* ------------------------------------------------------------------ pohyb
+ * Krátky a tichý: 120 ms stlačenie a odškrtnutie, 200 ms prechod obrazovky a hláška,
+ * 280 ms spodný panel. Žiadne odrazy ani žiary. Pri prefers-reduced-motion
+ * (vyššie) sa všetko skráti takmer na nulu.
  */
-@keyframes bh-rise { from { opacity: 0; transform: translateY(14px); } }
-@keyframes bh-drop { from { opacity: 0; transform: translateY(-14px) scale(0.9); } }
-@keyframes bh-out-up { to { opacity: 0; transform: translateY(-10px) scale(0.92); } }
-@keyframes bh-out-down { to { opacity: 0; transform: translateY(12px) scale(0.96); } }
-@keyframes bh-pop { 40% { transform: scale(1.35); } }
-@keyframes bh-flash { 0% { background: var(--accent-soft); } 100% { background: transparent; } }
-@keyframes bh-tile-in { from { opacity: 0; transform: scale(0.8); } }
+@keyframes bh-rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes bh-screen { from { opacity: 0; transform: translateY(8px); } }
+@keyframes bh-drop { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes bh-out-up { to { opacity: 0; transform: translateY(-8px); } }
+@keyframes bh-out-down { to { opacity: 0; transform: translateY(8px); } }
+@keyframes bh-pop { 50% { transform: scale(1.12); } }
+@keyframes bh-flash { 0% { background: var(--primary-soft); } 100% { background: transparent; } }
+@keyframes bh-tile-in { from { opacity: 0; transform: scale(0.94); } }
 @keyframes bh-shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes bh-hold { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes bh-draw { from { stroke-dashoffset: 26; } }
 @keyframes bh-sheet { from { transform: translateY(100%); } }
 @keyframes bh-fade { from { opacity: 0; } }
-@keyframes bh-pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent); } }
-@keyframes bh-slide-down { from { transform: translateY(-130%); } }
-@keyframes bh-dock {
-  30% { transform: scale(1.025); box-shadow: 0 0 0 3px var(--accent), 0 0 40px color-mix(in srgb, var(--accent) 55%, transparent); }
-}
+@keyframes bh-pulse { 50% { opacity: 0.45; } }
+@keyframes bh-slide-down { from { transform: translateY(-110%); } }
+@keyframes bh-dock { 40% { transform: scale(1.015); } }
 @keyframes bh-arrive {
-  0% { opacity: 0; transform: translateY(-12px); }
-  20% { opacity: 1; transform: none; box-shadow: 0 0 0 3px var(--person), 0 0 24px color-mix(in srgb, var(--person) 35%, transparent); }
-  100% { box-shadow: 0 0 0 0 transparent; }
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
 }
-/* Kúpená položka: zažiari, zúži sa ako do lievika a vletí do lišty dole. */
+@keyframes bh-check { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
+/* Kúpená položka: krátko sa podfarbí, zmenší a zmizne smerom ku košíku dole. */
 @keyframes bh-funnel {
-  0% { box-shadow: 0 0 0 0 transparent; }
-  16% {
-    transform: scale(1.035);
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent), 0 0 34px 6px color-mix(in srgb, var(--accent) 50%, transparent);
-    clip-path: inset(0 0 0 0 round 16px);
-  }
-  34% { transform: scale(1.02); clip-path: inset(0 0 0 0 round 16px); opacity: 1; filter: blur(0); }
-  100% { transform: translateY(70vh) scale(0.3, 0.55); clip-path: inset(0 44% 0 44% round 16px); opacity: 0; filter: blur(3px); }
+  0% { opacity: 1; }
+  25% { background: var(--primary-soft); transform: none; opacity: 1; }
+  100% { transform: translateY(32px) scale(0.96); opacity: 0; }
 }
 
-@utility animate-rise { animation: bh-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-@utility animate-drop { animation: bh-drop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.25) both; }
-@utility animate-sheet { animation: bh-sheet 0.4s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
-@utility animate-fade { animation: bh-fade 0.25s ease both; }
+/* „backwards“: po skončení animácia nič nedrží – inak by posun (transform) z obalu
+   obrazovky urobil kontajner pre fixed prvky (nákupný režim, spodné panely). */
+@utility animate-rise { animation: bh-rise 0.2s var(--ease-out) backwards; }
+@utility animate-screen { animation: bh-screen 0.2s var(--ease-out) backwards; }
+@utility animate-drop { animation: bh-drop 0.2s var(--ease-out) backwards; }
+@utility animate-sheet { animation: bh-sheet 0.28s var(--ease-out) backwards; }
+@utility animate-fade { animation: bh-fade 0.2s ease backwards; }
+@utility animate-check { animation: bh-check 0.12s var(--ease-out) backwards; }
 @utility no-scrollbar {
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }

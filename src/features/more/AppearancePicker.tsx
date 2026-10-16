@@ -1,36 +1,27 @@
 /**
  * Voľba vzhľadu (svetlá / tmavá / podľa systému) a jazyka.
  *
- * Náhľady tém sú malé „papierové“ ukážky aplikácie nakreslené pevnými farbami
- * z dizajnového systému – nemenia sa podľa aktuálnej témy, takže vždy ukazujú,
- * ako bude aplikácia vyzerať po výbere.
+ * Náhľady tém sú malé ukážky aplikácie nakreslené rolami z dizajnového systému
+ * v pevnej téme (atribút data-theme-scope v styles.css) – nemenia sa podľa
+ * aktuálnej témy, takže vždy ukazujú, ako bude aplikácia vyzerať po výbere.
  */
 import { Check } from "lucide-react";
 import { cx } from "@/components/ui";
 import { LOCALES, t, useLocale, type Key, type Locale } from "@/i18n";
 import { useTheme, type ThemePreference } from "@/theme/ThemeProvider";
 
-const PALETTE = {
-  light: { bg: "#f1ede5", card: "#fbf9f5", mute: "#cfc8bb", ink: "#1b1815", accent: "#eea58b" },
-  dark: { bg: "#121110", card: "#24211e", mute: "#4a443e", ink: "#f1ece3", accent: "#eba188" },
-} as const;
-
 /** Miniatúra obrazovky: nadpis, tri riadky zoznamu (jeden odškrtnutý) a hlavné tlačidlo. */
 function Mini({ mode }: { mode: "light" | "dark" }) {
-  const c = PALETTE[mode];
   return (
-    <div className="absolute inset-0 flex flex-col gap-[5px] p-2.5" style={{ background: c.bg }}>
-      <i className="mb-0.5 block h-[6px] w-[46%] rounded-full" style={{ background: c.ink }} />
+    <div data-theme-scope={mode} className="absolute inset-0 flex flex-col gap-[5px] bg-bg p-3">
+      <i className="mb-0.5 block h-[6px] w-[46%] rounded-full bg-text" />
       {[false, true, false].map((done, i) => (
-        <div key={i} className="flex h-[17px] items-center gap-[5px] rounded-[5px] px-[5px]" style={{ background: c.card }}>
-          <span
-            className="size-[7px] shrink-0 rounded-full"
-            style={done ? { background: c.accent } : { boxShadow: `inset 0 0 0 1.5px ${c.mute}` }}
-          />
-          <i className="block h-[3px] flex-1 rounded-full" style={{ background: c.mute, opacity: done ? 0.55 : 1 }} />
+        <div key={i} className="flex h-[17px] items-center gap-[5px] rounded-[5px] bg-surface px-[5px]">
+          <span className={cx("size-[7px] shrink-0 rounded-[2px]", done ? "bg-primary" : "shadow-[inset_0_0_0_1.5px_var(--line-strong)]")} />
+          <i className={cx("block h-[3px] flex-1 rounded-full bg-line-strong", done && "opacity-50")} />
         </div>
       ))}
-      <i className="mt-auto block h-[15px] rounded-[6px]" style={{ background: c.accent }} />
+      <i className="mt-auto block h-[15px] rounded-[6px] bg-primary" />
     </div>
   );
 }
@@ -76,7 +67,7 @@ export function ThemePicker() {
               />
               <span
                 className={cx(
-                  "relative block aspect-[4/5] overflow-hidden rounded-[0.875rem] border transition-[box-shadow,border-color]",
+                  "relative block aspect-[4/5] overflow-hidden rounded-xl border transition-[box-shadow,border-color] duration-200",
                   "peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-bg",
                   checked ? "border-primary shadow-[0_0_0_2px_var(--primary)]" : "border-line-strong",
                 )}
@@ -85,11 +76,11 @@ export function ThemePicker() {
               </span>
               <span
                 className={cx(
-                  "flex items-center justify-center gap-1 text-sm font-semibold",
+                  "flex min-h-6 items-center justify-center gap-1 text-center text-sm font-strong",
                   checked ? "text-text" : "text-text-2",
                 )}
               >
-                {checked && <Check className="size-3.5" strokeWidth={3} aria-hidden />}
+                {checked && <Check className="size-3.5" strokeWidth={2.4} aria-hidden />}
                 {t(label)}
               </span>
             </label>
@@ -126,15 +117,15 @@ export function LanguagePicker() {
             />
             <span
               className={cx(
-                "flex min-h-14 items-center justify-center gap-2.5 rounded-[var(--radius-surface)] border px-3 font-semibold transition-colors",
+                "flex min-h-14 items-center justify-center gap-3 rounded-[var(--radius-surface)] border px-3 font-strong transition-colors duration-200",
                 "peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-bg",
-                checked ? "border-primary bg-primary text-on-primary" : "border-line bg-elevated text-text active:bg-pressed",
+                checked ? "border-transparent bg-primary-soft text-primary shadow-[inset_0_0_0_1.5px_var(--primary)]" : "border-transparent bg-surface text-text shadow-card active:bg-pressed",
               )}
             >
               <span
                 className={cx(
-                  "grid h-6 min-w-8 place-items-center rounded-md px-1 text-[0.6875rem] font-extrabold tracking-wider",
-                  checked ? "bg-on-primary/15" : "bg-surface text-text-2",
+                  "grid h-6 min-w-8 place-items-center rounded-sm px-1 text-xs font-semibold tracking-wider",
+                  checked ? "bg-primary text-on-primary" : "bg-sunken text-text-2",
                 )}
                 aria-hidden
               >

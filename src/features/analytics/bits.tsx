@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { cx } from "@/components/ui";
+import { CategoryGlyph } from "@/components/CategoryIcon";
 import { category } from "@/lib/categories";
 import { formatNumber, t } from "@/i18n";
 import { unitLabel as pieceUnit } from "@/lib/parseItem";
@@ -12,32 +13,35 @@ import type { Basis } from "./api";
 /** Názov obchodu; databáza pre doklad bez obchodu vracia slovenský text, preto ho preložíme tu. */
 export const storeLabel = (name: string | null | undefined) => (!name || name === "Neznámy obchod" ? t("row.unknownStore") : name);
 
+/** Farba kategórie v grafoch: tlmená, rovnaká svetlosť pre všetky odtiene, čitateľná v oboch témach. */
+export const categoryColor = (hue: number) => `oklch(0.66 0.09 ${hue})`;
+
 /** Kategória vrátane dvoch "účtovných" riadkov, ktoré nie sú tovar. */
-export function categoryInfo(id: string): { name: string; emoji: string; color: string; hint?: string } {
+export function categoryInfo(id: string): { id: string; name: string; color: string; hint?: string } {
   if (id === "_unassigned") {
     return {
+      id,
       name: t("pseudo.unassigned"),
-      emoji: "🧾",
-      color: "var(--color-line-strong)",
+      color: "var(--line-strong)",
       hint: t("pseudo.unassignedHint"),
     };
   }
   if (id === "_receipt_discount") {
     return {
+      id,
       name: t("pseudo.receiptDiscount"),
-      emoji: "🏷️",
-      color: "var(--color-success)",
+      color: "var(--success)",
       hint: t("pseudo.receiptDiscountHint"),
     };
   }
   const c = category(id);
-  return { name: c.name, emoji: c.emoji, color: `oklch(0.68 0.13 ${c.hue})` };
+  return { id: c.id, name: c.name, color: categoryColor(c.hue) };
 }
 
 /** Farba obchodu: podľa poradia (dobre odlíšiteľné farby v jednom grafe) alebo podľa názvu. */
 const STORE_HUES = [255, 155, 35, 330, 95, 200, 60, 290];
 export const storeColor = (key: number | string | null | undefined) =>
-  `oklch(0.64 0.15 ${typeof key === "number" ? STORE_HUES[key % STORE_HUES.length] : storeHue(key)})`;
+  `oklch(0.64 0.11 ${typeof key === "number" ? STORE_HUES[key % STORE_HUES.length] : storeHue(key)})`;
 
 export const unitLabel = (basis: Basis) => (basis === "kg" ? t("basis.kg") : basis === "l" ? t("basis.l") : t("basis.ks"));
 
@@ -93,7 +97,7 @@ export function Delta({
 }
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("rounded-[var(--radius-surface)] bg-elevated p-4 shadow-sm", className)}>{children}</div>;
+  return <div className={cx("rounded-[var(--radius-surface)] bg-surface p-4 shadow-card", className)}>{children}</div>;
 }
 
 export function SectionTitle({ title, action }: { title: string; action?: ReactNode }) {
@@ -141,7 +145,7 @@ export function ShareRow({
           <p className="truncate font-medium">{title}</p>
           <p className="shrink-0 font-semibold tabular-nums">{formatMoney(amount)}</p>
         </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sunken">
           <div className="h-full rounded-full" style={{ width: `${Math.max(2, Math.min(100, share * 100))}%`, background: color }} />
         </div>
         <div className="mt-1 flex items-center justify-between gap-2 text-xs text-text-3">
@@ -154,14 +158,18 @@ export function ShareRow({
   );
 }
 
-export function EmojiBadge({ emoji, color }: { emoji: string; color: string }) {
+/** Ikona kategórie v štvorci jemne tónovanom farbou kategórie (rovnaká farba ako v grafe). */
+export function CategoryBadge({ id, color }: { id: string; color: string }) {
   return (
     <span
       aria-hidden
-      className="flex size-10 shrink-0 items-center justify-center rounded-full text-lg"
-      style={{ background: `color-mix(in oklch, var(--color-surface), ${color} 28%)` }}
+      className="grid size-10 shrink-0 place-items-center rounded-lg"
+      style={{
+        background: `color-mix(in oklch, var(--sunken), ${color} 24%)`,
+        color: `color-mix(in oklch, var(--text), ${color} 30%)`,
+      }}
     >
-      {emoji}
+      <CategoryGlyph id={id} className="size-5" />
     </span>
   );
 }

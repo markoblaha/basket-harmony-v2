@@ -39,7 +39,7 @@ export function StoresTab() {
                 subtitle={t("stores.rowLine", { share: t("fmt.percent", { value: Math.round((s.amount / (total || 1)) * 100) }), count: s.receipts, avg: formatMoney(s.receipts ? s.amount / s.receipts : 0) })}
                 amount={s.amount}
                 share={s.amount / top}
-                color="var(--color-primary)"
+                color="var(--primary)"
                 prev={s.prev_amount}
               />
             ))}

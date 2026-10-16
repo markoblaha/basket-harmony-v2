@@ -31,7 +31,7 @@ export function UploadStatus({ progress, running, onClose }: { progress: Progres
     <div
       role="status"
       className={cx(
-        "w-full rounded-[var(--radius-surface)] p-3.5 shadow-lg",
+        "w-full rounded-[var(--radius-surface)] p-4 shadow-raised animate-rise",
         running ? "bg-elevated" : warn ? "bg-warning-soft" : "bg-success-soft",
       )}
     >
@@ -66,7 +66,7 @@ export function UploadStatus({ progress, running, onClose }: { progress: Progres
         )}
       </div>
       {running && (
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface" aria-hidden>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden>
           <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${Math.max(percent, 4)}%` }} />
         </div>
       )}

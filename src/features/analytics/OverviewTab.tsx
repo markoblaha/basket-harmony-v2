@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { AlertTriangle, ChevronDown, Loader2, Plus, Sparkles, Target } from "lucide-react";
+import { AlertTriangle, ChevronDown, Loader2, Plus, Receipt as ReceiptIcon, Sparkles, Tag, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { Banner, Button, ErrorState, Group, Section, Spinner, cx } from "@/components/ui";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { StoreAvatar } from "@/features/receipts/ReceiptRow";
@@ -9,7 +9,7 @@ import { t, tn } from "@/i18n";
 import { useOverview, useProductNormalization, type Overview } from "./api";
 import { BudgetSheet } from "./BudgetSheet";
 import { BarChart, CumulativeChart, ShareBar } from "./charts";
-import { Card, Delta, EmojiBadge, MoreLink, SectionTitle, ShareRow, Stat, categoryInfo, percent, storeLabel, unitLabel } from "./bits";
+import { Card, Delta, CategoryBadge, MoreLink, categoryColor, SectionTitle, ShareRow, Stat, categoryInfo, percent, storeLabel, unitLabel } from "./bits";
 import { daysBetween, monthShort, todayIso, usePeriod, type Period } from "./period";
 import { useAddToList } from "./useAddToList";
 import { groupByArea } from "./areas";
@@ -28,15 +28,15 @@ export function OverviewTab() {
   const empty = o.receipts === 0 && o.total === 0;
 
   return (
-    <div className={cx("mt-2 flex flex-col gap-5 transition-opacity", overview.isPlaceholderData && "opacity-60")}>
+    <div className={cx("mt-2 flex flex-col gap-6 transition-opacity", overview.isPlaceholderData && "opacity-60")}>
       <Notices o={o} normalize={normalize} />
 
       {empty ? (
         <Section>
           <Card className="py-8 text-center">
-            <p className="text-3xl" aria-hidden>
-              🧾
-            </p>
+            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-sunken text-text-2" aria-hidden>
+              <ReceiptIcon className="size-6" />
+            </span>
             <p className="mt-2 font-semibold">{t("ov.emptyTitle")}</p>
             <p className="mt-1 text-sm text-text-2">{t("ov.emptyText")}</p>
             <Link to="/receipts" className="mt-3 inline-block text-sm font-semibold text-primary">
@@ -149,7 +149,7 @@ function Hero({ o, period }: { o: Overview; period: Period }) {
     <Section>
       <Card>
         <p className="text-sm text-text-2">{period.scope === "everyday" ? t("ov.spentEveryday") : t("ov.spentAll")}</p>
-        <p className="mt-0.5 text-4xl font-bold tracking-tight tabular-nums">{formatMoney(o.total)}</p>
+        <p className="mt-1 text-3xl font-semibold tabular-nums">{formatMoney(o.total)}</p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
           {before > 0 && <Delta now={o.total} before={before} />}
           {before > 0 && (
@@ -176,10 +176,10 @@ function Hero({ o, period }: { o: Overview; period: Period }) {
             untilToday={period.current ? todayIso() : null}
           />
           <div className="mt-1 flex justify-center gap-4 text-xs text-text-3">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-0.5 w-4 rounded bg-primary" aria-hidden /> {t("ov.thisPeriod")}
+            <span className="inline-flex items-center gap-2">
+              <span className="h-0.5 w-4 rounded-sm bg-primary" aria-hidden /> {t("ov.thisPeriod")}
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-2">
               <span className="h-0 w-4 border-t-2 border-dashed border-text-3" aria-hidden /> {period.prevLabel}
             </span>
           </div>
@@ -202,11 +202,11 @@ function Budgets({ o, current }: { o: Overview; current: boolean }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex w-full items-center gap-3 rounded-[var(--radius-surface)] border-2 border-dashed border-line-strong/40 p-3.5 text-left active:bg-pressed"
+          className="flex w-full items-center gap-3 rounded-[var(--radius-surface)] bg-surface p-4 text-left shadow-card active:bg-pressed"
         >
           <Target className="size-5 shrink-0 text-primary" aria-hidden />
           <span className="min-w-0 flex-1">
-            <span className="block font-semibold">{t("ov.budgetSet")}</span>
+            <span className="block font-strong">{t("ov.budgetSet")}</span>
             <span className="block text-sm text-text-2">{t("ov.budgetSetText")}</span>
           </span>
         </button>
@@ -224,7 +224,7 @@ function Budgets({ o, current }: { o: Overview; current: boolean }) {
             {total && <BudgetBar label={t("ov.budgetTotal")} spent={total.spent} amount={total.amount} daysLeft={current ? daysLeft : undefined} big />}
             {cats.map((b) => {
               const info = categoryInfo(b.category_id!);
-              return <BudgetBar key={b.category_id} label={`${info.emoji} ${info.name}`} spent={b.spent} amount={b.amount} />;
+              return <BudgetBar key={b.category_id} label={info.name} spent={b.spent} amount={b.amount} />;
             })}
           </Card>
         </>
@@ -237,7 +237,7 @@ function Budgets({ o, current }: { o: Overview; current: boolean }) {
 function BudgetBar({ label, spent, amount, daysLeft, big }: { label: string; spent: number; amount: number; daysLeft?: number; big?: boolean }) {
   const ratio = spent / amount;
   const left = amount - spent;
-  const tone = ratio >= 1 ? "bg-danger" : ratio >= 0.85 ? "bg-warning" : "bg-success";
+  const tone = ratio >= 1 ? "bg-danger-solid" : ratio >= 0.85 ? "bg-warning-solid" : "bg-primary";
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
@@ -246,7 +246,7 @@ function BudgetBar({ label, spent, amount, daysLeft, big }: { label: string; spe
           <span className="font-semibold text-text">{formatMoney(spent)}</span> {t("ov.of", { amount: formatMoney(amount) })}
         </p>
       </div>
-      <div className={cx("mt-1.5 overflow-hidden rounded-full bg-surface", big ? "h-3" : "h-2")}>
+      <div className={cx("mt-2 overflow-hidden rounded-full bg-sunken", big ? "h-3" : "h-2")}>
         <div className={cx("h-full rounded-full", tone)} style={{ width: `${Math.min(100, ratio * 100)}%` }} />
       </div>
       <p className={cx("mt-1 text-xs", left < 0 ? "font-semibold text-danger" : "text-text-3")}>
@@ -277,11 +277,11 @@ function Insights({ o, search }: { o: Overview; search: string }) {
                   <span
                     aria-hidden
                     className={cx(
-                      "flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold",
+                      "flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
                       up ? "bg-warning-soft text-warning" : "bg-success-soft text-success",
                     )}
                   >
-                    {promo ? "🏷️" : up ? "▲" : "▼"}
+                    {promo ? <Tag className="size-4" /> : up ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{c.name}</p>
@@ -301,16 +301,16 @@ function Insights({ o, search }: { o: Overview; search: string }) {
         )}
         {o.restock.length > 0 && (
           <Card className="p-0">
-            <p className="flex items-center gap-2 px-4 pb-1 pt-3 text-sm font-semibold">
+            <p className="flex items-center gap-2 px-4 pb-1 pt-4 text-sm font-semibold">
               <Sparkles className="size-4 text-primary" aria-hidden /> {t("ov.runningLow")}
             </p>
             <div className="divide-y divide-line">
               {o.restock.slice(0, 4).map((r) => {
                 const info = categoryInfo(r.category_id);
                 return (
-                  <div key={r.product_id} className="flex items-center gap-3 px-4 py-2.5">
+                  <div key={r.product_id} className="flex items-center gap-3 px-4 py-3">
                     <Link to={`/analytics/product/${r.product_id}${search}`} className="flex min-w-0 flex-1 items-center gap-3">
-                      <EmojiBadge emoji={info.emoji} color={info.color} />
+                      <CategoryBadge id={info.id} color={info.color} />
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{r.name}</span>
                         <span className="block truncate text-xs text-text-3">
@@ -324,7 +324,7 @@ function Insights({ o, search }: { o: Overview; search: string }) {
                       title={t("ov.addToList")}
                       disabled={pending}
                       onClick={() => void addToList(r.name, r.category_id)}
-                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary active:bg-pressed disabled:opacity-55"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary active:bg-pressed disabled:opacity-55"
                     >
                       <Plus className="size-5" aria-hidden />
                     </button>
@@ -368,8 +368,8 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
       <ShareRow
         key={c.id}
         to={`/analytics/category/${c.id}${search}`}
-        icon={nested ? <span className="w-2" /> : <EmojiBadge emoji={info.emoji} color={info.color} />}
-        title={nested ? `${info.emoji} ${info.name}` : info.name}
+        icon={nested ? <span className="w-2" /> : <CategoryBadge id={info.id} color={info.color} />}
+        title={info.name}
         subtitle={t("ov.catLine", { share: t("fmt.percent", { value: Math.round(share * 100) }), text: itemsText(c) })}
         amount={c.amount}
         share={c.amount / top}
@@ -388,7 +388,7 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
       <SectionTitle
         title={t("ov.whereMoney")}
         action={
-          <div role="radiogroup" aria-label={t("ov.viewAria")} className="flex rounded-full bg-surface p-0.5">
+          <div role="radiogroup" aria-label={t("ov.viewAria")} className="flex rounded-xl bg-sunken p-1">
             {(["area", "cat"] as const).map((v) => (
               <button
                 key={v}
@@ -397,8 +397,8 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
                 aria-checked={view === v}
                 onClick={() => setView(v)}
                 className={cx(
-                  "min-h-8 rounded-full px-3 text-xs font-semibold",
-                  view === v ? "bg-elevated text-text shadow-sm" : "text-text-2",
+                  "min-h-11 rounded-lg px-3 text-footnote font-strong transition-colors duration-200",
+                  view === v ? "bg-elevated text-text shadow-card" : "text-text-2",
                 )}
               >
                 {v === "area" ? t("ov.viewAreas") : t("ov.viewCategories")}
@@ -413,7 +413,7 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
             label={t("ov.shareAria")}
             segments={
               view === "area"
-                ? areas.filter((a) => a.amount > 0).map((a) => ({ id: a.area.id, value: a.amount, color: `oklch(0.68 0.13 ${a.area.hue})` }))
+                ? areas.filter((a) => a.amount > 0).map((a) => ({ id: a.area.id, value: a.amount, color: categoryColor(a.area.hue) }))
                 : positive.map((c) => ({ id: c.id, value: c.amount, color: categoryInfo(c.id).color }))
             }
           />
@@ -423,7 +423,7 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
           {view === "cat"
             ? shown.map((c) => categoryRow(c, topCat))
             : areas.map((a) => {
-                const color = `oklch(0.68 0.13 ${a.area.hue})`;
+                const color = categoryColor(a.area.hue);
                 const share = o.total > 0 ? a.amount / o.total : 0;
                 const single = a.categories.length === 1 ? a.categories[0]! : null;
                 const subtitle = t("ov.catLine", {
@@ -438,7 +438,7 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
                     <ShareRow
                       key={a.area.id}
                       to={`/analytics/category/${single.id}${search}`}
-                      icon={<EmojiBadge emoji={a.area.emoji} color={color} />}
+                      icon={<CategoryBadge id={a.area.id} color={color} />}
                       title={a.area.name}
                       subtitle={subtitle}
                       amount={a.amount}
@@ -457,13 +457,13 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
                       onClick={() => setOpen(isOpen ? null : a.area.id)}
                       className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left active:bg-pressed"
                     >
-                      <EmojiBadge emoji={a.area.emoji} color={color} />
+                      <CategoryBadge id={a.area.id} color={color} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
                           <p className="truncate font-medium">{a.area.name}</p>
                           <p className="shrink-0 font-semibold tabular-nums">{formatMoney(a.amount)}</p>
                         </div>
-                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface">
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sunken">
                           <div className="h-full rounded-full" style={{ width: `${Math.max(2, Math.min(100, (a.amount / topArea) * 100))}%`, background: color }} />
                         </div>
                         <div className="mt-1 flex items-center justify-between gap-2 text-xs text-text-3">
@@ -474,7 +474,7 @@ function Categories({ o, search, period }: { o: Overview; search: string; period
                       <ChevronDown className={cx("size-4 shrink-0 text-text-3 transition-transform", isOpen && "rotate-180")} aria-hidden />
                     </button>
                     {isOpen && (
-                      <div className="divide-y divide-line border-t border-line bg-surface/50">
+                      <div className="divide-y divide-line border-t border-line bg-sunken/50">
                         {a.categories.sort((x, y) => y.amount - x.amount).map((c) => categoryRow(c, a.categories[0]!.amount || 1, true))}
                       </div>
                     )}
@@ -517,7 +517,7 @@ function Stores({ o, search }: { o: Overview; search: string }) {
             subtitle={t("ov.storeLine", { count: s.receipts, avg: formatMoney(s.receipts ? s.amount / s.receipts : 0) })}
             amount={s.amount}
             share={s.amount / top}
-            color={`var(--color-primary)`}
+            color={`var(--primary)`}
             prev={s.prev_amount}
           />
         ))}

@@ -6,13 +6,17 @@ import {
   CheckCircle2,
   ChevronRight,
   FileText,
+  Landmark,
   Loader2,
   MoreHorizontal,
+  PenLine,
   Pencil,
   Plus,
   RefreshCw,
+  ShoppingCart,
   Trash2,
 } from "lucide-react";
+import { CategoryGlyph } from "@/components/CategoryIcon";
 import { Banner, Button, ErrorState, Group, IconButton, Section, Sheet, Spinner, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
@@ -126,11 +130,11 @@ export function ReceiptDetailPage() {
 
       <div className="mt-1 flex flex-col gap-4">
         <Section>
-          <div className="rounded-[var(--radius-surface)] bg-elevated p-4 shadow-sm">
+          <div className="rounded-[var(--radius-surface)] bg-surface p-4 shadow-card">
             <div className="flex items-start gap-3">
               <StoreAvatar name={r.store_name} className="size-12" />
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-xl font-bold tracking-tight">{r.store_name ?? t("row.unknownStore")}</h1>
+                <h1 className="truncate text-xl font-semibold">{r.store_name ?? t("row.unknownStore")}</h1>
                 <p className="text-sm text-text-2">
                   {formatDate(r.purchased_on)}
                   {r.purchased_time ? ` · ${r.purchased_time.slice(0, 5)}` : ""}
@@ -142,15 +146,15 @@ export function ReceiptDetailPage() {
                 </IconButton>
               )}
             </div>
-            <p className="mt-3 text-4xl font-bold tabular-nums">{formatMoney(r.total)}</p>
+            <p className="mt-4 text-3xl font-semibold tabular-nums">{formatMoney(r.total)}</p>
             {r.list_id && <TripLink list={lists.data?.find((l) => l.id === r.list_id)} score={r.match_score} />}
             {editable && <SumCheck receipt={r} count={rows.length} onAdd={(price) => openItem(null, price)} onEdit={() => setEditing(true)} />}
             {!isDocument && (
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-text-2">
-                <span className="rounded-full bg-surface px-3 py-1">{r.origin === "BANK" ? t("detail.fromBank") : t("detail.manualEntry")}</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-sunken px-3 py-1">{r.origin === "BANK" ? <Landmark className="size-3.5" aria-hidden /> : <PenLine className="size-3.5" aria-hidden />}{r.origin === "BANK" ? t("detail.fromBank") : t("detail.manualEntry")}</span>
                 {r.category_id && (
-                  <Link to={`/analytics/category/${r.category_id}`} className="rounded-full bg-surface px-3 py-1 active:bg-pressed">
-                    {category(r.category_id).emoji} {category(r.category_id).name}
+                  <Link to={`/analytics/category/${r.category_id}`} className="rounded-full bg-sunken px-3 py-1 active:bg-pressed">
+                    {category(r.category_id).name}
                   </Link>
                 )}
               </div>
@@ -221,7 +225,7 @@ export function ReceiptDetailPage() {
                   type="button"
                   onClick={() => fileInput.current?.click()}
                   disabled={addPages.isPending}
-                  className="flex h-48 w-32 flex-col items-center justify-center gap-2 rounded-[var(--radius-surface)] border-2 border-dashed border-line-strong/50 px-2 text-center text-sm font-medium text-text-2 active:bg-pressed disabled:opacity-55"
+                  className="flex h-48 w-32 flex-col items-center justify-center gap-2 rounded-[var(--radius-surface)] bg-sunken px-2 text-center text-sm font-medium text-text-2 active:bg-pressed disabled:opacity-55"
                 >
                   {addPages.isPending ? <Loader2 className="size-6 animate-spin" aria-hidden /> : <Plus className="size-6" aria-hidden />}
                   {t("detail.addPage")}
@@ -240,9 +244,9 @@ export function ReceiptDetailPage() {
                 const subtotal = list.reduce((sum, it) => sum + it.line_total, 0);
                 return (
                   <div key={categoryId}>
-                    <div className="mb-1 flex items-center justify-between px-1 text-sm text-text-2">
-                      <span>
-                        <span aria-hidden>{cat.emoji}</span> {cat.name}
+                    <div className="mb-2 flex items-center justify-between px-1 text-sm text-text-2">
+                      <span className="inline-flex items-center gap-2">
+                        <CategoryGlyph id={cat.id} className="size-4" /> {cat.name}
                       </span>
                       <span className="tabular-nums">{formatMoney(subtotal)}</span>
                     </div>
@@ -337,12 +341,12 @@ function MenuAction({
       disabled={disabled}
       className={cx(
         "flex min-h-16 w-full items-center gap-4 rounded-[var(--radius-surface)] px-4 py-3 text-left disabled:opacity-55",
-        danger ? "bg-danger-soft text-danger" : "bg-surface active:bg-pressed",
+        danger ? "bg-danger-soft text-danger" : "bg-surface shadow-card active:bg-pressed",
       )}
     >
       {icon}
       <span className="min-w-0">
-        <span className="block font-semibold">{title}</span>
+        <span className="block font-strong">{title}</span>
         <span className={cx("block text-sm", danger ? "opacity-80" : "text-text-2")}>{hint}</span>
       </span>
     </button>
@@ -364,7 +368,7 @@ function SumCheck({
   const base = "mt-3 flex flex-col gap-2 rounded-[var(--radius-control)] p-3 text-sm";
   if (count === 0) {
     return (
-      <div className={cx(base, "bg-surface text-text-2")}>
+      <div className={cx(base, "bg-sunken text-text-2")}>
         <p>{t("sum.noItems")}</p>
         <Button variant="secondary" onClick={() => onAdd(r.total)}>
           <Plus className="size-4" aria-hidden /> {t("ritem.addTitle")}
@@ -430,16 +434,16 @@ function ItemRow({ item: it, editable, onClick }: { item: ReceiptItem; editable:
         <p className="break-words">{it.raw_name}</p>
         {meta && <p className="text-sm text-text-2">{meta}</p>}
       </div>
-      <span className="font-semibold tabular-nums">{formatMoney(it.line_total)}</span>
+      <span className="font-strong tabular-nums">{formatMoney(it.line_total)}</span>
       {editable && <ChevronRight className="size-4 shrink-0 text-text-3" aria-hidden />}
     </>
   );
   return editable ? (
-    <button type="button" onClick={onClick} className="flex min-h-12 w-full items-center gap-3 px-4 py-2.5 text-left active:bg-pressed">
+    <button type="button" onClick={onClick} className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left active:bg-pressed">
       {content}
     </button>
   ) : (
-    <div className="flex min-h-12 items-center gap-3 px-4 py-2.5">{content}</div>
+    <div className="flex min-h-12 items-center gap-3 px-4 py-3">{content}</div>
   );
 }
 
@@ -447,7 +451,7 @@ function ItemRow({ item: it, editable, onClick }: { item: ReceiptItem; editable:
 function PageCard({ path, label, onOpen }: { path: string; label: string | null; onOpen: () => void }) {
   const image = useReceiptImage(path);
   const pdf = path.toLowerCase().endsWith(".pdf");
-  const box = "relative flex h-48 w-36 items-center justify-center overflow-hidden rounded-[var(--radius-surface)] bg-surface text-text-2";
+  const box = "relative flex h-48 w-36 items-center justify-center overflow-hidden rounded-[var(--radius-surface)] bg-sunken text-text-2";
   if (image.isError) return <div className={cx(box, "p-3 text-center text-sm")}>{t("detail.fileMissing")}</div>;
   if (!image.data) return <div className={cx(box, "animate-pulse")} aria-label={t("common.loading")} />;
   return pdf ? (
@@ -457,7 +461,7 @@ function PageCard({ path, label, onOpen }: { path: string; label: string | null;
   ) : (
     <button type="button" onClick={onOpen} className={box} aria-label={label ? t("detail.openPage", { label }) : t("detail.openPhoto")}>
       <img src={image.data} alt="" className="size-full object-cover object-top" />
-      {label && <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-bold text-white">{label}</span>}
+      {label && <span className="absolute left-2 top-2 rounded-full bg-inverse/85 px-2 py-0.5 text-xs font-strong text-on-inverse">{label}</span>}
     </button>
   );
 }
@@ -502,7 +506,7 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
         <TextField label={t("detail.purchaseDate")} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <TextField label={t("detail.total")} inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} />
         {withCategory && (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <label htmlFor="receipt-category" className="text-sm font-medium text-text-2">
               {t("edit.category")}
             </label>
@@ -510,11 +514,11 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
               id="receipt-category"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+              className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-3 focus:ring-primary/20"
             >
               {CATEGORIES.filter((c) => c.id !== "deposit").map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.emoji} {c.name}
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -532,8 +536,8 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
 function TripLink({ list, score }: { list?: { id: string; name: string; completed_at: string | null }; score: number | null }) {
   if (!list) return null;
   return (
-    <Link to={`/lists/${list.id}`} className="mt-3 flex items-center gap-2 rounded-xl bg-surface px-3 py-2 text-sm active:bg-pressed">
-      <span aria-hidden>🛒</span>
+    <Link to={`/lists/${list.id}`} className="mt-3 flex min-h-11 items-center gap-2 rounded-xl bg-sunken px-3 py-2 text-sm active:bg-pressed">
+      <ShoppingCart className="size-4 shrink-0 text-text-2" aria-hidden />
       <span className="min-w-0 flex-1 truncate">
         {t("trip.tripLabel")} <b>{list.name}</b>
         {list.completed_at && ` · ${dayLabel(list.completed_at)}`}

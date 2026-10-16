@@ -17,11 +17,11 @@ export function AnalyticsLayout() {
   const showPeriod = !pathname.startsWith("/analytics/products");
   return (
     <div className="pb-10">
-      <header className="px-4 pb-2 pt-5">
-        <h1 className="text-2xl font-bold tracking-tight">{t("nav.analytics")}</h1>
+      <header className="px-4 pb-2 pt-6">
+        <h1 className="text-2xl font-semibold">{t("nav.analytics")}</h1>
       </header>
       <nav aria-label={t("tab.aria")} className="px-4">
-        <div className="grid grid-cols-3 gap-1 rounded-full bg-surface p-1">
+        <div className="grid grid-cols-3 gap-1 rounded-xl bg-sunken p-1">
           {TABS.map((tab) => (
             <NavLink
               key={tab.to}
@@ -29,8 +29,8 @@ export function AnalyticsLayout() {
               end={tab.end}
               className={({ isActive }) =>
                 cx(
-                  "flex min-h-10 items-center justify-center rounded-full text-sm font-semibold transition-colors",
-                  isActive ? "bg-elevated text-text shadow-sm" : "text-text-2 active:bg-pressed",
+                  "flex min-h-11 items-center justify-center rounded-lg text-sm font-strong transition-colors duration-200",
+                  isActive ? "bg-elevated text-text shadow-card" : "text-text-2 active:bg-pressed",
                 )
               }
             >
@@ -95,7 +95,7 @@ function Segmented<T extends string>({
   label: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex rounded-full bg-surface p-0.5">
+    <div role="radiogroup" aria-label={label} className="flex rounded-xl bg-sunken p-1">
       {options.map((o) => (
         <button
           key={o.id}
@@ -104,8 +104,8 @@ function Segmented<T extends string>({
           aria-checked={value === o.id}
           onClick={() => onChange(o.id)}
           className={cx(
-            "min-h-8 rounded-full px-3 text-xs font-semibold transition-colors",
-            value === o.id ? "bg-primary text-on-primary" : "text-text-2 active:bg-pressed",
+            "min-h-11 rounded-lg px-3 text-footnote font-strong transition-colors duration-200",
+            value === o.id ? "bg-elevated text-text shadow-card" : "text-text-2 active:bg-pressed",
           )}
         >
           {o.label}

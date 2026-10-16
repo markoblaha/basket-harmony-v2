@@ -8,7 +8,7 @@ import { formatNumber, t, tn } from "@/i18n";
 import { useCategoryDetail } from "./api";
 import { BackHeader, PeriodBar } from "./AnalyticsLayout";
 import { BarChart } from "./charts";
-import { Card, Delta, EmojiBadge, SectionTitle, ShareRow, categoryInfo, storeLabel } from "./bits";
+import { Card, Delta, CategoryBadge, SectionTitle, ShareRow, categoryInfo, storeLabel } from "./bits";
 import { monthShort, usePeriod } from "./period";
 
 /** Detail kategórie: vývoj, produkty, obchody a jednotlivé nákupy (s preklikom na bloček). */
@@ -25,8 +25,8 @@ export function CategoryPage() {
       <BackHeader fallback={`/analytics${search}`} title={t("nav.analytics")} />
       <Section className="mt-1">
         <div className="flex items-center gap-3">
-          <EmojiBadge emoji={info.emoji} color={info.color} />
-          <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">{info.name}</h1>
+          <CategoryBadge id={info.id} color={info.color} />
+          <h1 className="min-w-0 truncate text-2xl font-semibold">{info.name}</h1>
         </div>
         {info.hint && <p className="mt-2 text-sm text-text-2">{info.hint}</p>}
       </Section>
@@ -37,11 +37,11 @@ export function CategoryPage() {
       ) : detail.isError ? (
         <ErrorState error={readErrorMessage(detail.error)} onRetry={() => detail.refetch()} />
       ) : (
-        <div className={cx("mt-2 flex flex-col gap-5", detail.isPlaceholderData && "opacity-60")}>
+        <div className={cx("mt-2 flex flex-col gap-6", detail.isPlaceholderData && "opacity-60")}>
           <Section>
             <Card>
               <p className="text-sm text-text-2">{period.label}</p>
-              <p className="text-3xl font-bold tabular-nums">{formatMoney(detail.data.amount)}</p>
+              <p className="text-3xl font-semibold tabular-nums">{formatMoney(detail.data.amount)}</p>
               {detail.data.prev_amount > 0 && (
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-text-3">
                   <Delta now={detail.data.amount} before={detail.data.prev_amount} invert={id === "_receipt_discount"} />
@@ -50,7 +50,7 @@ export function CategoryPage() {
                 </p>
               )}
               {detail.data.liters !== null && detail.data.liters > 0 && (
-                <div className="mt-3 grid grid-cols-2 gap-3 rounded-[var(--radius-control)] bg-surface p-3">
+                <div className="mt-3 grid grid-cols-2 gap-3 rounded-[var(--radius-control)] bg-sunken p-3">
                   <div>
                     <p className="text-xs text-text-3">{t("cp.fueled")}</p>
                     <p className="text-lg font-semibold tabular-nums">{formatNumber(detail.data.liters)} l</p>
@@ -177,7 +177,7 @@ export function CategoryPage() {
                       <Link
                         key={it.item_id}
                         to={it.product_id ? `/analytics/product/${it.product_id}${search}` : `/receipts/${it.receipt_id}`}
-                        className="flex items-center gap-3 px-4 py-2.5 active:bg-pressed"
+                        className="flex items-center gap-3 px-4 py-3 active:bg-pressed"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="truncate">{it.name}</p>

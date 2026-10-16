@@ -8,7 +8,7 @@ import { formatCalendarDate, t, tn } from "@/i18n";
 import { useStoreDetail } from "./api";
 import { BackHeader, PeriodBar } from "./AnalyticsLayout";
 import { BarChart, ShareBar } from "./charts";
-import { Card, Delta, EmojiBadge, SectionTitle, ShareRow, Stat, categoryInfo, storeLabel } from "./bits";
+import { Card, Delta, CategoryBadge, SectionTitle, ShareRow, Stat, categoryInfo, storeLabel } from "./bits";
 import { monthShort, usePeriod } from "./period";
 
 /** Skratky dní pondelok–nedeľa podľa jazyka rozhrania (2024-01-01 bol pondelok). */
@@ -29,7 +29,7 @@ export function StorePage() {
       <Section className="mt-1">
         <div className="flex items-center gap-3">
           <StoreAvatar name={storeKey === "_none" ? null : (d?.name ?? null)} className="!size-12" />
-          <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">{d ? storeLabel(d.name) : t("sp.fallbackName")}</h1>
+          <h1 className="min-w-0 truncate text-2xl font-semibold">{d ? storeLabel(d.name) : t("sp.fallbackName")}</h1>
         </div>
       </Section>
       <PeriodBar />
@@ -39,7 +39,7 @@ export function StorePage() {
       ) : detail.isError || !d ? (
         <ErrorState error={readErrorMessage(detail.error)} onRetry={() => detail.refetch()} />
       ) : (
-        <div className={cx("mt-2 flex flex-col gap-5", detail.isPlaceholderData && "opacity-60")}>
+        <div className={cx("mt-2 flex flex-col gap-6", detail.isPlaceholderData && "opacity-60")}>
           <Section>
             <Card>
               <div className="grid grid-cols-3 gap-3">
@@ -100,7 +100,7 @@ export function StorePage() {
                       <ShareRow
                         key={c.id}
                         to={`/analytics/category/${c.id}${search}`}
-                        icon={<EmojiBadge emoji={info.emoji} color={info.color} />}
+                        icon={<CategoryBadge id={info.id} color={info.color} />}
                         title={info.name}
                         amount={c.amount}
                         share={c.amount / (d.categories[0]!.amount || 1)}
@@ -121,7 +121,7 @@ export function StorePage() {
                   <Link
                     key={p.product_id ?? p.name}
                     to={p.product_id ? `/analytics/product/${p.product_id}${search}` : "#"}
-                    className="flex items-center gap-3 px-4 py-2.5 active:bg-pressed"
+                    className="flex items-center gap-3 px-4 py-3 active:bg-pressed"
                   >
                     <p className="min-w-0 flex-1 truncate">{p.name}</p>
                     <span className="text-sm text-text-3">{p.count}×</span>

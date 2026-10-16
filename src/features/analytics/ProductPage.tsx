@@ -11,7 +11,7 @@ import { unitLabel as pieceUnit } from "@/lib/parseItem";
 import { useMergeProducts, useProduct, useProducts, useUpdateProduct, type ProductDetail } from "./api";
 import { BackHeader } from "./AnalyticsLayout";
 import { PriceChart } from "./charts";
-import { Card, EmojiBadge, SectionTitle, Stat, categoryInfo, sizeLabel, storeColor, storeLabel, unitLabel } from "./bits";
+import { Card, CategoryBadge, SectionTitle, Stat, categoryInfo, sizeLabel, storeColor, storeLabel, unitLabel } from "./bits";
 import { usePeriod } from "./period";
 import { useAddToList } from "./useAddToList";
 
@@ -56,9 +56,9 @@ export function ProductPage() {
 
       <Section className="mt-1">
         <div className="flex items-start gap-3">
-          <EmojiBadge emoji={info.emoji} color={info.color} />
+          <CategoryBadge id={info.id} color={info.color} />
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-bold leading-tight tracking-tight">{p.name}</h1>
+            <h1 className="text-2xl font-semibold leading-tight">{p.name}</h1>
             <p className="mt-0.5 text-sm text-text-2">{[p.brand, size, info.name].filter(Boolean).join(" · ")}</p>
           </div>
         </div>
@@ -75,7 +75,7 @@ export function ProductPage() {
         </div>
       </Section>
 
-      <div className="mt-4 flex flex-col gap-5">
+      <div className="mt-4 flex flex-col gap-6">
         {last && (
           <Section>
             <Card>
@@ -114,11 +114,11 @@ export function ProductPage() {
                 <PriceChart points={points} unitLabel={showUnit ? unitLabel(basis) : ""} />
                 <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-text-3">
                   {storesInChart.map((s) => (
-                    <span key={s} className="inline-flex items-center gap-1.5">
+                    <span key={s} className="inline-flex items-center gap-2">
                       <span className="size-2.5 rounded-full" style={{ background: colorOf(s) }} aria-hidden /> {storeLabel(s)}
                     </span>
                   ))}
-                  <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-2">
                     <span className="size-2.5 rounded-full border-2 border-text-3" aria-hidden /> {t("pp.promoLegend")}
                   </span>
                 </div>
@@ -138,7 +138,7 @@ export function ProductPage() {
           <SectionTitle title={t("pp.purchases", { n: d.purchases.length })} />
           <Group>
             {d.purchases.map((x) => (
-              <Link key={x.item_id} to={`/receipts/${x.receipt_id}`} className="flex items-center gap-3 px-4 py-2.5 active:bg-pressed">
+              <Link key={x.item_id} to={`/receipts/${x.receipt_id}`} className="flex items-center gap-3 px-4 py-3 active:bg-pressed">
                 <span className="size-2.5 shrink-0 rounded-full" style={{ background: colorOf(x.store) }} aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">
@@ -250,7 +250,7 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
   }
 
   const selectClass =
-    "min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
+    "min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-3 focus:ring-primary/20";
   return (
     <Sheet open onClose={onClose} title={t("pp.editTitle")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
@@ -258,7 +258,7 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
         <TextField label={t("pp.brand")} value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={80} />
         <div className="grid grid-cols-[1fr_auto] gap-3">
           <TextField label={t("pp.pack")} inputMode="decimal" value={size} onChange={(e) => setSize(e.target.value)} placeholder={t("pp.packPlaceholder")} />
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <label htmlFor="product-unit" className="text-sm font-medium text-text-2">
               {t("edit.unit")}
             </label>
@@ -272,14 +272,14 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
             </select>
           </div>
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <label htmlFor="product-category" className="text-sm font-medium text-text-2">
             {t("edit.category")}
           </label>
           <select id="product-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={selectClass}>
             {CATEGORIES.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.emoji} {c.name}
+                {c.name}
               </option>
             ))}
           </select>
@@ -347,7 +347,7 @@ function MergeProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => vo
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("pt.searchAria")}
           aria-label={t("pt.searchAria")}
-          className="min-h-11 w-full rounded-full border border-line-strong/40 bg-elevated pl-10 pr-4 text-base outline-none focus:border-primary"
+          className="min-h-11 w-full rounded-full border border-line-strong/40 bg-surface pl-10 pr-4 text-base outline-none focus:border-primary"
         />
       </div>
       {products.isPending ? (
@@ -355,7 +355,7 @@ function MergeProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => vo
       ) : candidates.length === 0 ? (
         <p className="py-6 text-center text-sm text-text-2">{query ? t("pt.nothingFound") : t("pp.typePart")}</p>
       ) : (
-        <div className="divide-y divide-line overflow-hidden rounded-[var(--radius-surface)] bg-surface">
+        <div className="divide-y divide-line overflow-hidden rounded-[var(--radius-surface)] bg-sunken">
           {candidates.map((x) => (
             <button
               key={x.id}

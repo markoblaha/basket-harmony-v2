@@ -51,12 +51,12 @@ export function MorePage() {
   }
 
   return (
-    <div className="flex flex-col gap-7 pb-8">
+    <div className="flex flex-col gap-8 pb-8">
       <PageHeader title={t("more.title")} />
 
       {/* Kto som a kde nakupujem: horná časť upraví profil, dolná otvorí správu domácnosti. */}
       <Section>
-        <div className="overflow-hidden rounded-[var(--radius-surface)] border border-line bg-elevated">
+        <div className="overflow-hidden rounded-[var(--radius-surface)] bg-surface shadow-card">
           <button
             type="button"
             onClick={openProfile}
@@ -65,16 +65,16 @@ export function MorePage() {
           >
             <Avatar name={shownName} me size="xl" />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-lg font-extrabold tracking-[-0.02em]">{shownName}</span>
+              <span className="block truncate text-lg font-semibold">{shownName}</span>
               <span className="block truncate text-sm text-text-2">{email}</span>
             </span>
             <Pencil className="size-4 shrink-0 text-text-3" aria-hidden />
           </button>
-          <div className="border-t border-dashed border-line-strong" aria-hidden />
-          <Link to="/more/household" className="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-pressed">
+          <div className="mx-4 border-t border-line" aria-hidden />
+          <Link to="/more/household" className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors active:bg-pressed">
             <span className="min-w-0 flex-1">
-              <span className="block text-xs font-semibold text-text-3">{t("more.household")}</span>
-              <span className="block truncate font-bold">{household.name}</span>
+              <span className="block text-footnote text-text-2">{t("more.household")}</span>
+              <span className="block truncate font-strong">{household.name}</span>
             </span>
             {members.data && <span className="shrink-0 text-sm text-text-2">{tn("more.memberCount", members.data.length)}</span>}
             <ChevronRight className="size-4 shrink-0 text-text-3" aria-hidden />

@@ -40,13 +40,13 @@ export function OnboardingPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-8 px-5 py-10 pt-safe">
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-8 px-6 py-10 pt-safe">
       <div>
-        <h1 className="text-2xl font-bold">{t("onboarding.welcome")}</h1>
+        <h1 className="text-2xl font-semibold">{t("onboarding.welcome")}</h1>
         <p className="mt-1 text-text-2">{t("onboarding.intro")}</p>
       </div>
 
-      <form onSubmit={createHousehold} className="flex flex-col gap-3 rounded-[var(--radius-surface)] bg-elevated p-4 shadow-sm">
+      <form onSubmit={createHousehold} className="flex flex-col gap-3 rounded-[var(--radius-surface)] bg-surface p-4 shadow-card">
         <h2 className="flex items-center gap-2 font-semibold">
           <Home className="size-5 text-primary" aria-hidden /> {t("onboarding.create")}
         </h2>
@@ -57,7 +57,7 @@ export function OnboardingPage() {
         </Button>
       </form>
 
-      <form onSubmit={openInvite} className="flex flex-col gap-3 rounded-[var(--radius-surface)] bg-elevated p-4 shadow-sm">
+      <form onSubmit={openInvite} className="flex flex-col gap-3 rounded-[var(--radius-surface)] bg-surface p-4 shadow-card">
         <h2 className="flex items-center gap-2 font-semibold">
           <Mail className="size-5 text-primary" aria-hidden /> {t("onboarding.haveInvite")}
         </h2>

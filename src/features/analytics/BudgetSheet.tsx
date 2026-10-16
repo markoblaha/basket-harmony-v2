@@ -64,7 +64,7 @@ function BudgetForm({ onClose, overview }: { onClose: () => void; overview: Over
           return (
             <TextField
               key={id}
-              label={`${info.emoji} ${info.name} (€)`}
+              label={`${info.name} (€)`}
               inputMode="decimal"
               value={values[id] ?? ""}
               onChange={(e) => setValues({ ...values, [id]: e.target.value })}

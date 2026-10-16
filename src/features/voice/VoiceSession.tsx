@@ -396,16 +396,16 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
     >
       <div className={cx("mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col", shake && `vo-shake-${shake}`)}>
         {phase === "pick" ? (
-          <section className={cx("flex min-h-0 flex-1 flex-col px-5 pt-2", leaving && "vo-leave")}>
+          <section className={cx("flex min-h-0 flex-1 flex-col px-6 pt-2", leaving && "vo-leave")}>
             <div className="flex items-center justify-between">
-              <button type="button" onClick={close} aria-label={t("common.close")} className="-ml-2.5 grid size-11 place-items-center rounded-full text-text active:bg-pressed">
+              <button type="button" onClick={close} aria-label={t("common.close")} className="-ml-3 grid size-11 place-items-center rounded-full text-text active:bg-pressed">
                 <X className="size-[22px]" />
               </button>
               <HouseholdChip name={household.name} />
               <span className="size-11" />
             </div>
-            <p className="mt-9 text-[0.8125rem] text-text-2">{t("voice.newTrip")}</p>
-            <h1 className="mt-1 text-[2.75rem] font-bold leading-none tracking-[-0.04em]">{t("voice.where")}</h1>
+            <p className="mt-9 text-footnote text-text-2">{t("voice.newTrip")}</p>
+            <h1 className="mt-1 text-[2.75rem] font-semibold leading-none">{t("voice.where")}</h1>
             <div className="mt-6 flex flex-wrap gap-2">
               {stores.map((s) => (
                 <button
@@ -413,8 +413,8 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
                   type="button"
                   onClick={() => pickStore(s)}
                   className={cx(
-                    "h-[3.125rem] rounded-full px-5 text-[1.0625rem] font-semibold transition-[background-color,color,transform] duration-300 active:scale-[0.97]",
-                    store === s ? "scale-[1.04] bg-primary text-on-primary" : "bg-elevated text-text",
+                    "h-[3.125rem] rounded-full px-6 text-lg font-semibold transition-[background-color,color,transform] duration-300 active:scale-[0.97]",
+                    store === s ? "scale-[1.04] bg-primary text-on-primary" : "bg-surface text-text",
                   )}
                 >
                   {s}
@@ -435,23 +435,23 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
                   onChange={(e) => setCustom(e.target.value)}
                   placeholder={t("voice.otherStorePlaceholder")}
                   maxLength={60}
-                  className="h-[3.25rem] min-w-0 flex-1 rounded-2xl border border-transparent bg-elevated px-4 text-base outline-none placeholder:text-text-3 focus:border-primary"
+                  className="h-[3.25rem] min-w-0 flex-1 rounded-2xl border border-transparent bg-surface px-4 text-base outline-none placeholder:text-text-3 focus:border-primary"
                 />
               </label>
               {custom.trim() && (
-                <button type="submit" className="h-[3.25rem] animate-drop rounded-2xl bg-primary px-5 font-semibold text-on-primary">
+                <button type="submit" className="h-[3.25rem] animate-drop rounded-2xl bg-primary px-6 font-semibold text-on-primary">
                   {t("voice.next")}
                 </button>
               )}
             </form>
             {draft && (
-              <div className="mt-6 animate-rise rounded-[1.375rem] bg-elevated p-4">
-                <p className="text-[0.8125rem] text-text-2">{t("voice.draftLabel")}</p>
-                <p className="mt-0.5 text-lg font-bold tracking-[-0.02em]">
+              <div className="mt-6 animate-rise rounded-2xl bg-surface p-4">
+                <p className="text-footnote text-text-2">{t("voice.draftLabel")}</p>
+                <p className="mt-0.5 text-lg font-semibold">
                   {t("voice.draftTitle", { store: draft.store, count: tn("shop.itemCount", draft.items.length) })}
                 </p>
                 <div className="mt-3 flex gap-2">
-                  <button type="button" onClick={resumeDraft} className="h-11 rounded-full bg-primary px-5 text-sm font-semibold text-on-primary">
+                  <button type="button" onClick={resumeDraft} className="h-11 rounded-full bg-primary px-6 text-sm font-semibold text-on-primary">
                     {t("voice.resume")}
                   </button>
                   <button
@@ -480,8 +480,8 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
                   type="button"
                   onClick={discard}
                   className={cx(
-                    "-mr-1 h-9 rounded-full px-3 text-[0.8rem] font-semibold transition-colors",
-                    discardArmed ? "animate-drop bg-danger text-on-primary" : "text-text-2 active:bg-pressed",
+                    "-mr-1 h-9 rounded-full px-3 text-footnote font-semibold transition-colors",
+                    discardArmed ? "animate-drop bg-danger-solid text-on-danger-solid" : "text-text-2 active:bg-pressed",
                   )}
                 >
                   {discardArmed ? t("voice.discardConfirm") : t("voice.discard")}
@@ -493,11 +493,11 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
             {/* Celý obsah (názov + zoznam) sa dá posúvať aj počas počúvania. */}
             <div ref={listRef} className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
               <div className="px-6 pt-4">
-                <h1 className="animate-rise truncate text-[3.5rem] font-bold leading-[0.95] tracking-[-0.045em]">{store}</h1>
-                <p className="mt-2.5 text-[0.8125rem] text-text-2">{meta}</p>
+                <h1 className="animate-rise truncate text-[3.5rem] font-semibold leading-[0.95]">{store}</h1>
+                <p className="mt-3 text-footnote text-text-2">{meta}</p>
               </div>
-              <ul className="relative z-[2] px-3.5 pb-8 pt-4" aria-live="polite">
-                {n === 0 && <li className="list-none animate-fade px-2.5 pt-2 text-[1.0625rem] text-text-3">{t("voice.emptyHint")}</li>}
+              <ul className="relative z-[2] px-4 pb-8 pt-4" aria-live="polite">
+                {n === 0 && <li className="list-none animate-fade px-3 pt-2 text-lg text-text-3">{t("voice.emptyHint")}</li>}
                 {rows.map(({ it, leaving: out }, i) => (
                   <VoiceRow
                     key={it.id}
@@ -530,10 +530,10 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
           </section>
         )}
 
-        <div className="relative z-[3] rounded-t-[1.875rem] bg-elevated px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3">
+        <div className="relative z-[3] rounded-t-3xl bg-surface px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3">
           <div className="flex min-h-[1.375rem] items-center justify-center">
             {hint && (
-              <p key={hint.k} className="vo-hint text-center text-[0.8rem] leading-snug text-text-3" style={{ animationDuration: `${hint.ms}ms` }}>
+              <p key={hint.k} className="vo-hint text-center text-footnote leading-snug text-text-3" style={{ animationDuration: `${hint.ms}ms` }}>
                 {hint.text}
               </p>
             )}
@@ -560,7 +560,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
           ) : (
             <p
               className={cx(
-                "flex min-h-[3.4rem] items-center justify-center px-2 text-center text-xl font-semibold leading-tight tracking-[-0.01em] transition-[opacity,transform] duration-300",
+                "flex min-h-[3.4rem] items-center justify-center px-2 text-center text-xl font-semibold leading-tight transition-[opacity,transform] duration-300",
                 !live && "text-text-3/70",
                 thinking && "vo-think -translate-y-1.5 scale-[0.97]",
               )}
@@ -575,20 +575,20 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
             <g className="g1"><path className="w1" d={W1} /></g>
           </svg>
 
-          <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
             <span className="flex justify-start">
               {speech.supported && !speech.error && (
                 <button
                   type="button"
                   onClick={() => setTyping((on) => !on)}
-                  className="inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-text-2 active:bg-pressed"
+                  className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-semibold text-text-2 active:bg-pressed"
                 >
                   {typing ? <Mic className="size-4" aria-hidden /> : <Keyboard className="size-4" aria-hidden />}
                   {typing ? t("voice.speak") : t("voice.type")}
                 </button>
               )}
             </span>
-            <span className="flex flex-col items-center gap-1.5 px-2">
+            <span className="flex flex-col items-center gap-2 px-2">
               <button
                 type="button"
                 disabled={!speech.supported || speech.error === "denied"}
@@ -599,7 +599,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
                 aria-label={paused ? t("voice.resumeAria") : t("voice.pauseAria")}
                 className={cx(
                   "grid size-16 place-items-center rounded-full transition-[background-color,color,box-shadow,transform] duration-300 active:scale-[0.94] disabled:opacity-40",
-                  paused ? "bg-elevated text-text shadow-[inset_0_0_0_1.5px_var(--text)]" : talk || thinking ? "bg-accent text-on-accent" : "bg-primary text-on-primary",
+                  paused ? "bg-surface text-text shadow-[inset_0_0_0_1.5px_var(--text)]" : talk || thinking ? "bg-primary text-on-primary" : "bg-primary text-on-primary",
                 )}
               >
                 {paused ? <MicOff className="size-6" aria-hidden /> : <Mic className="size-6" aria-hidden />}
@@ -612,7 +612,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
                   type="button"
                   onClick={() => void finish()}
                   disabled={save.isPending}
-                  className="h-11 animate-drop rounded-full bg-accent px-5 text-sm font-bold text-on-accent disabled:opacity-60"
+                  className="h-11 animate-drop rounded-full bg-primary px-6 text-sm font-semibold text-on-primary disabled:opacity-60"
                 >
                   {save.isPending ? t("voice.saving") : t("voice.done")}
                 </button>
@@ -631,8 +631,8 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
 
 function HouseholdChip({ name }: { name: string }) {
   return (
-    <span className="inline-flex h-8 max-w-[60%] items-center gap-2 rounded-full bg-elevated px-3 text-[0.8rem] font-semibold">
-      <span aria-hidden className="size-1.5 rounded-full bg-person" />
+    <span className="inline-flex h-8 max-w-[60%] items-center gap-2 rounded-full bg-surface px-3 text-footnote font-semibold">
+      <span aria-hidden className="size-1.5 rounded-full bg-person-solid" />
       <span className="truncate">{name}</span>
     </span>
   );

@@ -52,18 +52,18 @@ export function ShoppingHub() {
 
   return (
     <div className="pb-6">
-      <header className="flex items-end justify-between gap-3 px-4 pb-4 pt-5">
+      <header className="flex items-end justify-between gap-3 px-4 pb-4 pt-6">
         <div>
-          <h1 className="text-[1.75rem] font-extrabold leading-none tracking-[-0.03em]">{t("nav.shopping")}</h1>
-          <p className="mt-1.5 text-[0.8125rem] font-medium text-text-2">
+          <h1 className="text-2xl font-semibold">{t("nav.shopping")}</h1>
+          <p className="mt-1 text-footnote font-medium text-text-2">
             {open.length ? tn("hub.openCount", open.length) : t("hub.noneOpen")}
-            {missingReceipts > 0 && <span className="text-accent-text"> · {t("hub.missingReceipts", { n: missingReceipts })}</span>}
+            {missingReceipts > 0 && <span className="text-warning"> · {t("hub.missingReceipts", { n: missingReceipts })}</span>}
           </p>
         </div>
-        <span className="flex items-center gap-2 rounded-xl border border-line bg-elevated py-1.5 pl-1.5 pr-2.5 text-sm font-semibold">
+        <span className="flex items-center gap-2 rounded-full bg-surface py-1 pl-1 pr-3 text-sm font-strong shadow-card">
           <span className="flex">
             {memberNames.slice(0, 3).map((n, i) => (
-              <span key={n + i} className={cx(i > 0 && "-ml-2 rounded-lg ring-2 ring-elevated")}>
+              <span key={n + i} className={cx(i > 0 && "-ml-2 rounded-full ring-2 ring-surface")}>
                 <Avatar name={n} me={i === 0} />
               </span>
             ))}
@@ -76,26 +76,26 @@ export function ShoppingHub() {
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="flex h-14 w-full items-center gap-3 rounded-2xl bg-accent pl-2 pr-4 text-left text-on-accent transition-transform active:scale-[0.98]"
+          className="flex h-14 w-full items-center gap-3 rounded-2xl bg-primary pl-2 pr-4 text-left text-on-primary shadow-card transition-[transform,background-color] active:scale-[0.98] active:bg-primary-pressed"
         >
-          <span className="grid size-10 place-items-center rounded-xl bg-black/15">
-            <Plus className="size-5" strokeWidth={2.6} aria-hidden />
+          <span className="grid size-10 place-items-center rounded-xl bg-on-primary/15">
+            <Plus className="size-5" strokeWidth={2.2} aria-hidden />
           </span>
-          <span className="flex-1 text-base font-bold">{t("hub.new")}</span>
-          <span className="text-sm font-medium opacity-80">{t("hub.newHint")}</span>
+          <span className="flex-1 text-base font-strong">{t("hub.new")}</span>
+          <span className="truncate text-footnote opacity-80">{t("hub.newHint")}</span>
         </button>
       </div>
 
       <section className="mt-6 px-4" aria-label={t("hub.openAria")}>
         <SectionTitle>{t("hub.open")}</SectionTitle>
         {open.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-line-strong px-5 py-7 text-center text-sm leading-relaxed text-text-2">
+          <div className="rounded-2xl bg-sunken px-6 py-8 text-center text-sm text-text-2">
             {t("hub.emptyOpen1")}
             <br />
             {t("hub.emptyOpen2")}
           </div>
         ) : (
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-3">
             {open.map((l) => (
               <ListCard
                 key={l.id}
@@ -112,23 +112,23 @@ export function ShoppingHub() {
       </section>
 
       {history.length > 0 && (
-        <section className="mt-7 px-4" aria-label={t("hub.historyAria")}>
+        <section className="mt-8 px-4" aria-label={t("hub.historyAria")}>
           <SectionTitle>{t("hub.history")}</SectionTitle>
-          <div className="overflow-hidden rounded-2xl border border-line bg-elevated">
+          <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
             {history.map((l, i) => {
               const st = stats.data?.get(l.id);
               return (
-                <div key={l.id} className={cx("flex items-center gap-3 py-2.5 pl-3.5 pr-2", i > 0 && "border-t border-dashed border-line")}>
+                <div key={l.id} className={cx("flex min-h-16 items-center gap-3 py-2 pl-4 pr-2", i > 0 && "border-t border-line")}>
                   <Link to={`/lists/${l.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-[0.6875rem] bg-surface text-success" aria-hidden>
-                      <Check className="size-[1.125rem]" strokeWidth={2.8} />
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-success-soft text-success" aria-hidden>
+                      <Check className="size-[1.125rem]" strokeWidth={2.4} />
                     </span>
                     <span className="min-w-0">
-                      <span className="flex items-center gap-1.5 font-semibold">
+                      <span className="flex items-center gap-2 font-strong">
                         <span className="break-words">{l.name}</span>
                         {l.is_private && <Lock className="size-3.5 shrink-0 text-text-3" aria-label={t("hub.private")} />}
                       </span>
-                      <span className="block text-[0.8125rem] text-text-2">
+                      <span className="block text-footnote text-text-2">
                         {dayLabel(l.completed_at!)}
                         {st && st.bought > 0 && ` · ${tn("shop.itemCount", st.bought)}`}
                       </span>
@@ -139,7 +139,7 @@ export function ShoppingHub() {
               );
             })}
           </div>
-          <p className="mt-2 px-0.5 text-xs leading-snug text-text-2">
+          <p className="mt-2 px-1 text-xs text-text-2">
             {t("hub.receiptHint")}
           </p>
         </section>
@@ -182,28 +182,31 @@ function ListCard({
     <Link
       to={`/lists/${list.id}`}
       className={cx(
-        "block rounded-[1.125rem] border p-3.5 transition-transform active:scale-[0.99] animate-rise",
-        live ? "border-primary bg-primary text-on-primary" : "border-line bg-elevated",
+        "block rounded-2xl p-4 shadow-card transition-transform active:scale-[0.99] animate-rise",
+        live ? "bg-primary-soft" : "bg-surface",
       )}
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h2 className="min-w-0 break-words text-xl font-extrabold tracking-[-0.02em]">{list.name}</h2>
+            <h2 className="min-w-0 break-words text-lg font-semibold">{list.name}</h2>
             {list.is_private ? (
-              <span className={cx("flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-bold", live ? "bg-on-primary/15" : "bg-surface text-text-2")}>
+              <span className={cx("flex shrink-0 items-center gap-1 rounded-sm px-2 py-0.5 text-xs font-semibold", live ? "bg-surface text-text-2" : "bg-sunken text-text-2")}>
                 <Lock className="size-3" aria-hidden /> {t("trip.onlyMe")}
               </span>
             ) : (
               creatorName &&
-              list.created_by !== me && <span className={cx("shrink-0 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-bold", live ? "bg-on-primary/15" : "bg-person-soft text-person")}>{t("hub.createdBy", { name: shortName(creatorName) })}</span>
+              list.created_by !== me && <span className={cx("shrink-0 rounded-sm px-2 py-0.5 text-xs font-semibold", "bg-person-soft text-person")}>{t("hub.createdBy", { name: shortName(creatorName) })}</span>
             )}
           </div>
-          <p className={cx("mt-0.5 text-[0.8125rem]", live ? "opacity-75" : "text-text-2")}>
+          <p className="mt-1 text-callout text-text-2">
             {live ? (
-              <span className="font-semibold">{mine ? t("hub.shoppingNow") : t("hub.shopping", { name: shopperName ?? "" })}</span>
+              <span className="inline-flex items-center gap-2 font-strong text-primary">
+                <span className="size-2 rounded-full bg-primary [animation:bh-pulse_1.6s_ease_infinite]" aria-hidden />
+                {mine ? t("hub.shoppingNow") : t("hub.shopping", { name: shopperName ?? "" })}
+              </span>
             ) : list.planned_for ? (
-              <span className={cx(isOverdue(list.planned_for) && "font-semibold text-accent-text")}>
+              <span className={cx(isOverdue(list.planned_for) && "font-strong text-warning")}>
                 {isOverdue(list.planned_for) ? t("hub.planned", { day: dayLabel(list.planned_for) }) : dayLabel(list.planned_for)}
               </span>
             ) : (
@@ -212,20 +215,20 @@ function ListCard({
             {list.note && <span> · {list.note}</span>}
           </p>
         </div>
-        <span className={cx("flex shrink-0 items-center gap-1 text-sm font-bold", live ? "" : "text-text-2")}>
+        <span className="flex shrink-0 items-center gap-1 text-footnote font-strong text-text-2">
           {tn("shop.itemCount", open)}
           <ChevronRight className="size-4" aria-hidden />
         </span>
       </div>
       {stats && stats.preview.length > 0 && (
-        <p className={cx("mt-2 truncate text-[0.8125rem]", live ? "opacity-70" : "text-text-2")}>
+        <p className="mt-2 truncate text-footnote text-text-3">
           {stats.preview.join(" · ")}
           {open > stats.preview.length && ` +${open - stats.preview.length}`}
         </p>
       )}
       {live && open + bought > 0 && (
-        <div className="mt-3 h-[5px] overflow-hidden rounded-full bg-on-primary/15" aria-hidden>
-          <div className="h-full rounded-full bg-accent" style={{ width: `${(bought / (open + bought)) * 100}%` }} />
+        <div className="mt-3 h-1 overflow-hidden rounded-full bg-surface" aria-hidden>
+          <div className="h-full rounded-full bg-primary" style={{ width: `${(bought / (open + bought)) * 100}%` }} />
         </div>
       )}
     </Link>
@@ -237,7 +240,7 @@ function ReceiptChip({ list, onAdd }: { list: ShoppingList; onAdd: () => void })
     return (
       <Link
         to={`/receipts/${list.receipt_id}`}
-        className="flex h-9 shrink-0 items-center gap-1.5 rounded-[0.625rem] bg-success-soft px-2.5 text-[0.8125rem] font-bold text-success"
+        className="flex h-11 shrink-0 items-center gap-2 rounded-lg bg-success-soft px-3 text-footnote font-strong text-success"
       >
         <Receipt className="size-4" aria-hidden /> {t("trip.receipt")}
       </Link>
@@ -248,7 +251,7 @@ function ReceiptChip({ list, onAdd }: { list: ShoppingList; onAdd: () => void })
       <button
         type="button"
         onClick={onAdd}
-        className="flex h-9 shrink-0 items-center gap-1.5 rounded-[0.625rem] bg-accent-soft px-2.5 text-[0.8125rem] font-bold text-accent-text"
+        className="flex h-11 shrink-0 items-center gap-2 rounded-lg bg-warning-soft px-3 text-footnote font-strong text-warning"
       >
         <Camera className="size-4" aria-hidden /> {t("trip.completeReceipt")}
       </button>
@@ -259,7 +262,7 @@ function ReceiptChip({ list, onAdd }: { list: ShoppingList; onAdd: () => void })
       type="button"
       onClick={onAdd}
       aria-label={t("hub.addReceiptAria", { name: list.name })}
-      className="grid size-9 shrink-0 place-items-center rounded-[0.625rem] text-text-3 active:bg-pressed"
+      className="grid size-11 shrink-0 place-items-center rounded-lg text-text-3 active:bg-pressed"
     >
       <Camera className="size-[1.125rem]" aria-hidden />
     </button>

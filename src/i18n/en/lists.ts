@@ -26,7 +26,7 @@ export const enLists: Record<keyof typeof skLists, string> = {
   "shop.itemCount.few": "{n} items",
   "shop.itemCount.other": "{n} items",
   "request.status.PENDING": "waiting",
-  "request.status.ACCEPTED": "added ✓",
+  "request.status.ACCEPTED": "added",
   "request.status.REJECTED": "dismissed",
   "request.status.EXPIRED": "expired",
   "item.removed": "“{name}” removed",

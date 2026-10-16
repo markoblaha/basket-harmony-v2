@@ -1,6 +1,6 @@
 import { useRef, type PointerEvent } from "react";
 import { Link } from "react-router";
-import { ChevronRight, FileText, Loader2 } from "lucide-react";
+import { ChevronRight, FileText, Landmark, Loader2, PenLine } from "lucide-react";
 import { cx } from "@/components/ui";
 import { t } from "@/i18n";
 import { isNotAReceipt, isReceiptPdf, isStale, useReceiptImage, type Receipt } from "./api";
@@ -12,10 +12,10 @@ export function StoreAvatar({ name, className }: { name: string | null; classNam
   return (
     <span
       aria-hidden
-      className={cx("flex size-11 shrink-0 select-none items-center justify-center rounded-full text-sm font-bold", className)}
+      className={cx("flex size-11 shrink-0 select-none items-center justify-center rounded-full text-footnote font-semibold", className)}
       style={{
-        background: `color-mix(in oklch, var(--color-surface), oklch(0.62 0.13 ${hue}) 30%)`,
-        color: `color-mix(in oklch, var(--color-text), oklch(0.55 0.16 ${hue}) 45%)`,
+        background: `color-mix(in oklch, var(--sunken), oklch(0.66 0.09 ${hue}) 26%)`,
+        color: `color-mix(in oklch, var(--text), oklch(0.6 0.12 ${hue}) 35%)`,
       }}
     >
       {name ? storeInitials(name) : "?"}
@@ -29,9 +29,9 @@ function Thumb({ receipt }: { receipt: Receipt }) {
   const noFile = receipt.origin !== "RECEIPT";
   const image = useReceiptImage(pdf || noFile ? undefined : receipt.image_path);
   return (
-    <div className="flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface text-text-3">
+    <div className="flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-sunken text-text-3">
       {noFile ? (
-        <span className="text-lg" aria-hidden>{receipt.origin === "BANK" ? "🏦" : "✍️"}</span>
+        receipt.origin === "BANK" ? <Landmark className="size-5" aria-hidden /> : <PenLine className="size-5" aria-hidden />
       ) : pdf ? (
         <FileText className="size-5" aria-hidden />
       ) : image.data ? (
@@ -109,7 +109,7 @@ export function ReceiptRow({
       {selecting && <Thumb receipt={r} />}
       {!selecting && <StoreAvatar name={r.store_name} />}
       <div className="min-w-0 flex-1">
-        <p className={cx("truncate font-semibold", processing && "text-text-2")}>{title}</p>
+        <p className={cx("truncate font-strong", processing && "text-text-2")}>{title}</p>
         <p className="truncate text-sm">
           {subtitle}
         </p>
@@ -118,10 +118,10 @@ export function ReceiptRow({
         {processing ? (
           <Loader2 className="size-5 animate-spin text-text-3" aria-label={t("row.readingAria")} />
         ) : failed ? null : (
-          <span className="text-base font-semibold tabular-nums">{formatMoney(r.total)}</span>
+          <span className="text-base font-strong tabular-nums">{formatMoney(r.total)}</span>
         )}
         {warn && !attention && (
-          <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning">{shortReason(r)}</span>
+          <span className="rounded-sm bg-warning-soft px-2 py-0.5 text-xs font-strong text-warning">{shortReason(r)}</span>
         )}
       </div>
     </>
@@ -134,7 +134,7 @@ export function ReceiptRow({
         onClick={onToggle}
         aria-pressed={order >= 0}
         className={cx(
-          "flex min-h-[4.25rem] w-full items-center gap-3 px-4 py-2.5 text-left active:bg-pressed",
+          "flex min-h-[4.25rem] w-full items-center gap-3 px-4 py-3 text-left active:bg-pressed",
           order >= 0 && "bg-primary-soft",
         )}
       >
@@ -142,7 +142,7 @@ export function ReceiptRow({
         <span
           aria-hidden
           className={cx(
-            "flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold",
+            "flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-sm font-semibold",
             order >= 0 ? "border-primary bg-primary text-on-primary" : "border-line-strong/60 text-transparent",
           )}
         >
@@ -162,7 +162,7 @@ export function ReceiptRow({
           press.fired.current = false;
         }
       }}
-      className="flex min-h-[4.25rem] select-none items-center gap-3 px-4 py-2.5 [-webkit-touch-callout:none] active:bg-pressed"
+      className="flex min-h-[4.25rem] select-none items-center gap-3 px-4 py-3 [-webkit-touch-callout:none] active:bg-pressed"
     >
       {body}
       <ChevronRight className="size-4 shrink-0 text-text-3" aria-hidden />

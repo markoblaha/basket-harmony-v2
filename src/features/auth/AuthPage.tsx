@@ -104,34 +104,38 @@ export function AuthPage() {
   return (
     <div className="min-h-dvh bg-bg lg:grid lg:grid-cols-[1.05fr_1fr]">
       {/* Ľavá strana / horná časť: čo aplikácia robí */}
-      <aside className="relative overflow-hidden bg-[#1b1815] px-6 pb-10 pt-[calc(env(safe-area-inset-top)+2rem)] text-[#fbf9f5] lg:flex lg:flex-col lg:justify-between lg:px-14 lg:py-14">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-[#fbf9f5] text-[#1b1815]">
-            <ShoppingBasket className="size-6" aria-hidden />
+      {/* Panel je v oboch vzhľadoch tmavý (data-theme-scope), farby berie z rolí tmavej témy. */}
+      <aside
+        data-theme-scope="dark"
+        className="relative overflow-hidden bg-surface px-6 pb-8 pt-[calc(env(safe-area-inset-top)+2rem)] text-text lg:flex lg:flex-col lg:justify-between lg:px-14 lg:py-14"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-on-primary">
+            <ShoppingBasket className="size-5" strokeWidth={2} aria-hidden />
           </div>
-          <span className="text-lg font-semibold tracking-tight">Basket Harmony</span>
+          <span className="text-lg font-semibold">Basket Harmony</span>
         </div>
 
         <div className="mt-8 max-w-md lg:mt-0">
-          <h1 className="text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] lg:text-5xl">{t("auth.heroTitle")}</h1>
-          <p className="mt-3 text-base leading-relaxed text-[#fbf9f5]/75 lg:mt-5 lg:text-lg">{t("auth.heroText")}</p>
+          <h1 className="text-3xl font-semibold lg:text-5xl lg:leading-[1.08]">{t("auth.heroTitle")}</h1>
+          <p className="mt-3 text-base text-text-2 lg:mt-6 lg:text-lg">{t("auth.heroText")}</p>
         </div>
 
         <ListPreview />
       </aside>
 
       {/* Formulár */}
-      <main className="flex items-start justify-center px-5 py-8 lg:items-center lg:px-12">
+      <main className="flex items-start justify-center px-6 py-8 lg:items-center lg:px-12">
         <div className="w-full max-w-sm">
           <LanguageSwitch />
           {mode === "forgot" ? (
             <div className="mb-6">
-              <h2 className="text-2xl font-bold tracking-tight">{t("auth.forgotTitle")}</h2>
+              <h2 className="text-2xl font-semibold">{t("auth.forgotTitle")}</h2>
               <p className="mt-1 text-text-2">{t("auth.forgotText")}</p>
             </div>
           ) : (
             <>
-              <div role="tablist" aria-label={t("auth.modeLabel")} className="mb-6 grid grid-cols-2 rounded-xl bg-surface p-1">
+              <div role="tablist" aria-label={t("auth.modeLabel")} className="mb-6 grid grid-cols-2 rounded-xl bg-sunken p-1">
                 {(["signin", "signup"] as const).map((m) => (
                   <button
                     key={m}
@@ -140,8 +144,8 @@ export function AuthPage() {
                     aria-selected={mode === m}
                     onClick={() => switchMode(m)}
                     className={cx(
-                      "min-h-11 rounded-[0.6rem] text-[0.95rem] font-semibold transition-colors",
-                      mode === m ? "bg-elevated text-text shadow-sm" : "text-text-2",
+                      "min-h-11 rounded-lg text-callout font-strong transition-colors duration-200",
+                      mode === m ? "bg-elevated text-text shadow-card" : "text-text-2",
                     )}
                   >
                     {m === "signin" ? t("auth.signIn") : t("auth.signUp")}
@@ -154,7 +158,7 @@ export function AuthPage() {
                 onClick={google}
                 disabled={busy !== null}
                 aria-busy={busy === "google" || undefined}
-                className="flex min-h-13 w-full items-center justify-center gap-3 rounded-[var(--radius-control)] border border-line-strong/70 bg-elevated px-4 text-base font-semibold text-text shadow-sm transition-colors active:bg-pressed disabled:opacity-60"
+                className="flex min-h-12 w-full items-center justify-center gap-3 rounded-[var(--radius-control)] bg-surface px-4 text-base font-strong text-text shadow-[inset_0_0_0_1px_var(--line-strong)] transition-colors active:bg-pressed disabled:opacity-60"
               >
                 {busy === "google" ? t("auth.googleBusy") : t("auth.google")}
               </button>
@@ -245,34 +249,34 @@ function ListPreview() {
   return (
     <figure
       aria-label={t("auth.previewLabel")}
-      className="mt-8 hidden max-w-sm rotate-[-1.5deg] rounded-2xl bg-[#fbf9f5] p-4 text-[#1b1815] shadow-2xl shadow-black/30 sm:block lg:mt-0"
+      className="mt-8 hidden max-w-sm rounded-2xl bg-surface p-4 text-text shadow-raised sm:block lg:mt-0"
     >
-      <div className="mb-3 flex items-baseline justify-between">
+      <div className="mb-2 flex items-baseline justify-between">
         <span className="font-semibold">{t("auth.previewShopping")}</span>
-        <span className="text-sm tabular-nums text-[#1b1815]/60">2 / 4</span>
+        <span className="text-sm tabular-nums text-text-2">2 / 4</span>
       </div>
-      <ul className="divide-y divide-[#1b1815]/10">
+      <ul className="divide-y divide-line">
         {rows.map((r) => (
-          <li key={r.name} className="flex items-center gap-3 py-2.5">
+          <li key={r.name} className="flex items-center gap-3 py-3">
             <span
               className={cx(
-                "flex size-6 items-center justify-center rounded-full border-2",
-                r.done ? "border-[#eea58b] bg-[#eea58b] text-[#3b1a0f]" : "border-[#1b1815]/30",
+                "flex size-6 items-center justify-center rounded-sm border-2",
+                r.done ? "border-primary bg-primary text-on-primary" : "border-line-strong",
               )}
             >
-              {r.done && <Check className="size-3.5" strokeWidth={3} />}
+              {r.done && <Check className="size-3.5" strokeWidth={2.4} />}
             </span>
-            <span className={cx("flex-1", r.done && "text-[#1b1815]/45 line-through")}>{r.name}</span>
-            <span className="text-sm text-[#1b1815]/55">{r.meta}</span>
+            <span className={cx("flex-1", r.done && "text-text-3 line-through")}>{r.name}</span>
+            <span className="text-sm text-text-2">{r.meta}</span>
           </li>
         ))}
       </ul>
-      <div className="mt-3 rounded-xl bg-[#ece5f3] p-3">
-        <p className="text-sm text-[#1b1815]/70">{t("auth.previewRequest")}</p>
+      <div className="mt-3 rounded-xl bg-person-soft p-3">
+        <p className="text-sm text-text-2">{t("auth.previewRequest")}</p>
         <p className="font-semibold">{t("auth.previewOil")}</p>
-        <div className="mt-2 grid grid-cols-2 gap-2 text-center text-sm font-semibold">
-          <span className="rounded-lg bg-white/70 py-1.5">{t("auth.previewDecline")}</span>
-          <span className="rounded-lg bg-[#eea58b] py-1.5 text-[#3b1a0f]">{t("auth.previewAdd")}</span>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-center text-sm font-strong">
+          <span className="rounded-lg bg-surface py-2 text-danger">{t("auth.previewDecline")}</span>
+          <span className="rounded-lg bg-primary py-2 text-on-primary">{t("auth.previewAdd")}</span>
         </div>
       </div>
     </figure>
@@ -283,7 +287,7 @@ function ListPreview() {
 function LanguageSwitch() {
   const { locale, setLocale } = useLocale();
   return (
-    <div role="group" aria-label={t("auth.language")} className="mb-5 flex justify-end gap-1">
+    <div role="group" aria-label={t("auth.language")} className="mb-6 flex justify-end gap-1">
       {LOCALES.map((code) => (
         <button
           key={code}
@@ -291,8 +295,8 @@ function LanguageSwitch() {
           onClick={() => setLocale(code)}
           aria-pressed={locale === code}
           className={cx(
-            "min-h-9 rounded-lg px-2.5 text-xs font-extrabold tracking-wider transition-colors",
-            locale === code ? "bg-primary text-on-primary" : "text-text-2 active:bg-pressed",
+            "min-h-11 min-w-11 rounded-lg px-3 text-xs font-semibold tracking-wider transition-colors duration-200",
+            locale === code ? "bg-primary-soft text-primary" : "text-text-2 active:bg-pressed",
           )}
         >
           {code.toUpperCase()}

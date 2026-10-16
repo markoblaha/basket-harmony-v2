@@ -45,16 +45,19 @@ export function AppShell() {
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col pt-safe">
       {!online && <OfflineBanner />}
       {online && realtime === "reconnecting" && (
-        <div role="status" className="bg-info-soft px-4 py-1.5 text-center text-sm text-info">
+        <div role="status" className="bg-info-soft px-4 py-2 text-center text-sm text-info">
           {t("status.reconnecting")}
         </div>
       )}
       <main className="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
-        <Outlet />
+        {/* Prechod obrazovky: nová sekcia sa jemne zosvetlí a posunie o 8 px (0,2 s). */}
+        <div key={screenKey(pathname)} className="animate-screen">
+          <Outlet />
+        </div>
       </main>
       <nav
         aria-label={t("nav.label")}
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-elevated/95 pb-safe backdrop-blur-md"
+        className="fixed inset-x-0 bottom-0 z-40 bg-elevated/95 pb-safe shadow-[0_-1px_0_var(--line)] backdrop-blur-md"
       >
         <ul className="mx-auto grid max-w-2xl grid-cols-5">
           {TABS.map((tab, i) => (
@@ -86,6 +89,11 @@ export function AppShell() {
 
 type Tab = (typeof TABS)[number];
 
+/** Obrazovka pre animáciu prechodu: záložky Prehľadov sú jedna obrazovka (animuje sa len obsah pod nimi). */
+function screenKey(pathname: string) {
+  return /^\/analytics(\/(products|stores))?\/?$/.test(pathname) ? "/analytics" : pathname;
+}
+
 function TabItem({ tab, active, before }: { tab: Tab; active: boolean; before: ReactNode }) {
   const Icon = tab.icon;
   return (
@@ -96,12 +104,12 @@ function TabItem({ tab, active, before }: { tab: Tab; active: boolean; before: R
           to={tab.to}
           aria-current={active ? "page" : undefined}
           className={cx(
-            "flex h-16 flex-col items-center justify-center gap-1 text-[0.6875rem] font-semibold transition-colors",
+            "flex h-16 flex-col items-center justify-center gap-1 text-xs font-strong transition-colors",
             active ? "text-text" : "text-text-2",
           )}
         >
-          <span className={cx("grid h-7 w-12 place-items-center rounded-full transition-colors", active && "bg-accent-soft text-accent-text")}>
-            <Icon className="size-[1.375rem]" strokeWidth={2} aria-hidden />
+          <span className={cx("grid h-8 w-14 place-items-center rounded-full transition-colors duration-200", active && "bg-primary-soft text-primary")}>
+            <Icon className="size-[1.375rem]" strokeWidth={active ? 2.1 : 1.85} aria-hidden />
           </span>
           {t(tab.label)}
         </NavLink>
@@ -113,7 +121,7 @@ function TabItem({ tab, active, before }: { tab: Tab; active: boolean; before: R
 /** Stredné tlačidlo navigácie: otvorí hlasový nákup s už zapnutým mikrofónom. */
 function VoiceButton({ onClick }: { onClick: () => void }) {
   return (
-    <li className="flex items-start justify-center">
+    <li className="flex items-center justify-center">
       <button
         type="button"
         onClick={() => {
@@ -125,9 +133,9 @@ function VoiceButton({ onClick }: { onClick: () => void }) {
           onClick();
         }}
         aria-label={t("voice.open")}
-        className="-mt-5 grid size-[3.75rem] place-items-center rounded-full bg-primary text-on-primary shadow-[0_0_0_6px_var(--bg)] transition-transform active:scale-[0.93]"
+        className="grid size-14 place-items-center rounded-full bg-primary text-on-primary shadow-raised transition-transform duration-[120ms] active:scale-95 active:bg-primary-pressed"
       >
-        <AudioLines className="size-[1.625rem]" strokeWidth={2.1} aria-hidden />
+        <AudioLines className="size-6" strokeWidth={2} aria-hidden />
       </button>
     </li>
   );

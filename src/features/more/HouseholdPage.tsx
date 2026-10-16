@@ -92,7 +92,7 @@ export function HouseholdPage() {
   }
 
   return (
-    <div className="flex flex-col gap-7 pb-8">
+    <div className="flex flex-col gap-8 pb-8">
       <PageHeader title={t("household.title")} back="/more" />
 
       <Section>
@@ -100,7 +100,7 @@ export function HouseholdPage() {
           {isOwner ? (
             <form onSubmit={saveHouseholdName} className="flex items-end gap-2 p-4">
               <TextField
-                className="flex-1"
+                className="min-w-0 flex-1"
                 label={t("household.nameLabel")}
                 value={householdName ?? household.name}
                 onChange={(e) => setHouseholdName(e.target.value)}
@@ -109,7 +109,7 @@ export function HouseholdPage() {
               <Button
                 type="submit"
                 variant="secondary"
-                className="mb-0.5 min-h-12"
+                className="min-h-12 shrink-0"
                 disabled={householdName === null || !householdName.trim() || householdName.trim() === household.name}
               >
                 {t("common.save")}
@@ -118,7 +118,7 @@ export function HouseholdPage() {
           ) : (
             <div className="p-4">
               <p className="text-sm font-medium text-text-2">{t("household.nameLabel")}</p>
-              <p className="text-lg font-bold">{household.name}</p>
+              <p className="text-lg font-semibold">{household.name}</p>
             </div>
           )}
         </Group>
@@ -131,7 +131,7 @@ export function HouseholdPage() {
               <Row
                 key={h.id}
                 label={h.name}
-                value={h.id === household.id ? <Check className="size-5 text-primary" strokeWidth={3} aria-hidden /> : undefined}
+                value={h.id === household.id ? <Check className="size-5 text-primary" strokeWidth={2.4} aria-hidden /> : undefined}
                 onClick={() => select(h.id)}
               />
             ))}
@@ -148,7 +148,7 @@ export function HouseholdPage() {
               <div key={m.user_id} className="flex min-h-16 items-center gap-3 px-4 py-2">
                 <Avatar name={m.display_name} me={m.user_id === me} size="lg" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">
+                  <p className="truncate font-strong">
                     {m.display_name} {m.user_id === me && <span className="text-text-3">{t("household.you")}</span>}
                   </p>
                   <p className="flex items-center gap-1 text-sm text-text-3">
@@ -182,10 +182,10 @@ export function HouseholdPage() {
         </Button>
         {(invitations.data?.length ?? 0) > 0 && (
           <div className="mt-4">
-            <p className="mb-1.5 px-1 text-sm text-text-2">{t("household.pendingInvites")}</p>
+            <p className="mb-2 px-1 text-sm text-text-2">{t("household.pendingInvites")}</p>
             <Group>
               {invitations.data?.map((inv) => (
-                <div key={inv.id} className="flex min-h-12 items-center justify-between px-4 py-1.5 text-sm">
+                <div key={inv.id} className="flex min-h-12 items-center justify-between px-4 py-2 text-sm">
                   <span>{t("household.validUntil", { date: shortDate(inv.expires_at) })}</span>
                   <IconButton label={t("household.revokeInvite")} onClick={() => revokeInvite.mutate(inv.id)}>
                     <X className="size-4" />
@@ -206,7 +206,7 @@ export function HouseholdPage() {
       <Sheet open={!!inviteUrl} onClose={() => setInviteUrl(null)} title={t("household.inviteReady")}>
         <div className="flex flex-col gap-4">
           <p className="text-text-2">{t("household.inviteHelp")}</p>
-          <p className="break-all rounded-[var(--radius-control)] bg-surface p-3 font-mono text-sm select-all">{inviteUrl}</p>
+          <p className="break-all rounded-[var(--radius-control)] bg-sunken p-3 font-mono text-sm select-all">{inviteUrl}</p>
           <Button size="lg" block onClick={share}>
             <Share2 className="size-5" aria-hidden /> {t("household.share")}
           </Button>

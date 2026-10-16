@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { ChevronRight, Link2, Merge, Plus, Search, Trash2, X } from "lucide-react";
+import { ChevronRight, Link2, Merge, Plus, Receipt as ReceiptIcon, Search, Trash2, X } from "lucide-react";
 import { Button, EmptyState, ErrorState, Group, PageHeader, Section, Spinner, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { normalizeName } from "@/lib/categories";
@@ -185,15 +185,15 @@ export function ReceiptsPage() {
         }
       />
       {attachList && (
-        <div role="status" className="mx-4 mb-3 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary-soft p-3 animate-rise">
-          <span className="grid size-9 shrink-0 place-items-center rounded-[0.6875rem] bg-primary text-on-primary" aria-hidden>
+        <div role="status" className="mx-4 mb-3 flex items-center gap-3 rounded-2xl bg-primary-soft p-3 animate-rise">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-on-primary" aria-hidden>
             <Link2 className="size-[1.125rem]" />
           </span>
-          <p className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-text-2">
-            <b className="block text-[0.9375rem] text-text">{t("trip.attachTitle", { name: attachList.name })}</b>
+          <p className="min-w-0 flex-1 text-footnote text-text-2">
+            <b className="block text-callout font-strong text-text">{t("trip.attachTitle", { name: attachList.name })}</b>
             {attachList.completed_at ? t("trip.attachDone", { day: dayLabel(attachList.completed_at) }) : t("trip.attachOpen")} · {t("trip.attachNext")}
           </p>
-          <button type="button" aria-label={t("trip.detach")} onClick={() => setAttachListId(null)} className="grid size-9 shrink-0 place-items-center rounded-[0.625rem] text-text-2 active:bg-pressed">
+          <button type="button" aria-label={t("trip.detach")} onClick={() => setAttachListId(null)} className="grid size-11 shrink-0 place-items-center rounded-lg text-text-2 active:bg-pressed">
             <X className="size-[1.125rem]" aria-hidden />
           </button>
         </div>
@@ -205,7 +205,7 @@ export function ReceiptsPage() {
         ) : receipts.isError ? (
           <ErrorState error={errorMessage(receipts.error)} onRetry={() => receipts.refetch()} />
         ) : all.length === 0 ? (
-          <EmptyState icon="🧾" title={t("rpage.emptyTitle")}>
+          <EmptyState icon={<ReceiptIcon />} title={t("rpage.emptyTitle")}>
             {t("rpage.emptyText")}
           </EmptyState>
         ) : (
@@ -214,16 +214,16 @@ export function ReceiptsPage() {
               <Section>
                 <Link
                   to="/analytics"
-                  className="flex items-center justify-between gap-3 rounded-[var(--radius-surface)] bg-primary-soft p-4 shadow-sm active:bg-pressed"
+                  className="flex items-center justify-between gap-3 rounded-[var(--radius-surface)] bg-surface p-4 shadow-card active:bg-pressed"
                 >
                   <div>
-                    <p className="text-sm text-text-2">{month.label}</p>
-                    <p className="text-3xl font-bold tabular-nums">{formatMoney(month.total)}</p>
+                    <p className="text-overline font-semibold uppercase text-text-2">{month.label}</p>
+                    <p className="mt-1 text-3xl font-semibold tabular-nums">{formatMoney(month.total)}</p>
                     <p className="text-sm text-text-2">
                       {tn("rpage.purchases", month.count)}
                     </p>
                   </div>
-                  <span className="flex items-center gap-0.5 text-sm font-semibold text-primary">
+                  <span className="flex min-h-11 items-center gap-0.5 text-sm font-strong text-primary">
                     {t("nav.analytics")} <ChevronRight className="size-4" aria-hidden />
                   </span>
                 </Link>
@@ -240,7 +240,7 @@ export function ReceiptsPage() {
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder={t("rpage.searchPlaceholder")}
                     aria-label={t("rpage.searchAria")}
-                    className="min-h-11 w-full rounded-full border border-line-strong/40 bg-elevated pl-10 pr-4 text-base outline-none placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/25"
+                    className="min-h-12 w-full rounded-[var(--radius-control)] border border-transparent bg-sunken pl-10 pr-4 text-base outline-none transition-[border-color,box-shadow,background-color] placeholder:text-text-3 focus:border-primary focus:bg-elevated focus:ring-3 focus:ring-primary/20"
                   />
                 </div>
               </Section>
@@ -306,7 +306,7 @@ export function ReceiptsPage() {
       <Dock>
         {batch.progress && <UploadStatus progress={batch.progress} running={batch.running} onClose={batch.close} />}
         {selecting ? (
-          <div className="w-full rounded-[var(--radius-surface)] bg-elevated p-3 shadow-lg">
+          <div className="w-full rounded-[var(--radius-surface)] bg-elevated p-3 shadow-raised">
             <p className="px-1 text-sm text-text-2">
               {picked.length === 0
                 ? t("rpage.selectHint")
@@ -326,7 +326,7 @@ export function ReceiptsPage() {
             type="button"
             onClick={() => setMenuOpen(true)}
             disabled={batch.running}
-            className="flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-base font-semibold text-on-primary shadow-lg active:bg-primary-pressed disabled:opacity-55"
+            className="flex h-14 items-center gap-2 rounded-full bg-primary px-6 text-base font-strong text-on-primary shadow-raised transition-[transform,background-color] active:scale-[0.98] active:bg-primary-pressed disabled:opacity-55"
           >
             <Plus className="size-6" aria-hidden /> {t("rpage.add")}
           </button>
@@ -371,8 +371,8 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       onClick={onClick}
       aria-pressed={active}
       className={cx(
-        "min-h-9 rounded-full px-3.5 text-sm font-medium transition-colors",
-        active ? "bg-primary text-on-primary" : "bg-surface text-text-2 active:bg-pressed",
+        "min-h-11 rounded-full px-4 text-sm font-strong transition-colors duration-[120ms]",
+        active ? "bg-primary-soft text-primary shadow-[inset_0_0_0_1.5px_var(--primary)]" : "bg-sunken text-text-2 active:bg-pressed",
       )}
     >
       {children}

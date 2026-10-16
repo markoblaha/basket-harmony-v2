@@ -226,10 +226,10 @@ export function ShoppingPage() {
           <ChevronLeft className="size-6" aria-hidden />
         </button>
         <button type="button" onClick={() => setSettingsOpen(true)} className="min-w-0 flex-1 rounded-xl px-1 text-left active:bg-pressed" aria-label={t("trip.editAria", { name: list.name })}>
-          <h1 className="break-words text-[1.75rem] font-extrabold leading-tight tracking-[-0.03em]">{list.name}</h1>
-          <span className="flex items-center gap-1.5 truncate text-[0.8125rem] font-medium text-text-2">
+          <h1 className="break-words text-2xl font-semibold">{list.name}</h1>
+          <span className="flex items-center gap-2 truncate text-footnote font-medium text-text-2">
             {list.is_private && (
-              <span className="flex items-center gap-1 rounded-md bg-surface px-1.5 py-px text-[0.6875rem] font-bold">
+              <span className="flex items-center gap-1 rounded-sm bg-sunken px-2 py-px text-xs font-semibold">
                 <Lock className="size-3" aria-hidden /> {t("trip.onlyMe")}
               </span>
             )}
@@ -240,7 +240,7 @@ export function ShoppingPage() {
         {!list.is_private && (
           <span className="flex shrink-0" aria-label={t("trip.sharedAria", { name: household.name })}>
             {memberIds.slice(0, 3).map((id, i) => (
-              <span key={id} className={cx(i > 0 && "-ml-2 rounded-lg ring-2 ring-bg")}>
+              <span key={id} className={cx(i > 0 && "-ml-2 rounded-full ring-2 ring-bg")}>
                 <Avatar name={names?.get(id) ?? "?"} me={id === me} />
               </span>
             ))}
@@ -250,30 +250,30 @@ export function ShoppingPage() {
           type="button"
           onClick={() => setSettingsOpen(true)}
           aria-label={t("trip.edit")}
-          className="ml-1 grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-elevated active:bg-pressed"
+          className="ml-1 grid size-11 shrink-0 place-items-center rounded-xl bg-surface shadow-card active:bg-pressed"
         >
           <MoreHorizontal className="size-5" aria-hidden />
         </button>
       </header>
 
       {list.completed_at && !active && (
-        <div className="mx-4 mb-3 flex items-center gap-3 rounded-2xl border border-line bg-elevated p-3 animate-rise">
-          <span className="grid size-9 shrink-0 place-items-center rounded-[0.6875rem] bg-success-soft text-success" aria-hidden>
-            <Check className="size-[1.125rem]" strokeWidth={2.8} />
+        <div className="mx-4 mb-3 flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-card animate-rise">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-success-soft text-success" aria-hidden>
+            <Check className="size-[1.125rem]" strokeWidth={2.4} />
           </span>
-          <p className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-text-2">
-            <b className="block text-[0.9375rem] text-text">{t("trip.boughtOn", { day: dayLabel(list.completed_at) })}</b>
+          <p className="min-w-0 flex-1 text-footnote text-text-2">
+            <b className="block text-callout font-strong text-text">{t("trip.boughtOn", { day: dayLabel(list.completed_at) })}</b>
             {t("trip.reopenHint")}
           </p>
           {list.receipt_state === "ATTACHED" && list.receipt_id ? (
-            <button type="button" onClick={() => navigate(`/receipts/${list.receipt_id}`)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-[0.625rem] bg-success-soft px-2.5 text-[0.8125rem] font-bold text-success">
+            <button type="button" onClick={() => navigate(`/receipts/${list.receipt_id}`)} className="flex h-11 shrink-0 items-center gap-2 rounded-lg bg-success-soft px-3 text-footnote font-strong text-success">
               <Receipt className="size-4" aria-hidden /> {t("trip.receipt")}
             </button>
           ) : (
             <button
               type="button"
               onClick={() => navigate(`/receipts?pridat=1&nakup=${list.id}`)}
-              className={cx("flex h-9 shrink-0 items-center gap-1.5 rounded-[0.625rem] px-2.5 text-[0.8125rem] font-bold", list.receipt_state === "LATER" ? "bg-accent-soft text-accent-text" : "border border-line")}
+              className={cx("flex h-11 shrink-0 items-center gap-2 rounded-lg px-3 text-footnote font-strong", list.receipt_state === "LATER" ? "bg-warning-soft text-warning" : "bg-sunken text-text")}
             >
               <Camera className="size-4" aria-hidden /> {list.receipt_state === "LATER" ? t("trip.completeReceipt") : t("trip.addReceipt")}
             </button>
@@ -281,15 +281,15 @@ export function ShoppingPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-2.5 px-4">
+      <div className="flex flex-col gap-3 px-4">
         {iAmShopping && interrupted && active && (
-          <button type="button" onClick={resume} className="flex items-center gap-3 rounded-2xl bg-primary p-2.5 pl-3 text-left text-on-primary animate-rise">
-            <span className="grid size-[2.375rem] shrink-0 place-items-center rounded-[0.6875rem] bg-accent text-on-accent">
+          <button type="button" onClick={resume} className="flex items-center gap-3 rounded-2xl bg-primary p-3 text-left text-on-primary shadow-card animate-rise active:bg-primary-pressed">
+            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-on-primary/15">
               <Play className="size-[1.125rem]" fill="currentColor" aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[0.9375rem] font-bold">{t("shop.inProgress.title")}</span>
-              <span className="block text-[0.8125rem] opacity-70">
+              <span className="block text-callout font-strong">{t("shop.inProgress.title")}</span>
+              <span className="block text-footnote opacity-80">
                 {t("shop.inProgress.text", { done: doneInSession, left: open.length })}
               </span>
             </span>
@@ -297,7 +297,7 @@ export function ShoppingPage() {
           </button>
         )}
         {someoneElse && (
-          <div role="status" className="flex items-center gap-3 rounded-2xl border border-person/30 bg-person-soft p-3 text-sm">
+          <div role="status" className="flex items-center gap-3 rounded-2xl bg-person-soft p-3 text-sm">
             <Avatar name={shopperName ?? "?"} />
             <p className="min-w-0 text-text-2">
               <b className="text-text">{t("shop.shopperNow", { name: shopperName ?? "" })}</b>
@@ -311,19 +311,19 @@ export function ShoppingPage() {
       </div>
 
       {someoneElse && myRequests.length > 0 && (
-        <section className="mt-5 px-4">
+        <section className="mt-6 px-4">
           <SectionTitle>{t("shop.yourRequests")}</SectionTitle>
-          <div className="divide-y divide-dashed divide-line overflow-hidden rounded-2xl border border-line bg-elevated">
+          <div className="divide-y divide-line overflow-hidden rounded-2xl bg-surface shadow-card">
             {myRequests.map((r) => (
-              <div key={r.id} className="px-3.5 py-2.5">
+              <div key={r.id} className="px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="min-w-0 truncate font-semibold">
+                  <span className="min-w-0 truncate font-strong">
                     {r.name} <span className="font-normal text-text-2">· {qtyLabel(r.quantity, r.unit)}</span>
                   </span>
                   <RequestStatus status={r.status} />
                 </div>
                 {r.response_note && (
-                  <p className="mt-1.5 inline-block rounded-xl rounded-bl-sm bg-person-soft px-2.5 py-1.5 text-[0.8125rem] text-text">
+                  <p className="mt-2 inline-block rounded-xl rounded-bl-sm bg-person-soft px-3 py-2 text-footnote text-text">
                     {shopperName}: {r.response_note}
                   </p>
                 )}
@@ -334,12 +334,12 @@ export function ShoppingPage() {
       )}
 
       {iAmShopping && interrupted && pendingForMe.length > 0 && (
-        <section className="mt-5 px-4">
-          <SectionTitle className="text-accent-text">
-            <span className="size-2 rounded-full bg-accent [animation:bh-pulse_1.6s_ease_infinite]" aria-hidden />
+        <section className="mt-6 px-4">
+          <SectionTitle className="text-person">
+            <span className="size-2 rounded-full bg-person-solid [animation:bh-pulse_1.6s_ease_infinite]" aria-hidden />
             {t("shop.waitingApproval")}
           </SectionTitle>
-          <div className="divide-y divide-dashed divide-line overflow-hidden rounded-2xl border border-line bg-elevated">
+          <div className="divide-y divide-line overflow-hidden rounded-2xl bg-surface shadow-card">
             {pendingForMe.map((r) => (
               <RequestCard key={r.id} request={r} listId={listId} who={(r.requested_by && names?.get(r.requested_by)) || t("household.fallbackName")} />
             ))}
@@ -347,7 +347,7 @@ export function ShoppingPage() {
         </section>
       )}
 
-      <section className="mt-5 px-4">
+      <section className="mt-6 px-4">
         <SectionTitle>{t("shop.quickAdd")}</SectionTitle>
         <QuickTiles
           householdId={household.id}
@@ -357,10 +357,10 @@ export function ShoppingPage() {
         />
       </section>
 
-      <section className="mt-5 px-4">
+      <section className="mt-6 px-4">
         <SectionTitle
           trailing={
-            <span key={open.length} className="grid h-[1.375rem] min-w-[1.375rem] place-items-center rounded-[0.4375rem] bg-surface px-1.5 text-xs font-bold text-text [animation:bh-pop_.45s_ease]">
+            <span key={open.length} className="grid h-5 min-w-5 place-items-center rounded-full bg-sunken px-2 text-xs font-semibold normal-case text-text [animation:bh-pop_.2s_ease]">
               {open.length}
             </span>
           }
@@ -372,7 +372,7 @@ export function ShoppingPage() {
         ) : items.isError ? (
           <ErrorState error={errorMessage(items.error)} onRetry={() => items.refetch()} />
         ) : open.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-line-strong px-5 py-6 text-center text-sm text-text-2">
+          <div className="rounded-2xl bg-sunken px-6 py-6 text-center text-sm text-text-2">
             {t("shop.emptyList")}
           </div>
         ) : (
@@ -385,14 +385,14 @@ export function ShoppingPage() {
               type="button"
               onClick={() => setShowPurchased((v) => !v)}
               aria-expanded={showPurchased}
-              className="flex min-h-10 items-center gap-1 px-0.5 text-[0.8125rem] font-bold text-text-2"
+              className="flex min-h-11 items-center gap-1 px-1 text-footnote font-strong text-text-2"
             >
               {t("shop.recentlyBought", { n: recent.length })}
               <ChevronDown className={cx("size-4 transition-transform", showPurchased && "rotate-180")} aria-hidden />
             </button>
             {showPurchased && (
               <>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {recent.map((item) => (
                     <button
                       key={item.id}
@@ -406,13 +406,13 @@ export function ShoppingPage() {
                           },
                         )
                       }
-                      className="h-9 rounded-[0.625rem] border border-dashed border-line-strong px-2.5 text-[0.8125rem] font-medium text-text-2 line-through decoration-text-3"
+                      className="h-11 rounded-lg bg-sunken px-3 text-footnote font-medium text-text-2 line-through decoration-text-3 active:bg-pressed"
                     >
                       {item.name}
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 px-0.5 text-xs text-text-3">{t("shop.tapToRestore")}</p>
+                <p className="mt-2 px-1 text-xs text-text-3">{t("shop.tapToRestore")}</p>
               </>
             )}
           </div>
@@ -421,9 +421,9 @@ export function ShoppingPage() {
 
       {/* Hlavná akcia obrazovky (rumelka) */}
       {(open.length > 0 || iAmShopping) && (
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-2xl border-t border-line bg-bg px-4 pb-3 pt-2.5">
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-2xl bg-bg/90 px-4 pb-3 pt-3 backdrop-blur-md">
           {someoneElse ? (
-            <div className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-line bg-elevated text-sm font-semibold text-text-2">
+            <div className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-surface text-sm font-strong text-text-2 shadow-card">
               <Avatar name={shopperName ?? "?"} size="sm" /> {t("shop.shopperNow", { name: shopperName ?? "" })}
             </div>
           ) : (
@@ -431,12 +431,12 @@ export function ShoppingPage() {
               type="button"
               onClick={startShopping}
               disabled={start.isPending}
-              className="flex h-14 w-full items-center justify-between rounded-2xl bg-accent pl-[1.125rem] pr-2 text-base font-bold text-on-accent transition-transform active:scale-[0.98] disabled:opacity-60"
+              className="flex h-14 w-full items-center justify-between rounded-2xl bg-primary pl-4 pr-2 text-base font-strong text-on-primary shadow-raised transition-[transform,background-color] active:scale-[0.98] active:bg-primary-pressed disabled:opacity-60"
             >
               {iAmShopping ? t("shop.continue") : t("shop.start")}
-              <span className="flex h-10 items-center gap-2 rounded-[0.6875rem] bg-black/15 px-3 text-sm font-semibold">
+              <span className="flex h-10 items-center gap-2 rounded-lg bg-on-primary/15 px-3 text-sm font-strong">
                 {tn("shop.itemCount", open.length)}
-                <ArrowRight className="size-4" strokeWidth={2.4} aria-hidden />
+                <ArrowRight className="size-4" strokeWidth={2.2} aria-hidden />
               </span>
             </button>
           )}
@@ -462,11 +462,11 @@ export function ShoppingPage() {
 
 function RequestStatus({ status }: { status: string }) {
   const map: Record<string, [Key, string]> = {
-    PENDING: ["request.status.PENDING", "bg-warning-soft text-warning"],
+    PENDING: ["request.status.PENDING", "bg-person-soft text-person"],
     ACCEPTED: ["request.status.ACCEPTED", "bg-success-soft text-success"],
     REJECTED: ["request.status.REJECTED", "bg-danger-soft text-danger"],
-    EXPIRED: ["request.status.EXPIRED", "bg-surface text-text-3"],
+    EXPIRED: ["request.status.EXPIRED", "bg-sunken text-text-3"],
   };
   const [label, cls] = map[status] ?? [null, ""];
-  return <span className={cx("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold", cls)}>{label ? t(label) : "?"}</span>;
+  return <span className={cx("shrink-0 rounded-full px-3 py-1 text-xs font-strong", cls)}>{label ? t(label) : "?"}</span>;
 }

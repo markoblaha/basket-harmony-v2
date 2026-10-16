@@ -29,8 +29,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             role={t.tone === "error" ? "alert" : "status"}
             className={cx(
-              "max-w-md animate-rise rounded-[0.875rem] px-4 py-3 text-sm font-semibold shadow-lg",
-              t.tone === "error" ? "bg-danger text-on-primary" : "bg-primary text-on-primary",
+              "max-w-md animate-rise rounded-lg px-4 py-3 text-sm font-strong shadow-raised",
+              t.tone === "error" ? "bg-danger-solid text-on-danger-solid" : "bg-inverse text-on-inverse",
             )}
           >
             {t.text}

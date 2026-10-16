@@ -5,7 +5,7 @@
  */
 import { t } from "@/i18n";
 
-export type Area = { id: string; name: string; emoji: string; hue: number; categories: string[] };
+export type Area = { id: string; name: string; hue: number; categories: string[] };
 
 export const AREAS: Area[] = [
   {
@@ -13,7 +13,6 @@ export const AREAS: Area[] = [
     get name() {
       return t("area.food");
     },
-    emoji: "🍽️",
     hue: 140,
     categories: [
       "groceries", "produce", "bakery", "dairy_eggs", "deli_chilled", "meat_fish", "frozen", "pantry",
@@ -22,37 +21,37 @@ export const AREAS: Area[] = [
   },
   { id: "alcohol", get name() {
       return t("area.alcohol");
-    }, emoji: "🍷", hue: 350, categories: ["alcohol"] },
+    }, hue: 350, categories: ["alcohol"] },
   { id: "household", get name() {
       return t("area.household");
-    }, emoji: "🧴", hue: 290, categories: ["household_cleaning", "personal_care", "home", "pet"] },
+    }, hue: 290, categories: ["household_cleaning", "personal_care", "home", "pet"] },
   { id: "kids", get name() {
       return t("area.kids");
-    }, emoji: "🧸", hue: 310, categories: ["baby", "toys_hobby"] },
+    }, hue: 310, categories: ["baby", "toys_hobby"] },
   { id: "car", get name() {
       return t("area.car");
-    }, emoji: "⛽", hue: 275, categories: ["fuel", "transport"] },
+    }, hue: 275, categories: ["fuel", "transport"] },
   { id: "housing", get name() {
       return t("area.housing");
-    }, emoji: "🏠", hue: 25, categories: ["housing"] },
+    }, hue: 25, categories: ["housing"] },
   { id: "telecom", get name() {
       return t("area.telecom");
-    }, emoji: "📱", hue: 200, categories: ["telecom"] },
+    }, hue: 200, categories: ["telecom"] },
   { id: "health", get name() {
       return t("area.health");
-    }, emoji: "💊", hue: 0, categories: ["health"] },
+    }, hue: 0, categories: ["health"] },
   { id: "clothing", get name() {
       return t("area.clothing");
-    }, emoji: "👕", hue: 260, categories: ["clothing"] },
+    }, hue: 260, categories: ["clothing"] },
   { id: "leisure", get name() {
       return t("area.leisure");
-    }, emoji: "🎟️", hue: 60, categories: ["leisure", "electronics"] },
+    }, hue: 60, categories: ["leisure", "electronics"] },
   { id: "finance", get name() {
       return t("area.finance");
-    }, emoji: "🛡️", hue: 220, categories: ["insurance", "fees"] },
+    }, hue: 220, categories: ["insurance", "fees"] },
   { id: "other", get name() {
       return t("area.other");
-    }, emoji: "📦", hue: 280, categories: ["other", "deposit", "_unassigned", "_receipt_discount"] },
+    }, hue: 280, categories: ["other", "deposit", "_unassigned", "_receipt_discount"] },
 ];
 
 const BY_CATEGORY = new Map(AREAS.flatMap((a) => a.categories.map((c) => [c, a] as const)));

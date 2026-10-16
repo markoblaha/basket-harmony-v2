@@ -8,7 +8,7 @@ import { normalizeName } from "@/lib/categories";
 import { formatMoney, formatShortDate, readErrorMessage } from "@/features/receipts/format";
 import { t, tn, type Key } from "@/i18n";
 import { useMergeProducts, useProducts, type ProductSummary } from "./api";
-import { Card, EmojiBadge, categoryInfo, percent, sizeLabel, storeLabel, unitLabel } from "./bits";
+import { Card, CategoryBadge, categoryInfo, percent, sizeLabel, storeLabel, unitLabel } from "./bits";
 import { usePeriod } from "./period";
 
 type Sort = "frequent" | "spent" | "change" | "recent";
@@ -82,7 +82,7 @@ export function ProductsTab() {
             }}
             placeholder={t("pt.searchPlaceholder")}
             aria-label={t("pt.searchAria")}
-            className="min-h-11 w-full rounded-full border border-line-strong/40 bg-elevated pl-10 pr-4 text-base outline-none placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/25"
+            className="min-h-12 w-full rounded-[var(--radius-control)] border border-transparent bg-sunken pl-10 pr-4 text-base outline-none transition-[border-color,box-shadow,background-color] placeholder:text-text-3 focus:border-primary focus:bg-elevated focus:ring-3 focus:ring-primary/20"
           />
         </div>
         <div className="mt-2 flex gap-2 overflow-x-auto pb-1" role="group" aria-label={t("pt.sortAria")}>
@@ -93,8 +93,8 @@ export function ProductsTab() {
               aria-pressed={sort === s.id}
               onClick={() => setSort(s.id)}
               className={cx(
-                "min-h-9 shrink-0 rounded-full px-3.5 text-sm font-medium",
-                sort === s.id ? "bg-primary text-on-primary" : "bg-surface text-text-2 active:bg-pressed",
+                "min-h-11 shrink-0 rounded-full px-4 text-sm font-strong transition-colors duration-[120ms]",
+                sort === s.id ? "bg-primary-soft text-primary shadow-[inset_0_0_0_1.5px_var(--primary)]" : "bg-sunken text-text-2 active:bg-pressed",
               )}
             >
               {t(s.label)}
@@ -157,7 +157,7 @@ export function ProductsTab() {
       {selecting && (
         <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30">
           <div className="pointer-events-auto mx-auto max-w-2xl px-4 pb-3">
-            <Button block size="lg" className="shadow-lg" disabled={picked.length < 2} loading={merge.isPending} onClick={doMerge}>
+            <Button block size="lg" className="shadow-raised" disabled={picked.length < 2} loading={merge.isPending} onClick={doMerge}>
               <Merge className="size-5" aria-hidden /> {picked.length < 2 ? t("pt.pickTwo") : tn("pt.mergeN", picked.length)}
             </Button>
           </div>
@@ -186,9 +186,9 @@ function ProductRow({
   const meta = [p.brand, sizeLabel(p.size_value, p.size_unit)].filter(Boolean).join(" · ");
   const body = (
     <>
-      <EmojiBadge emoji={info.emoji} color={info.color} />
+      <CategoryBadge id={info.id} color={info.color} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{p.name}</p>
+        <p className="truncate font-strong">{p.name}</p>
         <p className="truncate text-xs text-text-3">
           {meta ? `${meta} · ` : ""}
           {t("pt.rowLine", { count: p.purchases, date: formatShortDate(p.last_date), store: storeLabel(p.last_store) })}
@@ -223,13 +223,13 @@ function ProductRow({
         type="button"
         onClick={onToggle}
         aria-pressed={order >= 0}
-        className={cx("flex min-h-16 w-full items-center gap-3 px-4 py-2.5 text-left active:bg-pressed", order >= 0 && "bg-primary-soft")}
+        className={cx("flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left active:bg-pressed", order >= 0 && "bg-primary-soft")}
       >
         {body}
         <span
           aria-hidden
           className={cx(
-            "flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold",
+            "flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-sm font-semibold",
             order >= 0 ? "border-primary bg-primary text-on-primary" : "border-line-strong/60 text-transparent",
           )}
         >
@@ -239,7 +239,7 @@ function ProductRow({
     );
   }
   return (
-    <Link to={`/analytics/product/${p.id}${search}`} className="flex min-h-16 items-center gap-3 px-4 py-2.5 active:bg-pressed">
+    <Link to={`/analytics/product/${p.id}${search}`} className="flex min-h-16 items-center gap-3 px-4 py-3 active:bg-pressed">
       {body}
       <ChevronRight className="size-4 shrink-0 text-text-3" aria-hidden />
     </Link>

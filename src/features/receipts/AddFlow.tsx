@@ -16,11 +16,11 @@ function MenuButton({ icon, title, hint, onClick }: { icon: ReactNode; title: st
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-16 w-full items-center gap-4 rounded-[var(--radius-surface)] bg-surface px-4 py-3 text-left active:bg-pressed"
+      className="flex min-h-16 w-full items-center gap-4 rounded-[var(--radius-surface)] bg-surface px-4 py-3 text-left shadow-card active:bg-pressed"
     >
       <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">{icon}</span>
       <span className="min-w-0">
-        <span className="block font-semibold">{title}</span>
+        <span className="block font-strong">{title}</span>
         <span className="block text-sm text-text-2">{hint}</span>
       </span>
     </button>
@@ -70,7 +70,7 @@ export function AddMenu({
           hint={t("add.fileHint")}
           onClick={pick(onFile)}
         />
-        <p className="mt-2 px-1 text-xs font-semibold uppercase tracking-wide text-text-3">{t("add.noReceipt")}</p>
+        <p className="mt-2 px-1 text-overline font-semibold uppercase text-text-2">{t("add.noReceipt")}</p>
         <MenuButton
           icon={<Landmark className="size-5" aria-hidden />}
           title={t("add.statement")}
@@ -127,11 +127,11 @@ export function PendingSheet({
       onClick={() => onMode(value)}
       aria-pressed={mode === value}
       className={cx(
-        "rounded-[var(--radius-control)] border-2 p-3 text-left",
-        mode === value ? "border-primary bg-primary-soft" : "border-line-strong/40 bg-surface",
+        "rounded-[var(--radius-control)] p-3 text-left transition-colors duration-[120ms]",
+        mode === value ? "bg-primary-soft shadow-[inset_0_0_0_1.5px_var(--primary)]" : "bg-sunken",
       )}
     >
-      <p className="font-semibold">{title}</p>
+      <p className="font-strong">{title}</p>
       <p className="text-sm text-text-2">{hint}</p>
     </button>
   );
@@ -154,16 +154,16 @@ export function PendingSheet({
         <ul className="flex gap-2 overflow-x-auto pb-1 pt-2" aria-label={t("add.selectedFiles")}>
           {list.map((f, i) => (
             <li key={`${f.name}-${i}`} className="relative shrink-0">
-              <div className="flex h-28 w-20 items-center justify-center overflow-hidden rounded-md bg-surface text-text-3">
+              <div className="flex h-28 w-20 items-center justify-center overflow-hidden rounded-sm bg-sunken text-text-3">
                 {urls[i] ? <img src={urls[i]!} alt={f.name} className="size-full object-cover object-top" /> : <FileText className="size-6" aria-hidden />}
               </div>
               {one && (
-                <span className="absolute left-1 top-1 rounded-full bg-black/60 px-1.5 text-xs font-bold text-white">{i + 1}</span>
+                <span className="absolute left-1 top-1 rounded-full bg-inverse/85 px-2 text-xs font-strong text-on-inverse">{i + 1}</span>
               )}
               <IconButton
                 label={t("add.removeFile", { name: f.name })}
                 onClick={() => onRemove(i)}
-                className="absolute -right-2 -top-2 size-7 bg-elevated shadow"
+                className="absolute -right-2 -top-2 size-7 bg-surface shadow"
               >
                 <X className="size-4" />
               </IconButton>
@@ -230,7 +230,7 @@ function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; hous
           <TextField label={t("manual.amount")} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
           <TextField label={t("manual.date")} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <label htmlFor="manual-category" className="text-sm font-medium text-text-2">
             {t("edit.category")}
           </label>
@@ -238,11 +238,11 @@ function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; hous
             id="manual-category"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+            className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-3 focus:ring-primary/20"
           >
             {CATEGORIES.filter((c) => c.id !== "deposit").map((c) => (
               <option key={c.id} value={c.id}>
-                {c.emoji} {c.name}
+                {c.name}
               </option>
             ))}
           </select>

@@ -53,7 +53,7 @@ export function Composer({
   const empty = !text.trim();
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-2 rounded-[1.125rem] border border-line bg-elevated p-2.5">
+    <form onSubmit={submit} className="flex flex-col gap-2 rounded-2xl bg-surface p-3 shadow-card">
       <div className="flex gap-2">
         <label className="min-w-0 flex-1">
           <span className="sr-only">{t("composer.label")}</span>
@@ -65,18 +65,18 @@ export function Composer({
             autoComplete="off"
             enterKeyHint="done"
             maxLength={120}
-            className="h-[3.125rem] w-full rounded-[var(--radius-control)] border border-line bg-bg px-3.5 text-base font-medium outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-primary focus:ring-3 focus:ring-primary/10"
+            className="h-12 w-full rounded-[var(--radius-control)] border border-transparent bg-sunken px-4 text-base outline-none transition-[border-color,box-shadow,background-color] placeholder:text-text-3 focus:border-primary focus:bg-elevated focus:ring-3 focus:ring-primary/20"
           />
         </label>
-        <div className="flex h-[3.125rem] shrink-0 items-center rounded-[var(--radius-control)] border border-line bg-bg">
+        <div className="flex h-12 shrink-0 items-center rounded-[var(--radius-control)] bg-sunken">
           <StepButton label={t("composer.fewer")} onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1}>
-            <Minus className="size-4" strokeWidth={2.6} />
+            <Minus className="size-4" strokeWidth={2.2} />
           </StepButton>
-          <span className="min-w-6 text-center text-base font-bold" aria-live="polite" aria-label={qtyLabel(qty, null)}>
+          <span className="min-w-6 text-center text-base font-semibold" aria-live="polite" aria-label={qtyLabel(qty, null)}>
             {qty}
           </span>
           <StepButton label={t("composer.more")} onClick={() => setQty((q) => Math.min(99, q + 1))}>
-            <Plus className="size-4" strokeWidth={2.6} />
+            <Plus className="size-4" strokeWidth={2.2} />
           </StepButton>
         </div>
       </div>
@@ -90,13 +90,13 @@ export function Composer({
           autoComplete="off"
           enterKeyHint="done"
           maxLength={300}
-          className="h-[2.625rem] w-full rounded-[var(--radius-control)] border border-dashed border-line bg-transparent pl-10 pr-3.5 text-sm outline-none transition-colors placeholder:text-text-3 focus:border-solid focus:border-primary"
+          className="h-11 w-full rounded-[var(--radius-control)] border border-transparent bg-transparent pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-text-3 focus:border-primary focus:bg-elevated"
         />
       </label>
       <button
         type="submit"
         disabled={empty}
-        className="h-[3.125rem] rounded-[var(--radius-control)] bg-primary text-[0.9375rem] font-bold text-on-primary transition-[transform,opacity] active:scale-[0.98] disabled:opacity-30 disabled:active:scale-100"
+        className="h-12 rounded-[var(--radius-control)] bg-primary text-callout font-strong text-on-primary transition-[transform,opacity,background-color] active:scale-[0.98] active:bg-primary-pressed disabled:bg-sunken disabled:text-text-3 disabled:active:scale-100"
       >
         {requestMode ? t("composer.submitRequest") : qty > 1 ? t("composer.submitMany", { n: qty }) : t("composer.submit")}
       </button>
@@ -111,7 +111,7 @@ function StepButton({ label, onClick, disabled, children }: { label: string; onC
       aria-label={label}
       onClick={onClick}
       disabled={disabled}
-      className={cx("grid h-12 w-[2.625rem] place-items-center rounded-[0.6875rem] transition-transform active:scale-[0.85] active:bg-pressed disabled:opacity-35")}
+      className={cx("grid h-12 w-11 place-items-center rounded-lg transition-transform active:scale-90 active:bg-pressed disabled:opacity-35")}
     >
       {children}
     </button>

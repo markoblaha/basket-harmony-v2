@@ -13,7 +13,7 @@ export type ResolvedTheme = "light" | "dark";
 
 const STORAGE_KEY = "bh.theme";
 /** Farba lišty prehliadača (zhodná s --bg v styles.css). */
-export const THEME_BG: Record<ResolvedTheme, string> = { light: "#f1ede5", dark: "#121110" };
+export const THEME_BG: Record<ResolvedTheme, string> = { light: "#dfe6df", dark: "#0f1c1d" };
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 

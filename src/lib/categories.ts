@@ -10,52 +10,51 @@ import { t } from "@/i18n";
  * texty sú v src/i18n/sk/categories.ts a src/i18n/en/categories.ts pod kľúčom `category.<id>`.
  */
 const DEFINITIONS = [
-  ["groceries", "🧺", 120],
-  ["produce", "🥦", 140],
-  ["bakery", "🥖", 70],
-  ["dairy_eggs", "🥛", 230],
-  ["deli_chilled", "🧀", 35],
-  ["meat_fish", "🥩", 15],
-  ["frozen", "🧊", 210],
-  ["pantry", "🥫", 55],
-  ["breakfast", "☕", 45],
-  ["snacks_sweets", "🍫", 330],
-  ["beverages", "🧃", 190],
-  ["alcohol", "🍷", 350],
-  ["household_cleaning", "🧽", 170],
-  ["personal_care", "🧴", 290],
-  ["health", "💊", 0],
-  ["baby", "🍼", 310],
-  ["pet", "🐾", 90],
-  ["clothing", "👕", 260],
-  ["home", "🛋️", 25],
-  ["toys_hobby", "🧸", 100],
-  ["electronics", "🔌", 245],
-  ["fuel", "⛽", 275],
-  ["transport", "🚗", 230],
-  ["dining", "🍽️", 60],
-  ["leisure", "🎟️", 80],
-  ["fees", "📦", 200],
-  ["deposit", "♻️", 150],
-  ["housing", "🏠", 25],
-  ["telecom", "📱", 200],
-  ["insurance", "🛡️", 220],
-  ["other", "🛒", 280],
+  ["groceries", 120],
+  ["produce", 140],
+  ["bakery", 70],
+  ["dairy_eggs", 230],
+  ["deli_chilled", 35],
+  ["meat_fish", 15],
+  ["frozen", 210],
+  ["pantry", 55],
+  ["breakfast", 45],
+  ["snacks_sweets", 330],
+  ["beverages", 190],
+  ["alcohol", 350],
+  ["household_cleaning", 170],
+  ["personal_care", 290],
+  ["health", 0],
+  ["baby", 310],
+  ["pet", 90],
+  ["clothing", 260],
+  ["home", 25],
+  ["toys_hobby", 100],
+  ["electronics", 245],
+  ["fuel", 275],
+  ["transport", 230],
+  ["dining", 60],
+  ["leisure", 80],
+  ["fees", 200],
+  ["deposit", 150],
+  ["housing", 25],
+  ["telecom", 200],
+  ["insurance", 220],
+  ["other", 280],
 ] as const;
 
 export type CategoryId = (typeof DEFINITIONS)[number][0];
 
 export type CategoryInfo = {
   readonly id: CategoryId;
-  readonly emoji: string;
+  /** Odtieň farby kategórie v grafoch (OKLCH). */
   readonly hue: number;
   /** Názov v aktuálnom jazyku. */
   readonly name: string;
 };
 
-export const CATEGORIES: readonly CategoryInfo[] = DEFINITIONS.map(([id, emoji, hue]) => ({
+export const CATEGORIES: readonly CategoryInfo[] = DEFINITIONS.map(([id, hue]) => ({
   id,
-  emoji,
   hue,
   get name() {
     return t(`category.${id}`);

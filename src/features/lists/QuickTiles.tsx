@@ -170,7 +170,7 @@ export function QuickTiles({
 
   return (
     <div>
-      <div role="tablist" aria-label={t("shop.quickAdd")} className="grid grid-cols-2 rounded-[var(--radius-control)] bg-surface p-[3px]">
+      <div role="tablist" aria-label={t("shop.quickAdd")} className="grid grid-cols-2 rounded-[var(--radius-control)] bg-sunken p-[3px]">
         {(
           [
             ["freq", t("tiles.frequent")],
@@ -184,8 +184,8 @@ export function QuickTiles({
             aria-selected={tab === id}
             onClick={() => setTab(id)}
             className={cx(
-              "h-9 rounded-[0.625rem] text-sm font-semibold transition-colors",
-              tab === id ? "bg-elevated text-text shadow-[0_1px_2px_rgb(0_0_0/0.12)]" : "text-text-2",
+              "h-10 rounded-lg text-sm font-strong transition-colors duration-200",
+              tab === id ? "bg-elevated text-text shadow-card" : "text-text-2",
             )}
           >
             {label}
@@ -193,13 +193,13 @@ export function QuickTiles({
         ))}
       </div>
 
-      <div className="mt-2.5 grid grid-cols-4 gap-1.5">
+      <div className="mt-3 grid grid-cols-4 gap-2">
         {tab === "freq"
           ? slots.map((name, i) => {
               const p = pending[name];
               const fav = favByKey.has(normalizeName(name));
               return (
-                <div key={`${i}-${slotKeys[i] ?? 0}`} className={cx("relative", (slotKeys[i] ?? 0) > 0 && "[animation:bh-tile-in_.5s_cubic-bezier(.2,.9,.3,1.1)]")}>
+                <div key={`${i}-${slotKeys[i] ?? 0}`} className={cx("relative", (slotKeys[i] ?? 0) > 0 && "[animation:bh-tile-in_.2s_ease-out]")}>
                   <Tile label={name} pending={p} onTap={() => tap(name)} aria={p ? t("tiles.addAriaPending", { name, qty: qtyLabel(p.n, null) }) : t("tiles.addAria", { name })} />
                   <button
                     type="button"
@@ -207,11 +207,11 @@ export function QuickTiles({
                     aria-label={fav ? t("tiles.unstar", { name }) : t("tiles.star", { name })}
                     aria-pressed={fav}
                     className={cx(
-                      "absolute right-0 top-0 z-[2] grid size-8 place-items-center rounded-bl-[0.625rem] rounded-tr-[0.8125rem]",
-                      fav ? "text-accent-text" : p ? "text-on-primary/50" : "text-line-strong",
+                      "absolute right-0 top-0 z-[2] grid size-8 place-items-center rounded-bl-lg rounded-tr-lg",
+                      fav ? "text-primary" : p ? "text-primary/60" : "text-line-strong",
                     )}
                   >
-                    <Star key={String(fav)} className={cx("size-[0.9375rem]", "[animation:bh-tile-in_.45s_cubic-bezier(.2,.9,.3,1.6)]")} fill={fav ? "currentColor" : "none"} strokeWidth={2} aria-hidden />
+                    <Star key={String(fav)} className={cx("size-[0.9375rem]", "[animation:bh-tile-in_.2s_ease-out]")} fill={fav ? "currentColor" : "none"} strokeWidth={2} aria-hidden />
                   </button>
                 </div>
               );
@@ -238,7 +238,7 @@ export function QuickTiles({
                   key="new"
                   type="button"
                   onClick={() => setEditor({ tile: null })}
-                  className="flex h-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-[0.8125rem] border border-dashed border-line-strong text-[0.6875rem] font-bold text-accent-text active:scale-95"
+                  className="flex h-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-lg bg-sunken text-xs font-strong text-primary active:scale-95"
                 >
                   <Plus className="size-[1.125rem]" strokeWidth={2.4} aria-hidden />
                   {t("tiles.new")}
@@ -246,7 +246,7 @@ export function QuickTiles({
               ),
             ]}
       </div>
-      <p className="mt-2 px-0.5 text-xs leading-snug text-text-2">
+      <p className="mt-2 px-1 text-xs text-text-2">
         {tab === "freq"
           ? t("tiles.hintFrequent")
           : favs.length
@@ -346,27 +346,27 @@ function Tile({
       onPointerCancel={up}
       onContextMenu={(e) => onLongPress && e.preventDefault()}
       className={cx(
-        "relative flex h-[3.75rem] w-full select-none items-end overflow-hidden rounded-[0.8125rem] border px-2 pb-2 pt-1.5 text-left transition-[transform,background-color,color,border-color] duration-200 [-webkit-touch-callout:none] active:scale-[0.94]",
-        pending ? "border-primary bg-primary text-on-primary" : "border-line bg-elevated text-text",
-        holding && "scale-95 border-primary",
+        "relative flex h-[3.75rem] w-full select-none items-end overflow-hidden rounded-lg px-2 pb-2 pt-2 text-left shadow-card transition-[transform,background-color,color,box-shadow] duration-200 [-webkit-touch-callout:none] active:scale-[0.96]",
+        pending ? "bg-primary-soft text-text shadow-[inset_0_0_0_1.5px_var(--primary)]" : "bg-surface text-text",
+        holding && "scale-95 shadow-[inset_0_0_0_1.5px_var(--primary)]",
       )}
     >
       {holding && <span aria-hidden className="absolute inset-0 origin-left bg-primary/10 [animation:bh-hold_.48s_linear_forwards]" />}
-      <span className={cx("line-clamp-2 pr-1 font-semibold leading-[1.15]", label.length > 14 ? "text-[0.71875rem]" : "text-[0.78125rem]")}>{label}</span>
+      <span className={cx("line-clamp-2 pr-1 font-strong leading-[1.15]", label.length > 14 ? "text-xs" : "text-footnote")}>{label}</span>
       {pending && (
         <>
           <span
             key={String(pending.flip)}
-            className="absolute left-1.5 top-1.5 grid h-5 min-w-5 place-items-center rounded-md bg-accent px-1.5 text-[0.71875rem] font-bold text-on-accent [animation:bh-pop_.3s_ease]"
+            className="absolute left-2 top-2 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-2 text-xs font-semibold text-on-primary [animation:bh-pop_.2s_ease]"
           >
             +{pending.n}
           </span>
-          <span key={`bar-${pending.flip}`} aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] origin-left bg-accent [animation:bh-shrink_1.4s_linear_forwards]" />
+          <span key={`bar-${pending.flip}`} aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] origin-left bg-primary [animation:bh-shrink_1.4s_linear_forwards]" />
         </>
       )}
       {badge && (
-        <span className="absolute left-2 top-1.5 flex items-center gap-1 text-[0.65625rem] font-bold text-success">
-          <span className="size-1.5 rounded-full bg-success" aria-hidden />
+        <span className="absolute left-2 top-2 flex items-center gap-1 text-xs font-strong text-success">
+          <span className="size-1.5 rounded-full bg-success-solid" aria-hidden />
           {badge}
         </span>
       )}
@@ -402,10 +402,10 @@ function TileEditor({
     <Sheet open onClose={onClose} title={tile ? t("tiles.editTitle") : t("tiles.newTitle")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-[3.75rem] w-24 shrink-0 items-end overflow-hidden rounded-[0.8125rem] border border-primary bg-bg px-2 pb-2 text-[0.78125rem] font-semibold leading-[1.15]">
+          <div className="flex h-[3.75rem] w-24 shrink-0 items-end overflow-hidden rounded-lg bg-surface px-2 pb-2 text-footnote font-strong leading-[1.15] shadow-[inset_0_0_0_1.5px_var(--primary)]">
             <span className="line-clamp-2">{finalLabel || t("tiles.previewDefault")}</span>
           </div>
-          <p className="text-sm leading-snug text-text-2">{t("tiles.previewHelp")}</p>
+          <p className="text-sm text-text-2">{t("tiles.previewHelp")}</p>
         </div>
         <TextField label={t("tiles.labelField")} placeholder={t("tiles.labelPlaceholder")} value={label} onChange={(e) => setLabel(e.target.value)} maxLength={40} autoFocus={!tile} />
         <TextField label={t("tiles.itemField")} placeholder={t("tiles.itemPlaceholder")} value={itemName} onChange={(e) => setItemName(e.target.value)} maxLength={120} />

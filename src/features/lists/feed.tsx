@@ -34,24 +34,24 @@ export function AddFeed({ entries }: { entries: FeedEntry[] }) {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.875rem)] z-[55] flex flex-col items-center gap-1.5 px-4"
+      className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.875rem)] z-[55] flex flex-col items-center gap-2 px-4"
     >
       {entries.map((e, i) => (
         <div
           key={e.id}
           role="status"
           className={cx(
-            "flex h-11 max-w-full items-center gap-2.5 rounded-[0.875rem] bg-primary pl-2 pr-1.5 text-sm font-semibold text-on-primary shadow-[0_12px_30px_rgb(0_0_0/0.28)] transition-[transform,opacity] duration-300",
-            e.out ? "[animation:bh-out-up_.35s_ease_forwards]" : "animate-drop",
-            i > 0 && !e.out && "scale-[0.94] opacity-75",
+            "flex h-11 max-w-full items-center gap-3 rounded-full bg-inverse pl-2 pr-4 text-sm font-strong text-on-inverse shadow-raised transition-[transform,opacity] duration-200",
+            e.out ? "[animation:bh-out-up_.2s_ease_forwards]" : "animate-drop",
+            i > 0 && !e.out && "scale-[0.96] opacity-80",
           )}
         >
-          <span className="grid size-7 shrink-0 place-items-center rounded-[0.5625rem] bg-success text-on-primary">
-            <Check className="size-4" strokeWidth={3} aria-hidden />
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-success-solid text-on-success-solid">
+            <Check className="size-4" strokeWidth={2.4} aria-hidden />
           </span>
           <span className="truncate">{e.name}</span>
-          {e.qty && <span className="grid h-7 shrink-0 place-items-center rounded-lg bg-accent px-2 text-[0.8125rem] font-bold text-on-accent">+{e.qty}</span>}
-          <span className="shrink-0 whitespace-nowrap pr-1.5 font-medium opacity-65">{e.tail}</span>
+          {e.qty && <span className="shrink-0 font-semibold">+{e.qty}</span>}
+          <span className="shrink-0 whitespace-nowrap font-normal opacity-70">{e.tail}</span>
         </div>
       ))}
     </div>
