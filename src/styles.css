@@ -224,6 +224,13 @@
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
   }
+  /* Posuvníky (scrollbary) sa v celej aplikácii neukazujú; posúvať sa dá ďalej prstom, kolieskom aj klávesnicou. */
+  * {
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
   body {
     min-height: 100dvh;
     background: var(--bg);
