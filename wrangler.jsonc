@@ -4,9 +4,11 @@
 {
   "name": "basket-harmony-v2",
   "compatibility_date": "2026-10-01",
-  // Verejná adresa *.workers.dev zapnutá; náhľadové adresy pre každú verziu netreba.
+  // Verejná adresa *.workers.dev zapnutá. Náhľadové adresy zapnuté, aby každá
+  // testovacia vetva (napr. design/…) mala vlastnú adresu a ostrá appka na main
+  // ostala nedotknutá.
   "workers_dev": true,
-  "preview_urls": false,
+  "preview_urls": true,
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
