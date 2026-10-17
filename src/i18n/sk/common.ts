@@ -19,6 +19,7 @@ export const skCommon = {
 
   "status.offline": "Si offline – zmeny sa neuložia, kým sa nepripojíš.",
   "status.reconnecting": "Obnovujem živé spojenie…",
+  "status.testEnv": "Testovacie prostredie",
   "unit.ks": "ks",
   "unit.bal": "bal",
 } as const;

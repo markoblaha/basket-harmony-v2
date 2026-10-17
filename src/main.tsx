@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { ToastProvider } from "./components/toast";
+import { TestEnvBadge } from "./components/ui";
 import { I18nProvider } from "./i18n";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import "./styles.css";
@@ -32,6 +33,7 @@ createRoot(document.getElementById("root")!).render(
           <ToastProvider>
             <I18nProvider>
               <App />
+              <TestEnvBadge />
             </I18nProvider>
           </ToastProvider>
         </AuthProvider>

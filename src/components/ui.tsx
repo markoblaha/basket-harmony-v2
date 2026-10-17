@@ -142,6 +142,21 @@ export function Banner({
   );
 }
 
+/** Štítok testovacej verzie (zostavenej s testovacou databázou), aby sa nepomýlila s ostrou appkou. */
+export function TestEnvBadge() {
+  if (import.meta.env.MODE !== "staging") return null;
+  return (
+    <div
+      role="status"
+      className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.25rem)] z-[70] flex justify-center"
+    >
+      <span className="rounded-full bg-warning-solid px-3 py-0.5 text-overline font-semibold uppercase text-on-warning-solid shadow-raised">
+        {t("status.testEnv")}
+      </span>
+    </div>
+  );
+}
+
 export function OfflineBanner() {
   return (
     <div role="status" className="flex items-center gap-2 bg-warning-soft px-4 py-2 text-sm font-medium text-warning">

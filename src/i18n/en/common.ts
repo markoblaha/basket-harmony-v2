@@ -20,6 +20,7 @@ export const enCommon: Record<keyof typeof skCommon, string> = {
 
   "status.offline": "You're offline – changes won't be saved until you reconnect.",
   "status.reconnecting": "Restoring live connection…",
+  "status.testEnv": "Test environment",
   "unit.ks": "pcs",
   "unit.bal": "pack",
 };
