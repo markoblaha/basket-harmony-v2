@@ -656,6 +656,58 @@ begin
   if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepriradí doklad k cudziemu nákupu\n';
   else report := report || 'FAIL: cudzí attach -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
 
+  -- ---------------------------------------------------------------- fronta čítania dokladov
+  -- (Boris je stále prihlásený.) Cudzí nezaradí cudzí doklad ani si ho „nezoberie“.
+  err := null; begin perform public.queue_receipt(rc1); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nezaradí cudzí doklad na čítanie\n';
+  else report := report || 'FAIL: cudzí queue_receipt -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.claim_receipt(rc1); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: z prehliadača sa doklad nedá „zobrať“ na čítanie\n';
+  else report := report || 'FAIL: claim_receipt z prehliadača -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.worker_secret(); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: tajný kľúč fronty nie je dostupný z prehliadača\n';
+  else report := report || 'FAIL: worker_secret z prehliadača -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin insert into public.ai_usage (household_id, fn, model) values (hb, 'x', 'x'); exception when others then err := sqlerrm; end;
+  if err is not null then report := report || E'ok: z prehliadača sa náklady na AI nedajú zapisovať\n';
+  else report := report || E'FAIL: insert ai_usage z prehliadača\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  insert into public.ai_usage (household_id, receipt_id, fn, model, cost_usd) values (h, rc1, 'extract-receipt', 'test', 0.004);
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.ai_usage where household_id = h;
+  if n = 0 then report := report || E'ok: cudzí nevidí náklady na AI inej domácnosti\n';
+  else report := report || E'FAIL: cudzí vidí ai_usage\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.ai_usage where household_id = h;
+  if n = 1 then report := report || E'ok: člen vidí náklady na AI svojej domácnosti\n';
+  else report := report || E'FAIL: člen nevidí ai_usage\n'; fails := fails + 1; end if;
+  perform public.queue_receipt(rc1);
+  select * into rrec from public.receipts where id = rc1;
+  if rrec.status = 'PROCESSING' and rrec.queued_at is not null and rrec.read_attempts = 0 then
+    report := report || E'ok: člen zaradí doklad na čítanie na pozadí\n';
+  else report := report || E'FAIL: queue_receipt nezaradil doklad\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  if public.claim_receipt(rc1) and not public.claim_receipt(rc1) then
+    report := report || E'ok: doklad sa nikdy nečíta dvakrát naraz\n';
+  else report := report || E'FAIL: claim_receipt dvakrát\n'; fails := fails + 1; end if;
+  update public.receipts set read_started_at = now() - interval '5 minutes' where id = rc1;
+  select count(*) into n from net.http_request_queue;
+  perform public.dispatch_stuck_receipts();
+  select count(*) into n2 from net.http_request_queue;
+  if n2 > n then report := report || E'ok: zaseknuté čítanie plánovač pošle znova\n';
+  else report := report || E'FAIL: plánovač neposlal zaseknutý doklad\n'; fails := fails + 1; end if;
+  update public.receipts set read_attempts = 3, read_started_at = now() - interval '10 minutes' where id = rc1;
+  perform public.dispatch_stuck_receipts();
+  select * into rrec from public.receipts where id = rc1;
+  if rrec.status = 'FAILED' and rrec.error_text = 'READ_TIMEOUT' then
+    report := report || E'ok: po 3 neúspešných pokusoch sa doklad označí ako chyba\n';
+  else report := report || 'FAIL: zaseknutý doklad -> ' || rrec.status || E'\n'; fails := fails + 1; end if;
+
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);

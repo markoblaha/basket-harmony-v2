@@ -1,6 +1,7 @@
 /**
- * Prístup k bločkom. Čítanie fotky robí server (Edge Function extract-receipt);
- * či je bloček "v poriadku" rozhoduje databáza. Tu len nahrávame a zobrazujeme.
+ * Prístup k bločkom. Aplikácia len nahrá súbory a zaradí doklad do fronty (queue_receipt);
+ * čítanie robí server na pozadí (extract-receipt), aj keď je aplikácia zavretá.
+ * Či je bloček "v poriadku" rozhoduje databáza. Tu len nahrávame a zobrazujeme.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -67,10 +68,9 @@ export function useReceiptImage(path: string | undefined) {
 
 // ------------------------------------------------------------------ nahrávanie
 
-/** NOT_A_RECEIPT = na fotke nie je nákupný doklad (trvalé, nie porucha služby – preto nezastavuje dávku). */
-export type UploadOutcome = "NEW" | "DUPLICATE" | "OK" | "NEEDS_REVIEW" | "FAILED" | "NOT_A_RECEIPT";
+/** QUEUED = súbory sú nahraté a server doklad číta na pozadí; DUPLICATE = už v domácnosti je. */
+export type UploadOutcome = "QUEUED" | "DUPLICATE";
 
-export const isNotAReceiptError = (e: unknown) => e instanceof Error && e.message.startsWith("NOT_A_RECEIPT");
 /**
  * Chyba, pri ktorej nemá zmysel pokračovať ďalšími dokladmi (došiel kredit, zlý alebo chýbajúci kľúč).
  * Všetko ostatné (jeden nečitateľný doklad, výpadok) sa týka len jedného dokladu.
@@ -78,8 +78,11 @@ export const isNotAReceiptError = (e: unknown) => e instanceof Error && e.messag
 export const isGlobalFailure = (message: string | null | undefined) =>
   !!message && /^(GEMINI_(401|402|403)|GEMINI_API_KEY_MISSING)/.test(message);
 export const isReceiptPdf = (r: Pick<Receipt, "image_path">) => r.image_path.toLowerCase().endsWith(".pdf");
-/** Čítanie sa začalo, ale server ho nikdy nedokončil (napr. zavretá aplikácia, výpadok). */
-export const isStale = (r: Receipt) => r.status === "PROCESSING" && Date.now() - new Date(r.updated_at).getTime() > 3 * 60_000;
+/**
+ * Čítanie sa zaseklo. Server zaseknuté doklady sám skúša znova (až 3-krát), takže
+ * „zaseknutý“ je doklad až po dlhšom čase bez zmeny.
+ */
+export const isStale = (r: Receipt) => r.status === "PROCESSING" && Date.now() - new Date(r.updated_at).getTime() > 15 * 60_000;
 /** Doklad čaká na človeka: kontrola, chyba alebo zaseknuté čítanie. */
 export const needsAttention = (r: Receipt) => r.status === "NEEDS_REVIEW" || r.status === "FAILED" || isStale(r);
 export const isNotAReceipt = (r: Receipt) => r.status === "FAILED" && !!r.error_text?.startsWith("NOT_A_RECEIPT");
@@ -105,11 +108,35 @@ const TOTAL_BUDGET = 12 * 1024 * 1024;
 const STORAGE_LIMIT = 9 * 1024 * 1024;
 
 /**
+ * Fotka z mobilu má často 4–8 MB. AI ju aj tak číta v obmedzenom rozlíšení, takže väčšiu
+ * fotku (JPEG) zmenšíme na 3000 px na dlhšej strane – nahrá sa niekoľkonásobne rýchlejšie
+ * a text na bločku ostane ostrý. Iné formáty (PNG snímky, PDF) necháme tak.
+ */
+async function shrinkPhoto(file: File): Promise<Blob> {
+  if (extensionOf(file) !== "jpg" || file.size <= 1.5 * 1024 * 1024) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 3000 / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size <= 3 * 1024 * 1024) return file;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.85));
+    return blob && blob.size < file.size ? blob : file;
+  } catch {
+    return file; // prehliadač fotku nevie spracovať – pošleme pôvodnú
+  }
+}
+
+/**
  * Príliš veľký súbor zmenšíme (obrázok) alebo odmietneme (PDF); bežné fotky idú v pôvodnej podobe.
  * Pri doklade z viacerých strán sa limit na jednu stranu zníži, aby sa všetky zmestili naraz.
  */
-async function fitForUpload(file: File, limit: number): Promise<Blob> {
-  if (file.size <= limit) return file;
+async function fitForUpload(original: File, limit: number): Promise<Blob> {
+  const small = await shrinkPhoto(original);
+  if (small.size <= limit) return small;
+  const file = original;
   if (extensionOf(file) === "pdf") throw new Error("FILE_TOO_LARGE");
   const bitmap = await createImageBitmap(file);
   let blob: Blob | null = null;
@@ -136,24 +163,19 @@ async function putFile(path: string, file: File, limit: number): Promise<void> {
   if (up.error) throw up.error;
 }
 
-/** Vyvolá čítanie bločku na serveri. Vráti výsledný stav bločku. */
-export async function extractReceipt(receiptId: string): Promise<"OK" | "NEEDS_REVIEW"> {
-  const { data, error } = await supabase.functions.invoke("extract-receipt", { body: { receipt_id: receiptId } });
-  if (error) {
-    // Pri chybe servera je užitočný text až v tele odpovede.
-    const ctx = (error as { context?: Response }).context;
-    if (ctx && typeof ctx.json === "function") {
-      const body = await ctx.json().catch(() => null);
-      if (body?.detail) throw new Error(body.detail);
-    }
-    throw error;
-  }
-  return data?.status === "OK" ? "OK" : "NEEDS_REVIEW";
+/**
+ * Zaradí doklad na čítanie. Databáza hneď pošle požiadavku serveru, ktorý číta na pozadí;
+ * výsledok sa v aplikácii objaví sám (živá synchronizácia). Na nič sa nečaká.
+ */
+export async function queueReceipt(receiptId: string): Promise<void> {
+  const { error } = await supabase.rpc("queue_receipt", { p_receipt_id: receiptId });
+  if (error) throw error;
 }
 
 /**
  * Nahrá jeden doklad z jednej alebo viacerých strán (fotiek, snímok, PDF):
- * odtlačok -> registrácia (duplicitu databáza odmietne) -> súbory do úložiska -> čítanie na serveri.
+ * odtlačok -> registrácia (duplicitu databáza odmietne) -> súbory do úložiska -> fronta na čítanie.
+ * Po návrate z tejto funkcie môže človek aplikáciu zavrieť – čítanie beží na serveri.
  * Strana, ktorá v domácnosti už je, sa preskočí.
  */
 export async function uploadReceipt(householdId: string, files: File[], listId?: string | null): Promise<UploadOutcome> {
@@ -199,13 +221,13 @@ export async function uploadReceipt(householdId: string, files: File[], listId?:
     if (ae) console.warn("Doklad sa nepodarilo priradiť k nákupu", ae);
   }
   try {
-    return await extractReceipt(reg.receipt_id);
+    await queueReceipt(reg.receipt_id);
   } catch (e) {
-    // Globálna chyba (kredit, kľúč) ide ďalej, aby sa dávka zastavila a človek videl dôvod.
-    if (e instanceof Error && isGlobalFailure(e.message)) throw e;
-    // Ostatné: dôvod je uložený pri doklade, zobrazí sa v zozname.
-    return isNotAReceiptError(e) ? "NOT_A_RECEIPT" : "FAILED";
+    // Súbory sú nahraté; ak sa nepodarilo len zaradenie do fronty, server si doklad
+    // nájde sám do pár minút (plánovač dispatch_stuck_receipts).
+    console.warn("Doklad sa nepodarilo zaradiť na čítanie, server ho dobehne", e);
   }
+  return "QUEUED";
 }
 
 /** Strany jedného dokladu v poradí (každá je samostatný súbor v úložisku). */
@@ -230,7 +252,7 @@ export function useReceiptPages(receiptId: string | undefined) {
 export function useRereadReceipt() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => extractReceipt(id),
+    mutationFn: (id: string) => queueReceipt(id),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["receipts"] });
       qc.invalidateQueries({ queryKey: ["receipt"] });
@@ -244,7 +266,7 @@ function invalidateReceipts(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["receipt-pages"] });
 }
 
-/** Pridá strany k existujúcemu dokladu a prečíta ho znova (všetky strany spolu). */
+/** Pridá strany k existujúcemu dokladu a zaradí ho na nové čítanie (všetky strany spolu). */
 export function useAddReceiptPages() {
   const qc = useQueryClient();
   return useMutation({
@@ -269,7 +291,7 @@ export function useAddReceiptPages() {
         added++;
       }
       if (added === 0) throw new Error("PAGE_ALREADY_EXISTS");
-      return extractReceipt(receipt.id);
+      return queueReceipt(receipt.id);
     },
     onSettled: () => invalidateReceipts(qc),
   });
@@ -287,10 +309,9 @@ export function useMergeReceipts() {
       if (error) throw error;
       invalidateReceipts(qc);
       try {
-        await extractReceipt(data);
-      } catch (e) {
-        // Spojenie prebehlo; zlyhanie čítania je vidno pri doklade a dá sa zopakovať.
-        if (e instanceof Error && isGlobalFailure(e.message)) throw e;
+        await queueReceipt(data);
+      } catch {
+        // Spojenie prebehlo; server spojený doklad dobehne sám (plánovač).
       }
       return data;
     },

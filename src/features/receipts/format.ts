@@ -73,7 +73,7 @@ export function failureText(error: string | null): string {
   if (error.startsWith("GEMINI_400") || error.startsWith("GEMINI_403") || error.startsWith("GEMINI_404")) return t("receipts.fail.rejected");
   if (error.startsWith("FILES_TOO_LARGE")) return t("receipts.fail.FILES_TOO_LARGE");
   if (error.startsWith("IMAGE_MISSING")) return t("receipts.fail.IMAGE_MISSING");
-  if (/^GEMINI_(TIMEOUT|NETWORK|EMPTY|BAD_JSON|5\d\d)/.test(error)) return t("receipts.fail.transient");
+  if (/^(GEMINI_(TIMEOUT|NETWORK|EMPTY|BAD_JSON|5\d\d)|READ_TIMEOUT)/.test(error)) return t("receipts.fail.transient");
   return t("receipts.fail.other");
 }
 

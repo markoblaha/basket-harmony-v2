@@ -163,6 +163,25 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      ai_usage: {
+        Row: {
+          cost_usd: number;
+          created_at: string;
+          fn: string;
+          household_id: string | null;
+          id: number;
+          input_tokens: number;
+          model: string;
+          ok: boolean;
+          output_tokens: number;
+          receipt_id: string | null;
+          thinking_tokens: number;
+        };
+        // Zapisuje iba server (edge funkcie); aplikácia môže len čítať.
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       receipt_pages: {
         Row: {
           created_at: string;
@@ -195,6 +214,9 @@ export type Database = {
           origin: "RECEIPT" | "BANK" | "MANUAL";
           purchased_on: string | null;
           purchased_time: string | null;
+          queued_at: string | null;
+          read_attempts: number;
+          read_started_at: string | null;
           review_reason: string | null;
           source: string;
           status: Database["public"]["Enums"]["receipt_status"];
@@ -264,7 +286,19 @@ export type Database = {
         Relationships: [];
       };
     };
-    Views: { [_ in never]: never };
+    Views: {
+      ai_cost_monthly: {
+        Row: {
+          calls: number | null;
+          cost_per_receipt_usd: number | null;
+          cost_usd: number | null;
+          fn: string | null;
+          household_id: string | null;
+          month: string | null;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
       accept_request: { Args: { p_request_id: string }; Returns: Json };
@@ -338,6 +372,7 @@ export type Database = {
         Returns: Database["public"]["Tables"]["receipts"]["Row"];
       };
       merge_receipts: { Args: { p_receipt_ids: string[] }; Returns: string };
+      queue_receipt: { Args: { p_receipt_id: string }; Returns: undefined };
       register_receipt: {
         Args: { p_checksum: string; p_ext?: string; p_household_id: string; p_source?: string };
         Returns: { already_exists: boolean; path: string; receipt_id: string }[];

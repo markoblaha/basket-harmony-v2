@@ -94,10 +94,16 @@ function fromServer(ops: ServerOp[]): VoiceOp[] {
  * Veta → operácie od AI (rozumie skloňovaniu, delí vety bez čiarok, pozná tovar na váhu).
  * Vráti null, ak neodpovie do 6 s alebo zlyhá – vtedy ostane okamžitý lokálny rozbor.
  */
-export async function interpretAI(text: string, items: DraftItem[], target: string | null): Promise<VoiceOp[] | null> {
+export async function interpretAI(
+  householdId: string,
+  text: string,
+  items: DraftItem[],
+  target: string | null,
+): Promise<VoiceOp[] | null> {
   try {
     const call = supabase.functions.invoke("parse-voice", {
-      body: { text, target, items: items.map((i) => ({ name: i.name, qty: i.quantity ? qtyLabel(i.quantity, i.unit) : "-" })) },
+      // household_id slúži len na meranie nákladov (ai_usage); server ho overí.
+      body: { household_id: householdId, text, target, items: items.map((i) => ({ name: i.name, qty: i.quantity ? qtyLabel(i.quantity, i.unit) : "-" })) },
     });
     const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), 6000));
     const { data, error } = await Promise.race([call, timeout]);

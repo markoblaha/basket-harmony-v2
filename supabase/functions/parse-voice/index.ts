@@ -7,6 +7,7 @@
 // v databáze). Aplikácia medzitým ukáže okamžitý lokálny rozbor; táto odpoveď ho
 // do sekundy spresní (rozdelí vety bez čiarok, opraví tvary slov, doplní kategóriu).
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { callGemini, GeminiError, logUsage, type ThinkingLevel, type Usage } from "../_shared/gemini.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -84,32 +85,46 @@ const CANDIDATES: Cfg[] = [
 /** Teplá inštancia si pamätá, ktorý model naposledy odpovedal (ďalšie volanie neskúša nedostupné). */
 let preferred: Cfg | null = null;
 
-async function call(cfg: Cfg, text: string, timeoutMs: number): Promise<{ ops: Record<string, unknown>[] }> {
-  const key = Deno.env.get("GEMINI_API_KEY");
-  if (!key) throw new Error("GEMINI_API_KEY_MISSING");
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent`, {
-    method: "POST",
-    headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text }] }],
-      generationConfig: {
-        temperature: 0,
-        responseMimeType: "application/json",
-        responseSchema: SCHEMA,
-        ...(cfg.thinking ? { thinkingConfig: cfg.thinking } : {}),
-      },
-    }),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!res.ok) throw new Error(`GEMINI_${res.status}: ${(await res.text()).slice(0, 160)}`);
-  const data = await res.json();
-  const out = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("");
-  const parsed = JSON.parse(out ?? "");
-  if (!Array.isArray(parsed?.ops)) throw new Error("GEMINI_BAD_JSON");
-  return parsed;
+/** Komu sa spotreba pripíše (domácnosť overená cez oprávnenia používateľa). */
+type LogTo = { token: string; householdId: string | null };
+
+/** Spotreba sa zapíše na pozadí, aby hlasový režim nečakal ani milisekundu navyše. */
+function logInBackground(to: LogTo, model: string, usage: Usage | null, ok: boolean) {
+  const url = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const task = (async () => {
+    let householdId: string | null = null;
+    if (to.householdId) {
+      const asUser = createClient(url, serviceKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${to.token}` } },
+      });
+      const m = await asUser.from("households").select("id").eq("id", to.householdId).maybeSingle();
+      if (m.data) householdId = to.householdId;
+    }
+    const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+    await logUsage(admin, { fn: "parse-voice", model, usage, household_id: householdId, ok });
+  })().catch((e) => console.error("parse-voice usage", String(e)));
+  // deno-lint-ignore no-explicit-any
+  (globalThis as any).EdgeRuntime?.waitUntil?.(task);
 }
 
-async function askGemini(text: string): Promise<{ ops: Record<string, unknown>[]; model: string }> {
+async function call(cfg: Cfg, text: string, timeoutMs: number, to: LogTo): Promise<{ ops: Record<string, unknown>[] }> {
+  try {
+    const res = await callGemini({
+      model: cfg.model, parts: [{ text }], schema: SCHEMA,
+      thinking: (cfg.thinking?.thinkingLevel as ThinkingLevel | undefined), timeoutMs,
+    });
+    logInBackground(to, cfg.model, res.usage, true);
+    if (!Array.isArray(res.json?.ops)) throw new Error("GEMINI_BAD_JSON");
+    return res.json as { ops: Record<string, unknown>[] };
+  } catch (e) {
+    if (e instanceof GeminiError) logInBackground(to, cfg.model, e.usage, false);
+    throw e;
+  }
+}
+
+async function askGemini(text: string, to: LogTo): Promise<{ ops: Record<string, unknown>[]; model: string }> {
   const deadline = Date.now() + 7_000;
   const list = preferred ? [preferred, ...CANDIDATES.filter((c) => c !== preferred)] : CANDIDATES;
   let lastError = "GEMINI_UNKNOWN";
@@ -117,7 +132,7 @@ async function askGemini(text: string): Promise<{ ops: Record<string, unknown>[]
     const left = deadline - Date.now();
     if (left < 800) break;
     try {
-      const r = await call(cfg, text, Math.min(3_500, left));
+      const r = await call(cfg, text, Math.min(3_500, left), to);
       preferred = cfg;
       return { ...r, model: cfg.model + (cfg.thinking ? "+min" : "") };
     } catch (e) {
@@ -135,7 +150,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "METHOD" }, 405);
 
-  let body: { text?: unknown; items?: unknown; target?: unknown } = {};
+  let body: { text?: unknown; items?: unknown; target?: unknown; household_id?: unknown } = {};
   try {
     body = await req.json();
   } catch { /* prázdne telo */ }
@@ -148,6 +163,10 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await admin.auth.getUser(token);
   if (userError || !userData.user) return json({ error: "NOT_AUTHENTICATED" }, 401);
 
+  const logTo: LogTo = {
+    token,
+    householdId: typeof body.household_id === "string" && /^[0-9a-f-]{36}$/i.test(body.household_id) ? body.household_id : null,
+  };
   const text = str(body.text, 400);
   if (!text) return json({ error: "VALIDATION" }, 400);
   const target = str(body.target);
@@ -160,7 +179,7 @@ Deno.serve(async (req) => {
 
   const t0 = Date.now();
   try {
-    const result = await askGemini(prompt(text.replace(/"/g, "'"), items, target));
+    const result = await askGemini(prompt(text.replace(/"/g, "'"), items, target), logTo);
     const ops = result.ops.slice(0, 20).map((o) => ({
       op: ["add", "change", "remove", "done"].includes(String(o.op)) ? o.op : "add",
       name: str(o.name),

@@ -5,6 +5,7 @@
 // zoznam platieb; čísla účtov ani zostatky sa nevracajú. Do databázy sa uloží iba to,
 // čo človek v aplikácii potvrdí (cez import_bank_payments).
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { callGemini, GeminiError, isGlobalError, logUsage, type ThinkingLevel, type Usage } from "../_shared/gemini.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -82,42 +83,32 @@ is_statement = false, ak to nie je bankový výpis ani zoznam pohybov na účte 
 
 const MIME: Record<string, string> = { pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", heic: "image/heic" };
 
-async function askGemini(parts: unknown[]): Promise<Record<string, unknown>> {
-  const key = Deno.env.get("GEMINI_API_KEY");
-  if (!key) throw new Error("GEMINI_API_KEY_MISSING");
-  const models = [...new Set([Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash", "gemini-3.6-flash"])];
+// Výpis je dlhý prepis riadkov – stačí obmedzené premýšľanie (to sa platí ako výstup).
+const MODELS: { model: string; thinking: ThinkingLevel }[] = [
+  { model: Deno.env.get("GEMINI_STATEMENT_MODEL") ?? "gemini-3.8-flash", thinking: "low" },
+  { model: "gemini-3.6-flash", thinking: "low" },
+];
+
+async function askGemini(
+  parts: unknown[],
+  log: (model: string, usage: Usage | null, ok: boolean) => Promise<void>,
+): Promise<Record<string, unknown>> {
   let lastError = "GEMINI_UNKNOWN";
-  for (const model of models) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 2000 * attempt));
-      let res: Response;
+  for (const cfg of MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
       try {
-        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-          method: "POST",
-          headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts }],
-            generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: SCHEMA, maxOutputTokens: 32768 },
-          }),
-          signal: AbortSignal.timeout(110_000),
+        const res = await callGemini({
+          model: cfg.model, thinking: cfg.thinking, parts, schema: SCHEMA, maxOutputTokens: 32768, timeoutMs: 110_000,
         });
+        await log(cfg.model, res.usage, true);
+        return res.json;
       } catch (e) {
-        lastError = `GEMINI_NETWORK: ${e instanceof Error ? e.message : String(e)}`;
-        continue;
+        lastError = e instanceof Error ? e.message : String(e);
+        if (e instanceof GeminiError) await log(cfg.model, e.usage, false);
+        if (isGlobalError(lastError)) throw new Error(lastError);
+        if (!/^GEMINI_(429|5\d\d|EMPTY|BAD_JSON)|TimeoutError/i.test(lastError)) break;
       }
-      if (res.ok) {
-        const data = await res.json();
-        const out = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("");
-        try {
-          return JSON.parse(out ?? "");
-        } catch {
-          lastError = `GEMINI_BAD_JSON: ${data?.candidates?.[0]?.finishReason ?? "?"}`;
-          continue;
-        }
-      }
-      lastError = `GEMINI_${res.status}: ${(await res.text()).slice(0, 300)}`;
-      if (/^GEMINI_(401|402|403)/.test(lastError)) throw new Error(lastError);
-      if (res.status !== 429 && res.status < 500) break;
     }
   }
   throw new Error(lastError);
@@ -164,7 +155,8 @@ Deno.serve(async (req) => {
       return json({ error: "VALIDATION" }, 400);
     }
 
-    const result = await askGemini(parts);
+    const result = await askGemini(parts, (model, usage, ok) =>
+      logUsage(admin, { fn: "read-statement", model, usage, household_id: householdId, ok }));
     const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.abs(Math.round(v * 100) / 100) : null);
     const date = (v: unknown) => {
       if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;

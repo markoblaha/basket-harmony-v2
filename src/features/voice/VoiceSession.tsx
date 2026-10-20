@@ -231,7 +231,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
     const mine = ++seq.current;
     setSaid(text);
     setRefining((r) => r + 1);
-    void interpretAI(text, before, target).then((ops) => {
+    void interpretAI(household.id, text, before, target).then((ops) => {
       setRefining((r) => r - 1);
       if (seq.current === mine) setSaid("");
       if (!ops) {
