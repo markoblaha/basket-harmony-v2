@@ -331,6 +331,19 @@
   *::-webkit-scrollbar {
     display: none;
   }
+  html {
+    background: var(--bg);
+  }
+  /* Pás pod systémovou lištou iPhonu (keď appka kreslí aj pod ňu): vždy vo farbe témy, nad posúvaným obsahom. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: env(safe-area-inset-top);
+    background: var(--bg);
+    z-index: 60;
+    pointer-events: none;
+  }
   body {
     min-height: 100dvh;
     background: var(--bg);

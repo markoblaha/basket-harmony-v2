@@ -70,7 +70,7 @@ export function CheckPage() {
     <NoTabScreen>
       <div className="rc-full-scroll">
       <ScreenHeader onBack={() => navigate(-1)} title={t("rc.checkTitle")} sub={sub} right={draft.ai ? <AiBadge /> : undefined} />
-      <div className="rc-check-wrap" style={{ top: 56 }}>
+      <div className="rc-check-wrap" style={{ top: "calc(env(safe-area-inset-top) + 56px)" }}>
         <div className={cx("rc-check", !pending.length && "done")}>
           {pending.length ? <AlertTriangle size={18} /> : <Check size={18} />}
           <span className="grow">{pending.length ? tn("rc.toCheck", pending.length) : t("rc.allChecked")}</span>

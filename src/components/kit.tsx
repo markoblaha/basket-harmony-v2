@@ -50,7 +50,7 @@ export function ScreenHeader({
 }) {
   const Title = onTitle ? "button" : "div";
   return (
-    <header className={cx("hdr", sticky && "sticky top-0 z-20", onBack && "with-back", className)}>
+    <header className={cx("hdr", sticky && "sticky top-[env(safe-area-inset-top)] z-20", onBack && "with-back", className)}>
       {onBack && (
         <button type="button" className="ibtn" onClick={onBack} aria-label={t("common.back")}>
           <ChevronLeft size={24} />

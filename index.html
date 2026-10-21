@@ -33,6 +33,10 @@
         root.lang = locale === "en" ? "en" : "sk";
         var bar = document.querySelector('meta[name="theme-color"]');
         if (bar) bar.setAttribute("content", theme === "color" ? "#e9ecf5" : dark ? "#0b0c0d" : "#f3f3f0");
+        // Appka na ploche iPhonu: pri tmavej téme kreslíme farbu témy aj pod systémovú lištu (biely text hodín).
+        // Pri svetlej a farebnej ostáva predvolená svetlá lišta s tmavým textom – priesvitná by mala biely, nečitateľný text.
+        var status = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+        if (status) status.setAttribute("content", dark && theme !== "color" ? "black-translucent" : "default");
       })();
     </script>
   </head>

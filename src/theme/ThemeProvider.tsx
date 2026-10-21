@@ -69,6 +69,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.dataset.theme = resolved;
     root.style.colorScheme = resolved === "dark" ? "dark" : "light";
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_BG[resolved]);
+    // iPhone číta túto voľbu pri spustení appky z plochy – prejaví sa po jej ďalšom otvorení (pozri index.html).
+    document
+      .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+      ?.setAttribute("content", resolved === "dark" ? "black-translucent" : "default");
   }, [resolved]);
 
   const setPreference = useCallback((next: ThemePreference) => {

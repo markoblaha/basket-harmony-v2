@@ -238,7 +238,7 @@ export function ShoppingPage() {
 
   return (
     <div className="stack">
-      <div className="sticky top-0 z-20">
+      <div className="sticky top-[env(safe-area-inset-top)] z-20">
         <header
           className="hdr with-back"
           onPointerDown={(e) => {
