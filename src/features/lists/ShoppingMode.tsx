@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, ArrowRightLeft, Camera, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Image, MoreHorizontal, Plus, Repeat, RotateCcw, TriangleAlert } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Camera, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Image, MoreHorizontal, PackageX, Plus, Repeat, RotateCcw, TriangleAlert, X } from "lucide-react";
 import { Avatars, BottomSheet, CatIcon, Cell, ScreenHeader, SheetHeader, Stepper, haptic, type Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { cx } from "@/components/ui";
@@ -10,10 +10,9 @@ import { shortName } from "@/lib/shortName";
 import { formatDateTime, formatEuro, formatNumber, t, tn } from "@/i18n";
 import type { PriceHint } from "@/features/analytics/api";
 import {
-  useAddItem,
-  useCreateList,
   useDeleteItem,
-  useEndShopping,
+  useFinishShopping,
+  useMoveItem,
   useSetReceiptLater,
   useUpdateItem,
   type AdditionRequest,
@@ -22,7 +21,7 @@ import {
   type ShoppingList,
 } from "./api";
 import { Composer, type AddInput } from "./Composer";
-import { addDays, dayLabel, isoDay, listDay } from "./dates";
+import { dayLabel, listDay } from "./dates";
 import { stepOf } from "./PlanList";
 import { countOf, isCountable, qtyLabel } from "./qty";
 import { MyRequests, PendingRequests } from "./Requests";
@@ -79,7 +78,7 @@ export function ShoppingMode({
   const done = useMemo(
     () =>
       items
-        .filter((i) => i.status === "PURCHASED" && new Date(i.purchased_at ?? 0).getTime() >= since)
+        .filter((i) => i.status !== "OPEN" && new Date(i.purchased_at ?? 0).getTime() >= since)
         .sort((a, b) => (b.purchased_at ?? "").localeCompare(a.purchased_at ?? "")),
     [items, since],
   );
@@ -94,7 +93,9 @@ export function ShoppingMode({
     return [...byCat.entries()].sort(([a], [b]) => categoryOrder(a) - categoryOrder(b));
   }, [open]);
 
-  const priced = done.filter((i) => hints?.has(i.id));
+  const bought = done.filter((i) => i.status === "PURCHASED");
+  const na = done.length - bought.length;
+  const priced = bought.filter((i) => hints?.has(i.id));
   const cart = priced.reduce((sum, i) => sum + (hints?.get(i.id)?.last_price ?? 0), 0);
   const shopperName = shortName(names?.get(session.shopper_id) ?? t("household.fallbackName"));
   const autoFinish = shopper && total > 0 && open.length === 0 && !dismissed;
@@ -109,7 +110,7 @@ export function ShoppingMode({
         right={list.is_private ? null : <Avatars people={people} />}
         sticky={false}
       />
-      <ShopProgress bought={done.length} total={total} />
+      <ShopProgress bought={bought.length} na={na} total={total} />
 
       {!shopper && (
         <div className="stack g-8" style={{ padding: "0 16px 4px" }}>
@@ -165,13 +166,23 @@ export function ShoppingMode({
           {done.length > 0 && (
             <section className="stack g-6">
               <button type="button" className="section-head" style={{ minHeight: 40 }} onClick={() => setShowDone(!showDone)} aria-expanded={showDone}>
-                <span className="section-title">{t("ls.inCart", { n: done.length })}</span>
+                <span className="section-title">
+                  {t("ls.inCart", { n: bought.length })}
+                  {na ? ` · ${t("ls.naCount", { n: na })}` : ""}
+                </span>
                 {showDone ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </button>
               {showDone && (
                 <div className="cells">
                   {done.map((it) => (
-                    <DoneRow key={it.id} listId={list.id} item={it} shopper={shopper} who={it.purchased_by ? names?.get(it.purchased_by) : undefined} />
+                    <DoneRow
+                      key={it.id}
+                      listId={list.id}
+                      item={it}
+                      shopper={shopper}
+                      who={it.purchased_by ? names?.get(it.purchased_by) : undefined}
+                      onMenu={() => setMenu(it)}
+                    />
                   ))}
                 </div>
               )}
@@ -185,7 +196,7 @@ export function ShoppingMode({
         <div className="ls-bottombar pb-[calc(22px+env(safe-area-inset-bottom))]">
           <span className="grow stack g-2">
             <span className="t-xs t-2">{priced.length > 0 ? t("ls.cartApprox") : t("ls.cart")}</span>
-            <span className="t-h num">{priced.length > 0 ? `~${formatEuro(cart)}` : tn("shop.itemCount", done.length)}</span>
+            <span className="t-h num">{priced.length > 0 ? `~${formatEuro(cart)}` : tn("shop.itemCount", bought.length)}</span>
           </span>
           <button type="button" className="btn btn-ink btn-lg" onClick={() => setFinishing(true)}>
             {t("ls.finishShopping")}
@@ -194,7 +205,7 @@ export function ShoppingMode({
       ) : (
         <div className="ls-bottombar pb-[calc(22px+env(safe-area-inset-bottom))]">
           <span className="grow t-sm t-2">
-            {priced.length > 0 ? t("ls.cartApproxInline", { amount: formatEuro(cart) }) : t("ls.cartInline", { count: tn("shop.itemCount", done.length) })}
+            {priced.length > 0 ? t("ls.cartApproxInline", { amount: formatEuro(cart) }) : t("ls.cartInline", { count: tn("shop.itemCount", bought.length) })}
           </span>
           <button type="button" className="btn btn-line" onClick={onBack}>
             {t("common.close")}
@@ -202,14 +213,22 @@ export function ShoppingMode({
         </div>
       )}
 
-      <ItemMenu item={menu} list={list} openLists={openLists} householdId={householdId} by={menu?.added_by && menu.added_by !== me ? names?.get(menu.added_by) : undefined} onClose={() => setMenu(null)} />
+      <ItemMenu
+        item={menu ? (items.find((i) => i.id === menu.id) ?? null) : null}
+        list={list}
+        openLists={openLists}
+        householdId={householdId}
+        by={menu?.added_by && menu.added_by !== me ? names?.get(menu.added_by) : undefined}
+        onClose={() => setMenu(null)}
+      />
 
       {showFinish && (
         <FinishScreen
           list={list}
           session={session}
           open={open}
-          bought={done}
+          bought={bought}
+          na={na}
           pending={pending}
           names={names}
           estimate={priced.length > 0 ? cart : null}
@@ -319,19 +338,20 @@ function ShopRow({ listId, item, by, hint, shopper, onMenu }: { listId: string; 
   );
 }
 
-function DoneRow({ listId, item, shopper, who }: { listId: string; item: Item; shopper: boolean; who?: string }) {
+function DoneRow({ listId, item, shopper, who, onMenu }: { listId: string; item: Item; shopper: boolean; who?: string; onMenu: () => void }) {
   const update = useUpdateItem(listId);
   const toast = useToast();
+  const na = item.status === "UNAVAILABLE";
   const body = (
     <>
-      <span className="ls-check on">
-        <Check size={15} strokeWidth={2.8} />
-      </span>
+      <span className={cx("ls-check", na ? "na" : "on")}>{na ? <X size={15} strokeWidth={2.6} /> : <Check size={15} strokeWidth={2.8} />}</span>
       <span className="grow stack g-2" style={{ minWidth: 0 }}>
-        <span className="t-body fw-5 ellipsis strike t-2">{item.name}</span>
-        <span className="t-sm t-2 ellipsis">{item.note ?? (who ? t("ls.boughtBy", { name: shortName(who) }) : t("ls.bought"))}</span>
+        <span className={cx("t-body fw-5 ellipsis", !na && "strike t-2")}>{item.name}</span>
+        <span className="t-sm t-2 ellipsis">
+          {na ? t("ls.na") : (item.note ?? (who ? t("ls.boughtBy", { name: shortName(who) }) : t("ls.bought")))}
+        </span>
       </span>
-      {shopper && <span className="t-sm fw-6 t-3">{t("ls.putBack")}</span>}
+      {shopper && <span className="t-sm fw-6 t-3">{na ? t("ls.options") : t("ls.putBack")}</span>}
     </>
   );
   if (!shopper)
@@ -345,7 +365,9 @@ function DoneRow({ listId, item, shopper, who }: { listId: string; item: Item; s
       type="button"
       className="ls-shop-row"
       style={{ minHeight: 56 }}
-      onClick={() => update.mutate({ id: item.id, patch: { status: "OPEN" } }, { onError: (err) => toast.show(errorMessage(err), "error") })}
+      onClick={() =>
+        na ? onMenu() : update.mutate({ id: item.id, patch: { status: "OPEN" } }, { onError: (err) => toast.show(errorMessage(err), "error") })
+      }
     >
       {body}
     </button>
@@ -353,17 +375,17 @@ function DoneRow({ listId, item, shopper, who }: { listId: string; item: Item; s
 }
 
 /** Ukazovateľ postupu nákupu: čiarka za každú položku a počet vpravo. */
-function ShopProgress({ bought, total }: { bought: number; total: number }) {
-  const segs = Array.from({ length: total }, (_, i) => (i < bought ? "b" : "o"));
+function ShopProgress({ bought, na, total }: { bought: number; na: number; total: number }) {
+  const segs = Array.from({ length: total }, (_, i) => (i < bought ? "b" : i < bought + na ? "n" : "o"));
   return (
-    <div className="ls-prog" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={bought} aria-label={t("ls.progressAria", { done: bought, total })}>
+    <div className="ls-prog" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={bought + na} aria-label={t("ls.progressAria", { done: bought + na, total })}>
       <div className={cx("ls-prog-segs", total > 40 && "dense")}>
         {segs.map((k, i) => (
           <span key={i} className={cx("ls-seg", k)} />
         ))}
       </div>
       <span className="ls-prog-n num">
-        <b>{bought}</b>/{total}
+        <b>{bought + na}</b>/{total}
       </span>
     </div>
   );
@@ -408,9 +430,7 @@ function MenuBody({
   onClose: () => void;
 }) {
   const update = useUpdateItem(list.id);
-  const remove = useDeleteItem(list.id);
-  const add = useAddItem();
-  const create = useCreateList(householdId);
+  const move = useMoveItem(householdId, list.id);
   const toast = useToast();
   const [mode, setMode] = useState<null | "sub" | "move">(null);
   const [sub, setSub] = useState("");
@@ -421,11 +441,7 @@ function MenuBody({
   async function moveTo(target: ShoppingList | null) {
     onClose();
     try {
-      const id = target
-        ? target.id
-        : await create.mutateAsync({ name: t("ls.laterList"), isPrivate: list.is_private, plannedFor: isoDay(addDays(new Date(), 1)), note: null });
-      await add.mutateAsync({ listId: id, name: item.name, quantity: item.quantity, unit: item.unit, note: item.note, categoryId: item.category_id });
-      await remove.mutateAsync(item.id);
+      await move.mutateAsync({ itemId: item.id, targetListId: target?.id, newName: target ? undefined : t("ls.laterList") });
       toast.show(t("ls.moved", { name: item.name, list: target?.name ?? t("ls.laterList") }));
     } catch (err) {
       fail(err);
@@ -539,10 +555,27 @@ function MenuBody({
                 </span>
               }
               title={t("ls.backToList")}
+              sub={item.status === "UNAVAILABLE" ? t("ls.undoNa") : t("ls.notInCartYet")}
               chevron={false}
               onClick={() => {
                 onClose();
                 update.mutate({ id: item.id, patch: { status: "OPEN" } }, { onError: fail });
+              }}
+            />
+          )}
+          {item.status !== "UNAVAILABLE" && (
+            <Cell
+              icon={
+                <span className="cat-ic sm" style={{ background: "var(--orange-soft)", color: "var(--orange)" }}>
+                  <PackageX size={15} />
+                </span>
+              }
+              title={t("ls.na")}
+              sub={by ? t("ls.naNotify", { name: shortName(by) }) : undefined}
+              chevron={false}
+              onClick={() => {
+                onClose();
+                update.mutate({ id: item.id, patch: { status: "UNAVAILABLE" } }, { onError: fail });
               }}
             />
           )}
@@ -577,6 +610,7 @@ function FinishScreen({
   session,
   open,
   bought,
+  na,
   pending,
   names,
   estimate,
@@ -587,6 +621,7 @@ function FinishScreen({
   session: Session;
   open: Item[];
   bought: Item[];
+  na: number;
   pending: AdditionRequest[];
   names: Map<string, string> | undefined;
   estimate: number | null;
@@ -595,10 +630,8 @@ function FinishScreen({
 }) {
   const navigate = useNavigate();
   const toast = useToast();
-  const end = useEndShopping(list.id);
+  const finishShopping = useFinishShopping(householdId, list.id);
   const later = useSetReceiptLater(householdId);
-  const create = useCreateList(householdId);
-  const add = useAddItem();
   const remove = useDeleteItem(list.id);
   const [unbought, setUnbought] = useState<"move" | "keep" | "drop">("move");
   const [busy, setBusy] = useState(false);
@@ -607,14 +640,9 @@ function FinishScreen({
     if (busy) return;
     setBusy(true);
     try {
-      if (open.length && unbought === "move") {
-        const id = await create.mutateAsync({ name: list.name, isPrivate: list.is_private, plannedFor: isoDay(addDays(new Date(), 1)), note: list.note });
-        for (const i of open) await add.mutateAsync({ listId: id, name: i.name, quantity: i.quantity, unit: i.unit, note: i.note, categoryId: i.category_id });
-        for (const i of open) await remove.mutateAsync(i.id);
-      } else if (open.length && unbought === "drop") {
-        for (const i of open) await remove.mutateAsync(i.id);
-      }
-      await end.mutateAsync(session.id);
+      // „Netreba ich“: nekúpené sa odstránia (ako ručné zmazanie položky), zoznam sa uzavrie.
+      if (open.length && unbought === "drop") for (const i of open) await remove.mutateAsync(i.id);
+      await finishShopping.mutateAsync({ sessionId: session.id, unbought: unbought === "move" ? "MOVE" : "KEEP" });
       if (receipt === "later") await later.mutateAsync({ listId: list.id, later: true });
       const moved = open.length
         ? unbought === "move"
@@ -657,6 +685,7 @@ function FinishScreen({
             <span className="t-title">{list.name}</span>
             <span className="t-sm t-2 num">
               {t("ls.inCartCount", { count: tn("shop.itemCount", bought.length) })}
+              {na ? ` · ${t("ls.naCount", { n: na })}` : ""}
               {open.length ? ` · ${t("ls.unboughtCount", { n: open.length })}` : ""}
             </span>
             {estimate != null && <span className="t-big num">~{formatEuro(estimate)}</span>}

@@ -152,4 +152,11 @@ export const skLs = {
   "ls.subPlaceholder": "Čo si kúpil namiesto toho?",
   "ls.subNote": "Náhrada za: {name}",
   "ls.saveSub": "Uložiť náhradu",
+  "ls.na": "Nemali",
+  "ls.naCount": "nemali {n}",
+  "ls.naNotify": "{name} to uvidí v zozname",
+  "ls.notInCartYet": "Ešte to nemám v košíku",
+  "ls.undoNa": "Zrušiť „nemali“",
+  "ls.options": "Možnosti",
+  "ls.timeOptional": "Čas (nepovinné)",
 } as const;

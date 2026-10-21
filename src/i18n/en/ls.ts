@@ -154,4 +154,11 @@ export const enLs: Record<keyof typeof skLs, string> = {
   "ls.subPlaceholder": "What did you buy instead?",
   "ls.subNote": "Substitute for: {name}",
   "ls.saveSub": "Save substitute",
+  "ls.na": "Unavailable",
+  "ls.naCount": "unavailable {n}",
+  "ls.naNotify": "{name} will see it in the list",
+  "ls.notInCartYet": "Not in the cart yet",
+  "ls.undoNa": "Undo “unavailable”",
+  "ls.options": "Options",
+  "ls.timeOptional": "Time (optional)",
 };

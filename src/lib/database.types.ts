@@ -249,12 +249,14 @@ export type Database = {
           name: string;
           note: string | null;
           planned_for: string | null;
+          /** Čas nákupu „17:30:00“ (nepovinný). */
+          planned_time: string | null;
           receipt_id: string | null;
           receipt_state: "NONE" | "LATER" | "ATTACHED";
           updated_at: string;
         };
-        Insert: { household_id: string; name: string; is_private?: boolean; planned_for?: string | null; note?: string | null };
-        Update: { is_archived?: boolean; name?: string; is_private?: boolean; planned_for?: string | null; note?: string | null };
+        Insert: { household_id: string; name: string; is_private?: boolean; planned_for?: string | null; planned_time?: string | null; note?: string | null };
+        Update: { is_archived?: boolean; name?: string; is_private?: boolean; planned_for?: string | null; planned_time?: string | null; note?: string | null };
         Relationships: [];
       };
       shopping_sessions: {
@@ -285,6 +287,8 @@ export type Database = {
       create_household: { Args: { p_name: string }; Returns: string };
       create_invitation: { Args: { p_household_id: string }; Returns: Json };
       end_shopping: { Args: { p_session_id: string }; Returns: SessionRow };
+      finish_shopping: { Args: { p_session_id: string; p_unbought?: "MOVE" | "KEEP" }; Returns: string | null };
+      move_item: { Args: { p_item_id: string; p_target_list?: string; p_new_name?: string }; Returns: string };
       invitation_preview: { Args: { p_token: string }; Returns: Json };
       leave_household: { Args: { p_household_id: string }; Returns: undefined };
       analytics_overview: {
@@ -360,7 +364,7 @@ export type Database = {
     };
     Enums: {
       invitation_status: "PENDING" | "ACCEPTED" | "REVOKED";
-      item_status: "OPEN" | "PURCHASED";
+      item_status: "OPEN" | "PURCHASED" | "UNAVAILABLE";
       member_role: "OWNER" | "MEMBER";
       receipt_status: "PROCESSING" | "OK" | "NEEDS_REVIEW" | "FAILED";
       request_status: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";

@@ -145,7 +145,7 @@ function LiveCard({ session, list, mine, shopper }: { session: Session; list: Sh
   const navigate = useNavigate();
   const items = useItems(list.id).data ?? [];
   const since = new Date(session.started_at).getTime();
-  const handled = items.filter((i) => i.status === "PURCHASED" && new Date(i.purchased_at ?? 0).getTime() >= since).length;
+  const handled = items.filter((i) => i.status !== "OPEN" && new Date(i.purchased_at ?? 0).getTime() >= since).length;
   const total = handled + items.filter((i) => i.status === "OPEN").length;
   const at = formatDateTime(session.started_at, { hour: "2-digit", minute: "2-digit" });
   return (

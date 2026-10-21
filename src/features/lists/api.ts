@@ -159,7 +159,7 @@ export function useUpdateItem(listId: string) {
             ? {
                 ...it,
                 ...patch,
-                ...(patch.status === "PURCHASED" ? { purchased_at: new Date().toISOString() } : {}),
+                ...(patch.status === "PURCHASED" || patch.status === "UNAVAILABLE" ? { purchased_at: new Date().toISOString() } : {}),
                 ...(patch.status === "OPEN" ? { purchased_at: null, purchased_by: null } : {}),
               }
             : it,
@@ -195,7 +195,7 @@ export function useDeleteItem(listId: string) {
   });
 }
 
-export type ListInput = { name: string; isPrivate: boolean; plannedFor: string | null; note: string | null };
+export type ListInput = { name: string; isPrivate: boolean; plannedFor: string | null; plannedTime?: string | null; note: string | null };
 
 export function useCreateList(householdId: string) {
   const qc = useQueryClient();
@@ -203,7 +203,7 @@ export function useCreateList(householdId: string) {
     mutationFn: async (input: ListInput) => {
       const { data, error } = await supabase
         .from("shopping_lists")
-        .insert({ household_id: householdId, name: input.name, is_private: input.isPrivate, planned_for: input.plannedFor, note: input.note })
+        .insert({ household_id: householdId, name: input.name, is_private: input.isPrivate, planned_for: input.plannedFor, planned_time: input.plannedTime ?? null, note: input.note })
         .select("id")
         .single();
       if (error) throw error;
@@ -221,7 +221,7 @@ export function useUpdateList(householdId: string) {
       patch,
     }: {
       id: string;
-      patch: { name?: string; is_archived?: boolean; is_private?: boolean; planned_for?: string | null; note?: string | null };
+      patch: { name?: string; is_archived?: boolean; is_private?: boolean; planned_for?: string | null; planned_time?: string | null; note?: string | null };
     }) => {
       const { error } = await supabase.from("shopping_lists").update(patch).eq("id", id);
       if (error) throw error;
@@ -255,6 +255,47 @@ export function useEndShopping(listId: string) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: listKeys.session(listId) });
       qc.invalidateQueries({ queryKey: listKeys.requests(listId) });
+    },
+  });
+}
+
+/**
+ * Koniec nákupu (databázová funkcia finish_shopping): nekúpené položky buď presunie
+ * do nového zoznamu na zajtra (MOVE), alebo nechá v zozname (KEEP).
+ */
+export function useFinishShopping(householdId: string, listId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sessionId, unbought }: { sessionId: string; unbought: "MOVE" | "KEEP" }) => {
+      const { data, error } = await supabase.rpc("finish_shopping", { p_session_id: sessionId, p_unbought: unbought });
+      if (error) throw error;
+      return data;
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: listKeys.session(listId) });
+      qc.invalidateQueries({ queryKey: listKeys.requests(listId) });
+      qc.invalidateQueries({ queryKey: listKeys.items(listId) });
+      qc.invalidateQueries({ queryKey: listKeys.lists(householdId) });
+      qc.invalidateQueries({ queryKey: listKeys.stats(householdId) });
+      qc.invalidateQueries({ queryKey: listKeys.hubSessions(householdId) });
+    },
+  });
+}
+
+/** „Kúpim inde“ – presun položky do iného zoznamu, alebo do nového zoznamu na zajtra (newName). */
+export function useMoveItem(householdId: string, listId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ itemId, targetListId, newName }: { itemId: string; targetListId?: string; newName?: string }) => {
+      const { data, error } = await supabase.rpc("move_item", { p_item_id: itemId, p_target_list: targetListId, p_new_name: newName });
+      if (error) throw error;
+      return data;
+    },
+    onSettled: (target) => {
+      qc.invalidateQueries({ queryKey: listKeys.items(listId) });
+      if (target) qc.invalidateQueries({ queryKey: listKeys.items(target) });
+      qc.invalidateQueries({ queryKey: listKeys.lists(householdId) });
+      qc.invalidateQueries({ queryKey: listKeys.stats(householdId) });
     },
   });
 }
@@ -389,7 +430,7 @@ export function useListStats(householdId: string) {
         if (row.status === "OPEN") {
           st.open++;
           if (st.preview.length < 4) st.preview.push(row.name);
-        } else st.bought++;
+        } else if (row.status === "PURCHASED") st.bought++;
         map.set(row.list_id, st);
       }
       return map;

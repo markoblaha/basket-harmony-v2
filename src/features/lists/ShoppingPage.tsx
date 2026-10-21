@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
-import { Camera, Check, ChevronDown, ChevronLeft, ChevronUp, Ellipsis, Lock, Plus, Receipt, ShoppingCart } from "lucide-react";
-import { ErrorState, Spinner } from "@/components/ui";
+import { Camera, Check, ChevronDown, PackageX, ChevronLeft, ChevronUp, Ellipsis, Lock, Plus, Receipt, ShoppingCart } from "lucide-react";
+import { ErrorState, Spinner, cx } from "@/components/ui";
 import { Avatars, BottomSheet, Empty, SheetHeader, StoreBadge, type Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
@@ -116,7 +116,7 @@ export function ShoppingPage() {
   const all = items.data ?? [];
   const open = useMemo(() => all.filter((i) => i.status === "OPEN").sort((a, b) => b.created_at.localeCompare(a.created_at)), [all]);
   const recent = useMemo(
-    () => all.filter((i) => i.status === "PURCHASED").sort((a, b) => (b.purchased_at ?? "").localeCompare(a.purchased_at ?? "")),
+    () => all.filter((i) => i.status !== "OPEN").sort((a, b) => (b.purchased_at ?? "").localeCompare(a.purchased_at ?? "")),
     [all],
   );
   const pendingForMe = (requests.data ?? []).filter((r) => r.status === "PENDING" && r.requested_for === me);
@@ -285,7 +285,10 @@ export function ShoppingPage() {
         {recent.length > 0 && !active && (
           <section className="stack g-6">
             <button type="button" className="section-head" onClick={() => setShowPurchased((v) => !v)} style={{ width: "100%" }} aria-expanded={showPurchased}>
-              <span className="section-title">{t("ls.inCart", { n: recent.length })}</span>
+              <span className="section-title">
+                {t("ls.inCart", { n: recent.filter((i) => i.status === "PURCHASED").length })}
+                {recent.some((i) => i.status === "UNAVAILABLE") ? ` · ${t("ls.naCount", { n: recent.filter((i) => i.status === "UNAVAILABLE").length })}` : ""}
+              </span>
               {showPurchased ? <ChevronUp size={16} className="t-3" /> : <ChevronDown size={16} className="t-3" />}
             </button>
             {showPurchased && (
@@ -306,8 +309,8 @@ export function ShoppingPage() {
                       )
                     }
                   >
-                    <Check size={16} className="t-accent" />
-                    <span className="grow t-body t-2 strike ellipsis">{it.name}</span>
+                    {it.status === "UNAVAILABLE" ? <PackageX size={16} className="t-orange" /> : <Check size={16} className="t-accent" />}
+                    <span className={cx("grow t-body t-2 ellipsis", it.status === "PURCHASED" && "strike")}>{it.name}</span>
                     <span className="t-sm fw-6 t-3">{t("ls.putBack")}</span>
                   </button>
                 ))}

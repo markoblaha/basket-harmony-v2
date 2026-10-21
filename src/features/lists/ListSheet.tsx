@@ -72,6 +72,7 @@ export function ListSheet({
   const initialDay: Day = !edit ? "today" : edit.planned_for === today ? "today" : edit.planned_for === tomorrow ? "tomorrow" : edit.planned_for === sat ? "sat" : "pick";
   const [day, setDay] = useState<Day>(initialDay);
   const [picked, setPicked] = useState(edit?.planned_for ?? isoDay(addDays(new Date(), 2)));
+  const [time, setTime] = useState(edit?.planned_time?.slice(0, 5) ?? "");
   const [shared, setShared] = useState(edit ? !edit.is_private : true);
   const [more, setMore] = useState(false);
   const [note, setNote] = useState(edit?.note ?? "");
@@ -90,16 +91,16 @@ export function ListSheet({
       if (edit) {
         await update.mutateAsync({
           id: edit.id,
-          patch: { name, planned_for: date, note: note.trim() || null, ...(canChangePrivacy ? { is_private: !shared } : {}) },
+          patch: { name, planned_for: date, planned_time: time || null, note: note.trim() || null, ...(canChangePrivacy ? { is_private: !shared } : {}) },
         });
         onClose();
         toast.show(t("ls.edited"));
         return;
       }
-      const id = await create.mutateAsync({ name, isPrivate: !shared, plannedFor: date, note: note.trim() || null });
+      const id = await create.mutateAsync({ name, isPrivate: !shared, plannedFor: date, plannedTime: time || null, note: note.trim() || null });
       onClose();
       onCreated?.(id);
-      toast.show(t("ls.created", { name, day: dayLabel(date) }));
+      toast.show(t("ls.created", { name, day: time ? `${dayLabel(date)} ${time}` : dayLabel(date) }));
     } catch (err) {
       toast.show(errorMessage(err), "error");
     }
@@ -195,9 +196,19 @@ export function ListSheet({
               </button>
             ))}
           </div>
-          {day === "pick" && (
-            <input className="input" type="date" aria-label={t("lsheet.pickDay")} value={picked} min={today} onChange={(e) => setPicked(e.target.value || picked)} />
-          )}
+          <div className="row g-8">
+            {day === "pick" && (
+              <input className="input grow" type="date" aria-label={t("lsheet.pickDay")} value={picked} min={today} onChange={(e) => setPicked(e.target.value || picked)} />
+            )}
+            <input
+              className="input"
+              type="time"
+              aria-label={t("ls.timeOptional")}
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              style={{ maxWidth: day === "pick" ? 130 : "100%" }}
+            />
+          </div>
         </section>
 
         <section className="stack g-10">
