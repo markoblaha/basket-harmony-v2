@@ -309,4 +309,5 @@ export const enReceipts: Record<keyof typeof skReceipts, string> = {
   "rpage.deleteTitle": "Delete receipts?",
   "detail.edit": "Edit",
   "rpage.pieces": "pcs",
+  "manual.moreCats": "More…",
 };

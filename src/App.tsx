@@ -10,6 +10,7 @@ import { JoinPage } from "@/features/household/JoinPage";
 import { OnboardingPage } from "@/features/household/OnboardingPage";
 import { HouseholdPage } from "@/features/more/HouseholdPage";
 import { MorePage } from "@/features/more/MorePage";
+import { NotificationsPage, StoresPage, TilesPage } from "@/features/more/SettingsPages";
 import { ShoppingPage } from "@/features/lists/ShoppingPage";
 import { HistoryPage } from "@/features/lists/HistoryPage";
 import { ShoppingHub } from "@/features/lists/ShoppingHub";
@@ -98,6 +99,9 @@ export function App() {
           <Route path="analytics/product/:id" element={<ProductPage />} />
           <Route path="more" element={<MorePage />} />
           <Route path="more/household" element={<HouseholdPage />} />
+          <Route path="more/notifications" element={<NotificationsPage />} />
+          <Route path="more/stores" element={<StoresPage />} />
+          <Route path="more/tiles" element={<TilesPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

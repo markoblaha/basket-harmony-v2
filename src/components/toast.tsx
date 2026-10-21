@@ -35,7 +35,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const show = useCallback<Api["show"]>((text, tone = "info", opts) => {
     const id = nextId.current++;
     // Bez spodnej lišty (nákup, hlas, varenie) je hláška hore, aby neprekryla tlačidlá dole.
-    const high = typeof document !== "undefined" && !document.querySelector("nav.tabbar");
+    // Celoobrazovkový režim, ktorý lištu len prekrýva, sa označí atribútom data-notab na svojom obale.
+    const high = typeof document !== "undefined" && (!document.querySelector("nav.tabbar") || !!document.querySelector("[data-notab]"));
     setToast({ id, text, tone, undo: opts?.undo, high });
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setToast((x) => (x?.id === id ? null : x)), tone === "error" ? 6000 : opts?.undo ? 5000 : 3000);

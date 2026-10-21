@@ -155,6 +155,9 @@ export function PendingSheet({
   );
 }
 
+/** Kategórie ručného výdavku ako v prototype; ostatné sú pod „Ďalšie…“. */
+const MAN_CATS: string[] = ["produce", "bakery", "meat_fish", "dairy_eggs", "beverages", "snacks_sweets", "personal_care", "household_cleaning", "other"];
+
 /** A5MAN – ručný výdavok bez dokladu (trh, nájom, hotovosť). */
 export function ManualExpenseSheet({ open, onClose, householdId }: { open: boolean; onClose: () => void; householdId: string }) {
   return (
@@ -172,7 +175,8 @@ function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; hous
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(iso);
-  const [categoryId, setCategoryId] = useState("groceries");
+  const [categoryId, setCategoryId] = useState("other");
+  const [allCats, setAllCats] = useState(false);
   const value = parseAmount(amount);
   const ok = !!name.trim() && value !== null && value > 0 && !!date;
 
@@ -180,7 +184,7 @@ function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; hous
     if (!ok || value === null) return;
     try {
       await add.mutateAsync({ name: name.trim(), amount: value, date, categoryId });
-      toast.show(t("manual.added"), "success");
+      toast.show(t("manual.added", { name: name.trim(), amount: formatEuro(value) }), "success");
       onClose();
     } catch (err) {
       toast.show(readErrorMessage(err), "error");
@@ -208,11 +212,16 @@ function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; hous
         <div className="stack g-6">
           <span className="field-label">{t("edit.category")}</span>
           <div className="row wrap g-8" role="radiogroup" aria-label={t("edit.category")}>
-            {CATEGORIES.filter((c) => c.id !== "deposit").map((c) => (
+            {CATEGORIES.filter((c) => c.id !== "deposit" && (allCats || MAN_CATS.includes(c.id) || c.id === categoryId)).map((c) => (
               <button key={c.id} type="button" role="radio" aria-checked={categoryId === c.id} className={cx("chip", categoryId === c.id && "on")} onClick={() => setCategoryId(c.id)}>
                 {c.name}
               </button>
             ))}
+            {!allCats && (
+              <button type="button" className="chip" onClick={() => setAllCats(true)}>
+                {t("manual.moreCats")}
+              </button>
+            )}
           </div>
         </div>
         <button type="button" className="btn btn-ink btn-block btn-lg" disabled={!ok || add.isPending} onClick={() => void submit()}>

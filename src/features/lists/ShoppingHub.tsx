@@ -39,8 +39,11 @@ export function ShoppingHub() {
   const highlight = (location.state as { highlight?: string } | null)?.highlight ?? params.get("zvyraznit");
   const [fresh, setFresh] = useState<{ id: string; at: number } | null>(null);
   useEffect(() => {
-    if (highlight) setFresh({ id: highlight, at: Date.now() });
-  }, [highlight, location.key]);
+    if (!highlight) return;
+    setFresh({ id: highlight, at: Date.now() });
+    // Aby sa pri návrate späť zoznam nerozsvietil znova.
+    if (location.state) navigate(location.pathname, { replace: true, state: null });
+  }, [highlight, location.key]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (params.has("novy") || params.has("zvyraznit")) setParams({}, { replace: true });
   }, [params, setParams]);
@@ -109,7 +112,7 @@ export function ShoppingHub() {
           <section className="stack g-10">
             {open.map((l) => (
               <ListCard
-                key={l.id}
+                key={fresh?.id === l.id ? `${l.id}-${fresh.at}` : l.id}
                 list={l}
                 stats={stats.data?.get(l.id)}
                 session={sessionByList.get(l.id)}
@@ -117,7 +120,6 @@ export function ShoppingHub() {
                 people={participants(l, stats.data?.get(l.id)?.adders ?? [], people)}
                 recipes={recipesOf(l.id)}
                 fresh={fresh?.id === l.id && Date.now() - fresh.at < 4000}
-                freshKey={fresh?.id === l.id ? fresh.at : 0}
                 onActions={() => setActionsFor(l)}
               />
             ))}

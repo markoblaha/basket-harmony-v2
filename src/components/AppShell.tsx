@@ -25,6 +25,12 @@ const TABS: { to: string; label: Key; icon: typeof Menu; match: (p: string) => b
   { to: "/more", label: "nav.more", icon: Menu, match: (p) => p.startsWith("/more") },
 ];
 
+/**
+ * Obrazovky bez spodnej lišty (v prototype tabBar: false / celá plocha): kontrola surovín,
+ * košík receptov, varenie. Hlášky (toast) sa na nich ukazujú hore (pozri toast.tsx).
+ */
+const NO_TABBAR = [/^\/recipes\/check\/?$/, /^\/recipes\/cart\/?$/, /^\/recipes\/r\/[^/]+\/cook\/?$/];
+
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
@@ -77,6 +83,7 @@ export function AppShell() {
   const [voice, setVoice] = useState(false);
   const badges = useBadges(household.id);
   useInAppNotices(household.id);
+  const showTabs = !NO_TABBAR.some((re) => re.test(pathname));
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col pt-safe">
@@ -86,12 +93,13 @@ export function AppShell() {
           {t("status.reconnecting")}
         </div>
       )}
-      <main className="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
+      <main className={showTabs ? "flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))]" : "flex-1"}>
         {/* Prechod obrazovky ako v prototype: nová obrazovka sa vynorí zdola (10 px) a zosvetlí (0,24 s). */}
         <div key={screenKey(pathname)} className="screen-in">
           <Outlet />
         </div>
       </main>
+      {showTabs && (
       <nav aria-label={t("nav.label")} className="tabbar">
         <div className="tabbar-in">
           {TABS.map((tab, i) => (
@@ -106,19 +114,25 @@ export function AppShell() {
           ))}
         </div>
       </nav>
+      )}
       {voice && (
         <Suspense fallback={null}>
+          {/* Hlasový režim prekrýva lištu – hlášky idú hore. */}
+          <div data-notab style={{ display: "contents" }} />
           <VoiceSession
             onClose={() => setVoice(false)}
             onSaved={(store, r) => {
               setVoice(false);
               navigate(`/lists/${r.listId}`);
               const n = r.added + r.merged + r.requests;
-              toast.show(
-                r.requests
-                  ? tn("voice.savedRequests", r.requests, { store })
-                  : t("voice.savedItems", { store, count: tn("shop.itemCount", n) }),
-                "success",
+              // Až po zatvorení hlasového režimu, aby sa hláška ukázala nad lištou (nie hore).
+              setTimeout(() =>
+                toast.show(
+                  r.requests
+                    ? tn("voice.savedRequests", r.requests, { store })
+                    : t("voice.savedItems", { store, count: tn("shop.itemCount", n) }),
+                  "success",
+                ),
               );
             }}
           />

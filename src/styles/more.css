@@ -1,3 +1,19 @@
 /* Doplnky z prototypu – more. Farby len cez premenné tém. */
 @layer components {
+  /* Náhľad vzhľadu (V1): miniatúra obrazovky v pevnej téme; vybraný má tmavý rámik. */
+  .mr-theme { position: relative; width: 100%; height: 64px; border-radius: 12px; overflow: hidden; display: flex; }
+  .mr-theme::after { content: ""; position: absolute; inset: 0; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line-2); pointer-events: none; transition: box-shadow 150ms; }
+  .mr-theme.on::after { box-shadow: inset 0 0 0 2px var(--ink); }
+  .mr-mini { flex: 1; min-width: 0; height: 100%; padding: 8px; display: flex; flex-direction: column; gap: 5px; background: var(--bg); }
+  .mr-mini + .mr-mini { padding-left: 6px; }
+  .mr-mini-ttl { display: block; height: 6px; width: 45%; border-radius: 3px; background: var(--ink); opacity: 0.85; }
+  .mr-mini-card { display: block; flex: 1; border-radius: 6px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+  .mr-mini-btn { display: block; height: 10px; width: 60%; border-radius: 5px; background: var(--ink); align-self: flex-end; }
+  [data-theme-scope="color"] :is(.mr-mini-ttl, .mr-mini-btn) { background: var(--ink-grad); }
+
+  /* Ponuka pri členovi domácnosti (V2): malá karta pod tlačidlom ⋯. */
+  .mr-menu { position: absolute; right: 12px; top: 52px; z-index: 5; width: 230px; box-shadow: var(--sh-3); overflow: hidden; }
+
+  /* Pozvánka (V2I): ikona namiesto QR kódu. */
+  .mr-invite-ic { width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center; background: var(--violet-soft); color: var(--violet); }
 }

@@ -308,4 +308,5 @@ export const skReceipts = {
   "rpage.deleteTitle": "Zmazať doklady?",
   "detail.edit": "Upraviť",
   "rpage.pieces": "ks",
+  "manual.moreCats": "Ďalšie…",
 } as const;

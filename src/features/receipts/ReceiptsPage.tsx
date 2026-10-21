@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ChevronRight, FileText, Link2, Merge, Plus, ReceiptText as ReceiptIcon, Search, Trash2, X } from "lucide-react";
 import { ErrorState, Spinner, cx } from "@/components/ui";
-import { Empty } from "@/components/kit";
+import { ConfirmDialog, Empty } from "@/components/kit";
 import { AnalyticsTop } from "@/features/analytics/akit";
 import { usePeriod } from "@/features/analytics/period";
 import { AddReceiptSheet } from "@/features/lists/HistoryPage";
@@ -61,6 +61,8 @@ export function ReceiptsPage() {
   // Výber dokladov (podržanie riadku alebo tlačidlo "Vybrať"): poradie klepnutí = poradie strán pri spájaní.
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  // Potvrdenie v strede obrazovky (prototyp) pred spojením alebo zmazaním vybraných dokladov.
+  const [ask, setAsk] = useState<"merge" | "delete" | null>(null);
 
   const all = receipts.data ?? [];
   const attention = all.filter(needsAttention);
@@ -143,10 +145,12 @@ export function ReceiptsPage() {
     setPicked([...picked, id]);
   }
 
-  async function doMerge() {
+  function doMerge() {
     if (picked.length > MAX_PAGES) return toast.show(t("rpage.mergeMax", { max: MAX_PAGES }), "error");
-    const text = t("rpage.mergeConfirm", { n: picked.length });
-    if (!window.confirm(text)) return;
+    setAsk("merge");
+  }
+
+  async function runMerge() {
     try {
       await merge.mutateAsync(picked);
       toast.show(t("rpage.merged"), "success");
@@ -156,9 +160,7 @@ export function ReceiptsPage() {
     }
   }
 
-  async function doDelete() {
-    const text = tn("rpage.deleteConfirm", picked.length);
-    if (!window.confirm(text)) return;
+  async function runDelete() {
     let failed = 0;
     for (const id of picked) {
       const receipt = all.find((r) => r.id === id);
@@ -348,7 +350,7 @@ export function ReceiptsPage() {
               <button type="button" className="btn btn-ink grow" disabled={picked.length < 2 || busy} onClick={doMerge}>
                 <Merge size={18} /> {t("rpage.merge")}
               </button>
-              <button type="button" className="btn btn-danger" disabled={picked.length < 1 || busy} onClick={doDelete}>
+              <button type="button" className="btn btn-danger" disabled={picked.length < 1 || busy} onClick={() => setAsk("delete")}>
                 <Trash2 size={18} /> {t("common.delete")}
               </button>
             </div>
@@ -387,6 +389,20 @@ export function ReceiptsPage() {
         }}
         onStart={startPending}
         onClose={() => setPending(null)}
+      />
+      <ConfirmDialog
+        open={ask !== null}
+        title={ask === "merge" ? t("rpage.mergeTitle") : t("rpage.deleteTitle")}
+        body={ask === "merge" ? t("rpage.mergeConfirm", { n: picked.length }) : tn("rpage.deleteConfirm", picked.length)}
+        confirmLabel={ask === "merge" ? t("rpage.merge") : t("common.delete")}
+        danger={ask === "delete"}
+        busy={busy}
+        onCancel={() => setAsk(null)}
+        onConfirm={() => {
+          const what = ask;
+          setAsk(null);
+          void (what === "merge" ? runMerge() : runDelete());
+        }}
       />
       <AddReceiptSheet
         list={addingFor}
