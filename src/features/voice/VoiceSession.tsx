@@ -9,20 +9,12 @@ import { addDays, dayLabel, isoDay } from "@/features/lists/dates";
 import { guessCategory, normalizeName } from "@/lib/categories";
 import { t, tn } from "@/i18n";
 import { errorMessage } from "@/lib/errors";
+import { getSetting } from "@/lib/settings";
 import { interpretAI, loadDraft, saveDraft, useKnownStores, useSaveVoiceList, type DraftItem, type SaveResult } from "./api";
 import { parseLocal, splitStore, type VoiceOp } from "./parse";
 import { applyOps, diff, findItem, reconcile } from "./engine";
 import { useSpeech } from "./useSpeech";
 import { VoiceCard } from "./VoiceRow";
-
-/** Mikrofón sa po otvorení zapne sám (nastavenie v zariadení, predvolene áno). */
-function micAutostart(): boolean {
-  try {
-    return localStorage.getItem("bh.micAutostart") !== "0";
-  } catch {
-    return true;
-  }
-}
 
 const cap = (s: string) => (s ? s[0]!.toLocaleUpperCase("sk-SK") + s.slice(1) : s);
 
@@ -64,7 +56,8 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
   const [modal, setModal] = useState<Modal>(null);
   const [typing, setTyping] = useState(false);
   const [doneHint, setDoneHint] = useState(false);
-  const [listening, setListening] = useState(micAutostart);
+  // Mikrofón sa po otvorení zapne sám, ak to nastavenie (Viac → Nastavenia) nevypne.
+  const [listening, setListening] = useState(() => getSetting("micAutostart"));
   const [said, setSaid] = useState("");
   const [refining, setRefining] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -157,7 +150,9 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
       if (correction) rest = rest.slice(correction[0].length);
       const before = itemsRef.current;
       const sel = selRef.current ? before.find((c) => c.id === selRef.current) : undefined;
-      let target = sel?.name ?? (correction ? (before[0]?.name ?? null) : null);
+      // „ešte jedno mlieko“ pridáva (navýši rovnakú položku), aj keď je nejaká karta vybraná.
+      const more = /^(este|ešte)\s+(jeden|jedno|jednu|jedna|jedny)\s+\S/i.test(rest);
+      let target = more ? null : (sel?.name ?? (correction ? (before[0]?.name ?? null) : null));
       let ops: VoiceOp[] = parseLocal(rest, target);
       // samotné množstvo („250 g“, „tri“) → oprava poslednej karty
       if (!target && !ops.length && before[0]) {
@@ -181,7 +176,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
           },
         });
       }
-      if (sel && (local.understood || target)) setSelected(null);
+      if (sel && target && local.understood) setSelected(null);
       if (local.done && !local.added.length && !local.merged.length && !local.removed.length) return;
 
       const mine = ++seq.current;
@@ -212,7 +207,6 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
       setTargetListId(o.targetListId ?? null);
     }
     pendingText.current = o.text ?? null;
-    setSaid("");
     setPhase("h2");
   }
 

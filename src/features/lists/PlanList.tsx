@@ -11,6 +11,7 @@ import { formatEuro, t } from "@/i18n";
 import type { PriceHint } from "@/features/analytics/api";
 import { useAddItem, useDeleteItem, useUpdateItem, type Item } from "./api";
 import { countOf, qtyLabel } from "./qty";
+import { useSetting } from "@/lib/settings";
 
 /** Krok a minimum podľa jednotky: kusy po 1, gramy po 100, kilá a litre po 0,1. */
 export const stepOf = (u: string | null) => (u === "g" || u === "ml" ? 100 : u === "kg" || u === "l" ? 0.1 : 1);
@@ -53,6 +54,7 @@ export function PlanList({
   onEdit: (item: Item) => void;
 }) {
   const [showHint, setShowHint] = useState(() => !hintSeen());
+  const [prices] = useSetting("prices");
   const seen = () => {
     if (showHint) {
       markHintSeen();
@@ -101,7 +103,7 @@ export function PlanList({
                 item={it}
                 fresh={fresh.has(it.id)}
                 by={it.added_by && it.added_by !== me ? { id: it.added_by, name: names?.get(it.added_by) ?? t("household.fallbackName") } : undefined}
-                hint={hints?.get(it.id)}
+                hint={prices ? hints?.get(it.id) : undefined}
                 onEdit={() => onEdit(it)}
                 onSwiped={seen}
               />

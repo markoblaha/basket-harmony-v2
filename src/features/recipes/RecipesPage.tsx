@@ -17,11 +17,13 @@ import { Cover, RIcon, RecipeRow, VoiceSearch } from "./common";
 import { ImportSheet } from "./ImportSheet";
 import { categoryName, mergeIngredients, recipeMeta, recommendations } from "./logic";
 import type { Recipe } from "./types";
+import { useSetting } from "@/lib/settings";
 
 /** R1 – Recepty: hľadanie, import, čakajúce recepty, pre teba, kategórie, moje recepty. */
 export function RecipesPage() {
   const { household } = useHousehold();
   const navigate = useNavigate();
+  const [suggestions] = useSetting("recipeSuggestions");
   const recipes = useRecipes(household.id);
   const [voice, setVoice] = useState(false);
   const [importing, setImporting] = useState<"photo" | "link" | null>(null);
@@ -58,7 +60,7 @@ export function RecipesPage() {
         </div>
 
         <Waiting />
-        <Featured catalog={recipes.catalog} find={recipes.find} />
+        {suggestions && <Featured catalog={recipes.catalog} find={recipes.find} />}
 
         <section className="stack g-8">
           <span className="section-title">{t("rc.categories")}</span>

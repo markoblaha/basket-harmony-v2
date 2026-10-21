@@ -101,7 +101,7 @@ export const enMore: Record<keyof typeof skMore, string> = {
   "more.language.label": "Language",
   "more.export": "Export data",
   "more.exportSub": "Spreadsheet (CSV) for a chosen period",
-  "more.export.month": "This month",
+  "more.export.month": "Month",
   "more.export.quarter": "3 months",
   "more.export.year": "Year",
   "more.export.all": "All",

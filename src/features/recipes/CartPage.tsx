@@ -21,6 +21,7 @@ import { Cover, NoTabScreen } from "./common";
 import { buyPlan, formatAmount, mergeIngredients, recipeMeta, toListEntry, type Row } from "./logic";
 import { NutritionSheet } from "./RecipePage";
 import type { Recipe } from "./types";
+import { orderStores, useSetting } from "@/lib/settings";
 
 const STORES = ["Lidl", "Kaufland", "Tesco", "Billa", "Teta"];
 const markOf = (c: CartState, row: Row) => c.marks[row.key] ?? (row.staple ? "home" : "buy");
@@ -63,6 +64,7 @@ export function CartPage() {
   const [more, setMore] = useState(false);
   const [target, setTarget] = useState(false);
   const [nutri, setNutri] = useState(false);
+  const [nutritionOn] = useSetting("nutrition");
   const hid = household.id;
 
   const toggle = (row: Row) => {
@@ -141,9 +143,11 @@ export function CartPage() {
         )}
 
         <span className="t-body t-2">{t("rc.tapHome")}</span>
-        <button type="button" className="row g-6 t-sm link" style={{ minHeight: 32, alignSelf: "flex-start" }} onClick={() => setNutri(true)}>
-          {t("rc.n.ofRecipes")} <ChevronRight size={15} />
-        </button>
+        {nutritionOn && (
+          <button type="button" className="row g-6 t-sm link" style={{ minHeight: 32, alignSelf: "flex-start" }} onClick={() => setNutri(true)}>
+            {t("rc.n.ofRecipes")} <ChevronRight size={15} />
+          </button>
+        )}
 
         {/* Dlaždice idú za sebou bez medzier medzi kategóriami; kategória je len tichý štítok v dlaždici. */}
         <div className="rc-tiles">
@@ -374,7 +378,7 @@ function TargetSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
               <span className="field-label">{t("rc.store")}</span>
               <div className="chips">
                 <button type="button" className={cx("chip", store === null && "on")} onClick={() => setStore(null)}>{t("rc.dontKnow")}</button>
-                {STORES.map((s) => (
+                {orderStores(STORES).map((s) => (
                   <button key={s} type="button" className={cx("chip", store === s && "on")} onClick={() => setStore(s)}>
                     <StoreBadge name={s} size="sm" /> {s}
                   </button>

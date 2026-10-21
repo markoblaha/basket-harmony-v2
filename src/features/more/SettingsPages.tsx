@@ -120,7 +120,7 @@ export function StoresPage() {
                   <span className="t-sm t-2 num">{tn("more.stores.count", counts.get(normalizeName(n)) ?? 0)}</span>
                 </span>
                 <button type="button" className="ibtn sm" onClick={() => toggleFav(n)} aria-label={on ? t("more.stores.unfav") : t("more.stores.fav")} aria-pressed={on}>
-                  <Star size={18} fill={on ? "currentColor" : "none"} color={on ? "var(--yellow)" : "var(--text-3)"} />
+                  <Star size={18} fill={on ? "currentColor" : "none"} style={{ color: on ? "var(--yellow)" : "var(--text-3)" }} />
                 </button>
                 <button type="button" className="ibtn sm" onClick={() => move(i, -1)} disabled={i === 0} aria-label={t("more.stores.up")} style={{ opacity: i === 0 ? 0.3 : 1 }}>
                   <ArrowUp size={18} />

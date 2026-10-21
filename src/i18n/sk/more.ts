@@ -100,7 +100,7 @@ export const skMore = {
   "more.language.label": "Jazyk",
   "more.export": "Export údajov",
   "more.exportSub": "Tabuľka (CSV) za vybrané obdobie",
-  "more.export.month": "Tento mesiac",
+  "more.export.month": "Mesiac",
   "more.export.quarter": "3 mesiace",
   "more.export.year": "Rok",
   "more.export.all": "Všetko",

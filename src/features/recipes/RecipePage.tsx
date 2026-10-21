@@ -15,6 +15,7 @@ import {
   type NutrientId,
 } from "./logic";
 import type { Recipe } from "./types";
+import { useSetting } from "@/lib/settings";
 
 const PORTION_CHIPS = [2, 4, 6, 8];
 
@@ -31,6 +32,7 @@ export function RecipePage() {
   const inCart = c.items.find((x) => x.recipeId === id);
   const [chosen, setPortions] = useState<number | null>(null);
   const [nutri, setNutri] = useState(false);
+  const [nutritionOn] = useSetting("nutrition");
   const [confirmDel, setConfirmDel] = useState(false);
 
   if (!r && recipes.isPending) return <Spinner />;
@@ -103,7 +105,7 @@ export function RecipePage() {
           </div>
         </section>
 
-        <button type="button" className="card rc-nstrip" onClick={() => setNutri(true)} aria-label={t("rc.n.perPortionAria")}>
+        {nutritionOn && <button type="button" className="card rc-nstrip" onClick={() => setNutri(true)} aria-label={t("rc.n.perPortionAria")}>
           {(["kcal", "protein", "carbs", "fat"] as const).map((k) => (
             <span key={k} className="stack" style={{ textAlign: "left" }}>
               <span className="t-h num">{k === "kcal" ? Math.round(p.kcal) : `${Math.round(p[k])} g`}</span>
@@ -113,7 +115,7 @@ export function RecipePage() {
           <span className="t-xs t-3" style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
             {t("rc.n.perPortionApprox")} <span className="grow" /> {t("rc.n.details")} <ChevronRight size={15} />
           </span>
-        </button>
+        </button>}
 
         <section className="stack g-8">
           <div className="section-head">

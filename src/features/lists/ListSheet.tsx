@@ -11,6 +11,7 @@ import { useReceipts } from "@/features/receipts/api";
 import { listKeys, useAddItem, useCreateList, useTripItems, useUpdateList, type Item, type ShoppingList } from "./api";
 import { useQueryClient } from "@tanstack/react-query";
 import { addDays, dayLabel, isoDay, nextSaturday } from "./dates";
+import { getSetting, orderStores } from "@/lib/settings";
 
 const STORES = ["Lidl", "Kaufland", "Tesco", "Billa", "DM", "Teta"];
 
@@ -60,7 +61,9 @@ export function ListSheet({
     for (const l of lists) bump(l.name);
     for (const r of receipts.data ?? []) bump(r.store_name);
     const known = STORES.map((name) => ({ name, n: count.get(normalizeName(name)) ?? 0 }));
-    return known.sort((a, b) => b.n - a.n).map((s) => s.name);
+    const byUse = known.sort((a, b) => b.n - a.n).map((s) => s.name);
+    // Poradie z Viac → Moje obchody má prednosť, ak si ho človek nastavil.
+    return getSetting("storeOrder").length ? orderStores(byUse) : byUse;
   }, [lists, receipts.data]);
 
   const isKnown = (n: string) => stores.some((s) => normalizeName(s) === normalizeName(n));

@@ -38,6 +38,7 @@ import { MyRequests, PendingRequests } from "./Requests";
 import { ShoppingMode } from "./ShoppingMode";
 import { sameProduct } from "./qty";
 import { useSmartAdd } from "./useSmartAdd";
+import { useSetting } from "@/lib/settings";
 
 /** Prerušený nákup si pamätáme v tomto okne prehliadača (po zatvorení aplikácie sa obnoví režim nákupu). */
 const interruptKey = (sessionId: string) => `bh.interrupted.${sessionId}`;
@@ -76,6 +77,7 @@ export function ShoppingPage() {
 
   const items = useItems(listId);
   const hints = useListPriceHints(listId);
+  const [showEstimate] = useSetting("estimate");
   const session = useActiveSession(listId);
   const requests = useRequests(listId, session.data?.id);
   const names = useProfiles().data;
@@ -387,7 +389,7 @@ export function ShoppingPage() {
           </section>
         )}
 
-        {priced.length > 0 && (
+        {showEstimate && priced.length > 0 && (
           <div className="stack center g-2" style={{ padding: "4px 0 8px" }}>
             <span className="t-h num">{t("ls.estimate", { amount: formatEuro(estimate) })}</span>
             <span className="t-xs t-3 num">{t("ls.estimateHint", { priced: priced.length, count: open.length })}</span>

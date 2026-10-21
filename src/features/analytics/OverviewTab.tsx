@@ -15,6 +15,7 @@ import { BudgetSheet } from "./BudgetSheet";
 import { categoryInfo, percent, storeLabel, unitLabel } from "./bits";
 import { daysBetween, thisMonth, usePeriod, type Period } from "./period";
 import { useAddToList } from "./useAddToList";
+import { useSetting } from "@/lib/settings";
 
 const MIX = [
   { id: "ovz", label: "an.mix.ovz", cats: ["produce"] },
@@ -41,6 +42,7 @@ function basketMix(cats: Overview["categories"], prev: boolean) {
  */
 export function OverviewTab() {
   const { household } = useHousehold();
+  const [mixOn] = useSetting("basketMix");
   const navigate = useNavigate();
   const { period, search, setCustom } = usePeriod();
   const overview = useOverview(household.id, period);
@@ -91,7 +93,7 @@ export function OverviewTab() {
               <TopStores o={o} onAll={() => navigate(`/analytics/stores${search}`)} onPick={(k) => navigate(`/analytics/store/${encodeURIComponent(k)}${search}`)} />
               <Changes o={o} onPick={(id) => navigate(`/analytics/category/${id}${search}`)} />
               <Prices o={o} onPick={(id) => navigate(`/analytics/product/${id}${search}`)} />
-              <Mix o={o} />
+              {mixOn && <Mix o={o} />}
             </>
           )}
 

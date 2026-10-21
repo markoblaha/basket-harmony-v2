@@ -95,7 +95,8 @@ export function applyOps(start: DraftItem[], ops: VoiceOp[], reuseId?: (name: st
       if (!it) continue;
       eff.understood = true;
       remember(it);
-      const p: Partial<DraftItem> = { status: "ok" };
+      // Nejasnú položku vyrieši až nový názov, samotné množstvo ju nechá nejasnú.
+      const p: Partial<DraftItem> = it.status === "unclear" && !op.name ? {} : { status: "ok" };
       if (op.name && op.quantity == null && op.delta == null) Object.assign(p, { name: op.name, suggestions: [] });
       if (op.quantity != null) Object.assign(p, { quantity: op.quantity, unit: op.unit ?? it.unit ?? "ks" });
       else if (op.delta != null) {

@@ -16,6 +16,7 @@ import { useHubSessions, useItems, useListStats, useLists, useStartShopping, typ
 import { listDay } from "./dates";
 import { ListActionsSheet } from "./ListActionsSheet";
 import { ListSheet } from "./ListSheet";
+import { useSetting } from "@/lib/settings";
 
 /**
  * N1 – prehľad nákupných zoznamov (podľa prototypu): prebiehajúci nákup hore,
@@ -215,6 +216,7 @@ function ListCard({
   const lp = useLongPress({ onTap: () => navigate(`/lists/${list.id}`), onLong: onActions });
   // Orientačný odhad podľa posledných cien z bločkov (ak nejaké sú).
   const hints = useListPriceHints(open > 0 ? list.id : undefined);
+  const [showEstimate] = useSetting("estimate");
   const priced = [...(hints.data?.values() ?? [])].filter((h) => h.last_price > 0);
   const estimate = priced.reduce((sum, h) => sum + Number(h.last_price), 0);
 
@@ -255,7 +257,7 @@ function ListCard({
           </span>
           <span className="t-sm t-2 num ellipsis">
             {listDay(list)} · {tn("shop.itemCount", open)}
-            {priced.length > 0 ? ` · ~${formatEuro(estimate)}` : ""}
+            {showEstimate && priced.length > 0 ? ` · ~${formatEuro(estimate)}` : ""}
           </span>
         </span>
         {(session || open > 0) && (
