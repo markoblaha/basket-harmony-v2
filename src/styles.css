@@ -2,22 +2,24 @@
 @import "@fontsource-variable/onest";
 
 /*
- * Dizajnový systém „Šalvia“: pokojné, farebne tónované povrchy, jedna petrolejová
- * akcentová farba a presná typografia. Farby sú "role" (pozadie, karta, hlavná
- * akcia, úspech...), nie konkrétne odtiene – komponenty používajú role, takže
- * tmavá téma je len iná sada hodnôt. Sadu vyberá atribút data-theme na <html>
- * (ThemeProvider a skript v index.html podľa voľby Svetlá / Tmavá / Podľa systému).
+ * Dizajnový systém v2: pokojné neutrálne plochy, hlavná akcia v „atramentovej“ farbe
+ * (čierna vo svetlej, biela v tmavej, indigová vo farebnej téme) a jedna zelená
+ * akcentová farba pre úspech, odškrtnutie a aktívnu kartu. Farby sú "role" (pozadie,
+ * karta, hlavná akcia, úspech...), nie konkrétne odtiene – komponenty používajú role,
+ * takže témy sú len iné sady hodnôt. Sadu vyberá atribút data-theme na <html>
+ * (ThemeProvider a skript v index.html podľa voľby Svetlá / Tmavá / Farebná / Podľa systému).
  *
  * Vrstvy (líšia sa svetlosťou, nie orámovaním):
- *   bg (plátno) → surface (karta) → elevated (spodný panel, menu, plávajúca lišta)
+ *   bg (plátno) → surface (karta) → elevated (spodný panel, menu, spodná lišta)
  *   sunken = zapustená plocha (dráha prepínača, pole, prázdna dlaždica)
  * Pravidlá:
- *  - primary          = jediná akcentová farba: hlavná akcia, zaškrtnutie, aktívny stav
+ *  - primary          = hlavná akcia obrazovky (najviac jedno výrazné tlačidlo)
+ *  - accent           = úspech, odškrtnutie, priebeh, aktívna karta lišty
  *  - inverse          = krátke hlášky (toast, „Pridané: …“), nie tlačidlá
  *  - person           = ľudia zo skupiny a žiadosti čakajúce na schválenie
- *  - X / X-soft / X-solid = stav: text a ikona / podklad / plný odznak. Plné odznaky
- *    idú v rebríku svetlosti warning > success > person > danger, takže sa rozlíšia
- *    aj bez farby; stav vždy nesie aj ikonu alebo slovo.
+ *  - badge            = počet čakajúcich vecí na ikone lišty (tlmený koral)
+ *  - X / X-soft / X-solid = stav: text a ikona / podklad / plný odznak; stav vždy nesie
+ *    aj ikonu alebo slovo, nielen farbu.
  * Kontrast textu: text, text-2, text-3 a všetky X na X-soft majú aspoň 4,5:1.
  * „@theme inline“: triedy (bg-surface…) čítajú premennú priamo, takže fungujú aj vo
  * vnorenej téme (data-theme-scope – náhľady tém v sekcii Viac, panel prihlásenia).
@@ -37,6 +39,12 @@
   --color-primary-pressed: var(--primary-pressed);
   --color-primary-soft: var(--primary-soft);
   --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-on-accent: var(--on-accent);
+  --color-badge: var(--badge);
+  --color-on-badge: var(--on-badge);
   --color-inverse: var(--inverse);
   --color-on-inverse: var(--on-inverse);
   --color-person: var(--person);
@@ -59,18 +67,18 @@
   --color-info-soft: var(--info-soft);
   --color-scrim: var(--scrim);
 
-  /* Zaoblenia: 8 štítky · 12 ovládacie prvky · 16 karty · 24 spodný panel. */
+  /* Zaoblenia: 8 štítky · 12 ovládacie prvky · 18 karty · 24 spodný panel. */
   --radius-sm: 0.5rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
   --radius-3xl: 1.5rem;
   --radius-control: 0.75rem;
-  --radius-surface: 1rem;
+  --radius-surface: 1.125rem;
   --radius-modal: 1.5rem;
 
-  /* Typografická škála (veľkosť / riadkovanie / rozostup). Váhy: 400 text, 550 tlačidlá, 600 nadpisy. */
+  /* Typografická škála (veľkosť / riadkovanie / rozostup). Váhy: 400 text, 550 tlačidlá, 600–650 nadpisy. */
   --text-overline: 0.6875rem;
   --text-overline--line-height: 0.875rem;
   --text-overline--letter-spacing: 0.06em;
@@ -84,18 +92,18 @@
   --text-callout--line-height: 1.375rem;
   --text-base: 1rem;
   --text-base--line-height: 1.5rem;
-  --text-lg: 1.125rem;
-  --text-lg--line-height: 1.5rem;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.375rem;
   --text-lg--letter-spacing: -0.01em;
   --text-xl: 1.375rem;
   --text-xl--line-height: 1.75rem;
-  --text-xl--letter-spacing: -0.015em;
+  --text-xl--letter-spacing: -0.02em;
   --text-2xl: 1.75rem;
   --text-2xl--line-height: 2.125rem;
   --text-2xl--letter-spacing: -0.02em;
   --text-3xl: 2.125rem;
   --text-3xl--line-height: 2.5rem;
-  --text-3xl--letter-spacing: -0.025em;
+  --text-3xl--letter-spacing: -0.03em;
 
   --font-weight-strong: 550;
 
@@ -118,92 +126,184 @@
   --font-sans: "Onest Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Svetlá téma „Šalvia“: bledé šalviové povrchy, žiadna čistá biela. */
+/* Svetlá téma: teplá svetlosivá plocha, biele karty, čierna hlavná akcia, zelený akcent. */
 :root,
 [data-theme-scope="light"] {
   color-scheme: light;
-  --bg: #dfe6df;
-  --surface: #eff4ef;
-  --elevated: #f7faf7;
-  --sunken: #d5ddd5;
-  --pressed: #d9e1d8;
-  --line: #ced5cd;
-  --line-strong: #808980;
-  --text: #192019;
-  --text-2: #464e46;
-  --text-3: #586058;
-  --primary: #005e67;
-  --primary-pressed: #004d54;
-  --primary-soft: #cae6e7;
-  --on-primary: #f1f8f9;
-  --inverse: #222a22;
-  --on-inverse: #edf2ed;
-  --warning: #895709;
-  --warning-soft: #fdedc9;
-  --warning-solid: #f1bf5b;
+  --bg: #f3f3f0;
+  --surface: #ffffff;
+  --elevated: #ffffff;
+  --sunken: #ededea;
+  --pressed: #e9e9e4;
+  --line: #e7e7e2;
+  --line-strong: #8f928d;
+  --text: #17181a;
+  --text-2: #5c5f64;
+  --text-3: #6a6e73;
+  --primary: #17181a;
+  --primary-pressed: #34363a;
+  --primary-soft: #e9e9e5;
+  --on-primary: #ffffff;
+  --accent: #18794e;
+  --accent-soft: #e2f3ea;
+  --accent-text: #136a43;
+  --on-accent: #ffffff;
+  --badge: #c4563f;
+  --on-badge: #ffffff;
+  --inverse: #17181a;
+  --on-inverse: #ffffff;
+  --warning: #855d00;
+  --warning-soft: #fff4d4;
+  --warning-solid: #f0cb6b;
   --on-warning-solid: #362207;
-  --success: #2a6736;
-  --success-soft: #d0ecd2;
-  --success-solid: #57ab66;
+  --success: #136a43;
+  --success-soft: #e2f3ea;
+  --success-solid: #57b585;
   --on-success-solid: #07210c;
-  --danger: #901f1a;
-  --danger-soft: #f8d5cf;
-  --danger-solid: #901f1a;
-  --on-danger-solid: #fef4f3;
-  --person: #4b2c74;
-  --person-soft: #ded6ef;
-  --person-solid: #7555a8;
-  --on-person-solid: #fbf9fe;
-  --info: #2d557d;
-  --info-soft: #d7e5f3;
-  --scrim: rgb(16 24 18 / 0.42);
-  --elev-card: 0 1px 2px rgb(25 32 25 / 0.06);
-  --elev-raised: 0 8px 24px -6px rgb(25 32 25 / 0.2), 0 2px 6px rgb(25 32 25 / 0.06);
-  --elev-overlay: 0 -12px 40px -12px rgb(25 32 25 / 0.28);
+  --danger: #b8321f;
+  --danger-soft: #fbe7e3;
+  --danger-solid: #b8321f;
+  --on-danger-solid: #ffffff;
+  --person: #5847c0;
+  --person-soft: #eeebfc;
+  --person-solid: #6b57d6;
+  --on-person-solid: #ffffff;
+  --info: #1f63a6;
+  --info-soft: #e5eff9;
+  --scrim: rgb(14 14 16 / 0.38);
+  --elev-card: 0 1px 2px rgb(20 20 20 / 0.05), 0 0 0 1px rgb(20 20 20 / 0.03);
+  --elev-raised: 0 6px 18px -6px rgb(20 20 20 / 0.16), 0 0 0 1px rgb(20 20 20 / 0.04);
+  --elev-overlay: 0 -12px 40px -12px rgb(20 20 20 / 0.28);
 }
 
-/* Tmavá téma „Noc“: hlboká modrozelená, tri úrovne povrchov, žiadna čistá čierna. */
+/* Tmavá téma: takmer čierna plocha, svetlejšie grafitové karty, biela hlavná akcia. */
 :root[data-theme="dark"],
 [data-theme-scope="dark"] {
   color-scheme: dark;
-  --bg: #0f1c1d;
-  --surface: #172627;
-  --elevated: #213132;
-  --sunken: #122021;
-  --pressed: #263637;
-  --line: #2b3a3b;
-  --line-strong: #6a7b7c;
-  --text: #e6efef;
-  --text-2: #b6c4c5;
-  --text-3: #9ba9aa;
-  --primary: #8fc6c4;
-  --primary-pressed: #7cb4b2;
-  --primary-soft: #1c3e3f;
-  --on-primary: #051c1e;
-  --inverse: #dde7e7;
-  --on-inverse: #101d1e;
-  --warning: #f9d280;
-  --warning-soft: #483619;
-  --warning-solid: #f5cb70;
-  --on-warning-solid: #311d03;
-  --success: #8fd598;
-  --success-soft: #1f3724;
-  --success-solid: #79c685;
-  --on-success-solid: #07210c;
-  --danger: #f79689;
-  --danger-soft: #4a231f;
-  --danger-solid: #a8372e;
-  --on-danger-solid: #fcf3f1;
-  --person: #c2afe7;
-  --person-soft: #322843;
-  --person-solid: #977cc5;
-  --on-person-solid: #140d20;
-  --info: #a1cae8;
-  --info-soft: #1d3343;
-  --scrim: rgb(2 8 9 / 0.6);
-  --elev-card: 0 0 0 1px rgb(230 239 239 / 0.04);
-  --elev-raised: 0 10px 28px -6px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(230 239 239 / 0.06);
-  --elev-overlay: 0 -12px 40px -8px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(230 239 239 / 0.07);
+  --bg: #0b0c0d;
+  --surface: #232528;
+  --elevated: #2b2d31;
+  --sunken: #18191b;
+  --pressed: #33363a;
+  --line: #34373b;
+  --line-strong: #6f757b;
+  --text: #f2f3f4;
+  --text-2: #aab0b6;
+  --text-3: #959ba2;
+  --primary: #f2f3f4;
+  --primary-pressed: #d7d9dc;
+  --primary-soft: #33363a;
+  --on-primary: #111214;
+  --accent: #46c487;
+  --accent-soft: #14301f;
+  --accent-text: #62d49c;
+  --on-accent: #04150c;
+  --badge: #e58a73;
+  --on-badge: #2a1410;
+  --inverse: #f2f3f4;
+  --on-inverse: #111214;
+  --warning: #f0cb6b;
+  --warning-soft: #352c12;
+  --warning-solid: #f0cb6b;
+  --on-warning-solid: #2a1f04;
+  --success: #62d49c;
+  --success-soft: #14301f;
+  --success-solid: #46c487;
+  --on-success-solid: #04150c;
+  --danger: #ff8b79;
+  --danger-soft: #391a15;
+  --danger-solid: #b5402f;
+  --on-danger-solid: #ffffff;
+  --person: #aa9bff;
+  --person-soft: #252045;
+  --person-solid: #8f7cf0;
+  --on-person-solid: #0f0a24;
+  --info: #7ab6f2;
+  --info-soft: #16293b;
+  --scrim: rgb(0 0 0 / 0.6);
+  --elev-card: 0 0 0 1px rgb(255 255 255 / 0.07);
+  --elev-raised: 0 0 0 1px rgb(255 255 255 / 0.06), 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  --elev-overlay: 0 0 0 1px rgb(255 255 255 / 0.07), 0 -12px 40px -8px rgb(0 0 0 / 0.7);
+}
+
+/*
+ * Farebná téma: prírodné pastely – prašná modrá, levanduľa, smotanovo-piesková a kúsok
+ * starej ružovej v mäkkom prechode, sklenené (polopriehľadné) karty a tlmená indigová
+ * hlavná akcia. Prechod je na plátne (bg-bg), karty ho jemne prepúšťajú.
+ */
+:root[data-theme="color"],
+[data-theme-scope="color"] {
+  color-scheme: light;
+  --bg: #f1f2f6;
+  --mesh:
+    radial-gradient(70% 38% at 0% 0%, #c6d1ee 0%, rgb(198 209 238 / 0) 100%),
+    radial-gradient(60% 34% at 100% 4%, #dcd5ee 0%, rgb(220 213 238 / 0) 100%),
+    radial-gradient(55% 30% at 100% 52%, #d0e2ee 0%, rgb(208 226 238 / 0) 100%),
+    radial-gradient(60% 30% at 0% 58%, #f5ecd2 0%, rgb(245 236 210 / 0) 100%),
+    radial-gradient(75% 34% at 10% 100%, #f1e3bd 0%, rgb(241 227 189 / 0) 100%),
+    radial-gradient(45% 22% at 100% 100%, #f0dbe2 0%, rgb(240 219 226 / 0) 100%),
+    #f3f3f6;
+  --ink-grad: linear-gradient(135deg, #2b3566 0%, #4a5f9e 55%, #6f6aa8 100%);
+  --surface: rgb(255 255 255 / 0.76);
+  --elevated: rgb(250 248 255 / 0.94);
+  --sunken: rgb(255 255 255 / 0.5);
+  --pressed: rgb(58 74 140 / 0.1);
+  --line: rgb(50 70 160 / 0.1);
+  --line-strong: #7a7f99;
+  --text: #22273f;
+  --text-2: #52576f;
+  --text-3: #5f647b;
+  --primary: #3a4a8c;
+  --primary-pressed: #2b3566;
+  --primary-soft: rgb(222 228 245 / 0.9);
+  --on-primary: #ffffff;
+  --accent: #3f8a6f;
+  --accent-soft: rgb(214 234 225 / 0.9);
+  --accent-text: #2f6e57;
+  --on-accent: #ffffff;
+  --badge: #c0715f;
+  --on-badge: #ffffff;
+  --inverse: #22273f;
+  --on-inverse: #ffffff;
+  --warning: #7d5800;
+  --warning-soft: rgb(255 240 196 / 0.92);
+  --warning-solid: #e6c46e;
+  --on-warning-solid: #362207;
+  --success: #2f6e57;
+  --success-soft: rgb(214 234 225 / 0.92);
+  --success-solid: #79b89c;
+  --on-success-solid: #0a2219;
+  --danger: #b0303d;
+  --danger-soft: rgb(255 224 228 / 0.92);
+  --danger-solid: #b0303d;
+  --on-danger-solid: #ffffff;
+  --person: #5a4fa0;
+  --person-soft: rgb(232 227 245 / 0.94);
+  --person-solid: #8c7fc4;
+  --on-person-solid: #ffffff;
+  --info: #3d5f9e;
+  --info-soft: rgb(222 230 247 / 0.94);
+  --scrim: rgb(24 30 80 / 0.3);
+  --elev-card: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 0 0 1px rgb(255 255 255 / 0.55), 0 8px 22px -14px rgb(40 60 160 / 0.35);
+  --elev-raised: inset 0 1px 0 rgb(255 255 255 / 0.95), 0 14px 34px -14px rgb(40 60 160 / 0.42);
+  --elev-overlay: inset 0 1px 0 rgb(255 255 255 / 0.95), 0 -18px 50px -18px rgb(30 40 130 / 0.45);
+}
+
+/* Farebná téma: prechod na plátne a sklo na kartách a paneloch. */
+:root[data-theme="color"] body,
+[data-theme="color"] .bg-bg:not([data-theme-scope]) {
+  background: var(--mesh);
+  background-attachment: fixed;
+}
+[data-theme="color"] .bg-surface,
+[data-theme="color"] .bg-elevated {
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+/* Hlavné tlačidlá: tlmený indigový prechod (nie v náhľadoch iných tém). */
+[data-theme="color"] .bg-primary:not([data-theme-scope="light"] *, [data-theme-scope="dark"] *),
+[data-theme-scope="color"] .bg-primary {
+  background-image: var(--ink-grad);
 }
 
 /* Pri ručnom prepnutí témy sa farby na 0,3 s prelínajú; pri štarte appky nie. */
@@ -375,3 +475,68 @@
 .vo-wave.think .g1 { transform: scaleY(0.5); }
 .vo-wave.think .g2, .vo-wave.think .g3 { transform: scaleY(0.25); }
 .vo-wave.off g { transform: scaleY(0.02); }
+
+/* ------------------------------------------------------------------ spodná lišta
+ * Sklenená lišta bez ostrej čiary: nad ňou je mäkký prechod, v ktorom sa obsah plynulo
+ * stráca. Hlasové tlačidlo vyčnieva nad lištu, nemá rámik a je vždy nad prechodom.
+ * Číslo na ikone = počet vecí, ktoré čakajú (tlmený koral, výrez vo farbe lišty).
+ */
+.tabbar {
+  background: color-mix(in srgb, var(--elevated) 92%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.tabbar-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(to top, color-mix(in srgb, var(--elevated) 92%, transparent), transparent);
+}
+.tab-count {
+  position: absolute;
+  top: 0;
+  left: calc(50% + 7px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background: var(--badge);
+  color: var(--on-badge);
+  box-shadow: 0 0 0 2.5px var(--elevated);
+  animation: bh-pop 0.22s var(--ease-out);
+}
+[data-theme="color"] .tabbar {
+  background: rgb(250 248 255 / 0.9);
+}
+[data-theme="color"] .tabbar-fade {
+  height: 34px;
+  background: linear-gradient(to top, rgb(250 248 255 / 0.9), rgb(250 248 255 / 0));
+}
+[data-theme="color"] .tab-count {
+  box-shadow: 0 0 0 2.5px rgb(250 248 255);
+}
+[data-theme="color"] .tab-on {
+  background: linear-gradient(120deg, #dfe4f2, #f1ead6);
+  color: #3a4a8c;
+}
+[data-theme="color"] .voice-orb {
+  background: #6a76ad;
+  box-shadow: 0 14px 30px -10px rgb(60 75 140 / 0.55), 0 0 40px -6px rgb(220 170 190 / 0.35);
+}
+
+/* Nadpisy sekcií: vo farebnej téme malé veľké písmená s riedkym písmom. */
+[data-theme="color"] .section-title {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 0.71875rem;
+  font-weight: 700;
+}

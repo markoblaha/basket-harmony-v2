@@ -58,7 +58,7 @@ export function ProductPage() {
         <div className="flex items-start gap-3">
           <CategoryBadge id={info.id} color={info.color} />
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-semibold leading-tight">{p.name}</h1>
+            <h1 className="text-xl font-semibold leading-tight">{p.name}</h1>
             <p className="mt-0.5 text-sm text-text-2">{[p.brand, size, info.name].filter(Boolean).join(" · ")}</p>
           </div>
         </div>

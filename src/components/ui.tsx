@@ -222,7 +222,7 @@ export function PageHeader({
   back?: string;
 }) {
   return (
-    <header className={cx("flex justify-between gap-3 px-4 pb-4 pt-6", back ? "items-center" : "items-start")}>
+    <header className={cx("flex min-h-14 justify-between gap-3 px-4 pb-2 pt-3", back || !subtitle ? "items-center" : "items-start")}>
       {back && (
         <Link
           to={back}
@@ -233,8 +233,8 @@ export function PageHeader({
         </Link>
       )}
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-2xl font-semibold">{title}</h1>
-        {subtitle && <div className="mt-1 text-footnote text-text-2">{subtitle}</div>}
+        <h1 className="truncate text-lg font-semibold">{title}</h1>
+        {subtitle && <div className="mt-0.5 text-footnote text-text-2">{subtitle}</div>}
       </div>
       {trailing}
     </header>
@@ -253,7 +253,7 @@ export function Section({ title, children, className }: { title?: string; childr
 /** Nadpis sekcie: malé verzálky v tichom texte, voliteľne s počtom vpravo od textu. */
 export function SectionTitle({ children, trailing, className }: { children: ReactNode; trailing?: ReactNode; className?: string }) {
   return (
-    <h2 className={cx("mb-3 flex min-h-5 items-center gap-2 px-1 text-overline font-semibold uppercase text-text-2", className)}>
+    <h2 className={cx("section-title mb-2 flex min-h-5 items-center gap-2 px-1 text-footnote font-semibold text-text-2", className)}>
       {children}
       {trailing}
     </h2>

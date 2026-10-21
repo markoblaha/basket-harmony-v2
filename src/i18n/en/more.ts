@@ -14,6 +14,7 @@ export const enMore: Record<keyof typeof skMore, string> = {
   "more.appearance.title": "Appearance",
   "more.appearance.light": "Light",
   "more.appearance.dark": "Dark",
+  "more.appearance.color": "Colour",
   "more.appearance.system": "System",
   "more.appearance.nowLight": "Your device is currently in light mode.",
   "more.appearance.nowDark": "Your device is currently in dark mode.",

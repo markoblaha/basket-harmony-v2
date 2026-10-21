@@ -26,7 +26,7 @@ export function CategoryPage() {
       <Section className="mt-1">
         <div className="flex items-center gap-3">
           <CategoryBadge id={info.id} color={info.color} />
-          <h1 className="min-w-0 truncate text-2xl font-semibold">{info.name}</h1>
+          <h1 className="min-w-0 truncate text-xl font-semibold">{info.name}</h1>
         </div>
         {info.hint && <p className="mt-2 text-sm text-text-2">{info.hint}</p>}
       </Section>

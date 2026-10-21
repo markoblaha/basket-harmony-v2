@@ -22,6 +22,7 @@ import { StoresTab } from "@/features/analytics/StoresTab";
 import { ReceiptsPage } from "@/features/receipts/ReceiptsPage";
 import { ReceiptDetailPage } from "@/features/receipts/ReceiptDetailPage";
 import { StatementImportPage } from "@/features/receipts/StatementImportPage";
+import { RecipesPage } from "@/features/recipes/RecipesPage";
 
 /** Stránky dostupné iba po prihlásení. Neprihláseného pošle na prihlásenie a potom späť. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -67,6 +68,7 @@ export function App() {
         >
           <Route index element={<ShoppingHub />} />
           <Route path="lists/:listId" element={<ShoppingPage />} />
+          <Route path="recipes" element={<RecipesPage />} />
           <Route path="receipts" element={<ReceiptsPage />} />
           <Route path="receipts/statement" element={<StatementImportPage />} />
           <Route path="receipts/:id" element={<ReceiptDetailPage />} />

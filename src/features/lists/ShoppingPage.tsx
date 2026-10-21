@@ -226,7 +226,7 @@ export function ShoppingPage() {
           <ChevronLeft className="size-6" aria-hidden />
         </button>
         <button type="button" onClick={() => setSettingsOpen(true)} className="min-w-0 flex-1 rounded-xl px-1 text-left active:bg-pressed" aria-label={t("trip.editAria", { name: list.name })}>
-          <h1 className="break-words text-2xl font-semibold">{list.name}</h1>
+          <h1 className="break-words text-xl font-semibold">{list.name}</h1>
           <span className="flex items-center gap-2 truncate text-footnote font-medium text-text-2">
             {list.is_private && (
               <span className="flex items-center gap-1 rounded-sm bg-sunken px-2 py-px text-xs font-semibold">

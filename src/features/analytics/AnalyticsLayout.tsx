@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { IconButton, cx } from "@/components/ui";
@@ -8,28 +9,32 @@ const TABS: { to: string; label: Key; end: boolean }[] = [
   { to: "/analytics", label: "tab.overview", end: true },
   { to: "/analytics/products", label: "tab.products", end: false },
   { to: "/analytics/stores", label: "tab.stores", end: false },
+  // Doklady majú vlastnú stránku, ale v Analytike sú ako štvrtá záložka.
+  { to: "/receipts", label: "tab.receipts", end: true },
 ];
 
-/** Rám Prehľadov: nadpis, tri časti a (okrem Produktov) výber obdobia. */
-export function AnalyticsLayout() {
-  const { pathname } = useLocation();
+/** Hlavička Analytiky so záložkami Prehľad / Produkty / Obchody / Doklady (aj na stránke Dokladov). */
+export function AnalyticsTabs({ trailing, subtitle }: { trailing?: ReactNode; subtitle?: ReactNode }) {
   const { search } = usePeriod();
-  const showPeriod = !pathname.startsWith("/analytics/products");
   return (
-    <div className="pb-10">
-      <header className="px-4 pb-2 pt-6">
-        <h1 className="text-2xl font-semibold">{t("nav.analytics")}</h1>
+    <>
+      <header className="flex min-h-14 items-center justify-between gap-3 px-4 pb-2 pt-3">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold">{t("nav.analytics")}</h1>
+          {subtitle && <div className="mt-0.5 text-footnote text-text-2">{subtitle}</div>}
+        </div>
+        {trailing}
       </header>
       <nav aria-label={t("tab.aria")} className="px-4">
-        <div className="grid grid-cols-3 gap-1 rounded-xl bg-sunken p-1">
+        <div className="grid grid-cols-4 gap-1 rounded-xl bg-sunken p-1">
           {TABS.map((tab) => (
             <NavLink
               key={tab.to}
-              to={`${tab.to}${search}`}
+              to={tab.to === "/receipts" ? tab.to : `${tab.to}${search}`}
               end={tab.end}
               className={({ isActive }) =>
                 cx(
-                  "flex min-h-11 items-center justify-center rounded-lg text-sm font-strong transition-colors duration-200",
+                  "flex min-h-10 items-center justify-center rounded-lg px-1 text-footnote font-strong transition-colors duration-200",
                   isActive ? "bg-elevated text-text shadow-card" : "text-text-2 active:bg-pressed",
                 )
               }
@@ -39,6 +44,17 @@ export function AnalyticsLayout() {
           ))}
         </div>
       </nav>
+    </>
+  );
+}
+
+/** Rám Prehľadov: nadpis, tri časti a (okrem Produktov) výber obdobia. */
+export function AnalyticsLayout() {
+  const { pathname } = useLocation();
+  const showPeriod = !pathname.startsWith("/analytics/products");
+  return (
+    <div className="pb-10">
+      <AnalyticsTabs />
       {showPeriod && <PeriodBar />}
       <Outlet />
     </div>

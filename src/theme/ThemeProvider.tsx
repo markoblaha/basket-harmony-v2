@@ -1,5 +1,5 @@
 /**
- * Farebný režim: svetlý, tmavý alebo podľa systému. Voľba sa pamätá v zariadení
+ * Farebný režim: svetlý, tmavý, farebný (pastelový) alebo podľa systému. Voľba sa pamätá v zariadení
  * (každý telefón si môže zvoliť inak) a premieta sa do atribútu data-theme na
  * <html>, podľa ktorého styles.css prepína sadu farieb.
  *
@@ -8,19 +8,19 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-export type ThemePreference = "light" | "dark" | "system";
-export type ResolvedTheme = "light" | "dark";
+export type ThemePreference = "light" | "dark" | "color" | "system";
+export type ResolvedTheme = "light" | "dark" | "color";
 
 const STORAGE_KEY = "bh.theme";
 /** Farba lišty prehliadača (zhodná s --bg v styles.css). */
-export const THEME_BG: Record<ResolvedTheme, string> = { light: "#dfe6df", dark: "#0f1c1d" };
+export const THEME_BG: Record<ResolvedTheme, string> = { light: "#f3f3f0", dark: "#0b0c0d", color: "#e9ecf5" };
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
 function readPreference(): ThemePreference {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === "light" || stored === "dark" ? stored : "system";
+    return stored === "light" || stored === "dark" || stored === "color" ? stored : "system";
   } catch {
     return "system";
   }
@@ -67,7 +67,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     firstRender.current = false;
     root.dataset.theme = resolved;
-    root.style.colorScheme = resolved;
+    root.style.colorScheme = resolved === "dark" ? "dark" : "light";
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_BG[resolved]);
   }, [resolved]);
 

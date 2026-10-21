@@ -1,5 +1,5 @@
 /**
- * Voľba vzhľadu (svetlá / tmavá / podľa systému) a jazyka.
+ * Voľba vzhľadu (svetlá / tmavá / farebná / podľa systému) a jazyka.
  *
  * Náhľady tém sú malé ukážky aplikácie nakreslené rolami z dizajnového systému
  * v pevnej téme (atribút data-theme-scope v styles.css) – nemenia sa podľa
@@ -11,13 +11,13 @@ import { LOCALES, t, useLocale, type Key, type Locale } from "@/i18n";
 import { useTheme, type ThemePreference } from "@/theme/ThemeProvider";
 
 /** Miniatúra obrazovky: nadpis, tri riadky zoznamu (jeden odškrtnutý) a hlavné tlačidlo. */
-function Mini({ mode }: { mode: "light" | "dark" }) {
+function Mini({ mode }: { mode: "light" | "dark" | "color" }) {
   return (
-    <div data-theme-scope={mode} className="absolute inset-0 flex flex-col gap-[5px] bg-bg p-3">
+    <div data-theme-scope={mode} className="absolute inset-0 flex flex-col gap-[5px] bg-bg p-3" style={mode === "color" ? { background: "var(--mesh)" } : undefined}>
       <i className="mb-0.5 block h-[6px] w-[46%] rounded-full bg-text" />
       {[false, true, false].map((done, i) => (
         <div key={i} className="flex h-[17px] items-center gap-[5px] rounded-[5px] bg-surface px-[5px]">
-          <span className={cx("size-[7px] shrink-0 rounded-[2px]", done ? "bg-primary" : "shadow-[inset_0_0_0_1.5px_var(--line-strong)]")} />
+          <span className={cx("size-[7px] shrink-0 rounded-[2px]", done ? "bg-accent" : "shadow-[inset_0_0_0_1.5px_var(--line-strong)]")} />
           <i className={cx("block h-[3px] flex-1 rounded-full bg-line-strong", done && "opacity-50")} />
         </div>
       ))}
@@ -44,6 +44,7 @@ function ThemePreview({ theme }: { theme: ThemePreference }) {
 const THEMES: { id: ThemePreference; label: Key }[] = [
   { id: "light", label: "more.appearance.light" },
   { id: "dark", label: "more.appearance.dark" },
+  { id: "color", label: "more.appearance.color" },
   { id: "system", label: "more.appearance.system" },
 ];
 
@@ -51,7 +52,7 @@ export function ThemePicker() {
   const { preference, resolved, setPreference } = useTheme();
   return (
     <div>
-      <fieldset className="grid grid-cols-3 gap-3">
+      <fieldset className="grid grid-cols-4 gap-2.5">
         <legend className="sr-only">{t("more.appearance.title")}</legend>
         {THEMES.map(({ id, label }) => {
           const checked = preference === id;
@@ -76,7 +77,7 @@ export function ThemePicker() {
               </span>
               <span
                 className={cx(
-                  "flex min-h-6 items-center justify-center gap-1 text-center text-sm font-strong",
+                  "flex min-h-6 items-center justify-center gap-1 text-center text-footnote font-strong",
                   checked ? "text-text" : "text-text-2",
                 )}
               >

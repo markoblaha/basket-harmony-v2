@@ -169,7 +169,7 @@ export function ShoppingMode({
           <ChevronLeft className="size-6" aria-hidden />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-2xl font-semibold">{list.name}</h1>
+          <h1 className="truncate text-xl font-semibold">{list.name}</h1>
           <p className="mt-1 flex items-center gap-2 text-footnote font-medium text-text-2">
             <span className="size-2 rounded-full bg-success-solid [animation:bh-pulse_1.8s_ease_infinite]" aria-hidden />
             {t("mode.since", { time: time(session.started_at) })}

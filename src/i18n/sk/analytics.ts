@@ -25,6 +25,7 @@ export const skAnalytics = {
   "tab.overview": "Prehľad",
   "tab.products": "Produkty",
   "tab.stores": "Obchody",
+  "tab.receipts": "Doklady",
   "tab.aria": "Časti prehľadov",
   "range.month": "Mesiac",
   "range.3m": "3 mesiace",

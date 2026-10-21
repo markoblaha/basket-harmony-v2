@@ -4,9 +4,14 @@ export const enCommon: Record<keyof typeof skCommon, string> = {
   "app.description": "Shared household shopping list",
 
   "nav.label": "Main navigation",
-  "nav.shopping": "Shopping",
+  "nav.shopping": "Shopping lists",
+  "nav.lists": "Lists",
+  "nav.recipes": "Recipes",
+  "nav.waiting.one": "{n} waiting",
+  "nav.waiting.few": "{n} waiting",
+  "nav.waiting.other": "{n} waiting",
   "nav.receipts": "Receipts",
-  "nav.analytics": "Insights",
+  "nav.analytics": "Analytics",
   "nav.more": "More",
 
   "common.save": "Save",

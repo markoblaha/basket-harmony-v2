@@ -26,6 +26,7 @@ export const enAnalytics: Record<keyof typeof skAnalytics, string> = {
   "tab.overview": "Overview",
   "tab.products": "Products",
   "tab.stores": "Stores",
+  "tab.receipts": "Receipts",
   "tab.aria": "Insights sections",
   "range.month": "Month",
   "range.3m": "3 months",

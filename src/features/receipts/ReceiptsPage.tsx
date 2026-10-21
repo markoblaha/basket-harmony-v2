@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { ChevronRight, Link2, Merge, Plus, Receipt as ReceiptIcon, Search, Trash2, X } from "lucide-react";
-import { Button, EmptyState, ErrorState, Group, PageHeader, Section, Spinner, cx } from "@/components/ui";
+import { Button, EmptyState, ErrorState, Group, Section, Spinner, cx } from "@/components/ui";
+import { AnalyticsTabs } from "@/features/analytics/AnalyticsLayout";
 import { useToast } from "@/components/toast";
 import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
@@ -169,8 +170,7 @@ export function ReceiptsPage() {
 
   return (
     <>
-      <PageHeader
-        title={t("nav.receipts")}
+      <AnalyticsTabs
         subtitle={all.length > 0 ? tn("rpage.subtitle", all.length) : undefined}
         trailing={
           selecting ? (
@@ -184,6 +184,7 @@ export function ReceiptsPage() {
           ) : undefined
         }
       />
+      <div className="h-3" aria-hidden />
       {attachList && (
         <div role="status" className="mx-4 mb-3 flex items-center gap-3 rounded-2xl bg-primary-soft p-3 animate-rise">
           <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-on-primary" aria-hidden>

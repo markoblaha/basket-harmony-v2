@@ -29,7 +29,7 @@ export function StorePage() {
       <Section className="mt-1">
         <div className="flex items-center gap-3">
           <StoreAvatar name={storeKey === "_none" ? null : (d?.name ?? null)} className="!size-12" />
-          <h1 className="min-w-0 truncate text-2xl font-semibold">{d ? storeLabel(d.name) : t("sp.fallbackName")}</h1>
+          <h1 className="min-w-0 truncate text-xl font-semibold">{d ? storeLabel(d.name) : t("sp.fallbackName")}</h1>
         </div>
       </Section>
       <PeriodBar />

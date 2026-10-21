@@ -52,10 +52,10 @@ export function ShoppingHub() {
 
   return (
     <div className="pb-6">
-      <header className="flex items-end justify-between gap-3 px-4 pb-4 pt-6">
+      <header className="flex min-h-14 items-center justify-between gap-3 px-4 pb-3 pt-3">
         <div>
-          <h1 className="text-2xl font-semibold">{t("nav.shopping")}</h1>
-          <p className="mt-1 text-footnote font-medium text-text-2">
+          <h1 className="text-lg font-semibold">{t("nav.shopping")}</h1>
+          <p className="mt-0.5 text-footnote font-medium text-text-2">
             {open.length ? tn("hub.openCount", open.length) : t("hub.noneOpen")}
             {missingReceipts > 0 && <span className="text-warning"> · {t("hub.missingReceipts", { n: missingReceipts })}</span>}
           </p>
