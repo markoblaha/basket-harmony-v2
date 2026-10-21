@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
-import { ChevronRight, Link2, Merge, Plus, Receipt as ReceiptIcon, Search, Trash2, X } from "lucide-react";
-import { Button, EmptyState, ErrorState, Group, Section, Spinner, cx } from "@/components/ui";
-import { AnalyticsTabs } from "@/features/analytics/AnalyticsLayout";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router";
+import { ChevronRight, FileText, Link2, Merge, Plus, ReceiptText as ReceiptIcon, Search, Trash2, X } from "lucide-react";
+import { ErrorState, Spinner, cx } from "@/components/ui";
+import { Empty } from "@/components/kit";
+import { AnalyticsTop } from "@/features/analytics/akit";
+import { usePeriod } from "@/features/analytics/period";
+import { AddReceiptSheet } from "@/features/lists/HistoryPage";
 import { useToast } from "@/components/toast";
 import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { t, tn } from "@/i18n";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { useLists } from "@/features/lists/api";
+import { useLists, type ShoppingList } from "@/features/lists/api";
 import { dayLabel } from "@/features/lists/dates";
-import { MAX_PAGES, isStale, needsAttention, useDeleteReceipt, useMergeReceipts, useReceipts, type Receipt } from "./api";
+import { MAX_PAGES, isStale, needsAttention, useDeleteReceipt, useMatchSuggestions, useMergeReceipts, useReceipts, type Receipt } from "./api";
 import { AddMenu, ManualExpenseSheet, PendingSheet, type Pending, type PendingMode } from "./AddFlow";
 import { ReceiptRow } from "./ReceiptRow";
 import { Dock, UploadStatus } from "./UploadStatus";
@@ -51,6 +54,9 @@ export function ReceiptsPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [inboxOpen, setInboxOpen] = useState(false);
+  const [addingFor, setAddingFor] = useState<ShoppingList | null>(null);
+  const { period } = usePeriod();
+  const suggest = useMatchSuggestions(household.id);
   // Výber dokladov (podržanie riadku alebo tlačidlo "Vybrať"): poradie klepnutí = poradie strán pri spájaní.
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
@@ -72,9 +78,15 @@ export function ReceiptsPage() {
     });
   }, [all, filter, query]);
 
-  const listed = flat ? visible : all.filter((r) => !needsAttention(r));
+  const inPeriod = (r: Receipt) => {
+    const d = r.purchased_on ?? r.created_at.slice(0, 10);
+    return d >= period.from && d <= period.to;
+  };
+  const listed = visible.filter((r) => (searching || filter !== "all" ? true : inPeriod(r))).filter((r) => (flat ? true : !needsAttention(r)));
   const groups = groupByMonth(listed);
-  const month = useMemo(() => monthSummary(all), [all]);
+  const missing = (lists.data ?? []).filter((l) => l.completed_at && l.receipt_state === "LATER");
+  const suggestions = (suggest.data ?? []).filter((m) => all.some((r) => r.id === m.receipt_id));
+  const todo = missing.length + suggestions.length + attention.length;
 
   // ------------------------------------------------------------ pridávanie
   function onPickCamera(e: ChangeEvent<HTMLInputElement>) {
@@ -153,7 +165,6 @@ export function ReceiptsPage() {
     cancelSelect();
   }
 
-  const inbox = !flat && attention.length > 0 ? (inboxOpen ? attention : attention.slice(0, INBOX_PREVIEW)) : [];
   const busy = batch.running || merge.isPending || remove.isPending;
 
   const row = (r: Receipt, isAttention = false) => (
@@ -169,167 +180,171 @@ export function ReceiptsPage() {
   );
 
   return (
-    <>
-      <AnalyticsTabs
-        subtitle={all.length > 0 ? tn("rpage.subtitle", all.length) : undefined}
-        trailing={
+    <div className="stack">
+      <AnalyticsTop
+        part="receipts"
+        right={
           selecting ? (
-            <Button variant="ghost" onClick={cancelSelect}>
+            <button type="button" className="hdr-btn" onClick={cancelSelect}>
               {t("common.cancel")}
-            </Button>
+            </button>
           ) : all.length >= 2 ? (
-            <Button variant="ghost" onClick={() => startSelecting()} disabled={busy}>
+            <button type="button" className="hdr-btn" onClick={() => startSelecting()} disabled={busy}>
               {t("rpage.select")}
-            </Button>
+            </button>
           ) : undefined
         }
       />
-      <div className="h-3" aria-hidden />
-      {attachList && (
-        <div role="status" className="mx-4 mb-3 flex items-center gap-3 rounded-2xl bg-primary-soft p-3 animate-rise">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-on-primary" aria-hidden>
-            <Link2 className="size-[1.125rem]" />
-          </span>
-          <p className="min-w-0 flex-1 text-footnote text-text-2">
-            <b className="block text-callout font-strong text-text">{t("trip.attachTitle", { name: attachList.name })}</b>
-            {attachList.completed_at ? t("trip.attachDone", { day: dayLabel(attachList.completed_at) }) : t("trip.attachOpen")} · {t("trip.attachNext")}
-          </p>
-          <button type="button" aria-label={t("trip.detach")} onClick={() => setAttachListId(null)} className="grid size-11 shrink-0 place-items-center rounded-lg text-text-2 active:bg-pressed">
-            <X className="size-[1.125rem]" aria-hidden />
-          </button>
-        </div>
-      )}
+      <div className="stack g-16" style={{ padding: "8px 16px 0" }}>
+        {attachList && (
+          <div role="status" className="row g-10 anim-rise" style={{ padding: "10px 12px", borderRadius: 14, background: "var(--blue-soft)" }}>
+            <span className="cat-ic sm" style={{ color: "var(--blue)" }}>
+              <Link2 size={16} />
+            </span>
+            <span className="grow stack g-2">
+              <span className="t-sm fw-6">{t("trip.attachTitle", { name: attachList.name })}</span>
+              <span className="t-xs t-2">
+                {attachList.completed_at ? t("trip.attachDone", { day: dayLabel(attachList.completed_at) }) : t("trip.attachOpen")} · {t("trip.attachNext")}
+              </span>
+            </span>
+            <button type="button" className="ibtn sm" aria-label={t("trip.detach")} onClick={() => setAttachListId(null)}>
+              <X size={16} />
+            </button>
+          </div>
+        )}
 
-      <div className="flex flex-col gap-4 pb-40">
         {receipts.isPending ? (
           <Spinner />
         ) : receipts.isError ? (
           <ErrorState error={errorMessage(receipts.error)} onRetry={() => receipts.refetch()} />
-        ) : all.length === 0 ? (
-          <EmptyState icon={<ReceiptIcon />} title={t("rpage.emptyTitle")}>
-            {t("rpage.emptyText")}
-          </EmptyState>
         ) : (
           <>
-            {month && !selecting && (
-              <Section>
-                <Link
-                  to="/analytics"
-                  className="flex items-center justify-between gap-3 rounded-[var(--radius-surface)] bg-surface p-4 shadow-card active:bg-pressed"
-                >
-                  <div>
-                    <p className="text-overline font-semibold uppercase text-text-2">{month.label}</p>
-                    <p className="mt-1 text-3xl font-semibold tabular-nums">{formatMoney(month.total)}</p>
-                    <p className="text-sm text-text-2">
-                      {tn("rpage.purchases", month.count)}
-                    </p>
-                  </div>
-                  <span className="flex min-h-11 items-center gap-0.5 text-sm font-strong text-primary">
-                    {t("nav.analytics")} <ChevronRight className="size-4" aria-hidden />
-                  </span>
-                </Link>
-              </Section>
-            )}
-
-            {all.length >= 5 && (
-              <Section>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-text-3" aria-hidden />
-                  <input
-                    type="search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={t("rpage.searchPlaceholder")}
-                    aria-label={t("rpage.searchAria")}
-                    className="min-h-12 w-full rounded-[var(--radius-control)] border border-transparent bg-sunken pl-10 pr-4 text-base outline-none transition-[border-color,box-shadow,background-color] placeholder:text-text-3 focus:border-primary focus:bg-elevated focus:ring-3 focus:ring-primary/20"
-                  />
+            {todo > 0 && !selecting && (
+              <section className="stack g-8">
+                <span className="section-title">{t("an.todoCount", { n: todo })}</span>
+                <div className="cells">
+                  {missing.map((l) => (
+                    <button key={l.id} type="button" className="cell" onClick={() => setAddingFor(l)}>
+                      <span className="cat-ic sm" style={{ color: "var(--orange)" }}>
+                        <ReceiptIcon size={16} />
+                      </span>
+                      <span className="grow stack g-2">
+                        <span className="t-body fw-5">{t("rpage.missingTrip", { name: l.name, day: dayLabel(l.completed_at!) })}</span>
+                        <span className="t-xs t-2">{t("rpage.missingHint")}</span>
+                      </span>
+                      <ChevronRight size={18} className="chev" />
+                    </button>
+                  ))}
+                  {suggestions.map((m) => {
+                    const r = all.find((x) => x.id === m.receipt_id)!;
+                    const l = lists.data?.find((x) => x.id === m.list_id);
+                    return (
+                      <button key={m.receipt_id} type="button" className="cell" onClick={() => navigate(`/receipts/${m.receipt_id}/match`)}>
+                        <span className="cat-ic sm" style={{ color: "var(--blue)" }}>
+                          <Link2 size={16} />
+                        </span>
+                        <span className="grow stack g-2">
+                          <span className="t-body fw-5">{t("rpage.belongs", { store: r.store_name ?? t("row.receipt"), day: dayLabel(r.purchased_on ?? r.created_at) })}</span>
+                          <span className="t-xs t-2 num">
+                            {t("rpage.matchLine", { pct: Math.round(m.score * 100), name: l?.name ?? "", day: l?.completed_at ? dayLabel(l.completed_at) : "" })}
+                          </span>
+                        </span>
+                        <ChevronRight size={18} className="chev" />
+                      </button>
+                    );
+                  })}
+                  {(inboxOpen ? attention : attention.slice(0, INBOX_PREVIEW)).map((r) => row(r, true))}
                 </div>
-              </Section>
-            )}
-
-            {(attention.length > 0 || filter !== "all") && (
-              <Section>
-                <div className="flex flex-wrap gap-2" role="group" aria-label={t("rpage.filterAria")}>
-                  <Chip active={filter === "all"} onClick={() => setFilter("all")}>
-                    {t("rpage.filterAll")}
-                  </Chip>
-                  <Chip active={filter === "review"} onClick={() => setFilter("review")}>
-                    {t("rpage.filterReview", { n: attention.length })}
-                  </Chip>
-                  <Chip active={filter === "ok"} onClick={() => setFilter("ok")}>
-                    {t("rpage.filterOk")}
-                  </Chip>
-                </div>
-              </Section>
-            )}
-
-            {inbox.length > 0 && (
-              <Section title={t("rpage.inbox", { n: attention.length })}>
-                <Group>{inbox.map((r) => row(r, true))}</Group>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="row wrap g-8">
                   {attention.length > INBOX_PREVIEW && (
-                    <Button variant="secondary" onClick={() => setInboxOpen((v) => !v)}>
+                    <button type="button" className="btn btn-soft btn-sm" onClick={() => setInboxOpen((v) => !v)}>
                       {inboxOpen ? t("rpage.collapse") : t("rpage.showAll", { n: attention.length })}
-                    </Button>
+                    </button>
                   )}
                   {failedCount > 0 && (
-                    <Button variant="secondary" loading={batch.running} disabled={busy} onClick={() => void batch.retry(all)}>
+                    <button type="button" className="btn btn-soft btn-sm" disabled={busy} onClick={() => void batch.retry(all)}>
                       {t("rpage.retryFailed", { n: failedCount })}
-                    </Button>
+                    </button>
                   )}
                 </div>
-              </Section>
+              </section>
             )}
 
-            {flat && filter === "review" && failedCount > 0 && (
-              <Section>
-                <Button variant="secondary" loading={batch.running} disabled={busy} onClick={() => void batch.retry(all)}>
-                  {t("rpage.retryFailed", { n: failedCount })}
-                </Button>
-              </Section>
+            <div className="row g-8 input" style={{ paddingRight: 6 }}>
+              <Search size={18} color="var(--text-3)" />
+              <input
+                className="grow"
+                style={{ minHeight: 44, fontSize: 16 }}
+                placeholder={t("rpage.searchPlaceholder")}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label={t("rpage.searchAria")}
+              />
+              {query && (
+                <button type="button" className="ibtn sm" onClick={() => setQuery("")} aria-label={t("an.clear")}>
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {(attention.length > 0 || filter !== "all") && (
+              <div className="row wrap g-8" role="group" aria-label={t("rpage.filterAria")}>
+                <button type="button" className={cx("chip", filter === "all" && "on")} onClick={() => setFilter("all")}>
+                  {t("rpage.filterAll")}
+                </button>
+                <button type="button" className={cx("chip", filter === "review" && "on")} onClick={() => setFilter("review")}>
+                  {t("rpage.filterReview", { n: attention.length })}
+                </button>
+                <button type="button" className={cx("chip", filter === "ok" && "on")} onClick={() => setFilter("ok")}>
+                  {t("rpage.filterOk")}
+                </button>
+              </div>
             )}
 
-            {listed.length === 0 && flat ? (
-              <p className="px-6 py-10 text-center text-text-2">
-                {searching ? t("rpage.nothingFound") : filter === "review" ? t("rpage.nothingToReview") : t("rpage.nothingHere")}
-              </p>
-            ) : (
-              groups.map(([label, list]) => (
-                <Section key={label} title={label}>
-                  <Group>{list.map((r) => row(r))}</Group>
-                </Section>
-              ))
+            {groups.map(([label, list]) => (
+              <section key={label} className="stack g-8">
+                <div className="section-head">
+                  <span className="section-title first-letter:uppercase">{label}</span>
+                  <span className="t-xs t-2 num">
+                    {list.length} · {formatMoney(list.reduce((a, r) => a + (r.total ?? 0), 0))}
+                  </span>
+                </div>
+                <div className="cells">{list.map((r) => row(r))}</div>
+              </section>
+            ))}
+            {!groups.length && (
+              <Empty
+                icon={FileText}
+                title={searching ? t("rpage.nothingFound") : all.length ? t("rpage.nothingHere") : t("rpage.emptyTitle")}
+                text={searching ? t("an.tryOther") : all.length ? t("an.noReceiptsInPeriod") : t("rpage.emptyText")}
+              />
             )}
           </>
         )}
       </div>
+      <div className="tab-space" />
+      <div style={{ height: 60 }} />
 
       <Dock>
         {batch.progress && <UploadStatus progress={batch.progress} running={batch.running} onClose={batch.close} />}
         {selecting ? (
-          <div className="w-full rounded-[var(--radius-surface)] bg-elevated p-3 shadow-raised">
-            <p className="px-1 text-sm text-text-2">
-              {picked.length === 0
-                ? t("rpage.selectHint")
-                : t("rpage.selected", { n: picked.length })}
-            </p>
-            <div className="mt-2 flex gap-2">
-              <Button block disabled={picked.length < 2 || busy} loading={merge.isPending} onClick={doMerge}>
-                <Merge className="size-5" aria-hidden /> {t("rpage.merge")}
-              </Button>
-              <Button variant="danger" disabled={picked.length < 1 || busy} loading={remove.isPending} onClick={doDelete}>
-                <Trash2 className="size-5" aria-hidden /> {t("common.delete")}
-              </Button>
+          <div className="card stack g-8" style={{ padding: 12, width: "100%", boxShadow: "var(--sh-2)" }}>
+            <span className="t-sm t-2" style={{ padding: "0 4px" }}>
+              {picked.length === 0 ? t("rpage.selectHint") : t("rpage.selected", { n: picked.length })}
+            </span>
+            <div className="row g-8">
+              <button type="button" className="btn btn-ink grow" disabled={picked.length < 2 || busy} onClick={doMerge}>
+                <Merge size={18} /> {t("rpage.merge")}
+              </button>
+              <button type="button" className="btn btn-danger" disabled={picked.length < 1 || busy} onClick={doDelete}>
+                <Trash2 size={18} /> {t("common.delete")}
+              </button>
             </div>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            disabled={batch.running}
-            className="flex h-14 items-center gap-2 rounded-full bg-primary px-6 text-base font-strong text-on-primary shadow-raised transition-[transform,background-color] active:scale-[0.98] active:bg-primary-pressed disabled:opacity-55"
-          >
-            <Plus className="size-6" aria-hidden /> {t("rpage.add")}
+          <button type="button" className="fab" style={{ position: "static" }} onClick={() => setMenuOpen(true)} disabled={batch.running}>
+            <Plus size={20} />
+            {t("rpage.add")}
           </button>
         )}
       </Dock>
@@ -361,23 +376,11 @@ export function ReceiptsPage() {
         onStart={startPending}
         onClose={() => setPending(null)}
       />
-    </>
-  );
-}
-
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cx(
-        "min-h-11 rounded-full px-4 text-sm font-strong transition-colors duration-[120ms]",
-        active ? "bg-primary-soft text-primary shadow-[inset_0_0_0_1.5px_var(--primary)]" : "bg-sunken text-text-2 active:bg-pressed",
-      )}
-    >
-      {children}
-    </button>
+      <AddReceiptSheet
+        list={addingFor}
+        onClose={() => setAddingFor(null)}
+      />
+    </div>
   );
 }
 
@@ -388,18 +391,4 @@ function groupByMonth(list: Receipt[]): [string, Receipt[]][] {
     map.set(label, [...(map.get(label) ?? []), r]);
   }
   return [...map.entries()];
-}
-
-/** Súčet najnovšieho mesiaca, v ktorom je nejaký prečítaný doklad (zlyhané sa nerátajú). */
-function monthSummary(list: Receipt[]): { label: string; total: number; count: number } | null {
-  const dated = list.filter((r) => r.purchased_on && r.total != null && (r.status === "OK" || r.status === "NEEDS_REVIEW"));
-  if (dated.length === 0) return null;
-  const key = dated.map((r) => r.purchased_on!.slice(0, 7)).sort().at(-1)!;
-  const inMonth = dated.filter((r) => r.purchased_on!.startsWith(key));
-  const nowKey = new Date().toISOString().slice(0, 7);
-  return {
-    label: key === nowKey ? t("rpage.thisMonth") : monthLabel(`${key}-01`),
-    total: inMonth.reduce((sum, r) => sum + (r.total ?? 0), 0),
-    count: inMonth.length,
-  };
 }

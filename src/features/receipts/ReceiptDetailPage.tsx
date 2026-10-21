@@ -1,23 +1,8 @@
 import { useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { Link, useNavigate, useParams } from "react-router";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  FileText,
-  Landmark,
-  Loader2,
-  MoreHorizontal,
-  PenLine,
-  Pencil,
-  Plus,
-  RefreshCw,
-  ShoppingCart,
-  Trash2,
-} from "lucide-react";
-import { CategoryGlyph } from "@/components/CategoryIcon";
-import { Banner, Button, ErrorState, Group, IconButton, Section, Sheet, Spinner, TextField, cx } from "@/components/ui";
+import { useNavigate, useParams } from "react-router";
+import { AlertTriangle, Check, ChevronRight, FileText, Landmark, Link2, Loader2, MoreHorizontal, PenLine, Pencil, Plus, RefreshCw, Trash2, Unlink } from "lucide-react";
+import { BottomSheet, CatIcon, Cell, ScreenHeader, SheetHeader, StoreBadge } from "@/components/kit";
+import { Button, ErrorState, Sheet, Spinner, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useLists } from "@/features/lists/api";
@@ -40,7 +25,6 @@ import {
 } from "./api";
 import { ImageViewer } from "./ImageViewer";
 import { ItemSheet } from "./ItemSheet";
-import { StoreAvatar } from "./ReceiptRow";
 import { failureText, formatDate, formatMoney, parseAmount, readErrorMessage, reviewText } from "./format";
 
 type ItemTarget = { item: ReceiptItem | null; price?: number | null; key: number };
@@ -117,243 +101,259 @@ export function ReceiptDetailPage() {
 
   const openItem = (item: ReceiptItem | null, price?: number | null) => setItemTarget({ item, price, key: Date.now() });
 
+  const tripList = r.list_id ? lists.data?.find((l) => l.id === r.list_id) : undefined;
+  const store = r.store_name ?? t("row.unknownStore");
+  const dec2 = (n: number) => formatNumber(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const menuIcon = (node: ReactNode, danger?: boolean) => (
+    <span className="cat-ic sm" style={danger ? { background: "var(--red-soft)", color: "var(--red)" } : undefined}>
+      {node}
+    </span>
+  );
+
   return (
-    <div className="pb-10">
-      <header className="flex items-center justify-between px-2 pt-3">
-        <Link to="/receipts" aria-label={t("detail.backAria")} className="flex size-11 items-center justify-center rounded-full active:bg-pressed">
-          <ArrowLeft className="size-5" />
-        </Link>
-        <IconButton label={t("detail.more")} onClick={() => setMenuOpen(true)}>
-          <MoreHorizontal className="size-6" />
-        </IconButton>
-      </header>
-
-      <div className="mt-1 flex flex-col gap-4">
-        <Section>
-          <div className="rounded-[var(--radius-surface)] bg-surface p-4 shadow-card">
-            <div className="flex items-start gap-3">
-              <StoreAvatar name={r.store_name} className="size-12" />
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate text-xl font-semibold">{r.store_name ?? t("row.unknownStore")}</h1>
-                <p className="text-sm text-text-2">
-                  {formatDate(r.purchased_on)}
-                  {r.purchased_time ? ` · ${r.purchased_time.slice(0, 5)}` : ""}
-                </p>
+    <div className="stack">
+      <ScreenHeader
+        title={`${store} · ${formatMoney(r.total)}`}
+        sub={`${t("match.receipt")} · ${formatDate(r.purchased_on)}`}
+        onBack={() => navigate(-1)}
+        right={
+          <button type="button" className="ibtn" aria-label={t("detail.more")} onClick={() => setMenuOpen(true)}>
+            <MoreHorizontal size={20} />
+          </button>
+        }
+      />
+      <div className="stack g-16" style={{ padding: "0 16px" }}>
+        {isDocument && rows.length > 0 && (
+          <div style={{ padding: "6px 0 0" }}>
+            <div className="an-receipt" aria-label={t("detail.paperAria")}>
+              <div style={{ textAlign: "center", fontWeight: 700 }}>{store.toUpperCase()}</div>
+              <div style={{ textAlign: "center" }}>
+                {formatDate(r.purchased_on)} {r.purchased_time?.slice(0, 5) ?? ""}
               </div>
-              {r.status !== "PROCESSING" && (
-                <IconButton label={t("detail.editAria")} onClick={() => setEditing(true)} className="-mr-2 -mt-1">
-                  <Pencil className="size-5" />
-                </IconButton>
-              )}
+              <div className="hr" />
+              {rows.map((it) => (
+                <div key={it.id}>
+                  <div className="row between g-8">
+                    <span className="ellipsis">{it.raw_name}</span>
+                    <span>{dec2(it.line_total)}</span>
+                  </div>
+                  {(it.quantity !== 1 || it.discount > 0) && (
+                    <div style={{ opacity: 0.7, paddingLeft: 8 }}>
+                      {formatNumber(it.quantity, { maximumFractionDigits: 3 })} x {it.unit_price != null ? dec2(it.unit_price) : ""}
+                      {it.discount > 0 ? `  ${t("detail.paperDiscount")}` : ""}
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div className="hr" />
+              <div className="row between" style={{ fontWeight: 700 }}>
+                <span>{t("detail.paperTotal")}</span>
+                <span>{r.total != null ? dec2(r.total) : "—"}</span>
+              </div>
             </div>
-            <p className="mt-4 text-3xl font-semibold tabular-nums">{formatMoney(r.total)}</p>
-            {r.list_id && <TripLink list={lists.data?.find((l) => l.id === r.list_id)} score={r.match_score} />}
-            {editable && <SumCheck receipt={r} count={rows.length} onAdd={(price) => openItem(null, price)} onEdit={() => setEditing(true)} />}
-            {!isDocument && (
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-text-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-sunken px-3 py-1">{r.origin === "BANK" ? <Landmark className="size-3.5" aria-hidden /> : <PenLine className="size-3.5" aria-hidden />}{r.origin === "BANK" ? t("detail.fromBank") : t("detail.manualEntry")}</span>
-                {r.category_id && (
-                  <Link to={`/analytics/category/${r.category_id}`} className="rounded-full bg-sunken px-3 py-1 active:bg-pressed">
-                    {category(r.category_id).name}
-                  </Link>
-                )}
-              </div>
-            )}
           </div>
-        </Section>
-
-        {r.status === "PROCESSING" && (
-          <Section>
-            <Banner tone="info" title={t("detail.reading")}>
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="size-4 animate-spin" aria-hidden /> {t("detail.readingHint")}
-              </span>
-              {stuck && <p className="mt-1">{t("detail.stuck")}</p>}
-            </Banner>
-          </Section>
         )}
 
+        <section className="card stack g-6" style={{ padding: 16 }}>
+          <div className="row g-12">
+            <StoreBadge name={store} />
+            <span className="grow stack">
+              <span className="t-h">{store}</span>
+              <span className="t-sm t-2 num">
+                {formatDate(r.purchased_on)}
+                {r.purchased_time ? ` · ${r.purchased_time.slice(0, 5)}` : ""}
+                {isDocument ? ` · ${tn("shop.itemCount", rows.length)}` : ""}
+              </span>
+            </span>
+            <span className="t-title num">{formatMoney(r.total)}</span>
+            {r.status !== "PROCESSING" && (
+              <button type="button" className="ibtn sm" aria-label={t("detail.editAria")} onClick={() => setEditing(true)}>
+                <Pencil size={16} />
+              </button>
+            )}
+          </div>
+          {r.status === "PROCESSING" && (
+            <span className="row g-6 t-sm t-blue">
+              <Loader2 size={15} className="spin" /> {t("detail.readingHint")}
+              {stuck ? ` ${t("detail.stuck")}` : ""}
+            </span>
+          )}
+          {editable && <SumCheck receipt={r} count={rows.length} onAdd={(price) => openItem(null, price)} onEdit={() => setEditing(true)} />}
+          {!isDocument && (
+            <span className="row wrap g-6">
+              <span className="badge b-gray">
+                {r.origin === "BANK" ? <Landmark size={12} /> : <PenLine size={12} />}
+                {r.origin === "BANK" ? t("detail.fromBank") : t("detail.manualEntry")}
+              </span>
+              {r.category_id && (
+                <button type="button" className="badge b-gray" onClick={() => navigate(`/analytics/category/${r.category_id}`)}>
+                  {category(r.category_id).name}
+                </button>
+              )}
+            </span>
+          )}
+        </section>
+
         {r.status === "FAILED" && (
-          <Section>
-            <Banner
-              tone="danger"
-              title={t("detail.failedTitle")}
-              action={
-                <Button variant="secondary" loading={reread.isPending} onClick={onReread}>
-                  <RefreshCw className="size-4" aria-hidden /> {t("common.retry")}
-                </Button>
-              }
-            >
-              {failureText(r.error_text)}
-            </Banner>
-          </Section>
+          <section className="card stack g-10" style={{ padding: 16, background: "var(--red-soft)" }}>
+            <span className="row g-8 t-h" style={{ color: "var(--red)" }}>
+              <AlertTriangle size={18} /> {t("detail.failedTitle")}
+            </span>
+            <span className="t-sm">{failureText(r.error_text)}</span>
+            <button type="button" className="btn btn-line btn-sm" style={{ alignSelf: "flex-start" }} disabled={reread.isPending} onClick={onReread}>
+              <RefreshCw size={15} /> {t("common.retry")}
+            </button>
+          </section>
         )}
 
         {r.status === "NEEDS_REVIEW" && (
-          <Section>
-            <Banner
-              tone="warning"
-              title={t("detail.checkTitle")}
-              action={
-                <Button
-                  variant="secondary"
-                  loading={confirm.isPending}
-                  onClick={() => act(() => confirm.mutateAsync(r.id), t("detail.confirmed"))}
-                >
-                  {t("detail.confirm")}
-                </Button>
-              }
+          <section className="card stack g-10" style={{ padding: 16, background: "var(--yellow-soft)" }}>
+            <span className="row g-8 t-h" style={{ color: "var(--yellow)" }}>
+              <AlertTriangle size={18} /> {t("detail.checkTitle")}
+            </span>
+            <span className="t-sm">{r.review_reason === "TOTAL_MISMATCH" || r.review_reason === "NO_ITEMS" ? t("detail.fixHint") : reviewText(r)}</span>
+            <button
+              type="button"
+              className="btn btn-line btn-sm"
+              style={{ alignSelf: "flex-start" }}
+              disabled={confirm.isPending}
+              onClick={() => act(() => confirm.mutateAsync(r.id), t("detail.confirmed"))}
             >
-              {r.review_reason === "TOTAL_MISMATCH" || r.review_reason === "NO_ITEMS"
-                ? t("detail.fixHint")
-                : reviewText(r)}
-            </Banner>
-          </Section>
+              {t("detail.confirm")}
+            </button>
+          </section>
         )}
 
         {isDocument && (
-        <Section title={pageList.length > 1 ? t("detail.pages", { n: pageList.length }) : t("viewer.title")}>
-          <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
-            {pageList.map((path, i) => (
-              <li key={path} className="shrink-0 snap-start">
-                <PageCard path={path} label={pageList.length > 1 ? `${i + 1} / ${pageList.length}` : null} onOpen={() => setOpenPath(path)} />
-              </li>
-            ))}
-            {r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
-              <li className="shrink-0 snap-start">
-                <button
-                  type="button"
-                  onClick={() => fileInput.current?.click()}
-                  disabled={addPages.isPending}
-                  className="flex h-48 w-32 flex-col items-center justify-center gap-2 rounded-[var(--radius-surface)] bg-sunken px-2 text-center text-sm font-medium text-text-2 active:bg-pressed disabled:opacity-55"
-                >
-                  {addPages.isPending ? <Loader2 className="size-6 animate-spin" aria-hidden /> : <Plus className="size-6" aria-hidden />}
-                  {t("detail.addPage")}
-                </button>
-              </li>
-            )}
-          </ul>
-        </Section>
+          <section className="stack g-8">
+            <span className="section-title">{t("an.trip")}</span>
+            <div className="cells">
+              {tripList ? (
+                <>
+                  <Cell
+                    icon={
+                      <span className="cat-ic sm" style={{ color: "var(--blue)" }}>
+                        <Link2 size={16} />
+                      </span>
+                    }
+                    title={`${tripList.name}${tripList.completed_at ? ` · ${dayLabel(tripList.completed_at)}` : ""}`}
+                    sub={r.match_score != null ? t("trip.autoMatched", { percent: Math.round(Number(r.match_score) * 100) }) : undefined}
+                    onClick={() => navigate(`/lists/${tripList.id}`)}
+                  />
+                  <button type="button" className="cell t-sm" style={{ color: "var(--text-2)" }} onClick={() => navigate(`/receipts/${r.id}/match`)}>
+                    <Unlink size={16} /> <span className="grow">{t("an.changeTrip")}</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Cell
+                    icon={
+                      <span className="cat-ic sm">
+                        <Unlink size={16} />
+                      </span>
+                    }
+                    title={t("rpage.noTrip")}
+                    sub={t("an.noTripHint")}
+                  />
+                  <button type="button" className="cell" onClick={() => navigate(`/receipts/${r.id}/match`)}>
+                    <Link2 size={18} color="var(--accent-text)" />
+                    <span className="grow t-body fw-5 t-accent">{t("an.assignTrip")}</span>
+                    <ChevronRight size={18} className="chev" />
+                  </button>
+                </>
+              )}
+            </div>
+          </section>
         )}
 
-        {rows.length > 0 && (
-          <Section title={t("detail.items", { n: rows.length })}>
-            <div className="flex flex-col gap-3">
-              {groups.map(([categoryId, list]) => {
-                const cat = category(categoryId);
-                const subtotal = list.reduce((sum, it) => sum + it.line_total, 0);
-                return (
-                  <div key={categoryId}>
-                    <div className="mb-2 flex items-center justify-between px-1 text-sm text-text-2">
-                      <span className="inline-flex items-center gap-2">
-                        <CategoryGlyph id={cat.id} className="size-4" /> {cat.name}
-                      </span>
-                      <span className="tabular-nums">{formatMoney(subtotal)}</span>
-                    </div>
-                    <Group>
-                      {list.map((it) => (
-                        <ItemRow key={it.id} item={it} editable={editable} onClick={() => openItem(it)} />
-                      ))}
-                    </Group>
-                  </div>
-                );
-              })}
-            </div>
-          </Section>
+        {groups.map(([categoryId, list]) => {
+          const cat = category(categoryId);
+          return (
+            <section key={categoryId} className="stack g-8">
+              <div className="section-head">
+                <span className="section-title row g-6">
+                  <CatIcon id={cat.id} size="sm" /> {cat.name}
+                </span>
+                <span className="t-xs t-2 num">{formatMoney(list.reduce((sum, it) => sum + it.line_total, 0))}</span>
+              </div>
+              <div className="cells">
+                {list.map((it) => (
+                  <ItemRow key={it.id} item={it} editable={editable} onClick={() => openItem(it)} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+
+        {isDocument && (
+          <section className="stack g-8">
+            <span className="section-title">{pageList.length > 1 ? t("detail.pages", { n: pageList.length }) : t("viewer.title")}</span>
+            <ul className="row g-12" style={{ overflowX: "auto", margin: "0 -16px", padding: "0 16px 4px" }}>
+              {pageList.map((path, i) => (
+                <li key={path} className="shrink-0">
+                  <PageCard path={path} label={pageList.length > 1 ? `${i + 1} / ${pageList.length}` : null} onOpen={() => setOpenPath(path)} />
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         {editable && (
-          <Section>
-            <Button variant="secondary" block onClick={() => openItem(null)}>
-              <Plus className="size-4" aria-hidden /> {t("ritem.addTitle")}
-            </Button>
-          </Section>
+          <div className="row g-8">
+            <button type="button" className="btn btn-soft grow" onClick={() => setEditing(true)}>
+              <PenLine size={16} /> {t("pp.edit")}
+            </button>
+            <button type="button" className="btn btn-soft grow" onClick={() => openItem(null)}>
+              <Plus size={16} /> {t("ritem.addTitle")}
+            </button>
+          </div>
         )}
+        <button type="button" className="btn btn-ghost t-red" onClick={onDelete}>
+          <Trash2 size={16} /> {t("detail.deleteReceipt")}
+        </button>
       </div>
+      <div className="tab-space" />
 
       <input ref={fileInput} type="file" accept="image/*,application/pdf" multiple hidden onChange={onAddPages} />
       <EditSheet key={`${editing}-${r.updated_at}`} open={editing} onClose={() => setEditing(false)} receipt={r} />
       <ImageViewer path={openPath} onClose={() => setOpenPath(null)} />
       {itemTarget && (
-        <ItemSheet
-          key={itemTarget.key}
-          receiptId={r.id}
-          item={itemTarget.item}
-          suggestedPrice={itemTarget.price}
-          onClose={() => setItemTarget(null)}
-        />
+        <ItemSheet key={itemTarget.key} receiptId={r.id} item={itemTarget.item} suggestedPrice={itemTarget.price} onClose={() => setItemTarget(null)} />
       )}
 
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={t("detail.actions")}>
-        <div className="flex flex-col gap-2">
-          {isDocument && (
-            <MenuAction
-              icon={<RefreshCw className="size-5" aria-hidden />}
-              title={t("detail.reread")}
-              hint={t("detail.rereadHint")}
-              disabled={r.status === "PROCESSING" && !stuck}
-              onClick={onReread}
+      <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} label={t("detail.actions")}>
+        <SheetHeader title={t("detail.actions")} onClose={() => setMenuOpen(false)} />
+        <div className="sheet-body stack g-12">
+          <div className="cells">
+            {isDocument && (
+              <Cell icon={menuIcon(<RefreshCw size={16} />)} title={t("detail.reread")} sub={t("detail.rereadHint")} onClick={r.status === "PROCESSING" && !stuck ? undefined : onReread} />
+            )}
+            {isDocument && r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
+              <Cell
+                icon={menuIcon(<Plus size={16} />)}
+                title={t("detail.addPage")}
+                sub={tn("detail.addPageHint", pageList.length, { max: MAX_PAGES })}
+                onClick={() => {
+                  setMenuOpen(false);
+                  fileInput.current?.click();
+                }}
+              />
+            )}
+            <Cell
+              icon={menuIcon(<Trash2 size={16} />, true)}
+              title={t("detail.deleteReceipt")}
+              sub={isDocument ? t("detail.deleteReceiptHint") : t("detail.deleteExpenseHint")}
+              danger
+              chevron={false}
+              onClick={onDelete}
             />
-          )}
-          {isDocument && r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
-            <MenuAction
-              icon={<Plus className="size-5" aria-hidden />}
-              title={t("detail.addPage")}
-              hint={tn("detail.addPageHint", pageList.length, { max: MAX_PAGES })}
-              onClick={() => {
-                setMenuOpen(false);
-                fileInput.current?.click();
-              }}
-            />
-          )}
-          <MenuAction
-            icon={<Trash2 className="size-5" aria-hidden />}
-            title={t("detail.deleteReceipt")}
-            hint={isDocument ? t("detail.deleteReceiptHint") : t("detail.deleteExpenseHint")}
-            danger
-            onClick={onDelete}
-          />
+          </div>
         </div>
-      </Sheet>
+      </BottomSheet>
     </div>
   );
 }
 
-function MenuAction({
-  icon,
-  title,
-  hint,
-  onClick,
-  danger,
-  disabled,
-}: {
-  icon: ReactNode;
-  title: string;
-  hint: string;
-  onClick: () => void;
-  danger?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cx(
-        "flex min-h-16 w-full items-center gap-4 rounded-[var(--radius-surface)] px-4 py-3 text-left disabled:opacity-55",
-        danger ? "bg-danger-soft text-danger" : "bg-surface shadow-card active:bg-pressed",
-      )}
-    >
-      {icon}
-      <span className="min-w-0">
-        <span className="block font-strong">{title}</span>
-        <span className={cx("block text-sm", danger ? "opacity-80" : "text-text-2")}>{hint}</span>
-      </span>
-    </button>
-  );
-}
-
-/** Kontrola súčtu: sedí položky s celkovou sumou? Ak nie, ukáže rozdiel a ponúkne doplniť chýbajúcu položku. */
 function SumCheck({
   receipt: r,
   count,
@@ -365,56 +365,52 @@ function SumCheck({
   onAdd: (price: number | null) => void;
   onEdit: () => void;
 }) {
-  const base = "mt-3 flex flex-col gap-2 rounded-[var(--radius-control)] p-3 text-sm";
-  if (count === 0) {
+  if (count === 0)
     return (
-      <div className={cx(base, "bg-sunken text-text-2")}>
-        <p>{t("sum.noItems")}</p>
-        <Button variant="secondary" onClick={() => onAdd(r.total)}>
-          <Plus className="size-4" aria-hidden /> {t("ritem.addTitle")}
-        </Button>
+      <div className="stack g-8 t-sm t-2">
+        <span>{t("sum.noItems")}</span>
+        <button type="button" className="btn btn-sm btn-line" style={{ alignSelf: "flex-start" }} onClick={() => onAdd(r.total)}>
+          <Plus size={15} /> {t("ritem.addTitle")}
+        </button>
       </div>
     );
-  }
-  if (r.total == null) {
+  if (r.total == null)
     return (
-      <div className={cx(base, "bg-warning-soft text-warning")}>
-        <p className="flex items-center gap-2 font-medium">
-          <AlertTriangle className="size-4 shrink-0" aria-hidden /> {t("sum.noTotal", { sum: formatMoney(r.items_sum) })}
-        </p>
-        <Button variant="secondary" onClick={onEdit}>
+      <div className="stack g-8 t-sm" style={{ color: "var(--yellow)" }}>
+        <span className="row g-6">
+          <AlertTriangle size={15} /> {t("sum.noTotal", { sum: formatMoney(r.items_sum) })}
+        </span>
+        <button type="button" className="btn btn-sm btn-line" style={{ alignSelf: "flex-start" }} onClick={onEdit}>
           {t("sum.addTotal")}
-        </Button>
+        </button>
       </div>
     );
-  }
   const sum = r.items_sum ?? 0;
   const diff = Math.round((r.total - sum) * 100) / 100;
-  if (Math.abs(diff) <= 0.05) {
+  if (Math.abs(diff) <= 0.05)
     return (
-      <p className={cx(base, "flex-row items-center gap-2 bg-success-soft font-medium text-success")}>
-        <CheckCircle2 className="size-4 shrink-0" aria-hidden /> {t("sum.matches")}
-      </p>
+      <span className="row g-6 t-sm t-2">
+        <Check size={15} color="var(--accent-text)" /> {t("sum.matches")}
+      </span>
     );
-  }
   return (
-    <div className={cx(base, "bg-warning-soft text-warning")}>
-      <p className="flex items-start gap-2 font-medium">
-        <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+    <div className="stack g-8 t-sm" style={{ padding: 12, borderRadius: 12, background: "var(--yellow-soft)" }}>
+      <span className="row g-6" style={{ color: "var(--yellow)", alignItems: "flex-start" }}>
+        <AlertTriangle size={15} style={{ flex: "none", marginTop: 2 }} />
         <span>
           {t("sum.mismatch", { sum: formatMoney(sum), total: formatMoney(r.total) })}{" "}
           {diff > 0 ? t("sum.missing", { diff: formatMoney(diff) }) : t("sum.over", { diff: formatMoney(-diff) })}
         </span>
-      </p>
-      <div className="flex flex-wrap gap-2">
+      </span>
+      <div className="row wrap g-8">
         {diff > 0 && (
-          <Button variant="secondary" onClick={() => onAdd(diff)}>
-            <Plus className="size-4" aria-hidden /> {t("sum.addMissing")}
-          </Button>
+          <button type="button" className="btn btn-ink btn-sm" onClick={() => onAdd(diff)}>
+            <Plus size={15} /> {t("sum.addMissing")}
+          </button>
         )}
-        <Button variant="secondary" onClick={onEdit}>
+        <button type="button" className="btn btn-line btn-sm" onClick={onEdit}>
           {t("sum.fixTotal")}
-        </Button>
+        </button>
       </div>
     </div>
   );
@@ -422,28 +418,33 @@ function SumCheck({
 
 function ItemRow({ item: it, editable, onClick }: { item: ReceiptItem; editable: boolean; onClick: () => void }) {
   const amount = it.quantity !== 1 || it.unit ? `${formatNumber(it.quantity, { maximumFractionDigits: 3 })} ${it.unit ? unitLabel(it.unit) : ""}`.trim() : null;
-  const meta = [
-    amount && it.unit_price != null ? `${amount} × ${formatMoney(it.unit_price)}` : amount,
-    it.discount > 0 ? t("detail.discount", { amount: formatMoney(it.discount) }) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const meta = amount && it.unit_price != null ? `${amount} × ${formatMoney(it.unit_price)}` : amount;
   const content = (
     <>
-      <div className="min-w-0 flex-1">
-        <p className="break-words">{it.raw_name}</p>
-        {meta && <p className="text-sm text-text-2">{meta}</p>}
-      </div>
-      <span className="font-strong tabular-nums">{formatMoney(it.line_total)}</span>
-      {editable && <ChevronRight className="size-4 shrink-0 text-text-3" aria-hidden />}
+      <span className="grow stack g-2" style={{ minWidth: 0 }}>
+        <span className="t-body fw-5 ellipsis">{it.raw_name}</span>
+        {(meta || it.discount > 0) && (
+          <span className="t-xs t-2 num">
+            {meta}
+            {it.discount > 0 && (
+              <span className="badge b-green" style={{ marginLeft: meta ? 6 : 0 }}>
+                {t("detail.discount", { amount: formatMoney(it.discount) })}
+              </span>
+            )}
+          </span>
+        )}
+      </span>
+      <span className="t-body fw-6 num">{formatMoney(it.line_total)}</span>
     </>
   );
   return editable ? (
-    <button type="button" onClick={onClick} className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left active:bg-pressed">
+    <button type="button" onClick={onClick} className="cell" style={{ alignItems: "flex-start" }}>
       {content}
     </button>
   ) : (
-    <div className="flex min-h-12 items-center gap-3 px-4 py-3">{content}</div>
+    <div className="cell" style={{ alignItems: "flex-start" }}>
+      {content}
+    </div>
   );
 }
 
@@ -529,20 +530,5 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
         </Button>
       </form>
     </Sheet>
-  );
-}
-
-/** K akému nákupu doklad patrí (priradený ručne alebo automaticky podľa položiek). */
-function TripLink({ list, score }: { list?: { id: string; name: string; completed_at: string | null }; score: number | null }) {
-  if (!list) return null;
-  return (
-    <Link to={`/lists/${list.id}`} className="mt-3 flex min-h-11 items-center gap-2 rounded-xl bg-sunken px-3 py-2 text-sm active:bg-pressed">
-      <ShoppingCart className="size-4 shrink-0 text-text-2" aria-hidden />
-      <span className="min-w-0 flex-1 truncate">
-        {t("trip.tripLabel")} <b>{list.name}</b>
-        {list.completed_at && ` · ${dayLabel(list.completed_at)}`}
-        {score != null && <span className="text-text-2"> · {t("trip.autoMatched", { percent: Math.round(Number(score) * 100) })}</span>}
-      </span>
-    </Link>
   );
 }

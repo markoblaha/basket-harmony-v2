@@ -353,6 +353,9 @@ export type Database = {
       reject_request: { Args: { p_request_id: string }; Returns: Json };
       set_receipt_later: { Args: { p_later?: boolean; p_list_id: string }; Returns: undefined };
       attach_receipt_to_list: { Args: { p_list_id: string; p_receipt_id: string }; Returns: undefined };
+      receipt_match_candidates: { Args: { p_receipt_id: string }; Returns: Json };
+      receipt_match_suggestions: { Args: { p_household_id: string }; Returns: Json };
+      dismiss_receipt_match: { Args: { p_receipt_id: string }; Returns: undefined };
       reply_request: { Args: { p_message: string; p_request_id: string }; Returns: undefined };
       frequent_items: {
         Args: { p_household_id: string; p_limit?: number };

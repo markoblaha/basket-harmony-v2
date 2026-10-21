@@ -484,3 +484,78 @@ export function useAddManualExpense(householdId: string) {
     },
   });
 }
+
+// ------------------------------------------------------------------ párovanie s nákupom
+
+export type MatchCandidate = {
+  list_id: string;
+  name: string;
+  completed_at: string;
+  receipt_state: "NONE" | "LATER" | "ATTACHED";
+  attached: boolean;
+  score: number;
+  store_match: boolean;
+  days: number;
+  hit: string[];
+  missing: string[];
+  extra: { name: string; line_total: number }[];
+};
+export type MatchSuggestion = { receipt_id: string; list_id: string; score: number };
+
+/** Doklady bez nákupu, ku ktorým databáza našla pravdepodobný nákup (časť „Na vybavenie“). */
+export function useMatchSuggestions(householdId: string) {
+  return useQuery({
+    queryKey: ["receipt-match", householdId],
+    queryFn: async (): Promise<MatchSuggestion[]> => {
+      const { data, error } = await supabase.rpc("receipt_match_suggestions", { p_household_id: householdId });
+      if (error) throw error;
+      return (data as MatchSuggestion[]).map((s) => ({ ...s, score: Number(s.score) }));
+    },
+    // Bez nasadenej funkcie Doklady fungujú ďalej, len bez návrhov.
+    retry: false,
+  });
+}
+
+/** Nákupy, ku ktorým môže doklad patriť – so zhodou a porovnaním položiek. */
+export function useMatchCandidates(receiptId: string | undefined) {
+  return useQuery({
+    queryKey: ["receipt-candidates", receiptId ?? "none"],
+    enabled: !!receiptId,
+    queryFn: async (): Promise<MatchCandidate[]> => {
+      const { data, error } = await supabase.rpc("receipt_match_candidates", { p_receipt_id: receiptId! });
+      if (error) throw error;
+      return (data as MatchCandidate[]).map((c) => ({ ...c, score: Number(c.score) }));
+    },
+  });
+}
+
+function invalidateMatch(qc: ReturnType<typeof useQueryClient>) {
+  invalidateReceipts(qc);
+  qc.invalidateQueries({ queryKey: ["receipt-match"] });
+  qc.invalidateQueries({ queryKey: ["receipt-candidates"] });
+  qc.invalidateQueries({ queryKey: ["lists"] });
+}
+
+/** Priradí doklad k nákupu (databáza odpojí doklad od predchádzajúceho nákupu). */
+export function useAttachReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ receiptId, listId }: { receiptId: string; listId: string }) => {
+      const { error } = await supabase.rpc("attach_receipt_to_list", { p_receipt_id: receiptId, p_list_id: listId });
+      if (error) throw error;
+    },
+    onSettled: () => invalidateMatch(qc),
+  });
+}
+
+/** „Bez nákupu“ – doklad sa už nebude navrhovať k nákupu. */
+export function useDismissMatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (receiptId: string) => {
+      const { error } = await supabase.rpc("dismiss_receipt_match", { p_receipt_id: receiptId });
+      if (error) throw error;
+    },
+    onSettled: () => invalidateMatch(qc),
+  });
+}

@@ -116,7 +116,7 @@ export function HistoryPage() {
 }
 
 /** ADD_RECEIPT – doklad k nákupu: odfotiť, z galérie, PDF alebo „Nemám doklad“. */
-function AddReceiptSheet({ list, onClose }: { list: ShoppingList | null; onClose: () => void }) {
+export function AddReceiptSheet({ list, onClose }: { list: ShoppingList | null; onClose: () => void }) {
   const { household } = useHousehold();
   const navigate = useNavigate();
   const toast = useToast();

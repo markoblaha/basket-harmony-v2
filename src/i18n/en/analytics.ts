@@ -237,4 +237,5 @@ export const enAnalytics: Record<keyof typeof skAnalytics, string> = {
   "pp.mergeTitle": "Merge with the same product",
   "pp.mergeText": "Pick the product that is the same as “{name}” (e.g. the same item from another store). Its purchases will move here.",
   "pp.typePart": "Type part of a product name.",
+  "period.prevSame": "the same length before",
 };

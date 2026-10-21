@@ -581,3 +581,9 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
   --chart-muted: rgb(60 80 170 / 0.18);
 }
 }
+
+/* Pole vložené v riadku .input (lupa + text): rámik má celý riadok, nie vnútorné pole. */
+@layer components {
+  .input input:focus-visible { outline: none; }
+  .input:focus-within { box-shadow: inset 0 0 0 2px var(--ink); }
+}

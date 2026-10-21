@@ -236,4 +236,5 @@ export const skAnalytics = {
   "pp.mergeTitle": "Spojiť s rovnakým produktom",
   "pp.mergeText": "Vyber produkt, ktorý je to isté ako „{name}“ (napr. ten istý tovar z iného obchodu). Jeho nákupy sa presunú sem.",
   "pp.typePart": "Napíš časť názvu produktu.",
+  "period.prevSame": "rovnako dlhé obdobie predtým",
 } as const;

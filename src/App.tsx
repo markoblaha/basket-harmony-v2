@@ -22,6 +22,7 @@ import { ProductsTab } from "@/features/analytics/ProductsTab";
 import { StorePage } from "@/features/analytics/StorePage";
 import { StoresTab } from "@/features/analytics/StoresTab";
 import { ReceiptsPage } from "@/features/receipts/ReceiptsPage";
+import { MatchPage } from "@/features/receipts/MatchPage";
 import { ReceiptDetailPage } from "@/features/receipts/ReceiptDetailPage";
 import { StatementImportPage } from "@/features/receipts/StatementImportPage";
 import { RecipesPage } from "@/features/recipes/RecipesPage";
@@ -75,6 +76,7 @@ export function App() {
           <Route path="receipts" element={<ReceiptsPage />} />
           <Route path="receipts/statement" element={<StatementImportPage />} />
           <Route path="receipts/:id" element={<ReceiptDetailPage />} />
+          <Route path="receipts/:id/match" element={<MatchPage />} />
           <Route path="analytics" element={<AnalyticsLayout />}>
             <Route index element={<OverviewTab />} />
             <Route path="categories" element={<CategoriesTab />} />

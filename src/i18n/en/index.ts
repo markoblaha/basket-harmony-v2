@@ -12,8 +12,9 @@ import { enAuth } from "./auth";
 import { enReceipts } from "./receipts";
 import { enRecipes } from "./recipes";
 import { enLs } from "./ls";
+import { enAn } from "./an";
 
-export const enModules = [enCommon, enMore, enVoice, enTrips, enAnalytics, enLists, enAuth, enReceipts, enRecipes, enLs, enErrors, enCategories] as const;
+export const enModules = [enCommon, enMore, enVoice, enTrips, enAnalytics, enLists, enAuth, enReceipts, enRecipes, enLs, enAn, enErrors, enCategories] as const;
 
 export const en: Record<keyof typeof sk, string> = {
   ...enCommon,
@@ -26,6 +27,7 @@ export const en: Record<keyof typeof sk, string> = {
   ...enReceipts,
   ...enRecipes,
   ...enLs,
+  ...enAn,
   ...enErrors,
   ...enCategories,
 };
