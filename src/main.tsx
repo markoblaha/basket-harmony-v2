@@ -9,6 +9,15 @@ import { I18nProvider } from "./i18n";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import "./styles.css";
 import "./design.css";
+import "./styles/shell.css";
+import "./styles/lists.css";
+import "./styles/list-detail.css";
+import "./styles/shopping.css";
+import "./styles/analytics.css";
+import "./styles/receipts.css";
+import "./styles/recipes.css";
+import "./styles/more.css";
+import "./styles/voice.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
