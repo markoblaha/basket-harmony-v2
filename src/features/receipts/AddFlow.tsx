@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Camera, FileText, Image as ImageIcon, Landmark, PenLine, X } from "lucide-react";
-import { Button, IconButton, Sheet, TextField, cx } from "@/components/ui";
+import { Button, IconButton, Sheet, cx } from "@/components/ui";
+import { BottomSheet, Cell, SheetHeader } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { CATEGORIES } from "@/lib/categories";
-import { t, tn } from "@/i18n";
+import { formatEuro, t, tn } from "@/i18n";
 import { MAX_PAGES, useAddManualExpense } from "./api";
 import { parseAmount, readErrorMessage } from "./format";
 
@@ -11,23 +12,7 @@ export type PendingKind = "camera" | "files";
 export type Pending = { kind: PendingKind; files: File[] };
 export type PendingMode = "separate" | "one";
 
-function MenuButton({ icon, title, hint, onClick }: { icon: ReactNode; title: string; hint: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex min-h-16 w-full items-center gap-4 rounded-[var(--radius-surface)] bg-surface px-4 py-3 text-left shadow-card active:bg-pressed"
-    >
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">{icon}</span>
-      <span className="min-w-0">
-        <span className="block font-strong">{title}</span>
-        <span className="block text-sm text-text-2">{hint}</span>
-      </span>
-    </button>
-  );
-}
-
-/** Ponuka po klepnutí na "+": odfotiť, vybrať z galérie, alebo PDF/súbor. */
+/** A5ADD – pridať doklad (prototyp): fotka, galéria, PDF; bez bločku ručný výdavok alebo bankový výpis. */
 export function AddMenu({
   open,
   onClose,
@@ -49,42 +34,22 @@ export function AddMenu({
     onClose();
     fn();
   };
+  const ic = (node: ReactNode) => <span className="cat-ic sm">{node}</span>;
   return (
-    <Sheet open={open} onClose={onClose} title={t("add.title")}>
-      <div className="flex flex-col gap-2">
-        <MenuButton
-          icon={<Camera className="size-5" aria-hidden />}
-          title={t("add.camera")}
-          hint={t("add.cameraHint")}
-          onClick={pick(onCamera)}
-        />
-        <MenuButton
-          icon={<ImageIcon className="size-5" aria-hidden />}
-          title={t("add.gallery")}
-          hint={t("add.galleryHint")}
-          onClick={pick(onGallery)}
-        />
-        <MenuButton
-          icon={<FileText className="size-5" aria-hidden />}
-          title={t("add.file")}
-          hint={t("add.fileHint")}
-          onClick={pick(onFile)}
-        />
-        <p className="mt-2 px-1 text-overline font-semibold uppercase text-text-2">{t("add.noReceipt")}</p>
-        <MenuButton
-          icon={<Landmark className="size-5" aria-hidden />}
-          title={t("add.statement")}
-          hint={t("add.statementHint")}
-          onClick={pick(onStatement)}
-        />
-        <MenuButton
-          icon={<PenLine className="size-5" aria-hidden />}
-          title={t("add.manual")}
-          hint={t("add.manualHint")}
-          onClick={pick(onManual)}
-        />
+    <BottomSheet open={open} onClose={onClose} label={t("add.title")}>
+      <SheetHeader title={t("add.title")} sub={t("add.sub")} onClose={onClose} />
+      <div className="sheet-body stack g-12">
+        <div className="cells">
+          <Cell icon={ic(<Camera size={16} />)} title={t("add.camera")} sub={t("add.cameraHint")} onClick={pick(onCamera)} />
+          <Cell icon={ic(<ImageIcon size={16} />)} title={t("add.gallery")} sub={t("add.galleryHint")} onClick={pick(onGallery)} />
+          <Cell icon={ic(<FileText size={16} />)} title={t("add.file")} sub={t("add.fileHint")} onClick={pick(onFile)} />
+        </div>
+        <div className="cells">
+          <Cell icon={ic(<PenLine size={16} />)} title={t("add.manual")} sub={t("add.manualHint")} onClick={pick(onManual)} />
+          <Cell icon={ic(<Landmark size={16} />)} title={t("add.statement")} sub={t("add.statementHint")} onClick={pick(onStatement)} />
+        </div>
       </div>
-    </Sheet>
+    </BottomSheet>
   );
 }
 
@@ -190,9 +155,13 @@ export function PendingSheet({
   );
 }
 
-/** Ručne zadaný výdavok bez dokladu (nájom, trh, hotovosť). */
+/** A5MAN – ručný výdavok bez dokladu (trh, nájom, hotovosť). */
 export function ManualExpenseSheet({ open, onClose, householdId }: { open: boolean; onClose: () => void; householdId: string }) {
-  return open ? <ManualExpenseForm onClose={onClose} householdId={householdId} /> : null;
+  return (
+    <BottomSheet open={open} onClose={onClose} label={t("manual.title")}>
+      {open && <ManualExpenseForm onClose={onClose} householdId={householdId} />}
+    </BottomSheet>
+  );
 }
 
 function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; householdId: string }) {
@@ -203,16 +172,12 @@ function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; hous
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(iso);
-  const [categoryId, setCategoryId] = useState("housing");
-  const [error, setError] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState("groceries");
+  const value = parseAmount(amount);
+  const ok = !!name.trim() && value !== null && value > 0 && !!date;
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    const value = parseAmount(amount);
-    if (!name.trim()) return setError(t("manual.nameRequired"));
-    if (value === null || value <= 0) return setError(t("manual.amountInvalid"));
-    if (!date) return setError(t("manual.dateRequired"));
-    setError(null);
+  async function submit() {
+    if (!ok || value === null) return;
     try {
       await add.mutateAsync({ name: name.trim(), amount: value, date, categoryId });
       toast.show(t("manual.added"), "success");
@@ -223,39 +188,38 @@ function ManualExpenseForm({ onClose, householdId }: { onClose: () => void; hous
   }
 
   return (
-    <Sheet open onClose={onClose} title={t("manual.title")}>
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        <TextField label={t("manual.name")} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder={t("manual.namePlaceholder")} autoFocus />
-        <div className="grid grid-cols-2 gap-3">
-          <TextField label={t("manual.amount")} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <TextField label={t("manual.date")} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <label htmlFor="manual-category" className="text-sm font-medium text-text-2">
-            {t("edit.category")}
+    <>
+      <SheetHeader title={t("manual.title")} sub={t("manual.sub")} onClose={onClose} />
+      <div className="sheet-body stack g-16">
+        <label className="stack g-6">
+          <span className="field-label">{t("manual.name")}</span>
+          <input className="input" autoFocus maxLength={120} placeholder={t("manual.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <div className="row g-8">
+          <label className="grow stack g-6">
+            <span className="field-label">{t("manual.amount")}</span>
+            <input className="input num" inputMode="decimal" placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </label>
-          <select
-            id="manual-category"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-3 focus:ring-primary/20"
-          >
-            {CATEGORIES.filter((c) => c.id !== "deposit").map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <label className="grow stack g-6">
+            <span className="field-label">{t("manual.date")}</span>
+            <input className="input" type="date" max={iso} value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
         </div>
-        {error && (
-          <p role="alert" className="text-sm text-danger">
-            {error}
-          </p>
-        )}
-        <Button type="submit" size="lg" block loading={add.isPending}>
+        <div className="stack g-6">
+          <span className="field-label">{t("edit.category")}</span>
+          <div className="row wrap g-8" role="radiogroup" aria-label={t("edit.category")}>
+            {CATEGORIES.filter((c) => c.id !== "deposit").map((c) => (
+              <button key={c.id} type="button" role="radio" aria-checked={categoryId === c.id} className={cx("chip", categoryId === c.id && "on")} onClick={() => setCategoryId(c.id)}>
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button type="button" className="btn btn-ink btn-block btn-lg" disabled={!ok || add.isPending} onClick={() => void submit()}>
           {t("manual.submit")}
-        </Button>
-      </form>
-    </Sheet>
+          {value && value > 0 ? ` ${formatEuro(value)}` : ""}
+        </button>
+      </div>
+    </>
   );
 }

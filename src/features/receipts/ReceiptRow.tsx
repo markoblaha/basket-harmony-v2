@@ -1,10 +1,12 @@
 import { useRef, type PointerEvent } from "react";
 import { Link } from "react-router";
-import { ChevronRight, FileText, Landmark, Loader2, PenLine } from "lucide-react";
+import { AlertTriangle, FileText, Landmark, Link2, Loader2, PenLine, Unlink } from "lucide-react";
+import { StoreBadge } from "@/components/kit";
+import { dayLabel } from "@/features/lists/dates";
 import { cx } from "@/components/ui";
 import { t } from "@/i18n";
 import { isNotAReceipt, isReceiptPdf, isStale, useReceiptImage, type Receipt } from "./api";
-import { formatMoney, formatShortDate, nextStep, shortReason, storeHue, storeInitials } from "./format";
+import { formatMoney, nextStep, shortReason, storeHue, storeInitials } from "./format";
 
 /** Farebný kruh s iniciálkami obchodu. Farba sa odvodí z názvu, takže je pre obchod stále rovnaká (svetlý aj tmavý režim). */
 export function StoreAvatar({ name, className }: { name: string | null; className?: string }) {
@@ -67,6 +69,45 @@ function useLongPress(onLongPress: (() => void) | undefined) {
   };
 }
 
+/** Stav dokladu vpravo pod sumou (prototyp): Ručne, Čítam, Skontrolovať, priradený k nákupu, bez nákupu. */
+function StatusIcon({ r }: { r: Receipt }) {
+  if (r.origin === "MANUAL")
+    return (
+      <span className="badge b-gray">
+        <PenLine size={12} /> {t("rpage.manual")}
+      </span>
+    );
+  if (r.origin === "BANK")
+    return (
+      <span className="badge b-gray">
+        <Landmark size={12} /> {t("rpage.bank")}
+      </span>
+    );
+  if (r.status === "PROCESSING" && !isStale(r))
+    return (
+      <span className="badge b-blue">
+        <Loader2 size={12} className="spin" /> {t("rpage.reading")}
+      </span>
+    );
+  if (r.status === "NEEDS_REVIEW" || r.status === "FAILED" || isStale(r))
+    return (
+      <span className={cx("badge", r.status === "FAILED" && !isNotAReceipt(r) ? "b-red" : "b-yellow")}>
+        <AlertTriangle size={12} /> {isStale(r) ? t("row.stale") : shortReason(r)}
+      </span>
+    );
+  if (r.list_id)
+    return (
+      <span className="t-3" title={t("rpage.attached")} aria-label={t("rpage.attached")}>
+        <Link2 size={16} />
+      </span>
+    );
+  return (
+    <span className="badge b-gray">
+      <Unlink size={12} /> {t("rpage.noTrip")}
+    </span>
+  );
+}
+
 export function ReceiptRow({
   receipt: r,
   selecting,
@@ -79,7 +120,7 @@ export function ReceiptRow({
   selecting: boolean;
   /** Poradie vo výbere (-1 = nevybraný). */
   order: number;
-  /** Riadok v schránke "Čaká na teba": podnadpis ukazuje, čo treba spraviť. */
+  /** Riadok v časti „Na vybavenie“: podnadpis ukazuje, čo treba spraviť. */
   attention?: boolean;
   onToggle: () => void;
   onLongPress?: () => void;
@@ -89,64 +130,34 @@ export function ReceiptRow({
   const press = useLongPress(selecting || processing ? undefined : onLongPress);
   const title = r.store_name ?? (processing ? t("row.reading") : r.status === "OK" ? t("row.receipt") : t("row.unknownStore"));
   const failed = r.status === "FAILED";
-  const warn = r.status === "NEEDS_REVIEW" || stale;
-
-  const subtitle = processing ? (
-    <span className="text-text-3">{t("row.readingLong")}</span>
-  ) : attention || failed || stale ? (
-    <span className={cx("font-medium", failed && !isNotAReceipt(r) ? "text-danger" : failed ? "text-text-2" : "text-warning")}>
-      {stale ? t("row.stale") : nextStep(r)}
-    </span>
-  ) : (
-    <span className="text-text-2">
-      {formatShortDate(r.purchased_on)}
-      {r.origin === "BANK" ? t("row.fromStatement") : r.origin === "MANUAL" ? t("row.manual") : ""}
-    </span>
-  );
+  const sub = processing
+    ? t("row.readingLong")
+    : attention || failed || stale
+      ? stale
+        ? t("row.stale")
+        : nextStep(r)
+      : `${dayLabel(r.purchased_on ?? r.created_at)}${r.purchased_time ? ` · ${r.purchased_time.slice(0, 5)}` : ""}`;
 
   const body = (
     <>
-      {selecting && <Thumb receipt={r} />}
-      {!selecting && <StoreAvatar name={r.store_name} />}
-      <div className="min-w-0 flex-1">
-        <p className={cx("truncate font-strong", processing && "text-text-2")}>{title}</p>
-        <p className="truncate text-sm">
-          {subtitle}
-        </p>
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-0.5">
-        {processing ? (
-          <Loader2 className="size-5 animate-spin text-text-3" aria-label={t("row.readingAria")} />
-        ) : failed ? null : (
-          <span className="text-base font-strong tabular-nums">{formatMoney(r.total)}</span>
-        )}
-        {warn && !attention && (
-          <span className="rounded-sm bg-warning-soft px-2 py-0.5 text-xs font-strong text-warning">{shortReason(r)}</span>
-        )}
-      </div>
+      {selecting ? <Thumb receipt={r} /> : <StoreBadge name={r.store_name ?? "?"} size="sm" />}
+      <span className="grow stack g-2" style={{ minWidth: 0 }}>
+        <span className={cx("t-body fw-5 ellipsis", processing && "t-2")}>{title}</span>
+        <span className={cx("t-xs num ellipsis", attention || failed ? "t-orange" : "t-2")}>{sub}</span>
+      </span>
+      <span className="stack g-4" style={{ alignItems: "flex-end", flex: "none" }}>
+        {!processing && !failed && <span className="t-body fw-6 num">{formatMoney(r.total)}</span>}
+        <StatusIcon r={r} />
+      </span>
     </>
   );
 
   if (selecting) {
     return (
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-pressed={order >= 0}
-        className={cx(
-          "flex min-h-[4.25rem] w-full items-center gap-3 px-4 py-3 text-left active:bg-pressed",
-          order >= 0 && "bg-primary-soft",
-        )}
-      >
+      <button type="button" onClick={onToggle} aria-pressed={order >= 0} className="cell" style={order >= 0 ? { background: "var(--accent-soft)" } : undefined}>
         {body}
-        <span
-          aria-hidden
-          className={cx(
-            "flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-sm font-semibold",
-            order >= 0 ? "border-primary bg-primary text-on-primary" : "border-line-strong/60 text-transparent",
-          )}
-        >
-          {order >= 0 ? order + 1 : "·"}
+        <span className={cx("ls-check", order >= 0 && "on")} aria-hidden>
+          {order >= 0 ? <span className="t-xs fw-6">{order + 1}</span> : null}
         </span>
       </button>
     );
@@ -162,10 +173,9 @@ export function ReceiptRow({
           press.fired.current = false;
         }
       }}
-      className="flex min-h-[4.25rem] select-none items-center gap-3 px-4 py-3 [-webkit-touch-callout:none] active:bg-pressed"
+      className="cell select-none [-webkit-touch-callout:none]"
     >
       {body}
-      <ChevronRight className="size-4 shrink-0 text-text-3" aria-hidden />
     </Link>
   );
 }

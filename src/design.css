@@ -544,3 +544,40 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
   backdrop-filter: blur(18px) saturate(1.4);
 }
+
+/* Analytika (prototyp) – farby grafov a „papierový“ bloček, pre všetky témy. */
+@layer components {
+:root, [data-theme-scope] {
+  --mix-1: #4f9a5c; --mix-2: #5b8fd0; --mix-3: #c8664a; --mix-4: #d79a5a; --mix-5: #b59a3e; --mix-6: #b36ab0; --mix-7: #7a6bd0; --mix-8: #9aa0a6;
+  --pt-l: 45%;
+  --chart-muted: #c9cbc4;
+  --paper-bg: #fbfaf5; --paper-fg: #2a2a26; --paper-line: #e3e0d4;
+}
+[data-theme="dark"] {
+  --mix-1: #6cc27a; --mix-2: #7aaeee; --mix-3: #ec8a6c; --mix-4: #f0b77a; --mix-5: #d9bf5c; --mix-6: #d48ad1; --mix-7: #a495f5; --mix-8: #7b8187;
+  --pt-l: 68%;
+  --chart-muted: #3a3d41;
+  --paper-bg: #dedbd1; --paper-fg: #1d1d1a; --paper-line: #c4c0b2;
+}
+.an-pt { fill: hsl(var(--h) 62% var(--pt-l)); }
+.an-pt.promo { fill: var(--surface); stroke: hsl(var(--h) 62% var(--pt-l)); stroke-width: 2; }
+.an-dot { display: inline-block; width: 10px; height: 10px; border-radius: 999px; background: hsl(var(--h) 62% var(--pt-l)); flex: none; }
+.an-crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 13px; color: var(--text-2); padding: 0 4px; }
+.an-crumbs button { color: var(--accent-text); font-weight: 600; min-height: 32px; }
+.an-receipt {
+  background: var(--paper-bg); color: var(--paper-fg); font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 11.5px; line-height: 16px;
+  padding: 16px 16px 20px; border-radius: 6px; box-shadow: var(--sh-2); width: 240px; margin: 0 auto;
+  -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent);
+  mask-image: linear-gradient(to bottom, #000 82%, transparent);
+}
+.an-receipt .hr { border-top: 1px dashed var(--paper-line); margin: 6px 0; }
+.an-big { font-size: 34px; line-height: 40px; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.an-sentence { font-size: 15px; line-height: 22px; color: var(--text); }
+.an-stack { display: flex; height: 14px; border-radius: 999px; overflow: hidden; gap: 2px; }
+.an-stack > span { display: block; height: 100%; }
+.an-review { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--yellow-soft); color: var(--yellow); width: 100%; text-align: left; }
+[data-theme="color"] {
+  --mix-1: #5a6fae; --mix-2: #c9a65a; --mix-3: #8f84b8; --mix-4: #5f9e86; --mix-5: #c58b9d; --mix-6: #6fa3bf; --mix-7: #c98a64; --mix-8: #a8abba;
+  --chart-muted: rgb(60 80 170 / 0.18);
+}
+}

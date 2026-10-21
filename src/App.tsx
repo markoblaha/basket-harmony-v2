@@ -14,6 +14,7 @@ import { ShoppingPage } from "@/features/lists/ShoppingPage";
 import { HistoryPage } from "@/features/lists/HistoryPage";
 import { ShoppingHub } from "@/features/lists/ShoppingHub";
 import { AnalyticsLayout } from "@/features/analytics/AnalyticsLayout";
+import { CategoriesTab } from "@/features/analytics/CategoriesTab";
 import { CategoryPage } from "@/features/analytics/CategoryPage";
 import { OverviewTab } from "@/features/analytics/OverviewTab";
 import { ProductPage } from "@/features/analytics/ProductPage";
@@ -76,9 +77,10 @@ export function App() {
           <Route path="receipts/:id" element={<ReceiptDetailPage />} />
           <Route path="analytics" element={<AnalyticsLayout />}>
             <Route index element={<OverviewTab />} />
-            <Route path="products" element={<ProductsTab />} />
+            <Route path="categories" element={<CategoriesTab />} />
             <Route path="stores" element={<StoresTab />} />
           </Route>
+          <Route path="analytics/products" element={<ProductsTab />} />
           <Route path="analytics/category/:id" element={<CategoryPage />} />
           <Route path="analytics/store/:key" element={<StorePage />} />
           <Route path="analytics/product/:id" element={<ProductPage />} />

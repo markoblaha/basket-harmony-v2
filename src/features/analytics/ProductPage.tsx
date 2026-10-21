@@ -1,28 +1,99 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router";
-import { ChevronRight, Merge, Pencil, Plus, Search } from "lucide-react";
-import { Button, ErrorState, Group, Section, Sheet, Spinner, TextField, cx } from "@/components/ui";
+import { useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { useNavigate, useParams } from "react-router";
+import { ChevronRight, Merge, Pencil, Plus, Search, X } from "lucide-react";
+import { CatIcon, ScreenHeader, StoreBadge, storeHue } from "@/components/kit";
+import { useAddItem, useLists } from "@/features/lists/api";
+import { dayLabel, listDay } from "@/features/lists/dates";
+import { errorMessage } from "@/lib/errors";
+import { Button, ErrorState, Sheet, Spinner, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { CATEGORIES, normalizeName } from "@/lib/categories";
 import { formatMoney, formatShortDate, parseAmount, readErrorMessage } from "@/features/receipts/format";
-import { formatNumber, t, tn } from "@/i18n";
+import { formatEuro, formatNumber, t, tn } from "@/i18n";
 import { unitLabel as pieceUnit } from "@/lib/parseItem";
 import { useMergeProducts, useProduct, useProducts, useUpdateProduct, type ProductDetail } from "./api";
-import { BackHeader } from "./AnalyticsLayout";
-import { PriceChart } from "./charts";
-import { Card, CategoryBadge, SectionTitle, Stat, categoryInfo, sizeLabel, storeColor, storeLabel, unitLabel } from "./bits";
+import { categoryInfo, sizeLabel, storeLabel, unitLabel } from "./bits";
 import { usePeriod } from "./period";
-import { useAddToList } from "./useAddToList";
 
-/** Detail produktu: cena v čase, porovnanie obchodov, ako často ho kupujete a všetky nákupy. */
+/** Graf jednotkovej ceny v čase (prototyp) – bodky podľa obchodu, akcia ako dutý krúžok. */
+function PriceDots({ points, unit }: { points: { key: string; date: string; v: number; store: string; promo: boolean }[]; unit: string }) {
+  if (points.length < 2) return null;
+  const pts = points.map((p) => ({ ...p, tm: Date.parse(p.date + "T00:00:00") })).sort((a, b) => a.tm - b.tm);
+  const W = 320;
+  const H = 150;
+  const L = 44;
+  const B = 24;
+  const minT = pts[0]!.tm;
+  const maxT = pts[pts.length - 1]!.tm;
+  let minV = Math.min(...pts.map((p) => p.v));
+  let maxV = Math.max(...pts.map((p) => p.v));
+  if (maxV - minV < 0.05) {
+    minV -= 0.1;
+    maxV += 0.1;
+  }
+  const pad = (maxV - minV) * 0.15;
+  minV -= pad;
+  maxV += pad;
+  const x = (tm: number) => L + ((tm - minT) / Math.max(1, maxT - minT)) * (W - L - 10);
+  const y = (v: number) => 8 + (1 - (v - minV) / (maxV - minV)) * (H - B - 8);
+  const ticks = [minV + pad, (minV + maxV) / 2, maxV - pad];
+  const regular = pts.filter((p) => !p.promo);
+  const path = regular.map((p, i) => `${i ? "L" : "M"}${x(p.tm).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
+  const stores = [...new Set(pts.map((p) => p.store))];
+  return (
+    <div className="stack g-8">
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={t("pp.priceTitle")}>
+        {ticks.map((v) => (
+          <g key={v}>
+            <line x1={L} x2={W - 4} y1={y(v)} y2={y(v)} style={{ stroke: "var(--line)", strokeWidth: 1 }} />
+            <text x={L - 6} y={y(v) + 4} textAnchor="end" style={{ fill: "var(--text-3)", fontSize: 10.5 }}>
+              {formatNumber(v, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </text>
+          </g>
+        ))}
+        {path && <path d={path} style={{ fill: "none", stroke: "var(--line-2)", strokeWidth: 1.5 }} />}
+        {pts.map((p) => (
+          <circle key={p.key} cx={x(p.tm)} cy={y(p.v)} r={p.promo ? 4.5 : 4} className={cx("an-pt", p.promo && "promo")} style={{ "--h": storeHue(p.store) } as CSSProperties} />
+        ))}
+        <text x={L} y={H - 4} style={{ fill: "var(--text-3)", fontSize: 10.5 }}>
+          {formatShortDate(pts[0]!.date)}
+        </text>
+        <text x={W - 4} y={H - 4} textAnchor="end" style={{ fill: "var(--text-3)", fontSize: 10.5 }}>
+          {formatShortDate(pts[pts.length - 1]!.date)}
+        </text>
+      </svg>
+      <div className="row wrap g-12 t-xs t-2">
+        {unit && <span>{unit}</span>}
+        {stores.map((st) => (
+          <span key={st} className="row g-4">
+            <span className="an-dot" style={{ "--h": storeHue(st) } as CSSProperties} />
+            {storeLabel(st)}
+          </span>
+        ))}
+        {pts.some((p) => p.promo) && (
+          <span className="row g-4">
+            <span className="an-dot" style={{ background: "transparent", boxShadow: "inset 0 0 0 2px var(--text-3)" }} />
+            {t("pp.promoLegend")}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A3 – detail produktu (prototyp): veta, cena v čase, porovnanie obchodov, nákupy, pridať do zoznamu. */
 export function ProductPage() {
   const { id } = useParams();
-  const { search } = usePeriod();
+  const navigate = useNavigate();
   const query = useProduct(id);
-  const { addToList, pending: adding, listName } = useAddToList();
+  const { household } = useHousehold();
+  const lists = useLists(household.id);
+  const add = useAddItem();
+  const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [pick, setPick] = useState(false);
 
   if (query.isPending) return <Spinner />;
   if (query.isError) return <ErrorState error={readErrorMessage(query.error)} onRetry={() => query.refetch()} />;
@@ -33,182 +104,153 @@ export function ProductPage() {
   const last = d.purchases[0];
   const basis = last?.basis ?? "ks";
   const showUnit = basis !== "ks" || (p.size_value ?? 1) > 1;
+  const unit = showUnit ? unitLabel(basis) : t("an.perPiece");
+  const total = d.purchases.reduce((a, x) => a + x.line_total, 0);
   const cheapest = d.stores[0];
-  // Obchody v tomto produkte dostanú dobre odlíšiteľné farby (v grafe aj v zoznamoch).
-  const storeNames = [...new Set([...d.stores.map((s) => s.name), ...d.purchases.map((x) => x.store)])].sort();
-  const colorOf = (name: string) => storeColor(storeNames.indexOf(name));
+  const open = (lists.data ?? []).filter((l) => !l.completed_at);
   const points = d.purchases
-    .filter((x) => x.shelf_unit !== null && x.basis === basis)
+    .filter((x) => x.basis === basis)
     .map((x) => ({
       key: x.item_id,
       date: x.date,
-      shelf: showUnit ? x.shelf_unit! : x.line_total + x.discount,
-      paid: showUnit ? (x.paid_unit ?? x.shelf_unit!) : x.line_total,
+      v: showUnit && x.shelf_unit !== null ? x.shelf_unit : x.line_total / Math.max(1, x.quantity),
       store: x.store,
-      color: colorOf(x.store),
-    }))
-    .reverse();
-  const storesInChart = [...new Set(points.map((x) => x.store))];
+      promo: x.discount > 0,
+    }));
+  const sentence =
+    (d.interval_days !== null ? tn("an.cadence", Math.round(d.interval_days)) : t("an.boughtTimes", { n: d.purchases.length })) +
+    (d.stores.length > 1 && cheapest ? t("an.cheapestAt", { store: storeLabel(cheapest.name), price: formatEuro(cheapest.avg_unit), unit }) : ".");
+
+  async function addTo(listId: string, listName: string) {
+    setPick(false);
+    try {
+      const res = await add.mutateAsync({ listId, name: p.name, categoryId: p.category_id });
+      toast.show(res.kind === "REQUEST" ? t("addtolist.request") : t("addtolist.added", { name: listName }), "success");
+    } catch (err) {
+      toast.show(errorMessage(err), "error");
+    }
+  }
 
   return (
-    <div className="pb-10">
-      <BackHeader fallback={`/analytics/products${search}`} title={t("tab.products")} />
-
-      <Section className="mt-1">
-        <div className="flex items-start gap-3">
-          <CategoryBadge id={info.id} color={info.color} />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold leading-tight">{p.name}</h1>
-            <p className="mt-0.5 text-sm text-text-2">{[p.brand, size, info.name].filter(Boolean).join(" · ")}</p>
+    <div className="stack">
+      <ScreenHeader title={p.name} sub={[info.name, size].filter(Boolean).join(" · ")} onBack={() => navigate(-1)} />
+      <div className="stack g-16" style={{ padding: "0 16px" }}>
+        <section className="card stack g-10" style={{ padding: 18 }}>
+          <div className="row g-12">
+            <CatIcon id={p.category_id} />
+            <span className="grow stack">
+              <span className="t-h">{p.name}</span>
+              <span className="t-sm t-2">{[p.brand, size ? t("an.pack", { size }) : null].filter(Boolean).join(" · ") || info.name}</span>
+            </span>
           </div>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => setEditing(true)}>
-            <Pencil className="size-4" aria-hidden /> {t("pp.edit")}
-          </Button>
-          <Button variant="secondary" onClick={() => setMerging(true)}>
-            <Merge className="size-4" aria-hidden /> {t("pp.merge")}
-          </Button>
-          <Button variant="secondary" disabled={adding} onClick={() => void addToList(p.name, p.category_id)}>
-            <Plus className="size-4" aria-hidden /> {listName ? t("pp.toNamedList", { name: listName }) : t("pp.toList")}
-          </Button>
-        </div>
-      </Section>
+          <p className="an-sentence" style={{ margin: 0 }}>
+            {sentence}
+          </p>
+          <div className="row g-8 wrap">
+            <span className="badge b-gray">{tn("an.purchases", d.purchases.length)}</span>
+            <span className="badge b-gray num">{t("an.totalSpent", { amount: formatEuro(total) })}</span>
+            {last && <span className="badge b-gray">{t("an.lastOn", { day: dayLabel(last.date) })}</span>}
+          </div>
+        </section>
 
-      <div className="mt-4 flex flex-col gap-6">
-        {last && (
-          <Section>
-            <Card>
-              <div className="grid grid-cols-2 gap-4">
-                <Stat label={t("pp.last")} value={formatMoney(last.line_total)} hint={`${formatShortDate(last.date)} · ${storeLabel(last.store)}`} />
-                {showUnit && last.shelf_unit !== null ? (
-                  <Stat label={t("pp.unitPrice")} value={`${formatMoney(last.shelf_unit)} ${unitLabel(basis)}`} hint={t("pp.unitPriceHint")} />
-                ) : (
-                  <Stat label={t("pp.bought")} value={`${d.purchases.length}×`} hint={t("pp.boughtHint")} />
-                )}
-                {cheapest && d.stores.length > 1 && (
-                  <Stat
-                    label={t("pp.cheapest")}
-                    value={`${formatMoney(cheapest.avg_unit)} ${showUnit ? unitLabel(basis) : ""}`}
-                    hint={t("pp.cheapestHint", { name: storeLabel(cheapest.name) })}
-                  />
-                )}
-                {d.interval_days !== null && (
-                  <Stat label={t("pp.buyEvery")} value={t("pp.everyDays", { n: Math.round(d.interval_days) })} hint={t("pp.lastAgo", { when: daysAgo(last.date) })} />
-                )}
-                <Stat
-                  label={t("pp.thisYear")}
-                  value={formatMoney(d.spent_year)}
-                  hint={tn("rpage.purchases", d.count_year)}
-                />
-              </div>
-            </Card>
-          </Section>
+        <section className="card stack g-10" style={{ padding: 18 }}>
+          <span className="t-h">{t("an.priceOverTime")}</span>
+          {points.length >= 2 ? <PriceDots points={points} unit={unit} /> : <span className="t-sm t-2">{t("an.needTwo")}</span>}
+        </section>
+
+        {d.stores.length > 0 && (
+          <section className="stack g-8">
+            <span className="section-title">{t("an.compareStores", { unit })}</span>
+            <div className="cells">
+              {d.stores.map((st, i) => (
+                <div key={st.key} className="cell">
+                  <StoreBadge name={storeLabel(st.name)} size="sm" />
+                  <span className="grow stack">
+                    <span className="t-body fw-5">{storeLabel(st.name)}</span>
+                    <span className="t-xs t-2">{t("an.boughtN", { n: st.count })}</span>
+                  </span>
+                  {i === 0 && d.stores.length > 1 && <span className="badge b-green">{t("pp.cheapestTag")}</span>}
+                  <span className="t-body fw-6 num">{formatEuro(st.avg_unit)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
-        <Section>
-          <SectionTitle title={showUnit ? t("pp.priceTitleUnit", { unit: unitLabel(basis) }) : t("pp.priceTitle")} />
-          <Card>
-            {points.length >= 2 ? (
-              <>
-                <PriceChart points={points} unitLabel={showUnit ? unitLabel(basis) : ""} />
-                <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-text-3">
-                  {storesInChart.map((s) => (
-                    <span key={s} className="inline-flex items-center gap-2">
-                      <span className="size-2.5 rounded-full" style={{ background: colorOf(s) }} aria-hidden /> {storeLabel(s)}
-                    </span>
-                  ))}
-                  <span className="inline-flex items-center gap-2">
-                    <span className="size-2.5 rounded-full border-2 border-text-3" aria-hidden /> {t("pp.promoLegend")}
+        <section className="stack g-8">
+          <span className="section-title">{t("sp.purchases")}</span>
+          <div className="cells">
+            {d.purchases.slice(0, 20).map((x) => (
+              <button key={x.item_id} type="button" className="cell" onClick={() => navigate(`/receipts/${x.receipt_id}`)}>
+                <StoreBadge name={storeLabel(x.store)} size="sm" />
+                <span className="grow stack">
+                  <span className="t-body fw-5">
+                    {storeLabel(x.store)} · {dayLabel(x.date)}
                   </span>
-                </div>
-                <p className="mt-2 text-center text-xs text-text-3">{t("pp.tapDot")}</p>
-              </>
-            ) : (
-              <p className="py-4 text-center text-sm text-text-2">
-                {t("pp.needTwo", { n: d.purchases.length })}
-              </p>
-            )}
-          </Card>
-        </Section>
-
-        {d.stores.length > 1 && <StoreCompare d={d} showUnit={showUnit} colorOf={colorOf} />}
-
-        <Section>
-          <SectionTitle title={t("pp.purchases", { n: d.purchases.length })} />
-          <Group>
-            {d.purchases.map((x) => (
-              <Link key={x.item_id} to={`/receipts/${x.receipt_id}`} className="flex items-center gap-3 px-4 py-3 active:bg-pressed">
-                <span className="size-2.5 shrink-0 rounded-full" style={{ background: colorOf(x.store) }} aria-hidden />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">
-                    {formatShortDate(x.date)} · {storeLabel(x.store)}
-                  </p>
-                  <p className="text-xs text-text-3">
-                    {x.quantity !== 1 ? `${formatNumber(x.quantity)} × · ` : ""}
-                    {showUnit && x.shelf_unit !== null ? `${formatMoney(x.shelf_unit)} ${unitLabel(x.basis)}` : ""}
-                    {x.discount > 0 ? ` · ${t("detail.discount", { amount: formatMoney(x.discount) })}` : ""}
-                  </p>
-                </div>
-                {x.discount > 0 && <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-semibold text-success">{t("ov.promoTag")}</span>}
-                <span className="font-semibold tabular-nums">{formatMoney(x.line_total)}</span>
-                <ChevronRight className="size-4 text-text-3" aria-hidden />
-              </Link>
+                  <span className="t-xs t-2 num">
+                    {formatNumber(x.quantity)} ×{" "}
+                    {showUnit && x.shelf_unit !== null ? `${formatEuro(x.shelf_unit)} ${unitLabel(x.basis)}` : formatEuro(x.line_total / Math.max(1, x.quantity))}
+                    {x.discount > 0 ? ` · ${t("ov.promoTag")}` : ""}
+                  </span>
+                </span>
+                <span className="t-body fw-6 num">{formatEuro(x.line_total)}</span>
+                <ChevronRight size={18} className="chev" />
+              </button>
             ))}
-          </Group>
-        </Section>
+          </div>
+        </section>
 
         {d.aliases.length > 0 && (
-          <Section>
-            <SectionTitle title={t("pp.aliases")} />
-            <p className="px-1 text-sm text-text-2">{d.aliases.join(" · ")}</p>
-          </Section>
+          <section className="stack g-6">
+            <span className="section-title">{t("pp.aliases")}</span>
+            <span className="t-sm t-2" style={{ padding: "0 4px" }}>
+              {d.aliases.join(" · ")}
+            </span>
+          </section>
         )}
+        <button type="button" className="btn btn-ghost" onClick={() => setMerging(true)}>
+          <Merge size={16} /> {t("pp.merge")}
+        </button>
+
+        {pick && (
+          <section className="card stack g-8 anim-rise" style={{ padding: 14 }}>
+            <div className="row between">
+              <span className="t-h">{t("an.whichList")}</span>
+              <button type="button" className="ibtn sm" onClick={() => setPick(false)} aria-label={t("common.close")}>
+                <X size={18} />
+              </button>
+            </div>
+            {open.length ? (
+              open.map((l) => (
+                <button key={l.id} type="button" className="cell" style={{ padding: "8px 4px" }} onClick={() => void addTo(l.id, l.name)}>
+                  <StoreBadge name={l.name} size="sm" />
+                  <span className="grow t-body fw-5">
+                    {l.name} · {listDay(l)}
+                  </span>
+                  <Plus size={18} />
+                </button>
+              ))
+            ) : (
+              <span className="t-sm t-2">{t("addtolist.noList")}</span>
+            )}
+          </section>
+        )}
+      </div>
+      <div style={{ height: 180 }} />
+      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl row g-8" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}>
+        <button type="button" className="btn btn-soft" onClick={() => setEditing(true)} aria-label={t("pp.edit")}>
+          <Pencil size={17} />
+          {t("pp.edit")}
+        </button>
+        <button type="button" className="btn btn-ink grow" onClick={() => setPick(true)}>
+          <Plus size={18} />
+          {t("pp.toList")}
+        </button>
       </div>
 
       {editing && <EditProductSheet d={d} onClose={() => setEditing(false)} />}
       {merging && <MergeProductSheet d={d} onClose={() => setMerging(false)} />}
     </div>
-  );
-}
-
-function daysAgo(date: string): string {
-  const days = Math.round((Date.now() - Date.parse(date + "T00:00:00")) / 86_400_000);
-  return days <= 0 ? t("pp.today") : tn("pp.daysAgo", days);
-}
-
-function StoreCompare({ d, showUnit, colorOf }: { d: ProductDetail; showUnit: boolean; colorOf: (name: string) => string }) {
-  const cheapest = d.stores[0]!.avg_unit;
-  return (
-    <Section>
-      <SectionTitle title={t("pp.compare")} />
-      <Group>
-        {d.stores.map((s, i) => {
-          const diff = cheapest > 0 ? s.avg_unit / cheapest - 1 : 0;
-          return (
-            <div key={s.key} className="flex items-center gap-3 px-4 py-3">
-              <span className="size-3 shrink-0 rounded-full" style={{ background: colorOf(s.name) }} aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{storeLabel(s.name)}</p>
-                <p className="text-xs text-text-3">
-                  {t("pp.compareLine", { count: s.count, date: formatShortDate(s.last_date), price: formatMoney(s.last_unit) })}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-semibold tabular-nums">
-                  {formatMoney(s.avg_unit)}
-                  {showUnit ? <span className="text-xs font-normal text-text-3"> {unitLabel(d.purchases[0]?.basis ?? "ks")}</span> : null}
-                </p>
-                <p className={cx("text-xs font-semibold", i === 0 ? "text-success" : "text-warning")}>
-                  {i === 0 ? t("pp.cheapestTag") : t("fmt.percent", { value: `+${Math.round(diff * 100)}` })}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-      </Group>
-      <p className="mt-2 px-1 text-xs text-text-3">{t("pp.compareNote")}</p>
-    </Section>
   );
 }
 

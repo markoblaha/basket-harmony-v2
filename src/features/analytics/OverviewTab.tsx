@@ -1,141 +1,160 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router";
-import { AlertTriangle, ChevronDown, Loader2, Plus, Receipt as ReceiptIcon, Sparkles, Tag, Target, TrendingDown, TrendingUp } from "lucide-react";
-import { Banner, Button, ErrorState, Group, Section, Spinner, cx } from "@/components/ui";
+import { useNavigate } from "react-router";
+import { AlertTriangle, ChevronRight, Info, Loader2, Plus, Sparkles, Tag, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { CatIcon, Empty, StoreBadge } from "@/components/kit";
+import { ErrorState, Spinner, cx } from "@/components/ui";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { StoreAvatar } from "@/features/receipts/ReceiptRow";
-import { formatMoney, readErrorMessage } from "@/features/receipts/format";
-import { t, tn } from "@/i18n";
+import { useLists } from "@/features/lists/api";
+import { needsAttention, useReceipts } from "@/features/receipts/api";
+import { readErrorMessage } from "@/features/receipts/format";
+import { Receipt as ReceiptIcon } from "lucide-react";
+import { formatEuro, formatNumber, t, tn } from "@/i18n";
 import { useOverview, useProductNormalization, type Overview } from "./api";
+import { AnalyticsTop, ChangeBadge, MonthBars, ShareRow, pct, toMonthBars } from "./akit";
 import { BudgetSheet } from "./BudgetSheet";
-import { BarChart, CumulativeChart, ShareBar } from "./charts";
-import { Card, Delta, CategoryBadge, MoreLink, categoryColor, SectionTitle, ShareRow, Stat, categoryInfo, percent, storeLabel, unitLabel } from "./bits";
-import { daysBetween, monthShort, todayIso, usePeriod, type Period } from "./period";
+import { categoryInfo, percent, storeLabel, unitLabel } from "./bits";
+import { daysBetween, usePeriod, type Period } from "./period";
 import { useAddToList } from "./useAddToList";
-import { groupByArea } from "./areas";
 
-const TOP_CATEGORIES = 6;
+const MIX = [
+  { id: "ovz", label: "an.mix.ovz", cats: ["produce"] },
+  { id: "mlie", label: "an.mix.mlie", cats: ["dairy_eggs"] },
+  { id: "maso", label: "an.mix.maso", cats: ["meat_fish"] },
+  { id: "ude", label: "an.mix.ude", cats: ["deli_chilled"] },
+  { id: "obil", label: "an.mix.obil", cats: ["bakery", "breakfast"] },
+  { id: "slad", label: "an.mix.slad", cats: ["snacks_sweets"] },
+  { id: "alk", label: "an.mix.alk", cats: ["alcohol"] },
+  { id: "ost", label: "an.mix.ost", cats: ["pantry", "frozen", "groceries", "beverages"] },
+] as const;
+const MIX_COLORS = ["var(--mix-1)", "var(--mix-2)", "var(--mix-3)", "var(--mix-4)", "var(--mix-5)", "var(--mix-6)", "var(--mix-7)", "var(--mix-8)"];
 
+function basketMix(cats: Overview["categories"], prev: boolean) {
+  const totals = MIX.map((g) => cats.filter((c) => (g.cats as readonly string[]).includes(c.id)).reduce((a, c) => a + Math.max(0, prev ? c.prev_amount : c.amount), 0));
+  const total = totals.reduce((a, b) => a + b, 0);
+  return { total, shares: totals.map((v) => (total ? v / total : 0)) };
+}
+
+/**
+ * A1 – Prehľad (prototyp): na vybavenie, veta o výdavkoch s veľkou sumou,
+ * rozpočet, na čo a kde, čo sa zmenilo, ceny a čo dochádza, zloženie nákupu
+ * potravín a stĺpce po mesiacoch.
+ */
 export function OverviewTab() {
   const { household } = useHousehold();
-  const { period, search, setMonth, setRange } = usePeriod();
+  const navigate = useNavigate();
+  const { period, search, setCustom } = usePeriod();
   const overview = useOverview(household.id, period);
   const normalize = useProductNormalization(household.id, overview.data?.unnormalized);
+  const lists = useLists(household.id);
+  const receipts = useReceipts(household.id);
+  const [budgetOpen, setBudgetOpen] = useState(false);
 
-  if (overview.isPending) return <Spinner />;
-  if (overview.isError) return <ErrorState error={readErrorMessage(overview.error)} onRetry={() => overview.refetch()} />;
+  const missing = (lists.data ?? []).filter((l) => l.completed_at && l.receipt_state === "LATER").length;
+  const review = (receipts.data ?? []).filter(needsAttention).length;
+  const todo = missing + review;
+
   const o = overview.data;
-  const empty = o.receipts === 0 && o.total === 0;
-
   return (
-    <div className={cx("mt-2 flex flex-col gap-6 transition-opacity", overview.isPlaceholderData && "opacity-60")}>
-      <Notices o={o} normalize={normalize} />
-
-      {empty ? (
-        <Section>
-          <Card className="py-8 text-center">
-            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-sunken text-text-2" aria-hidden>
-              <ReceiptIcon className="size-6" />
-            </span>
-            <p className="mt-2 font-semibold">{t("ov.emptyTitle")}</p>
-            <p className="mt-1 text-sm text-text-2">{t("ov.emptyText")}</p>
-            <Link to="/receipts" className="mt-3 inline-block text-sm font-semibold text-primary">
-              {t("ov.goReceipts")}
-            </Link>
-          </Card>
-        </Section>
+    <div className="stack">
+      <AnalyticsTop part="overview" />
+      {overview.isPending ? (
+        <Spinner />
+      ) : overview.isError || !o ? (
+        <ErrorState error={readErrorMessage(overview.error)} onRetry={() => overview.refetch()} />
       ) : (
-        <>
-          <Hero o={o} period={period} />
-          {period.range === "month" && <Budgets o={o} current={period.current} />}
-          <Insights o={o} search={search} />
-          <Categories o={o} search={search} period={period} />
-          <Stores o={o} search={search} />
-        </>
-      )}
+        <div className={cx("stack g-16", overview.isPlaceholderData && "opacity-60")} style={{ padding: "8px 16px 0" }}>
+          {todo > 0 && (
+            <button type="button" className="an-review" onClick={() => navigate("/receipts")}>
+              <AlertTriangle size={20} />
+              <span className="grow stack g-2">
+                <span className="t-h">
+                  {t("an.todo")}: <span className="num">{todo}</span>
+                </span>
+                <span className="t-sm" style={{ opacity: 0.85 }}>
+                  {[missing && tn("ls.missingReceipts", missing), review && tn("an.toReview", review)].filter(Boolean).join(" · ")}
+                </span>
+              </span>
+              <ChevronRight size={18} />
+            </button>
+          )}
+          <Normalization normalize={normalize} />
 
-      <Section>
-        <SectionTitle title={t("ov.last12")} />
-        <Card>
-          <BarChart
-            label={t("ov.monthsChart")}
-            data={o.months.map((m) => ({ key: m.month, label: monthShort(Number(m.month.slice(5))), value: m.amount }))}
-            activeKey={period.range === "month" ? period.month : null}
-            onSelect={(key) => {
-              setRange("month");
-              setMonth(key);
-            }}
-          />
-          <p className="mt-2 text-center text-xs text-text-3">{t("ov.tapMonth")}</p>
-        </Card>
-      </Section>
+          {o.receipts === 0 && o.total === 0 ? (
+            <div className="card">
+              <Empty icon={ReceiptIcon} title={t("ov.emptyTitle")} text={t("ov.emptyText")} action={<button type="button" className="btn btn-soft" onClick={() => navigate("/receipts")}>{t("ov.goReceipts")}</button>} />
+            </div>
+          ) : (
+            <>
+              <Hero o={o} period={period} />
+              {period.range === "month" && <Budget o={o} period={period} onEdit={() => setBudgetOpen(true)} />}
+              <TopCategories o={o} onAll={() => navigate(`/analytics/categories${search}`)} onPick={(id) => navigate(`/analytics/category/${id}${search}`)} />
+              <TopStores o={o} onAll={() => navigate(`/analytics/stores${search}`)} onPick={(k) => navigate(`/analytics/store/${encodeURIComponent(k)}${search}`)} />
+              <Changes o={o} onPick={(id) => navigate(`/analytics/category/${id}${search}`)} />
+              <Prices o={o} onPick={(id) => navigate(`/analytics/product/${id}${search}`)} />
+              <Mix o={o} />
+            </>
+          )}
 
-      {!empty && (
-        <Section>
-          <SectionTitle title={t("ov.details")} />
-          <Card className="grid grid-cols-2 gap-4">
-            <Stat label={t("ov.statDays")} value={o.days} />
-            <Stat label={t("ov.statItems")} value={o.items} />
-            <Stat label={t("ov.statSaved")} value={formatMoney(o.discounts)} hint={t("ov.statSavedHint")} />
-            <Stat label={t("ov.statDeposits")} value={formatMoney(o.deposits)} hint={t("ov.statDepositsHint")} />
-          </Card>
-        </Section>
+          {o.months.length > 0 && (
+            <section className="card stack g-8" style={{ padding: "18px 18px 10px" }}>
+              <div className="row between">
+                <span className="t-h">{t("an.byMonth")}</span>
+                <span className="t-xs t-3">{t("an.partialNote")}</span>
+              </div>
+              <MonthBars
+                data={toMonthBars(o.months)}
+                onPick={(d) => {
+                  const [y, m] = d.key.split("-").map(Number) as [number, number];
+                  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+                  setCustom(`${d.key}-01`, `${d.key}-${String(last).padStart(2, "0")}`);
+                }}
+              />
+            </section>
+          )}
+
+          {o.receipts > 0 && (
+            <section className="card" style={{ padding: 18 }}>
+              <div className="grid grid-cols-2 gap-4">
+                <Stat label={t("ov.statDays")} value={String(o.days)} />
+                <Stat label={t("ov.statItems")} value={String(o.items)} />
+                <Stat label={t("ov.statSaved")} value={formatEuro(o.discounts)} hint={t("ov.statSavedHint")} />
+                <Stat label={t("ov.statDeposits")} value={formatEuro(o.deposits)} hint={t("ov.statDepositsHint")} />
+              </div>
+            </section>
+          )}
+          <BudgetSheet open={budgetOpen} onClose={() => setBudgetOpen(false)} overview={o} />
+        </div>
       )}
+      <div className="tab-space" />
     </div>
   );
 }
 
-function Notices({ o, normalize }: { o: Overview; normalize: ReturnType<typeof useProductNormalization> }) {
-  const items = [];
-  if (normalize.running) {
-    items.push(
-      <Banner key="norm" tone="info" title={t("ov.normRunning")}>
-        <span className="inline-flex items-center gap-2">
-          <Loader2 className="size-4 animate-spin" aria-hidden />
-          {normalize.remaining ? t("ov.normRemaining", { n: normalize.remaining }) : ""}{t("ov.normNote")}
+function Normalization({ normalize }: { normalize: ReturnType<typeof useProductNormalization> }) {
+  if (normalize.running)
+    return (
+      <div className="ls-hint">
+        <Loader2 size={16} className="spin" />
+        <span className="grow">
+          <b>{t("ov.normRunning")}</b> {normalize.remaining ? t("ov.normRemaining", { n: normalize.remaining }) : ""}
+          {t("ov.normNote")}
         </span>
-      </Banner>,
+      </div>
     );
-  } else if (normalize.error) {
-    items.push(
-      <Banner
-        key="norm-err"
-        tone="warning"
-        title={t("ov.normFailed")}
-        action={
-          <Button variant="secondary" onClick={() => void normalize.retry()}>
-            {t("common.retry")}
-          </Button>
-        }
-      >
-        {normalize.error instanceof Error && normalize.error.message === "GEMINI_402"
-          ? t("ov.normCredit")
-          : t("ov.normNumbersOk")}
-      </Banner>,
+  if (normalize.error)
+    return (
+      <div className="ls-hint" style={{ background: "var(--yellow-soft)" }}>
+        <AlertTriangle size={16} color="var(--yellow)" />
+        <span className="grow">
+          <b>{t("ov.normFailed")}</b>{" "}
+          {normalize.error instanceof Error && normalize.error.message === "GEMINI_402" ? t("ov.normCredit") : t("ov.normNumbersOk")}
+        </span>
+        <button type="button" className="btn btn-sm btn-line" onClick={() => void normalize.retry()}>
+          {t("common.retry")}
+        </button>
+      </div>
     );
-  }
-  if (o.pending_review > 0) {
-    items.push(
-      <Banner key="review" tone="warning" title={tn("ov.review", o.pending_review)}>
-        {t("ov.reviewText")}{" "}
-        <Link to="/receipts" className="font-semibold underline">
-          {t("ov.reviewLink")}
-        </Link>
-      </Banner>,
-    );
-  }
-  if (o.suspect_dates > 0) {
-    items.push(
-      <Banner key="dates" tone="info" title={tn("ov.dates", o.suspect_dates)}>
-        {t("ov.datesText")}{" "}
-        <Link to="/receipts" className="font-semibold underline">
-          {t("ov.datesLink")}
-        </Link>
-      </Banner>,
-    );
-  }
-  if (items.length === 0) return null;
-  return <Section className="flex flex-col gap-2">{items}</Section>;
+  return null;
 }
 
 function Hero({ o, period }: { o: Overview; period: Period }) {
@@ -145,383 +164,298 @@ function Hero({ o, period }: { o: Overview; period: Period }) {
   const elapsed = o.offset_days !== null ? o.offset_days + 1 : days;
   const projection = period.current && period.range === "month" && elapsed >= 5 ? (o.total / elapsed) * days : null;
   const avg = o.receipts > 0 ? o.total / o.receipts : 0;
+  const topCat = [...o.categories].filter((c) => !c.id.startsWith("_")).sort((a, b) => b.amount - a.amount)[0];
+  const topStore = [...o.stores].filter((s) => s.key !== "_none").sort((a, b) => b.receipts - a.receipts)[0];
+
+  let s = t("an.sentence.spent", { period: period.label, amount: formatEuro(o.total) });
+  if (before > 0) {
+    const p = Math.round(((o.total - before) / before) * 100);
+    const prev = comparable ? t("an.sentence.prevSame") : t("an.sentence.prev");
+    s += p === 0 ? t("an.sentence.same", { prev }) : t(p < 0 ? "an.sentence.less" : "an.sentence.more", { pct: Math.abs(p), prev });
+  }
+  s += ".";
+  if (topCat) {
+    s += ` ${t("an.sentence.top", { cat: categoryInfo(topCat.id).name, amount: formatEuro(topCat.amount) })}`;
+    if (topStore) s += t("an.sentence.store", { store: storeLabel(topStore.name) });
+    s += ".";
+  }
+
   return (
-    <Section>
-      <Card>
-        <p className="text-sm text-text-2">{period.scope === "everyday" ? t("ov.spentEveryday") : t("ov.spentAll")}</p>
-        <p className="mt-1 text-3xl font-semibold tabular-nums">{formatMoney(o.total)}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          {before > 0 && <Delta now={o.total} before={before} />}
-          {before > 0 && (
-            <span className="text-sm text-text-3">
-              {comparable ? t("ov.vsSameDay", { label: period.prevLabel }) : t("ov.vsPeriod", { label: period.prevLabel })}
-            </span>
-          )}
-        </div>
-        <p className="mt-2 text-sm text-text-2">
-          {tn("ov.purchases", o.receipts, { avg: formatMoney(avg) })}
-        </p>
-        {projection !== null && (
-          <p className="mt-0.5 text-sm text-text-2">
-            {t("ov.pace1")} <span className="font-semibold text-text">{formatMoney(projection)}</span> {t("ov.pace2")}
-          </p>
-        )}
-        <div className="mt-4">
-          <CumulativeChart
-            from={period.from}
-            to={period.to}
-            prevFrom={period.prevFrom}
-            daily={o.daily}
-            prevDaily={o.prev_daily}
-            untilToday={period.current ? todayIso() : null}
-          />
-          <div className="mt-1 flex justify-center gap-4 text-xs text-text-3">
-            <span className="inline-flex items-center gap-2">
-              <span className="h-0.5 w-4 rounded-sm bg-primary" aria-hidden /> {t("ov.thisPeriod")}
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <span className="h-0 w-4 border-t-2 border-dashed border-text-3" aria-hidden /> {period.prevLabel}
-            </span>
-          </div>
-        </div>
-      </Card>
-    </Section>
+    <section className="card stack g-12 anim-rise" style={{ padding: 18 }}>
+      <p className="an-sentence" style={{ margin: 0 }}>
+        {s}
+      </p>
+      <div className="row g-10 wrap" style={{ alignItems: "baseline" }}>
+        <span className="an-big">{formatEuro(o.total)}</span>
+        <ChangeBadge now={o.total} before={before} />
+      </div>
+      <span className="t-sm t-2 num">
+        {tn("an.purchases", o.receipts)} · {t("an.avg", { amount: formatEuro(avg) })}
+        {projection !== null ? ` · ${t("an.pace", { amount: formatEuro(projection) })}` : ""}
+      </span>
+    </section>
   );
 }
 
-function Budgets({ o, current }: { o: Overview; current: boolean }) {
-  const [open, setOpen] = useState(false);
+function Budget({ o, period, onEdit }: { o: Overview; period: Period; onEdit: () => void }) {
   const total = o.budgets.find((b) => b.category_id === null);
   const cats = o.budgets.filter((b) => b.category_id !== null);
+  if (!o.budgets.length)
+    return (
+      <button type="button" className="card row g-12" style={{ padding: 16, textAlign: "left" }} onClick={onEdit}>
+        <span className="cat-ic">
+          <Target size={18} />
+        </span>
+        <span className="grow stack g-2">
+          <span className="t-h">{t("ov.budgetSet")}</span>
+          <span className="t-sm t-2">{t("ov.budgetSetText")}</span>
+        </span>
+        <ChevronRight size={18} className="chev" />
+      </button>
+    );
   const today = new Date();
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   const daysLeft = daysInMonth - today.getDate() + 1;
+  const bar = (label: string, spent: number, amount: number, big: boolean) => {
+    const left = amount - spent;
+    return (
+      <div key={label} className="stack g-6">
+        <div className="row between g-8">
+          <span className={big ? "t-h" : "t-sm fw-5"}>{label}</span>
+          <span className="t-sm t-2 num">{t("an.budgetOf", { spent: formatEuro(spent), amount: formatEuro(amount) })}</span>
+        </div>
+        <div className="bar" style={{ height: big ? 10 : 6 }}>
+          <span style={{ width: `${Math.min(100, (spent / amount) * 100)}%`, background: left < 0 ? "var(--red)" : spent / amount > 0.85 ? "var(--orange)" : "var(--accent)" }} />
+        </div>
+        {big && (
+          <span className="t-sm t-2 num">
+            {left < 0
+              ? t("ov.over", { amount: formatEuro(-left) })
+              : period.current
+                ? tn("ov.leftDays", daysLeft, { amount: formatEuro(left), perDay: formatEuro(left / daysLeft) })
+                : t("ov.left", { amount: formatEuro(left) })}
+          </span>
+        )}
+      </div>
+    );
+  };
   return (
-    <Section>
-      {o.budgets.length === 0 ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="flex w-full items-center gap-3 rounded-[var(--radius-surface)] bg-surface p-4 text-left shadow-card active:bg-pressed"
-        >
-          <Target className="size-5 shrink-0 text-primary" aria-hidden />
-          <span className="min-w-0 flex-1">
-            <span className="block font-strong">{t("ov.budgetSet")}</span>
-            <span className="block text-sm text-text-2">{t("ov.budgetSetText")}</span>
+    <section className="card stack g-12" style={{ padding: 18 }}>
+      <div className="row between">
+        <span className="t-h">{t("ov.budget")}</span>
+        <button type="button" className="link t-sm" style={{ minHeight: 32 }} onClick={onEdit}>
+          {t("ov.editBudget")}
+        </button>
+      </div>
+      {total && bar(t("ov.budgetTotal"), total.spent, total.amount, true)}
+      {cats.map((b) => bar(categoryInfo(b.category_id!).name, b.spent, b.amount, false))}
+    </section>
+  );
+}
+
+function TopCategories({ o, onAll, onPick }: { o: Overview; onAll: () => void; onPick: (id: string) => void }) {
+  const cats = o.categories.filter((c) => c.amount > 0).sort((a, b) => b.amount - a.amount);
+  const sum = cats.reduce((a, c) => a + c.amount, 0) || 1;
+  return (
+    <section className="stack g-8">
+      <div className="section-head">
+        <span className="section-title">{t("an.onWhat")}</span>
+        <button type="button" className="link t-sm" onClick={onAll} style={{ minHeight: 32 }}>
+          {t("an.allCategories")}
+        </button>
+      </div>
+      <div className="cells">
+        {cats.slice(0, 5).map((c) => (
+          <ShareRow
+            key={c.id}
+            icon={<CatIcon id={c.id} size="sm" />}
+            title={categoryInfo(c.id).name}
+            value={formatEuro(c.amount)}
+            share={c.amount / sum}
+            sub={t("an.shareOfSpend", { pct: pct(c.amount / sum) })}
+            onClick={() => onPick(c.id)}
+          />
+        ))}
+        {!cats.length && <div className="cell t-2">{t("an.noPurchases")}</div>}
+      </div>
+      {o.uncategorized > 0 && (
+        <button type="button" className="row g-6 t-sm t-2" style={{ padding: "0 4px", textAlign: "left" }} onClick={() => onPick("other")}>
+          <AlertTriangle size={15} color="var(--yellow)" />
+          <span>
+            {tn("ov.uncategorized", o.uncategorized)} <span className="link">{t("ov.sortThem")}</span>
           </span>
         </button>
-      ) : (
-        <>
-          <SectionTitle
-            title={t("ov.budget")}
-            action={
-              <button type="button" onClick={() => setOpen(true)} className="text-sm font-semibold text-primary">
-                {t("ov.editBudget")}
-              </button>
-            }
-          />
-          <Card className="flex flex-col gap-4">
-            {total && <BudgetBar label={t("ov.budgetTotal")} spent={total.spent} amount={total.amount} daysLeft={current ? daysLeft : undefined} big />}
-            {cats.map((b) => {
-              const info = categoryInfo(b.category_id!);
-              return <BudgetBar key={b.category_id} label={info.name} spent={b.spent} amount={b.amount} />;
-            })}
-          </Card>
-        </>
       )}
-      <BudgetSheet open={open} onClose={() => setOpen(false)} overview={o} />
-    </Section>
+    </section>
   );
 }
 
-function BudgetBar({ label, spent, amount, daysLeft, big }: { label: string; spent: number; amount: number; daysLeft?: number; big?: boolean }) {
-  const ratio = spent / amount;
-  const left = amount - spent;
-  const tone = ratio >= 1 ? "bg-danger-solid" : ratio >= 0.85 ? "bg-warning-solid" : "bg-primary";
+function TopStores({ o, onAll, onPick }: { o: Overview; onAll: () => void; onPick: (key: string) => void }) {
+  const stores = o.stores.filter((s) => s.amount > 0);
+  if (!stores.length) return null;
+  const sum = stores.reduce((a, s) => a + s.amount, 0) || 1;
   return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2">
-        <p className={cx("truncate", big ? "font-semibold" : "text-sm font-medium")}>{label}</p>
-        <p className="shrink-0 text-sm tabular-nums text-text-2">
-          <span className="font-semibold text-text">{formatMoney(spent)}</span> {t("ov.of", { amount: formatMoney(amount) })}
-        </p>
+    <section className="stack g-8">
+      <div className="section-head">
+        <span className="section-title">{t("an.where")}</span>
+        <button type="button" className="link t-sm" onClick={onAll} style={{ minHeight: 32 }}>
+          {t("ov.allStores")}
+        </button>
       </div>
-      <div className={cx("mt-2 overflow-hidden rounded-full bg-sunken", big ? "h-3" : "h-2")}>
-        <div className={cx("h-full rounded-full", tone)} style={{ width: `${Math.min(100, ratio * 100)}%` }} />
+      <div className="cells">
+        {stores.slice(0, 3).map((s) => (
+          <ShareRow
+            key={s.key}
+            icon={<StoreBadge name={storeLabel(s.name)} size="sm" />}
+            title={storeLabel(s.name)}
+            value={formatEuro(s.amount)}
+            share={s.amount / sum}
+            sub={`${pct(s.amount / sum)} · ${tn("an.purchases", s.receipts)} · ${t("an.avg", { amount: formatEuro(s.receipts ? s.amount / s.receipts : 0) })}`}
+            onClick={() => onPick(s.key)}
+          />
+        ))}
       </div>
-      <p className={cx("mt-1 text-xs", left < 0 ? "font-semibold text-danger" : "text-text-3")}>
-        {left < 0
-          ? t("ov.over", { amount: formatMoney(-left) })
-          : daysLeft
-            ? tn("ov.leftDays", daysLeft, { amount: formatMoney(left), perDay: formatMoney(left / daysLeft) })
-            : t("ov.left", { amount: formatMoney(left) })}
-      </p>
-    </div>
+    </section>
   );
 }
 
-function Insights({ o, search }: { o: Overview; search: string }) {
+function Changes({ o, onPick }: { o: Overview; onPick: (id: string) => void }) {
+  const ch = o.categories
+    .filter((c) => !c.id.startsWith("_") && c.prev_amount > 0 && Math.abs(c.amount - c.prev_amount) >= 5)
+    .map((c) => ({ ...c, diff: c.amount - c.prev_amount }))
+    .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
+    .slice(0, 3);
+  if (!ch.length) return null;
+  return (
+    <section className="stack g-8">
+      <span className="section-title">{t("an.changed")}</span>
+      <div className="cells">
+        {ch.map((c) => (
+          <button key={c.id} type="button" className="cell" onClick={() => onPick(c.id)}>
+            <span className="cat-ic sm" style={{ color: c.diff > 0 ? "var(--orange)" : "var(--accent-text)" }}>
+              {c.diff > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+            </span>
+            <span className="grow stack g-2">
+              <span className="t-body fw-5">
+                {categoryInfo(c.id).name}{" "}
+                <span className="num">
+                  {c.diff > 0 ? "+" : "−"}
+                  {formatEuro(Math.abs(c.diff))}
+                </span>
+              </span>
+              <span className="t-xs t-2 num">
+                {formatEuro(c.prev_amount)} → {formatEuro(c.amount)}
+              </span>
+            </span>
+            <ChevronRight size={18} className="chev" />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Prices({ o, onPick }: { o: Overview; onPick: (id: string) => void }) {
   const { addToList, pending } = useAddToList();
-  if (o.price_changes.length === 0 && o.restock.length === 0) return null;
+  if (!o.price_changes.length && !o.restock.length) return null;
   return (
-    <Section>
-      <SectionTitle title={t("ov.pricesTitle")} />
-      <div className="flex flex-col gap-3">
-        {o.price_changes.length > 0 && (
-          <Group>
-            {o.price_changes.slice(0, 6).map((c) => {
+    <>
+      {o.price_changes.length > 0 && (
+        <section className="stack g-8">
+          <span className="section-title">{t("ov.pricesTitle")}</span>
+          <div className="cells">
+            {o.price_changes.slice(0, 5).map((c) => {
               const up = c.change > 0;
               const promo = c.kind === "PROMO";
               return (
-                <Link key={c.product_id} to={`/analytics/product/${c.product_id}${search}`} className="flex items-center gap-3 px-4 py-3 active:bg-pressed">
-                  <span
-                    aria-hidden
-                    className={cx(
-                      "flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
-                      up ? "bg-warning-soft text-warning" : "bg-success-soft text-success",
-                    )}
-                  >
-                    {promo ? <Tag className="size-4" /> : up ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
+                <button key={c.product_id} type="button" className="cell" onClick={() => onPick(c.product_id)}>
+                  <span className="cat-ic sm" style={{ color: promo ? "var(--accent-text)" : up ? "var(--orange)" : "var(--accent-text)" }}>
+                    {promo ? <Tag size={15} /> : up ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{c.name}</p>
-                    <p className="truncate text-sm text-text-2">
+                  <span className="grow stack g-2" style={{ minWidth: 0 }}>
+                    <span className="t-body fw-5 ellipsis">{c.name}</span>
+                    <span className="t-xs t-2 num ellipsis">
                       {promo
-                        ? t("ov.promoLine", { store: storeLabel(c.store_name), price: formatMoney(c.new_price), old: formatMoney(c.old_price), unit: unitLabel(c.basis) })
-                        : t("ov.changeLine", { store: storeLabel(c.store_name), old: formatMoney(c.old_price), new: formatMoney(c.new_price), unit: unitLabel(c.basis) })}
-                    </p>
-                  </div>
-                  <span className={cx("shrink-0 text-sm font-semibold tabular-nums", up ? "text-warning" : "text-success")}>
-                    {promo ? t("ov.promoTag") : percent(c.change)}
+                        ? t("ov.promoLine", { store: storeLabel(c.store_name), price: formatEuro(c.new_price), old: formatEuro(c.old_price), unit: unitLabel(c.basis) })
+                        : t("ov.changeLine", { store: storeLabel(c.store_name), old: formatEuro(c.old_price), new: formatEuro(c.new_price), unit: unitLabel(c.basis) })}
+                    </span>
                   </span>
-                </Link>
+                  <span className={cx("badge num", promo ? "b-green" : up ? "b-orange" : "b-green")}>{promo ? t("ov.promoTag") : percent(c.change)}</span>
+                </button>
               );
             })}
-          </Group>
-        )}
-        {o.restock.length > 0 && (
-          <Card className="p-0">
-            <p className="flex items-center gap-2 px-4 pb-1 pt-4 text-sm font-semibold">
-              <Sparkles className="size-4 text-primary" aria-hidden /> {t("ov.runningLow")}
-            </p>
-            <div className="divide-y divide-line">
-              {o.restock.slice(0, 4).map((r) => {
-                const info = categoryInfo(r.category_id);
-                return (
-                  <div key={r.product_id} className="flex items-center gap-3 px-4 py-3">
-                    <Link to={`/analytics/product/${r.product_id}${search}`} className="flex min-w-0 flex-1 items-center gap-3">
-                      <CategoryBadge id={info.id} color={info.color} />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{r.name}</span>
-                        <span className="block truncate text-xs text-text-3">
-                          {tn("ov.restockLine", r.days_since, { interval: Math.round(r.interval_days) })}
-                        </span>
-                      </span>
-                    </Link>
-                    <button
-                      type="button"
-                      aria-label={t("ov.addToListAria", { name: r.name })}
-                      title={t("ov.addToList")}
-                      disabled={pending}
-                      onClick={() => void addToList(r.name, r.category_id)}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary active:bg-pressed disabled:opacity-55"
-                    >
-                      <Plus className="size-5" aria-hidden />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        )}
-      </div>
-    </Section>
-  );
-}
-
-function Categories({ o, search, period }: { o: Overview; search: string; period: Period }) {
-  const [params, setParams] = useSearchParams();
-  const view = params.get("v") === "cat" ? "cat" : "area";
-  const setView = (v: "cat" | "area") => {
-    const next = new URLSearchParams(params);
-    next.set("v", v);
-    setParams(next, { replace: true });
-  };
-  const [all, setAll] = useState(false);
-  const [open, setOpen] = useState<string | null>(null);
-  const list = o.categories.filter((c) => c.amount !== 0);
-  const positive = list.filter((c) => c.amount > 0);
-  const areas = groupByArea(list);
-  if (list.length === 0) return null;
-  const compareNote = period.current ? t("ov.compareSameDay", { label: period.prevLabel }) : t("ov.comparePeriod", { label: period.prevLabel });
-  const itemsText = (c: { id: string; items: number }) =>
-    c.id.startsWith("_")
-      ? t("ov.itemsDiff")
-      : c.items > 0
-        ? tn("shop.itemCount", c.items)
-        : t("ov.noReceiptPayments");
-
-  const categoryRow = (c: (typeof list)[number], top: number, nested = false) => {
-    const info = categoryInfo(c.id);
-    const share = o.total > 0 ? c.amount / o.total : 0;
-    return (
-      <ShareRow
-        key={c.id}
-        to={`/analytics/category/${c.id}${search}`}
-        icon={nested ? <span className="w-2" /> : <CategoryBadge id={info.id} color={info.color} />}
-        title={info.name}
-        subtitle={t("ov.catLine", { share: t("fmt.percent", { value: Math.round(share * 100) }), text: itemsText(c) })}
-        amount={c.amount}
-        share={c.amount / top}
-        color={info.color}
-        prev={c.prev_amount}
-      />
-    );
-  };
-
-  const shown = all ? list : list.slice(0, TOP_CATEGORIES);
-  const topCat = positive[0]?.amount ?? 1;
-  const topArea = areas[0]?.amount || 1;
-
-  return (
-    <Section>
-      <SectionTitle
-        title={t("ov.whereMoney")}
-        action={
-          <div role="radiogroup" aria-label={t("ov.viewAria")} className="flex rounded-xl bg-sunken p-1">
-            {(["area", "cat"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                role="radio"
-                aria-checked={view === v}
-                onClick={() => setView(v)}
-                className={cx(
-                  "min-h-11 rounded-lg px-3 text-footnote font-strong transition-colors duration-200",
-                  view === v ? "bg-elevated text-text shadow-card" : "text-text-2",
-                )}
-              >
-                {v === "area" ? t("ov.viewAreas") : t("ov.viewCategories")}
-              </button>
+          </div>
+        </section>
+      )}
+      {o.restock.length > 0 && (
+        <section className="stack g-8">
+          <span className="section-title row g-6">
+            <Sparkles size={14} /> {t("ov.runningLow")}
+          </span>
+          <div className="cells">
+            {o.restock.slice(0, 4).map((r) => (
+              <div key={r.product_id} className="cell">
+                <button type="button" className="row g-12 grow" style={{ minWidth: 0, textAlign: "left" }} onClick={() => onPick(r.product_id)}>
+                  <CatIcon id={r.category_id} size="sm" />
+                  <span className="grow stack g-2" style={{ minWidth: 0 }}>
+                    <span className="t-body fw-5 ellipsis">{r.name}</span>
+                    <span className="t-xs t-2 ellipsis">{tn("ov.restockLine", r.days_since, { interval: Math.round(r.interval_days) })}</span>
+                  </span>
+                </button>
+                <button type="button" className="ibtn soft sm" aria-label={t("ov.addToListAria", { name: r.name })} disabled={pending} onClick={() => void addToList(r.name, r.category_id)}>
+                  <Plus size={18} />
+                </button>
+              </div>
             ))}
           </div>
-        }
-      />
-      <Card className="p-0">
-        <div className="px-4 pb-1 pt-4">
-          <ShareBar
-            label={t("ov.shareAria")}
-            segments={
-              view === "area"
-                ? areas.filter((a) => a.amount > 0).map((a) => ({ id: a.area.id, value: a.amount, color: categoryColor(a.area.hue) }))
-                : positive.map((c) => ({ id: c.id, value: c.amount, color: categoryInfo(c.id).color }))
-            }
-          />
-          <p className="mt-2 text-xs text-text-3">{compareNote}</p>
-        </div>
-        <div className="divide-y divide-line">
-          {view === "cat"
-            ? shown.map((c) => categoryRow(c, topCat))
-            : areas.map((a) => {
-                const color = categoryColor(a.area.hue);
-                const share = o.total > 0 ? a.amount / o.total : 0;
-                const single = a.categories.length === 1 ? a.categories[0]! : null;
-                const subtitle = t("ov.catLine", {
-                  share: t("fmt.percent", { value: Math.round(share * 100) }),
-                  text: `${a.categories
-                    .slice(0, 3)
-                    .map((c) => categoryInfo(c.id).name.toLowerCase())
-                    .join(", ")}${a.categories.length > 3 ? "…" : ""}`,
-                });
-                if (single) {
-                  return (
-                    <ShareRow
-                      key={a.area.id}
-                      to={`/analytics/category/${single.id}${search}`}
-                      icon={<CategoryBadge id={a.area.id} color={color} />}
-                      title={a.area.name}
-                      subtitle={subtitle}
-                      amount={a.amount}
-                      share={a.amount / topArea}
-                      color={color}
-                      prev={a.prev}
-                    />
-                  );
-                }
-                const isOpen = open === a.area.id;
-                return (
-                  <div key={a.area.id}>
-                    <button
-                      type="button"
-                      aria-expanded={isOpen}
-                      onClick={() => setOpen(isOpen ? null : a.area.id)}
-                      className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left active:bg-pressed"
-                    >
-                      <CategoryBadge id={a.area.id} color={color} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <p className="truncate font-medium">{a.area.name}</p>
-                          <p className="shrink-0 font-semibold tabular-nums">{formatMoney(a.amount)}</p>
-                        </div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sunken">
-                          <div className="h-full rounded-full" style={{ width: `${Math.max(2, Math.min(100, (a.amount / topArea) * 100))}%`, background: color }} />
-                        </div>
-                        <div className="mt-1 flex items-center justify-between gap-2 text-xs text-text-3">
-                          <span className="truncate">{subtitle}</span>
-                          <Delta now={a.amount} before={a.prev} className="!text-xs" compact />
-                        </div>
-                      </div>
-                      <ChevronDown className={cx("size-4 shrink-0 text-text-3 transition-transform", isOpen && "rotate-180")} aria-hidden />
-                    </button>
-                    {isOpen && (
-                      <div className="divide-y divide-line border-t border-line bg-sunken/50">
-                        {a.categories.sort((x, y) => y.amount - x.amount).map((c) => categoryRow(c, a.categories[0]!.amount || 1, true))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-        </div>
-        {view === "cat" && list.length > TOP_CATEGORIES && (
-          <button type="button" onClick={() => setAll((v) => !v)} className="w-full border-t border-line px-4 py-3 text-sm font-semibold text-primary active:bg-pressed">
-            {all ? t("ov.showLess") : t("ov.allCategories", { n: list.length })}
-          </button>
-        )}
-      </Card>
-      {o.uncategorized > 0 && (
-        <Link to={`/analytics/category/other${search}`} className="mt-2 flex items-center gap-2 px-1 text-sm text-text-2">
-          <AlertTriangle className="size-4 shrink-0 text-warning" aria-hidden />
-          <span>
-            {tn("ov.uncategorized", o.uncategorized)}{" "}
-            <span className="font-semibold text-primary">{t("ov.sortThem")}</span>
-          </span>
-        </Link>
+        </section>
       )}
-    </Section>
+    </>
   );
 }
 
-function Stores({ o, search }: { o: Overview; search: string }) {
-  const top = o.stores[0]?.amount ?? 1;
-  if (o.stores.length === 0) return null;
+function Mix({ o }: { o: Overview }) {
+  const now = basketMix(o.categories, false);
+  const before = basketMix(o.categories, true);
+  if (now.total <= 0) return null;
   return (
-    <Section>
-      <SectionTitle title={t("ov.whereShopped")} action={o.stores.length > 5 ? <MoreLink to={`/analytics/stores${search}`}>{t("ov.allStores")}</MoreLink> : undefined} />
-      <Group>
-        {o.stores.slice(0, 5).map((s) => (
-          <ShareRow
-            key={s.key}
-            to={`/analytics/store/${encodeURIComponent(s.key)}${search}`}
-            icon={<StoreAvatar name={s.key === "_none" ? null : s.name} className="!size-10" />}
-            title={storeLabel(s.name)}
-            subtitle={t("ov.storeLine", { count: s.receipts, avg: formatMoney(s.receipts ? s.amount / s.receipts : 0) })}
-            amount={s.amount}
-            share={s.amount / top}
-            color={`var(--primary)`}
-            prev={s.prev_amount}
-          />
-        ))}
-      </Group>
-    </Section>
+    <section className="card stack g-12" style={{ padding: 18 }}>
+      <div className="stack g-2">
+        <span className="t-h">{t("an.mixTitle")}</span>
+        <span className="t-xs t-2">{t("an.mixSub")}</span>
+      </div>
+      <div className="an-stack" role="img" aria-label={MIX.map((g, i) => `${t(g.label)} ${pct(now.shares[i]!)}`).join(", ")}>
+        {MIX.map((g, i) => (now.shares[i]! > 0 ? <span key={g.id} style={{ width: `${now.shares[i]! * 100}%`, background: MIX_COLORS[i] }} /> : null))}
+      </div>
+      <div className="stack g-6">
+        {MIX.map((g, i) => {
+          const d = Math.round((now.shares[i]! - before.shares[i]!) * 100);
+          return (
+            <div key={g.id} className="row g-8 t-sm">
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: MIX_COLORS[i], flex: "none" }} />
+              <span className="grow">{t(g.label)}</span>
+              <span className="num fw-6">{pct(now.shares[i]!)}</span>
+              <span className="num t-2" style={{ width: 66, textAlign: "right" }}>
+                {before.total ? (d === 0 ? t("an.noChange") : `${d > 0 ? "+" : "−"}${formatNumber(Math.abs(d))} b.`) : "—"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <span className="row g-6 t-xs t-3" style={{ alignItems: "flex-start" }}>
+        <Info size={13} style={{ flex: "none", marginTop: 2 }} />
+        {t("an.mixNote")}
+      </span>
+    </section>
+  );
+}
+
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="stack g-2">
+      <span className="t-xs t-2">{label}</span>
+      <span className="t-title num">{value}</span>
+      {hint && <span className="t-xs t-3">{hint}</span>}
+    </div>
   );
 }

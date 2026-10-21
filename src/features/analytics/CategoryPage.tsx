@@ -1,207 +1,196 @@
-import { Link, useParams } from "react-router";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router";
 import { ChevronRight } from "lucide-react";
-import { ErrorState, Group, Section, Spinner, cx } from "@/components/ui";
+import { ScreenHeader, Seg, StoreBadge } from "@/components/kit";
+import { ErrorState, Spinner, cx } from "@/components/ui";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { StoreAvatar } from "@/features/receipts/ReceiptRow";
-import { formatMoney, formatShortDate, readErrorMessage } from "@/features/receipts/format";
-import { formatNumber, t, tn } from "@/i18n";
+import { formatShortDate, readErrorMessage } from "@/features/receipts/format";
+import { formatEuro, formatNumber, t, tn } from "@/i18n";
 import { useCategoryDetail } from "./api";
-import { BackHeader, PeriodBar } from "./AnalyticsLayout";
-import { BarChart } from "./charts";
-import { Card, Delta, CategoryBadge, SectionTitle, ShareRow, categoryInfo, storeLabel } from "./bits";
-import { monthShort, usePeriod } from "./period";
+import { ChangeBadge, MonthBars, PeriodChips, ShareRow, pct, toMonthBars } from "./akit";
+import { categoryInfo, storeLabel } from "./bits";
+import { usePeriod } from "./period";
 
-/** Detail kategórie: vývoj, produkty, obchody a jednotlivé nákupy (s preklikom na bloček). */
+/**
+ * A2 – kategória (úroveň 2–3 prototypu): veta, suma so zmenou, stĺpce po mesiacoch,
+ * produkty (zoradenie Najviac € / Najčastejšie), obchody a jednotlivé nákupy.
+ */
 export function CategoryPage() {
   const { id = "other" } = useParams();
   const { household } = useHousehold();
-  const { period, search, setMonth, setRange } = usePeriod();
+  const navigate = useNavigate();
+  const { period, search, setCustom } = usePeriod();
   const detail = useCategoryDetail(household.id, id, period);
   const info = categoryInfo(id);
   const pseudo = id.startsWith("_");
+  const [sort, setSort] = useState<"total" | "count">("total");
+  const d = detail.data;
+  const products = d ? [...d.products].sort((a, b) => (sort === "count" ? b.count - a.count : b.amount - a.amount)) : [];
 
   return (
-    <div className="pb-10">
-      <BackHeader fallback={`/analytics${search}`} title={t("nav.analytics")} />
-      <Section className="mt-1">
-        <div className="flex items-center gap-3">
-          <CategoryBadge id={info.id} color={info.color} />
-          <h1 className="min-w-0 truncate text-xl font-semibold">{info.name}</h1>
+    <div className="stack">
+      <ScreenHeader title={info.name} sub={t("an.categorySub")} onBack={() => navigate(-1)} />
+      <div className="stack g-12" style={{ padding: "0 16px" }}>
+        <nav className="an-crumbs" aria-label={t("an.crumbs")}>
+          <button type="button" onClick={() => navigate(`/analytics/categories${search}`)}>
+            {t("an.categories")}
+          </button>
+          <ChevronRight size={14} />
+          <span>{info.name}</span>
+        </nav>
+        <div style={{ margin: "0 -16px" }}>
+          <PeriodChips />
         </div>
-        {info.hint && <p className="mt-2 text-sm text-text-2">{info.hint}</p>}
-      </Section>
-      <PeriodBar />
-
-      {detail.isPending ? (
-        <Spinner />
-      ) : detail.isError ? (
-        <ErrorState error={readErrorMessage(detail.error)} onRetry={() => detail.refetch()} />
-      ) : (
-        <div className={cx("mt-2 flex flex-col gap-6", detail.isPlaceholderData && "opacity-60")}>
-          <Section>
-            <Card>
-              <p className="text-sm text-text-2">{period.label}</p>
-              <p className="text-3xl font-semibold tabular-nums">{formatMoney(detail.data.amount)}</p>
-              {detail.data.prev_amount > 0 && (
-                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-text-3">
-                  <Delta now={detail.data.amount} before={detail.data.prev_amount} invert={id === "_receipt_discount"} />
-                  {period.current ? t("ov.vsSameDay", { label: period.prevLabel }) : t("ov.vsPeriod", { label: period.prevLabel })}:{" "}
-                  {formatMoney(detail.data.prev_amount)}
-                </p>
-              )}
-              {detail.data.liters !== null && detail.data.liters > 0 && (
-                <div className="mt-3 grid grid-cols-2 gap-3 rounded-[var(--radius-control)] bg-sunken p-3">
-                  <div>
-                    <p className="text-xs text-text-3">{t("cp.fueled")}</p>
-                    <p className="text-lg font-semibold tabular-nums">{formatNumber(detail.data.liters)} l</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-3">{t("cp.avgPrice")}</p>
-                    <p className="text-lg font-semibold tabular-nums">
-                      {formatNumber(detail.data.per_liter ?? 0, { minimumFractionDigits: 3, maximumFractionDigits: 3 })} € / l
-                    </p>
-                  </div>
-                  <p className="col-span-2 text-xs text-text-3">{t("cp.fuelNote")}</p>
+        {detail.isPending ? (
+          <Spinner />
+        ) : detail.isError || !d ? (
+          <ErrorState error={readErrorMessage(detail.error)} onRetry={() => detail.refetch()} />
+        ) : (
+          <div className={cx("stack g-12", detail.isPlaceholderData && "opacity-60")}>
+            <section className="card stack g-10" style={{ padding: 18 }}>
+              <p className="an-sentence" style={{ margin: 0 }}>
+                {d.amount > 0
+                  ? t("an.catDetailSentence", { name: info.name, amount: formatEuro(d.amount) }) +
+                    (products[0]?.name ? t("an.catDetailTop", { name: products[0].name, amount: formatEuro(products[0].amount) }) : ".")
+                  : t("an.catNothing")}
+              </p>
+              {info.hint && <span className="t-sm t-2">{info.hint}</span>}
+              <div className="row g-10" style={{ alignItems: "baseline" }}>
+                <span className="an-big">{formatEuro(d.amount)}</span>
+                <ChangeBadge now={d.amount} before={d.prev_amount} invert={id === "_receipt_discount"} />
+              </div>
+              {d.liters !== null && d.liters > 0 && (
+                <div className="row g-12" style={{ padding: 12, borderRadius: 12, background: "var(--sunken)" }}>
+                  <span className="grow stack">
+                    <span className="t-xs t-3">{t("cp.fueled")}</span>
+                    <span className="t-h num">{formatNumber(d.liters)} l</span>
+                  </span>
+                  <span className="grow stack">
+                    <span className="t-xs t-3">{t("cp.avgPrice")}</span>
+                    <span className="t-h num">{formatNumber(d.per_liter ?? 0, { minimumFractionDigits: 3, maximumFractionDigits: 3 })} € / l</span>
+                  </span>
                 </div>
               )}
-              <div className="mt-4">
-                <BarChart
-                  label={t("sp.monthsAria", { name: info.name })}
-                  height={110}
-                  data={detail.data.months.map((m) => ({ key: m.month, label: monthShort(Number(m.month.slice(5))), value: Math.abs(m.amount) }))}
-                  activeKey={period.range === "month" ? period.month : null}
-                  onSelect={(key) => {
-                    setRange("month");
-                    setMonth(key);
-                  }}
-                />
-              </div>
-            </Card>
-          </Section>
+              <MonthBars
+                data={toMonthBars(d.months.map((m) => ({ month: m.month, amount: Math.abs(m.amount) })))}
+                height={90}
+                onPick={(m) => {
+                  const [y, mm] = m.key.split("-").map(Number) as [number, number];
+                  setCustom(`${m.key}-01`, `${m.key}-${String(new Date(Date.UTC(y, mm, 0)).getUTCDate()).padStart(2, "0")}`);
+                }}
+              />
+            </section>
 
-          {pseudo ? (
-            <Section>
-              <SectionTitle title={t("cp.receipts")} />
-              {detail.data.receipts.length === 0 ? (
-                <p className="px-1 text-sm text-text-2">{t("cp.nothing")}</p>
-              ) : (
-                <Group>
-                  {detail.data.receipts.map((r) => (
-                    <Link key={r.receipt_id} to={`/receipts/${r.receipt_id}`} className="flex items-center gap-3 px-4 py-3 active:bg-pressed">
-                      <StoreAvatar name={r.store} className="!size-10" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{storeLabel(r.store)}</p>
-                        <p className="text-xs text-text-3">
-                          {t("cp.receiptLine", { date: formatShortDate(r.date), total: formatMoney(r.total) })}
-                        </p>
-                      </div>
-                      <span className="font-semibold tabular-nums">{formatMoney(r.amount)}</span>
-                      <ChevronRight className="size-4 text-text-3" aria-hidden />
-                    </Link>
+            {!pseudo && products.length > 0 && (
+              <section className="stack g-8">
+                <div className="row between g-8">
+                  <span className="section-title">{tn("an.productsCount", products.length)}</span>
+                  <Seg
+                    value={sort}
+                    onChange={setSort}
+                    style={{ width: 210 }}
+                    options={[
+                      { value: "total", label: t("an.sortTotal") },
+                      { value: "count", label: t("an.sortCount") },
+                    ]}
+                  />
+                </div>
+                <div className="cells">
+                  {products.map((p) => (
+                    <ShareRow
+                      key={p.product_id ?? p.name}
+                      title={p.name ?? t("cp.untitled")}
+                      value={formatEuro(p.amount)}
+                      share={d.amount ? p.amount / d.amount : 0}
+                      sub={`${pct(d.amount ? p.amount / d.amount : 0)} · ${t("cp.countInPeriod", { n: p.count })}`}
+                      onClick={p.product_id ? () => navigate(`/analytics/product/${p.product_id}${search}`) : undefined}
+                    />
                   ))}
-                </Group>
-              )}
-              <p className="mt-2 px-1 text-xs text-text-3">{t("cp.fillHint")}</p>
-            </Section>
-          ) : (
-            <>
-              {detail.data.products.length > 0 && (
-                <Section>
-                  <SectionTitle title={t("tab.products")} />
-                  <Group>
-                    {detail.data.products.map((p) => {
-                      const top = detail.data.products[0]!.amount || 1;
-                      return (
-                        <ShareRow
-                          key={p.product_id ?? p.name}
-                          to={p.product_id ? `/analytics/product/${p.product_id}${search}` : "#"}
-                          icon={null}
-                          title={p.name ?? t("cp.untitled")}
-                          subtitle={t("cp.countInPeriod", { n: p.count })}
-                          amount={p.amount}
-                          share={p.amount / top}
-                          color={info.color}
-                        />
-                      );
-                    })}
-                  </Group>
-                </Section>
-              )}
+                </div>
+              </section>
+            )}
 
-              {detail.data.stores.length > 0 && (
-                <Section>
-                  <SectionTitle title={t("cp.where")} />
-                  <Group>
-                    {detail.data.stores.map((s) => (
-                      <ShareRow
-                        key={s.key}
-                        to={`/analytics/store/${encodeURIComponent(s.key)}${search}`}
-                        icon={<StoreAvatar name={s.key === "_none" ? null : s.name} className="!size-10" />}
-                        title={storeLabel(s.name)}
-                        subtitle={tn("shop.itemCount", s.count)}
-                        amount={s.amount}
-                        share={s.amount / (detail.data.amount || 1)}
-                        color={info.color}
-                      />
-                    ))}
-                  </Group>
-                </Section>
-              )}
+            {!pseudo && d.stores.length > 0 && (
+              <section className="stack g-8">
+                <span className="section-title">{t("cp.where")}</span>
+                <div className="cells">
+                  {d.stores.map((s) => (
+                    <ShareRow
+                      key={s.key}
+                      icon={<StoreBadge name={storeLabel(s.name)} size="sm" />}
+                      title={storeLabel(s.name)}
+                      value={formatEuro(s.amount)}
+                      share={d.amount ? s.amount / d.amount : 0}
+                      sub={tn("shop.itemCount", s.count)}
+                      onClick={() => navigate(`/analytics/store/${encodeURIComponent(s.key)}${search}`)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
-              {detail.data.receipts.length > 0 && (
-                <Section>
-                  <SectionTitle title={t("cp.noReceiptPayments")} />
-                  <Group>
-                    {detail.data.receipts.map((r) => (
-                      <Link key={r.receipt_id} to={`/receipts/${r.receipt_id}`} className="flex items-center gap-3 px-4 py-3 active:bg-pressed">
-                        <StoreAvatar name={r.store} className="!size-10" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium">{storeLabel(r.store)}</p>
-                          <p className="text-xs text-text-3">
-                            {formatShortDate(r.date)} · {r.origin === "BANK" ? t("cp.originBank") : r.origin === "MANUAL" ? t("cp.originManual") : t("cp.originNoItems")}
-                          </p>
-                        </div>
-                        <span className="font-semibold tabular-nums">{formatMoney(r.amount)}</span>
-                        <ChevronRight className="size-4 text-text-3" aria-hidden />
-                      </Link>
-                    ))}
-                  </Group>
-                </Section>
-              )}
+            {d.receipts.length > 0 && (
+              <section className="stack g-8">
+                <span className="section-title">{pseudo ? t("cp.receipts") : t("cp.noReceiptPayments")}</span>
+                <div className="cells">
+                  {d.receipts.map((r) => (
+                    <button key={r.receipt_id} type="button" className="cell" onClick={() => navigate(`/receipts/${r.receipt_id}`)}>
+                      <StoreBadge name={storeLabel(r.store)} size="sm" />
+                      <span className="grow stack g-2" style={{ minWidth: 0 }}>
+                        <span className="t-body fw-5 ellipsis">{storeLabel(r.store)}</span>
+                        <span className="t-xs t-2 num">
+                          {formatShortDate(r.date)} ·{" "}
+                          {r.origin === "BANK" ? t("cp.originBank") : r.origin === "MANUAL" ? t("cp.originManual") : t("cp.originNoItems")}
+                        </span>
+                      </span>
+                      <span className="t-body fw-6 num">{formatEuro(r.amount)}</span>
+                      <ChevronRight size={18} className="chev" />
+                    </button>
+                  ))}
+                </div>
+                {pseudo && (
+                  <span className="t-xs t-3" style={{ padding: "0 4px" }}>
+                    {t("cp.fillHint")}
+                  </span>
+                )}
+              </section>
+            )}
 
-              {detail.data.items.length > 0 && (
-                <Section>
-                  <SectionTitle title={t("sp.purchases")} />
-                  <Group>
-                    {detail.data.items.map((it) => (
-                      <Link
-                        key={it.item_id}
-                        to={it.product_id ? `/analytics/product/${it.product_id}${search}` : `/receipts/${it.receipt_id}`}
-                        className="flex items-center gap-3 px-4 py-3 active:bg-pressed"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate">{it.name}</p>
-                          <p className="text-xs text-text-3">
-                            {formatShortDate(it.date)} · {storeLabel(it.store)}
-                            {it.discount > 0 ? ` · ${t("detail.discount", { amount: formatMoney(it.discount) })}` : ""}
-                          </p>
-                        </div>
-                        <span className="font-semibold tabular-nums">{formatMoney(it.line_total)}</span>
-                        <ChevronRight className="size-4 text-text-3" aria-hidden />
-                      </Link>
-                    ))}
-                  </Group>
-                  {id === "other" && (
-                    <p className="mt-2 px-1 text-xs text-text-3">
-                      {t("cp.otherHint")}
-                    </p>
-                  )}
-                </Section>
-              )}
-            </>
-          )}
-        </div>
-      )}
+            {!pseudo && d.items.length > 0 && (
+              <section className="stack g-8">
+                <span className="section-title">{t("sp.purchases")}</span>
+                <div className="cells">
+                  {d.items.map((it) => (
+                    <button
+                      key={it.item_id}
+                      type="button"
+                      className="cell"
+                      onClick={() => navigate(it.product_id ? `/analytics/product/${it.product_id}${search}` : `/receipts/${it.receipt_id}`)}
+                    >
+                      <span className="grow stack g-2" style={{ minWidth: 0 }}>
+                        <span className="t-body fw-5 ellipsis">{it.name}</span>
+                        <span className="t-xs t-2 num ellipsis">
+                          {formatShortDate(it.date)} · {storeLabel(it.store)}
+                          {it.discount > 0 ? ` · ${t("detail.discount", { amount: formatEuro(it.discount) })}` : ""}
+                        </span>
+                      </span>
+                      <span className="t-body fw-6 num">{formatEuro(it.line_total)}</span>
+                      <ChevronRight size={18} className="chev" />
+                    </button>
+                  ))}
+                </div>
+                {id === "other" && (
+                  <span className="t-xs t-3" style={{ padding: "0 4px" }}>
+                    {t("cp.otherHint")}
+                  </span>
+                )}
+              </section>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="tab-space" />
     </div>
   );
 }
+

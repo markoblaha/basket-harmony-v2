@@ -5,11 +5,15 @@
 import { useSearchParams } from "react-router";
 import { formatCalendarDate, t } from "@/i18n";
 
-export type Range = "month" | "3m" | "year";
+export type Range = "month" | "3m" | "year" | "custom";
+/** Čipy obdobia ako v prototype. */
+export type Preset = "month" | "last" | "q" | "year" | "custom";
+export const PRESETS: Preset[] = ["month", "last", "q", "year", "custom"];
 export type Scope = "all" | "everyday";
 
 export type Period = {
   range: Range;
+  preset: Preset;
   /** Mesiac, ku ktorému sa obdobie vzťahuje (posledný mesiac obdobia): "2026-10". */
   month: string;
   scope: Scope;
@@ -46,7 +50,28 @@ export function todayIso(): string {
 }
 export const thisMonth = () => todayIso().slice(0, 7);
 
-export function computePeriod(range: Range, month: string, scope: Scope): Period {
+/** Vlastné obdobie od–do; porovnáva sa s rovnako dlhým obdobím tesne predtým. */
+export function customPeriod(from: string, to: string, scope: Scope): Period {
+  if (from > to) [from, to] = [to, from];
+  const len = daysBetween(from, to) + 1;
+  const prevTo = addIso(from, -1);
+  const prevFrom = addIso(from, -len);
+  const today = todayIso();
+  return {
+    range: "custom", preset: "custom", month: to.slice(0, 7), scope, from, to, prevFrom, prevTo,
+    label: `${formatCalendarDate(from, { day: "numeric", month: "numeric" })} – ${formatCalendarDate(to, { day: "numeric", month: "numeric", year: "numeric" })}`,
+    prevLabel: t("period.prevSame"),
+    current: today >= from && today <= to,
+    isLatest: to >= today,
+  };
+}
+
+function addIso(day: string, n: number): string {
+  const d = new Date(Date.parse(day + "T00:00:00Z") + n * 86_400_000);
+  return iso(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+}
+
+export function computePeriod(range: Exclude<Range, "custom">, month: string, scope: Scope, preset?: Preset): Period {
   const [y, m] = month.split("-").map(Number) as [number, number];
   let from: string, to: string, prevFrom: string, prevTo: string, label: string, prevLabel: string;
   if (range === "month") {
@@ -77,7 +102,8 @@ export function computePeriod(range: Range, month: string, scope: Scope): Period
   }
   const today = todayIso();
   return {
-    range, month, scope, from, to, prevFrom, prevTo, label, prevLabel,
+    range, preset: preset ?? (range === "3m" ? "q" : range === "year" ? "year" : month === thisMonth() ? "month" : "last"),
+    month, scope, from, to, prevFrom, prevTo, label, prevLabel,
     current: today >= from && today <= to,
     isLatest: to >= today,
   };
@@ -94,27 +120,35 @@ export function shiftMonth(month: string, by: number): string {
 
 export function usePeriod() {
   const [params, setParams] = useSearchParams();
-  const range = (["month", "3m", "year"] as const).find((r) => r === params.get("r")) ?? "month";
-  const rawMonth = params.get("m");
-  const month = rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) && rawMonth <= thisMonth() ? rawMonth : thisMonth();
   const scope: Scope = params.get("s") === "everyday" ? "everyday" : "all";
-  const period = computePeriod(range, month, scope);
+  const preset = (PRESETS as string[]).includes(params.get("p") ?? "") ? (params.get("p") as Preset) : "month";
+  const valid = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+  const period =
+    preset === "custom"
+      ? customPeriod(valid(params.get("f")) ?? addIso(todayIso(), -30), valid(params.get("t")) ?? todayIso(), scope)
+      : preset === "last"
+        ? computePeriod("month", shiftMonth(thisMonth(), -1), scope, "last")
+        : preset === "q"
+          ? computePeriod("3m", thisMonth(), scope, "q")
+          : preset === "year"
+            ? computePeriod("year", thisMonth(), scope, "year")
+            : computePeriod("month", thisMonth(), scope, "month");
 
-  const update = (patch: Partial<{ r: Range; m: string; s: Scope }>) => {
+  const update = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(params);
-    for (const [k, v] of Object.entries(patch)) next.set(k, v);
+    for (const [k, v] of Object.entries(patch)) {
+      if (v == null) next.delete(k);
+      else next.set(k, v);
+    }
     setParams(next, { replace: true });
   };
   return {
     period,
     search: params.toString() ? `?${params.toString()}` : "",
-    setRange: (r: Range) => update({ r }),
+    setPreset: (p: Preset) =>
+      update(p === "custom" ? { p, f: params.get("f") ?? addIso(todayIso(), -30), t: params.get("t") ?? todayIso() } : { p, f: null, t: null }),
+    setCustom: (from: string, to: string) => update({ p: "custom", f: from, t: to }),
     setScope: (s: Scope) => update({ s }),
-    setMonth: (m: string) => update({ m: m > thisMonth() ? thisMonth() : m }),
-    step: (dir: -1 | 1) => {
-      const next = shiftMonth(month, dir * stepMonths(range));
-      update({ m: next > thisMonth() ? thisMonth() : next });
-    },
   };
 }
 
