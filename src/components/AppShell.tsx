@@ -13,6 +13,7 @@ import { useRecipePlans } from "@/features/recipes/api";
 import { useCart } from "@/features/recipes/cart";
 import { t, tn, type Key } from "@/i18n";
 import { OfflineBanner } from "./ui";
+import { primeAudio } from "@/features/voice/useRecorder";
 
 const VoiceSession = lazy(() => import("@/features/voice/VoiceSession").then((m) => ({ default: m.VoiceSession })));
 
@@ -189,6 +190,8 @@ function VoiceButton({ onClick }: { onClick: () => void }) {
         type="button"
         onClick={() => {
           haptic(12);
+          // iPhone pustí mikrofón do nahrávania len z ťuknutia – pripravíme ho hneď.
+          primeAudio();
           onClick();
         }}
         aria-label={t("voice.open")}

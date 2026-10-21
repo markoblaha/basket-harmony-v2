@@ -299,6 +299,18 @@ export function createRecipe(query: string) {
   return invoke<{ recipe: RecipeDraft }>({ action: "create", query }).then((r) => r.recipe);
 }
 
+export type RecipeVariant = { name: string; variant: string; minutes: number; difficulty: 1 | 2 | 3; icon: string | null };
+
+/** Hlasový nákup: za 1–2 s názvy rôznych variantov jedla („Hovädzí guláš“ → klasický, pivný…). */
+export function recipeVariants(query: string, count: number, exclude: string[]) {
+  return invoke<{ variants: RecipeVariant[] }>({ action: "variants", query, count, exclude }).then((r) => r.variants);
+}
+
+/** Hlasový nákup: suroviny a postup k vybranému variantu (appka ich pýta pre všetky varianty naraz). */
+export function suggestRecipe(name: string, variant: string) {
+  return invoke<{ recipe: RecipeDraft & { variant: string } }>({ action: "suggest", name, variant }).then((r) => r.recipe);
+}
+
 export type Chat = { q: string; a: string; off?: boolean };
 
 /** Otázka pri varení – odpovedá len k tomuto receptu a kroku. */

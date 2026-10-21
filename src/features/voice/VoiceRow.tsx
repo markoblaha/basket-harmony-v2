@@ -171,6 +171,7 @@ export function VoiceCard({
               <span className="t-h ellipsis">{item.name}</span>
             )}
             {unsure && <span className="t-sm v-unsure-text">{t("voice.unsureAsk")}</span>}
+            {!unsure && item.note && <span className="t-xs t-2 ellipsis">{item.note}</span>}
           </div>
           <span className="v-qty">{qty}</span>
         </div>

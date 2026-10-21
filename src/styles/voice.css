@@ -58,4 +58,35 @@
 
   /* Kým je otvorený hlasový nákup, hláška ide hore (ako v prototype), aby nezakryla panel s mikrofónom. */
   body:has(.v-root) .toast { top: calc(env(safe-area-inset-top) + 64px) !important; bottom: auto !important; }
+
+  /* Recepty v hlasovom nákupe */
+  .v-restored { margin: 0 16px 8px; padding: 6px 6px 6px 12px; border-radius: 14px; background: var(--sunken); color: var(--text-2); }
+  .v-rc { background: var(--surface); border-radius: 18px; box-shadow: var(--sh-1); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .v-rc.active { box-shadow: inset 0 0 0 2px var(--accent), var(--sh-2); }
+  .v-rc.done { flex-direction: row; align-items: center; padding: 10px 10px 10px 14px; }
+  .v-rc-ic { background: var(--accent-soft); color: var(--accent-text); }
+  .v-rc-ic.on { background: var(--accent); color: var(--on-accent, var(--surface)); }
+  .v-rc-opts { display: flex; gap: 8px; overflow-x: auto; margin: 0 -14px; padding: 2px 14px 4px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .v-rc-opts::-webkit-scrollbar { display: none; }
+  .v-rc-opt {
+    flex: none; width: 148px; min-height: 132px; scroll-snap-align: start; text-align: left; display: flex; flex-direction: column; gap: 4px;
+    padding: 10px; border-radius: 14px; background: var(--sunken); transition: transform 120ms, box-shadow 160ms;
+  }
+  .v-rc-opt:active { transform: scale(0.97); }
+  .v-rc-opt.on { background: var(--surface); box-shadow: inset 0 0 0 2px var(--ink); }
+  .v-rc-opt .rc-cover.sm { width: 40px; height: 40px; border-radius: 12px; }
+  .v-rc-num { margin-left: auto; min-width: 22px; height: 22px; border-radius: 99px; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--surface); color: var(--text-2); }
+  .v-rc-opt.on .v-rc-num { background: var(--ink); color: var(--on-ink); }
+  .v-rc-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 18px; }
+  .v-rc-var { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .v-rc-ings { display: flex; flex-direction: column; border-radius: 14px; background: var(--sunken); padding: 4px; }
+  .v-rc-ing { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 10px; border-radius: 10px; text-align: left; transition: opacity 160ms; }
+  .v-rc-ing.off { opacity: 0.55; }
+  .v-rc-ing.off .t-body { text-decoration: line-through; }
+  .v-check { flex: none; width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; box-shadow: inset 0 0 0 2px var(--line-strong, var(--text-3)); color: var(--on-ink); }
+  .v-check.on { background: var(--ink); box-shadow: none; }
+  .skel { display: block; border-radius: 6px; background: linear-gradient(90deg, var(--sunken) 0%, var(--line, var(--sunken)) 50%, var(--sunken) 100%); background-size: 200% 100%; animation: skel 1.2s linear infinite; }
+  .v-rc-opt.sk { background: var(--sunken); gap: 8px; }
+  .v-rc-opt.sk .skel { background: linear-gradient(90deg, var(--surface) 0%, var(--sunken) 50%, var(--surface) 100%); background-size: 200% 100%; }
+  @keyframes skel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 }

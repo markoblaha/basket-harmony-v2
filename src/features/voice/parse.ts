@@ -68,7 +68,7 @@ function tokens(text: string): Tok[] {
     .filter((t) => t.raw);
 }
 
-function numberOf(key: string): number | null {
+export function numberOf(key: string): number | null {
   if (/^\d+([.,]\d+)?$/.test(key)) {
     const n = Number(key.replace(",", "."));
     return Number.isFinite(n) && n > 0 && n < 100_000 ? n : null;
