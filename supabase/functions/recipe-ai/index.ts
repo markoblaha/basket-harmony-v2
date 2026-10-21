@@ -4,6 +4,8 @@
 //                   (stránka s receptom alebo YouTube) alebo z vloženého textu.
 // action "create" – navrhne nový recept podľa zadania („palacinky so špenátom“).
 // action "ask"    – odpovie na otázku pri varení, len k tomuto receptu (inak odmietne).
+// action "variants" – za 1–2 s navrhne názvy rôznych variantov jedla („hovädzí guláš“) pre hlasový nákup,
+// action "suggest"  – dopočíta k vybranému variantu suroviny a postup (appka ich pýta paralelne na pozadí).
 //
 // Nič neukladá: recept skontroluje človek a uloží ho aplikácia (tabuľka recipes, RLS).
 // Suroviny sa priradia ku kľúčom z databázy potravín aplikácie (posiela ich aplikácia),
@@ -76,6 +78,57 @@ const RECIPE_SCHEMA = {
   },
   required: ["is_recipe", "name", "category", "meat", "minutes", "difficulty", "portions", "ingredients", "steps"],
 };
+// Varianty pre hlasový nákup: bez podrobností krokov (done/tip/more), aby odpoveď prišla do pár sekúnd.
+const SUGGEST_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    is_food: { type: "BOOLEAN" },
+    recipes: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: S(),
+          variant: S(),
+          category: S({ enum: CATEGORIES }),
+          meat: S({ enum: MEATS }),
+          icon: S({ enum: ICONS }),
+          minutes: { type: "INTEGER" },
+          difficulty: { type: "INTEGER" },
+          portions: { type: "INTEGER" },
+          ingredients: (RECIPE_SCHEMA.properties as Record<string, unknown>).ingredients,
+          steps: {
+            type: "ARRAY",
+            items: { type: "OBJECT", properties: { text: S(), timer_min: { type: "INTEGER", nullable: true }, wait: { type: "BOOLEAN" } }, required: ["text"] },
+          },
+        },
+        required: ["name", "variant", "category", "meat", "minutes", "difficulty", "portions", "ingredients", "steps"],
+      },
+    },
+  },
+  required: ["is_food", "recipes"],
+};
+const SUGGEST_RECIPE_SCHEMA = {
+  ...(SUGGEST_SCHEMA.properties.recipes.items as Record<string, unknown>),
+  properties: { is_food: { type: "BOOLEAN" }, ...((SUGGEST_SCHEMA.properties.recipes.items as { properties: Record<string, unknown> }).properties) },
+};
+const VARIANTS_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    is_food: { type: "BOOLEAN" },
+    variants: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: { name: S(), variant: S(), minutes: { type: "INTEGER" }, difficulty: { type: "INTEGER" }, icon: S({ enum: ICONS }) },
+        required: ["name", "variant", "minutes", "difficulty"],
+      },
+    },
+  },
+  required: ["is_food", "variants"],
+};
+const FAST_MODELS = () => [Deno.env.get("GEMINI_FAST_MODEL") ?? "gemini-3.5-flash-lite", "gemini-3.6-flash"];
+
 const ASK_SCHEMA = {
   type: "OBJECT",
   properties: { answer: S(), off_topic: { type: "BOOLEAN" } },
@@ -112,13 +165,25 @@ Bežné suroviny zo slovenských obchodov, realistické množstvá na 4 porcie, 
 ${recipeRules(locale, foods)}
 - uncertain: null všade. is_recipe = false, ak zadanie nie je jedlo. source = null.`;
 
+const variantsPrompt = (locale: string, query: string, count: number, exclude: string[]) => `Človek chce uvariť: "${query.slice(0, 100)}".
+Navrhni ${count} RÔZNE domáce recepty presne tohto jedla (rôzne varianty: klasický, rýchly, iný spôsob prípravy alebo príloha), aby si vybral.
+Zachovaj, čo povedal: ak spomenul mäso alebo hlavnú surovinu (napr. „hovädzí“), každý variant ju musí mať a name ju musí obsahovať.
+${exclude.length ? `Tieto už má ponúknuté, nenavrhuj ich znova: ${exclude.slice(0, 6).join(", ")}.\n` : ""}name = názov receptu (krátky), variant = krátko v čom je iný (napr. "s knedľou", "v tlakovom hrnci"), minutes = celkový čas, difficulty 1–3.
+Jazyk: ${lang(locale)}. is_food = false, ak to nie je jedlo.`;
+
+const suggestPrompt = (locale: string, foods: string, name: string, variant: string) => `Napíš domáci recept: "${name.slice(0, 100)}"${variant ? ` (${variant.slice(0, 80)})` : ""}.
+Drž sa názvu: mäso a hlavná surovina musia byť presne tie z názvu.
+Bežné suroviny zo slovenských obchodov, realistické množstvá na 4 porcie, krátky jasný postup (4–8 krokov).
+${recipeRules(locale, foods)}
+- uncertain: null všade. is_food = false, ak to nie je jedlo.`;
+
 type Part = Record<string, unknown>;
 
-async function gemini(parts: Part[], schema: unknown, deadline: number, temperature = 0.2): Promise<Record<string, unknown>> {
+async function gemini(parts: Part[], schema: unknown, deadline: number, temperature = 0.2, models = MODELS(), thinking = "low"): Promise<Record<string, unknown>> {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
   let last = "GEMINI_UNKNOWN";
-  for (const model of MODELS()) {
+  for (const model of models) {
     const left = deadline - Date.now();
     if (left < 3000) break;
     try {
@@ -127,7 +192,7 @@ async function gemini(parts: Part[], schema: unknown, deadline: number, temperat
         headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts }],
-          generationConfig: { temperature, responseMimeType: "application/json", responseSchema: schema, thinkingConfig: { thinkingLevel: "low" } },
+          generationConfig: { temperature, responseMimeType: "application/json", responseSchema: schema, thinkingConfig: { thinkingLevel: thinking } },
         }),
         signal: AbortSignal.timeout(Math.min(left, 90_000)),
       });
@@ -290,6 +355,33 @@ Deno.serve(async (req) => {
       if (!query) return json({ error: "VALIDATION" }, 400);
       const raw = await gemini([{ text: createPrompt(locale, foods, query) }], RECIPE_SCHEMA, deadline, 0.6);
       return json({ recipe: clean(raw, "Gemini", null, true) });
+    }
+
+    if (body.action === "variants") {
+      const query = str(body.query, 100);
+      const count = int(body.count, 1, 4, 4);
+      const exclude = (Array.isArray(body.exclude) ? body.exclude : []).map((x) => str(x, 80)).filter(Boolean);
+      if (!query) return json({ error: "VALIDATION" }, 400);
+      const raw = await gemini([{ text: variantsPrompt(locale, query, count, exclude) }], VARIANTS_SCHEMA, Date.now() + 12_000, 0.7, FAST_MODELS(), "minimal");
+      if (raw.is_food === false) return json({ error: "NOT_A_RECIPE" }, 422);
+      const variants = (Array.isArray(raw.variants) ? raw.variants : []).slice(0, count).map((v: Record<string, unknown>) => ({
+        name: str(v.name, 100),
+        variant: str(v.variant, 80),
+        minutes: int(v.minutes, 5, 1440, 45),
+        difficulty: int(v.difficulty, 1, 3, 1),
+        icon: ICONS.includes(String(v.icon)) ? String(v.icon) : null,
+      })).filter((v) => v.name);
+      if (!variants.length) return json({ error: "NOT_A_RECIPE" }, 422);
+      return json({ variants });
+    }
+
+    if (body.action === "suggest") {
+      const name = str(body.name, 100);
+      if (!name) return json({ error: "VALIDATION" }, 400);
+      const variant = str(body.variant, 80);
+      const raw = await gemini([{ text: suggestPrompt(locale, foods, name, variant) }], SUGGEST_RECIPE_SCHEMA, Date.now() + 25_000, 0.4, FAST_MODELS(), "minimal");
+      if (raw.is_food === false) return json({ error: "NOT_A_RECIPE" }, 422);
+      return json({ recipe: { ...clean({ ...raw, is_recipe: true }, "Gemini", null, true), name, variant } });
     }
 
     if (body.action === "ask") {

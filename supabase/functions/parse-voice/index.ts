@@ -1,10 +1,13 @@
 // Rozbor nadiktovanej vety pre hlasový nákupný zoznam.
 //
-// Tok: aplikácia pošle {text, items, target}. Funkcia (1) overí prihláseného
-// používateľa, (2) pošle vetu a aktuálne položky Gemini (iba krátky text – lacné
-// a rýchle), (3) vráti zoznam operácií: pridať / zmeniť / zmazať / hotovo.
+// Tok: aplikácia pošle {text | audio, items, target}. Funkcia (1) overí prihláseného
+// používateľa, (2) pošle vetu (alebo krátky zvukový úsek) a aktuálne položky Gemini,
+// (3) vráti prepis, operácie (pridať / zmeniť / zmazať / hotovo), jedlá, ktoré chce
+// človek uvariť („chcem uvariť hovädzí guláš“ → cook), a obchod, ak ho povedal.
+// Zvuk posiela appka tam, kde rozpoznávanie reči v prehliadači nefunguje (iPhone,
+// appka spustená z plochy) – prepis aj rozbor tak spraví Gemini naraz.
 // Nič neukladá – ukladá až aplikácia po „Hotovo“ cez add_item (pravidlá ostávajú
-// v databáze). Aplikácia medzitým ukáže okamžitý lokálny rozbor; táto odpoveď ho
+// v databáze). Pri texte appka medzitým ukáže okamžitý lokálny rozbor; táto odpoveď ho
 // do sekundy spresní (rozdelí vety bez čiarok, opraví tvary slov, doplní kategóriu).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -26,6 +29,7 @@ const CATEGORIES = [
 const SCHEMA = {
   type: "OBJECT",
   properties: {
+    transcript: { type: "STRING" },
     ops: {
       type: "ARRAY",
       items: {
@@ -44,12 +48,13 @@ const SCHEMA = {
         required: ["op", "status"],
       },
     },
+    cook: { type: "ARRAY", items: { type: "STRING" } },
+    store: { type: "STRING", nullable: true },
   },
-  required: ["ops"],
+  required: ["transcript", "ops", "cook"],
 };
 
-const prompt = (text: string, items: string, target: string | null) => `Hlasom nadiktovaný nákupný zoznam (slovenčina). Prepis z rozpoznávania reči NEMÁ čiarky a môže mať chyby.
-Rozdeľ vetu na jednotlivé položky a vráť operácie (ops) v poradí, ako zazneli.
+const rules = (items: string, target: string | null) => `Rozdeľ reč na jednotlivé položky a vráť operácie (ops) v poradí, ako zazneli.
 
 Delenie: každý produkt je samostatná položka. Množstvo patrí k produktu, pri ktorom zaznelo:
 "banány 3 rožky maslo šunka" -> Banány | Rožok 3 ks | Maslo | Šunka
@@ -63,13 +68,27 @@ Delenie: každý produkt je samostatná položka. Množstvo patrí k produktu, p
 - category_id: ${CATEGORIES.join(", ")}.
 - status "needs_qty": mäso, ryby, syr/šunka z pultu bez zaznetého množstva. "unclear": slovo nie je nákupná položka alebo je zle rozpoznané
   (suggestions: 2–3 podobne znejúce produkty v 1. páde). Inak "ok", suggestions [].
-- change: produkt už je v zozname ("ešte jedny banány" -> target "Banány", delta 1; "banánov daj tri" -> target "Banány", quantity 3, unit "ks").
-- remove: "zmaž/vymaž X" -> target. done: "hotovo", "to je všetko". target presne podľa zoznamu.
+- change: produkt už je v zozname ("ešte jedny banány" -> target "Banány", delta 1; "banánov daj tri" -> target "Banány", quantity 3, unit "ks";
+  "nie, tri" -> posledná alebo upravovaná položka). remove: "zmaž/vymaž X" -> target. done: "hotovo", "to je všetko". target presne podľa zoznamu.
+- cook: jedlá, ktoré chce človek uvariť alebo pripraviť ("chcem uvariť hovädzí guláš", "urobím burgre", "na večeru lasagne",
+  "upečiem bábovku") -> názov jedla v 1. páde ("Hovädzí guláš", "Hovädzí burger"). Suroviny takého jedla NEPRIDÁVAJ do ops – appka ponúkne recepty.
+  Ak nič také nezaznelo, cook [].
+- store: obchod, ak ho povedal ("idem do Lidla" -> "Lidl", "v Kauflande" -> "Kaufland"), inak null. Obchod nie je položka.
 ${target ? `Upravuje sa položka "${target}": vráť jednu operáciu change s target "${target}" (množstvo, jednotka alebo nový name).\n` : ""}
 Zoznam (názov | množstvo):
-${items || "(prázdny)"}
+${items || "(prázdny)"}`;
 
+const textPrompt = (text: string, items: string, target: string | null) =>
+  `Hlasom nadiktovaný nákupný zoznam (slovenčina). Prepis z rozpoznávania reči NEMÁ čiarky a môže mať chyby.
+${rules(items, target)}
+
+transcript = veta bez zmeny.
 Veta: "${text}"`;
+
+const audioPrompt = (items: string, target: string | null) =>
+  `Priložený zvuk je krátky úsek, v ktorom človek po slovensky diktuje nákupný zoznam (môže byť šum z obchodu).
+transcript = presný prepis toho, čo povedal (s diakritikou, bez úvodzoviek). Ak je ticho alebo nič zrozumiteľné, transcript "" a ops [].
+${rules(items, target)}`;
 
 type Cfg = { model: string; thinking: Record<string, unknown> | null };
 
@@ -84,14 +103,17 @@ const CANDIDATES: Cfg[] = [
 /** Teplá inštancia si pamätá, ktorý model naposledy odpovedal (ďalšie volanie neskúša nedostupné). */
 let preferred: Cfg | null = null;
 
-async function call(cfg: Cfg, text: string, timeoutMs: number): Promise<{ ops: Record<string, unknown>[] }> {
+type Part = Record<string, unknown>;
+type Result = { transcript?: string; ops: Record<string, unknown>[]; cook?: unknown[]; store?: unknown };
+
+async function call(cfg: Cfg, parts: Part[], timeoutMs: number): Promise<Result> {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent`, {
     method: "POST",
     headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [{ parts: [{ text }] }],
+      contents: [{ parts }],
       generationConfig: {
         temperature: 0,
         responseMimeType: "application/json",
@@ -109,15 +131,16 @@ async function call(cfg: Cfg, text: string, timeoutMs: number): Promise<{ ops: R
   return parsed;
 }
 
-async function askGemini(text: string): Promise<{ ops: Record<string, unknown>[]; model: string }> {
-  const deadline = Date.now() + 7_000;
+async function askGemini(parts: Part[], audio: boolean): Promise<Result & { model: string }> {
+  // Zvuk trvá dlhšie (prepis + rozbor), text má byť do pár sekúnd.
+  const deadline = Date.now() + (audio ? 14_000 : 7_000);
   const list = preferred ? [preferred, ...CANDIDATES.filter((c) => c !== preferred)] : CANDIDATES;
   let lastError = "GEMINI_UNKNOWN";
   for (const cfg of list) {
     const left = deadline - Date.now();
     if (left < 800) break;
     try {
-      const r = await call(cfg, text, Math.min(3_500, left));
+      const r = await call(cfg, parts, Math.min(audio ? 9_000 : 3_500, left));
       preferred = cfg;
       return { ...r, model: cfg.model + (cfg.thinking ? "+min" : "") };
     } catch (e) {
@@ -130,12 +153,13 @@ async function askGemini(text: string): Promise<{ ops: Record<string, unknown>[]
 
 const str = (v: unknown, max = 80) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 100_000 ? v : null);
+const AUDIO_TYPES = /^audio\/(wav|x-wav|webm|ogg|mp4|mpeg|aac|flac)$/;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "METHOD" }, 405);
 
-  let body: { text?: unknown; items?: unknown; target?: unknown } = {};
+  let body: { text?: unknown; audio?: unknown; items?: unknown; target?: unknown } = {};
   try {
     body = await req.json();
   } catch { /* prázdne telo */ }
@@ -149,7 +173,10 @@ Deno.serve(async (req) => {
   if (userError || !userData.user) return json({ error: "NOT_AUTHENTICATED" }, 401);
 
   const text = str(body.text, 400);
-  if (!text) return json({ error: "VALIDATION" }, 400);
+  const audio = body.audio && typeof body.audio === "object" ? (body.audio as { mime?: unknown; data?: unknown }) : null;
+  const audioData = audio && typeof audio.data === "string" && audio.data.length < 3_000_000 ? audio.data : null;
+  const audioMime = audio && AUDIO_TYPES.test(String(audio.mime)) ? String(audio.mime) : "audio/wav";
+  if (!text && !audioData) return json({ error: "VALIDATION" }, 400);
   const target = str(body.target);
   const items = (Array.isArray(body.items) ? body.items : [])
     .slice(0, 80)
@@ -158,9 +185,13 @@ Deno.serve(async (req) => {
     .filter((l) => !l.startsWith(" |"))
     .join("\n");
 
+  const parts: Part[] = audioData
+    ? [{ text: audioPrompt(items, target) }, { inline_data: { mime_type: audioMime, data: audioData } }]
+    : [{ text: textPrompt(text!.replace(/"/g, "'"), items, target) }];
+
   const t0 = Date.now();
   try {
-    const result = await askGemini(prompt(text.replace(/"/g, "'"), items, target));
+    const result = await askGemini(parts, !!audioData);
     const ops = result.ops.slice(0, 20).map((o) => ({
       op: ["add", "change", "remove", "done"].includes(String(o.op)) ? o.op : "add",
       name: str(o.name),
@@ -172,8 +203,10 @@ Deno.serve(async (req) => {
       status: ["ok", "needs_qty", "unclear"].includes(String(o.status)) ? o.status : "ok",
       suggestions: (Array.isArray(o.suggestions) ? o.suggestions : []).map((s) => str(s, 40)).filter(Boolean).slice(0, 3),
     }));
-    console.log("parse-voice ok", result.model, Date.now() - t0, "ms");
-    return json({ ops, model: result.model, ms: Date.now() - t0 });
+    const cook = (Array.isArray(result.cook) ? result.cook : []).map((c) => str(c, 60)).filter(Boolean).slice(0, 3);
+    const transcript = str(result.transcript, 400) ?? text ?? "";
+    console.log("parse-voice ok", audioData ? "audio" : "text", result.model, Date.now() - t0, "ms");
+    return json({ transcript, ops, cook, store: str(result.store, 40), model: result.model, ms: Date.now() - t0 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("parse-voice", Date.now() - t0, "ms", message);
