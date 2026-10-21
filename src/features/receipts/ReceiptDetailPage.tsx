@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
-import { AlertTriangle, Check, ChevronRight, FileText, Landmark, Link2, Loader2, MoreHorizontal, PenLine, Pencil, Plus, RefreshCw, Trash2, Unlink } from "lucide-react";
-import { BottomSheet, CatIcon, Cell, ScreenHeader, SheetHeader, StoreBadge } from "@/components/kit";
+import { AlertTriangle, Check, ChevronDown, FileText, Landmark, Link2, Loader2, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, Unlink } from "lucide-react";
+import { BottomSheet, CatIcon, Cell, ConfirmDialog, Empty, ScreenHeader, SheetHeader, StoreBadge } from "@/components/kit";
 import { Button, ErrorState, Sheet, Spinner, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
@@ -13,21 +13,27 @@ import { unitLabel } from "@/lib/parseItem";
 import {
   MAX_PAGES,
   useAddReceiptPages,
+  useAttachReceipt,
   useConfirmReceipt,
   useDeleteReceipt,
+  useMatchCandidates,
   useReceipt,
   useReceiptImage,
   useReceiptPages,
   useRereadReceipt,
+  useSaveReceiptItem,
   useUpdateReceipt,
   type Receipt,
   type ReceiptItem,
 } from "./api";
 import { ImageViewer } from "./ImageViewer";
 import { ItemSheet } from "./ItemSheet";
-import { failureText, formatDate, formatMoney, parseAmount, readErrorMessage, reviewText } from "./format";
+import { failureText, formatDate, formatLongDate, formatMoney, formatShortDate, parseAmount, readErrorMessage, reviewText } from "./format";
 
 type ItemTarget = { item: ReceiptItem | null; price?: number | null; key: number };
+type Ask = { title: string; body: string; label: string; danger?: boolean; run: () => void };
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export function ReceiptDetailPage() {
   const { id } = useParams();
@@ -39,6 +45,7 @@ export function ReceiptDetailPage() {
   const reread = useRereadReceipt();
   const confirm = useConfirmReceipt();
   const remove = useDeleteReceipt();
+  const saveItem = useSaveReceiptItem(id ?? "");
   const pagesQuery = useReceiptPages(id);
   const addPages = useAddReceiptPages();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -46,6 +53,7 @@ export function ReceiptDetailPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openPath, setOpenPath] = useState<string | null>(null);
   const [itemTarget, setItemTarget] = useState<ItemTarget | null>(null);
+  const [ask, setAsk] = useState<Ask | null>(null);
 
   const items = query.data?.items;
   const groups = useMemo(() => {
@@ -54,16 +62,17 @@ export function ReceiptDetailPage() {
     return [...byCategory.entries()].sort((a, b) => categoryOrder(a[0]) - categoryOrder(b[0]));
   }, [items]);
 
+  const goBack = () => navigate(-1);
   if (query.isPending) return <Spinner />;
   if (query.isError) return <ErrorState error={readErrorMessage(query.error)} onRetry={() => query.refetch()} />;
-  if (!query.data) return <ErrorState error={t("detail.gone")} />;
-  const { receipt: r, items: rows } = query.data;
-  const pageList = pagesQuery.data && pagesQuery.data.length > 0 ? pagesQuery.data.map((p) => p.image_path) : [r.image_path];
-  // Platba z výpisu alebo ručný výdavok: nemá fotku ani položky, má len kategóriu.
-  const isDocument = r.origin === "RECEIPT";
-  const editable = isDocument && (r.status === "OK" || r.status === "NEEDS_REVIEW");
-  const startedAt = new Date(r.updated_at).getTime();
-  const stuck = r.status === "PROCESSING" && Date.now() - startedAt > 3 * 60_000;
+  if (!query.data)
+    return (
+      <div className="stack">
+        <ScreenHeader title={t("match.receipt")} onBack={goBack} />
+        <Empty icon={FileText} title={t("detail.gone")} />
+      </div>
+    );
+  const { receipt: r, items: rows, products } = query.data;
 
   const act = async (fn: () => Promise<unknown>, ok?: string) => {
     try {
@@ -73,6 +82,66 @@ export function ReceiptDetailPage() {
       toast.show(readErrorMessage(err), "error");
     }
   };
+
+  // Ručný výdavok alebo platba z výpisu: nemá bloček ani položky, má len kategóriu (prototyp ManualDetail).
+  if (r.origin !== "RECEIPT") {
+    const askDelete = () =>
+      setAsk({
+        title: t("detail.deleteExpenseTitle"),
+        body: t("detail.deleteExpenseBody", { name: r.store_name ?? "", amount: formatMoney(r.total) }),
+        label: t("common.delete"),
+        danger: true,
+        run: () =>
+          void act(async () => {
+            await remove.mutateAsync(r);
+            navigate("/receipts", { replace: true });
+          }, t("detail.expenseDeleted")),
+      });
+    return (
+      <div className="stack">
+        <ScreenHeader title={r.store_name ?? formatMoney(r.total)} sub={r.origin === "BANK" ? t("detail.bankSub") : t("detail.manualSub")} onBack={goBack} />
+        <div className="stack g-16" style={{ padding: "0 16px" }}>
+          <section className="card stack g-10 anim-rise" style={{ padding: 18 }}>
+            <div className="row g-12">
+              <CatIcon id={r.category_id ?? "other"} />
+              <span className="grow stack" style={{ minWidth: 0 }}>
+                <span className="t-h ellipsis">{r.store_name}</span>
+                <span className="t-sm t-2">
+                  {formatLongDate(r.purchased_on)}
+                  {r.category_id ? ` · ${category(r.category_id).name}` : ""}
+                </span>
+              </span>
+              {r.origin === "BANK" && (
+                <span className="badge b-gray">
+                  <Landmark size={12} /> {t("rpage.bank")}
+                </span>
+              )}
+            </div>
+            <span className="an-big">{formatMoney(r.total)}</span>
+            <span className="t-sm t-2">{t("detail.manualNote")}</span>
+          </section>
+          <button type="button" className="btn btn-soft" onClick={() => setEditing(true)}>
+            <PenLine size={16} /> {t("detail.edit")}
+          </button>
+          <button type="button" className="btn btn-ghost t-red" onClick={askDelete}>
+            <Trash2 size={16} /> {t("detail.deleteExpense")}
+          </button>
+        </div>
+        <div className="tab-space" />
+        <EditSheet key={`${editing}-${r.updated_at}`} open={editing} onClose={() => setEditing(false)} receipt={r} />
+        <AskDialog ask={ask} onClose={() => setAsk(null)} busy={remove.isPending} />
+      </div>
+    );
+  }
+
+  const pageList = pagesQuery.data && pagesQuery.data.length > 0 ? pagesQuery.data.map((p) => p.image_path) : [r.image_path];
+  const editable = r.status === "OK" || r.status === "NEEDS_REVIEW";
+  const startedAt = new Date(r.updated_at).getTime();
+  const stuck = r.status === "PROCESSING" && Date.now() - startedAt > 3 * 60_000;
+  const store = r.store_name ?? t("row.unknownStore");
+  const sum = r.items_sum ?? 0;
+  const diff = r.total != null ? round2(r.total - sum) : 0;
+  const mismatch = r.status === "NEEDS_REVIEW" && r.review_reason === "TOTAL_MISMATCH" && r.total != null && Math.abs(diff) > 0.05;
 
   async function onAddPages(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -84,25 +153,38 @@ export function ReceiptDetailPage() {
     );
   }
 
-  async function onReread() {
+  function onReread() {
     setMenuOpen(false);
-    if (editable && !window.confirm(t("detail.rereadConfirm"))) return;
-    await act(() => reread.mutateAsync(r.id), t("detail.rereadDone"));
+    const run = () => void act(() => reread.mutateAsync(r.id), t("detail.rereadDone"));
+    if (!editable) return run();
+    setAsk({ title: t("detail.rereadTitle"), body: t("detail.rereadConfirm"), label: t("detail.reread"), run });
   }
 
-  async function onDelete() {
+  function onDelete() {
     setMenuOpen(false);
-    if (!window.confirm(t("detail.deleteConfirm"))) return;
-    await act(async () => {
-      await remove.mutateAsync(r);
-      navigate("/receipts", { replace: true });
+    setAsk({
+      title: t("detail.deleteTitle"),
+      body: t("detail.deleteBody", { store, day: formatShortDate(r.purchased_on), amount: formatMoney(r.total) }),
+      label: t("common.delete"),
+      danger: true,
+      run: () =>
+        void act(async () => {
+          await remove.mutateAsync(r);
+          navigate("/receipts", { replace: true });
+        }, t("detail.deleted")),
     });
   }
+
+  // „Pridať chýbajúcu položku“ (prototyp): doplní nerozpoznanú položku s rozdielom, databáza potom prepočíta súčet a stav.
+  const addMissing = () =>
+    act(
+      () => saveItem.mutateAsync({ name: t("detail.unrecognized"), lineTotal: diff, quantity: 1, discount: 0, categoryId: "other" }),
+      t("detail.missingAdded", { diff: formatMoney(diff) }),
+    );
 
   const openItem = (item: ReceiptItem | null, price?: number | null) => setItemTarget({ item, price, key: Date.now() });
 
   const tripList = r.list_id ? lists.data?.find((l) => l.id === r.list_id) : undefined;
-  const store = r.store_name ?? t("row.unknownStore");
   const dec2 = (n: number) => formatNumber(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const menuIcon = (node: ReactNode, danger?: boolean) => (
     <span className="cat-ic sm" style={danger ? { background: "var(--red-soft)", color: "var(--red)" } : undefined}>
@@ -114,8 +196,8 @@ export function ReceiptDetailPage() {
     <div className="stack">
       <ScreenHeader
         title={`${store} · ${formatMoney(r.total)}`}
-        sub={`${t("match.receipt")} · ${formatDate(r.purchased_on)}`}
-        onBack={() => navigate(-1)}
+        sub={`${t("match.receipt")} · ${formatLongDate(r.purchased_on)}`}
+        onBack={goBack}
         right={
           <button type="button" className="ibtn" aria-label={t("detail.more")} onClick={() => setMenuOpen(true)}>
             <MoreHorizontal size={20} />
@@ -123,7 +205,7 @@ export function ReceiptDetailPage() {
         }
       />
       <div className="stack g-16" style={{ padding: "0 16px" }}>
-        {isDocument && rows.length > 0 && (
+        {rows.length > 0 && (
           <div style={{ padding: "6px 0 0" }}>
             <div className="an-receipt" aria-label={t("detail.paperAria")}>
               <div style={{ textAlign: "center", fontWeight: 700 }}>{store.toUpperCase()}</div>
@@ -157,45 +239,27 @@ export function ReceiptDetailPage() {
         <section className="card stack g-6" style={{ padding: 16 }}>
           <div className="row g-12">
             <StoreBadge name={store} />
-            <span className="grow stack">
-              <span className="t-h">{store}</span>
+            <span className="grow stack" style={{ minWidth: 0 }}>
+              <span className="t-h ellipsis">{store}</span>
               <span className="t-sm t-2 num">
-                {formatDate(r.purchased_on)}
+                {r.purchased_on ? dayLabel(r.purchased_on) : formatDate(null)}
                 {r.purchased_time ? ` · ${r.purchased_time.slice(0, 5)}` : ""}
-                {isDocument ? ` · ${tn("shop.itemCount", rows.length)}` : ""}
+                {` · ${tn("rpage.items", rows.length)}`}
               </span>
             </span>
             <span className="t-title num">{formatMoney(r.total)}</span>
-            {r.status !== "PROCESSING" && (
-              <button type="button" className="ibtn sm" aria-label={t("detail.editAria")} onClick={() => setEditing(true)}>
-                <Pencil size={16} />
-              </button>
-            )}
           </div>
           {r.status === "PROCESSING" && (
             <span className="row g-6 t-sm t-blue">
-              <Loader2 size={15} className="spin" /> {t("detail.readingHint")}
+              <Loader2 size={15} className="spin" /> {t("detail.reading2")}
               {stuck ? ` ${t("detail.stuck")}` : ""}
             </span>
           )}
-          {editable && <SumCheck receipt={r} count={rows.length} onAdd={(price) => openItem(null, price)} onEdit={() => setEditing(true)} />}
-          {!isDocument && (
-            <span className="row wrap g-6">
-              <span className="badge b-gray">
-                {r.origin === "BANK" ? <Landmark size={12} /> : <PenLine size={12} />}
-                {r.origin === "BANK" ? t("detail.fromBank") : t("detail.manualEntry")}
-              </span>
-              {r.category_id && (
-                <button type="button" className="badge b-gray" onClick={() => navigate(`/analytics/category/${r.category_id}`)}>
-                  {category(r.category_id).name}
-                </button>
-              )}
-            </span>
-          )}
+          {r.status === "OK" && <SumCheck receipt={r} count={rows.length} onAdd={(price) => openItem(null, price)} onEdit={() => setEditing(true)} />}
         </section>
 
         {r.status === "FAILED" && (
-          <section className="card stack g-10" style={{ padding: 16, background: "var(--red-soft)" }}>
+          <section className="card stack g-10 anim-rise" style={{ padding: 16, background: "var(--red-soft)" }}>
             <span className="row g-8 t-h" style={{ color: "var(--red)" }}>
               <AlertTriangle size={18} /> {t("detail.failedTitle")}
             </span>
@@ -207,101 +271,101 @@ export function ReceiptDetailPage() {
         )}
 
         {r.status === "NEEDS_REVIEW" && (
-          <section className="card stack g-10" style={{ padding: 16, background: "var(--yellow-soft)" }}>
+          <section className="card stack g-10 anim-rise" style={{ padding: 16, background: "var(--yellow-soft)" }}>
             <span className="row g-8 t-h" style={{ color: "var(--yellow)" }}>
-              <AlertTriangle size={18} /> {t("detail.checkTitle")}
+              <AlertTriangle size={18} /> {mismatch ? t("detail.mismatchTitle", { diff: formatMoney(Math.abs(diff)) }) : t("detail.checkTitle")}
             </span>
-            <span className="t-sm">{r.review_reason === "TOTAL_MISMATCH" || r.review_reason === "NO_ITEMS" ? t("detail.fixHint") : reviewText(r)}</span>
-            <button
-              type="button"
-              className="btn btn-line btn-sm"
-              style={{ alignSelf: "flex-start" }}
-              disabled={confirm.isPending}
-              onClick={() => act(() => confirm.mutateAsync(r.id), t("detail.confirmed"))}
-            >
-              {t("detail.confirm")}
-            </button>
-          </section>
-        )}
-
-        {isDocument && (
-          <section className="stack g-8">
-            <span className="section-title">{t("an.trip")}</span>
-            <div className="cells">
-              {tripList ? (
-                <>
-                  <Cell
-                    icon={
-                      <span className="cat-ic sm" style={{ color: "var(--blue)" }}>
-                        <Link2 size={16} />
-                      </span>
-                    }
-                    title={`${tripList.name}${tripList.completed_at ? ` · ${dayLabel(tripList.completed_at)}` : ""}`}
-                    sub={r.match_score != null ? t("trip.autoMatched", { percent: Math.round(Number(r.match_score) * 100) }) : undefined}
-                    onClick={() => navigate(`/lists/${tripList.id}`)}
-                  />
-                  <button type="button" className="cell t-sm" style={{ color: "var(--text-2)" }} onClick={() => navigate(`/receipts/${r.id}/match`)}>
-                    <Unlink size={16} /> <span className="grow">{t("an.changeTrip")}</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Cell
-                    icon={
-                      <span className="cat-ic sm">
-                        <Unlink size={16} />
-                      </span>
-                    }
-                    title={t("rpage.noTrip")}
-                    sub={t("an.noTripHint")}
-                  />
-                  <button type="button" className="cell" onClick={() => navigate(`/receipts/${r.id}/match`)}>
-                    <Link2 size={18} color="var(--accent-text)" />
-                    <span className="grow t-body fw-5 t-accent">{t("an.assignTrip")}</span>
-                    <ChevronRight size={18} className="chev" />
-                  </button>
-                </>
+            <span className="t-sm num">
+              {mismatch
+                ? t(diff > 0 ? "detail.mismatchText" : "detail.mismatchOver", { total: formatMoney(r.total), sum: formatMoney(sum) })
+                : r.review_reason === "NO_ITEMS"
+                  ? t("detail.fixHint")
+                  : reviewText(r)}
+            </span>
+            <div className="row g-8 wrap">
+              {mismatch && diff > 0 && (
+                <button type="button" className="btn btn-ink btn-sm" disabled={saveItem.isPending} onClick={() => void addMissing()}>
+                  <Plus size={16} /> {t("detail.addMissing", { diff: formatMoney(diff) })}
+                </button>
+              )}
+              {r.review_reason === "NO_ITEMS" && (
+                <button type="button" className="btn btn-ink btn-sm" onClick={() => openItem(null, r.total)}>
+                  <Plus size={16} /> {t("ritem.addTitle")}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-line btn-sm"
+                disabled={confirm.isPending}
+                onClick={() => act(() => confirm.mutateAsync(r.id), t("detail.confirmed"))}
+              >
+                {t("detail.confirm")}
+              </button>
+              {mismatch && (
+                <button type="button" className="btn btn-line btn-sm" onClick={() => setEditing(true)}>
+                  {t("sum.fixTotal")}
+                </button>
               )}
             </div>
           </section>
         )}
 
+        <section className="stack g-8">
+          <span className="section-title">{t("an.trip")}</span>
+          <div className="cells">
+            {tripList ? (
+              <>
+                <Cell
+                  icon={
+                    <span className="cat-ic sm" style={{ color: "var(--blue)" }}>
+                      <Link2 size={16} />
+                    </span>
+                  }
+                  title={`${tripList.name}${tripList.completed_at ? ` · ${dayLabel(tripList.completed_at)}` : ""}`}
+                  sub={r.match_score != null ? t("trip.autoMatched", { percent: Math.round(Number(r.match_score) * 100) }) : undefined}
+                  onClick={() => navigate(`/lists/${tripList.id}`)}
+                />
+                <button type="button" className="cell t-sm" style={{ color: "var(--text-2)" }} onClick={() => navigate(`/receipts/${r.id}/match`)}>
+                  <Unlink size={16} /> <span className="grow">{t("an.changeTrip")}</span>
+                </button>
+              </>
+            ) : (
+              <AssignTrip receipt={r} />
+            )}
+          </div>
+        </section>
+
         {groups.map(([categoryId, list]) => {
           const cat = category(categoryId);
           return (
             <section key={categoryId} className="stack g-8">
-              <div className="section-head">
-                <span className="section-title row g-6">
-                  <CatIcon id={cat.id} size="sm" /> {cat.name}
-                </span>
-                <span className="t-xs t-2 num">{formatMoney(list.reduce((sum, it) => sum + it.line_total, 0))}</span>
-              </div>
+              <span className="section-title row g-6">
+                <CatIcon id={cat.id} size="sm" /> {cat.name}
+              </span>
               <div className="cells">
                 {list.map((it) => (
-                  <ItemRow key={it.id} item={it} editable={editable} onClick={() => openItem(it)} />
+                  <ItemRow key={it.id} item={it} product={it.product_id ? products[it.product_id] : undefined} editable={editable} onClick={() => openItem(it)} />
                 ))}
               </div>
             </section>
           );
         })}
 
-        {isDocument && (
-          <section className="stack g-8">
-            <span className="section-title">{pageList.length > 1 ? t("detail.pages", { n: pageList.length }) : t("viewer.title")}</span>
-            <ul className="row g-12" style={{ overflowX: "auto", margin: "0 -16px", padding: "0 16px 4px" }}>
-              {pageList.map((path, i) => (
-                <li key={path} className="shrink-0">
-                  <PageCard path={path} label={pageList.length > 1 ? `${i + 1} / ${pageList.length}` : null} onOpen={() => setOpenPath(path)} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <section className="stack g-8">
+          <span className="section-title">{pageList.length > 1 ? t("detail.pages", { n: pageList.length }) : t("viewer.title")}</span>
+          <ul className="row g-12" style={{ overflowX: "auto", margin: "0 -16px", padding: "0 16px 4px" }}>
+            {pageList.map((path, i) => (
+              <li key={path} className="shrink-0">
+                <PageCard path={path} label={pageList.length > 1 ? `${i + 1} / ${pageList.length}` : null} onOpen={() => setOpenPath(path)} />
+              </li>
+            ))}
+          </ul>
+        </section>
 
         {editable && (
           <div className="row g-8">
             <button type="button" className="btn btn-soft grow" onClick={() => setEditing(true)}>
-              <PenLine size={16} /> {t("pp.edit")}
+              <PenLine size={16} /> {t("detail.edit")}
             </button>
             <button type="button" className="btn btn-soft grow" onClick={() => openItem(null)}>
               <Plus size={16} /> {t("ritem.addTitle")}
@@ -320,15 +384,14 @@ export function ReceiptDetailPage() {
       {itemTarget && (
         <ItemSheet key={itemTarget.key} receiptId={r.id} item={itemTarget.item} suggestedPrice={itemTarget.price} onClose={() => setItemTarget(null)} />
       )}
+      <AskDialog ask={ask} onClose={() => setAsk(null)} busy={remove.isPending || reread.isPending} />
 
       <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} label={t("detail.actions")}>
         <SheetHeader title={t("detail.actions")} onClose={() => setMenuOpen(false)} />
         <div className="sheet-body stack g-12">
           <div className="cells">
-            {isDocument && (
-              <Cell icon={menuIcon(<RefreshCw size={16} />)} title={t("detail.reread")} sub={t("detail.rereadHint")} onClick={r.status === "PROCESSING" && !stuck ? undefined : onReread} />
-            )}
-            {isDocument && r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
+            <Cell icon={menuIcon(<RefreshCw size={16} />)} title={t("detail.reread")} sub={t("detail.rereadHint")} onClick={r.status === "PROCESSING" && !stuck ? undefined : onReread} />
+            {r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
               <Cell
                 icon={menuIcon(<Plus size={16} />)}
                 title={t("detail.addPage")}
@@ -339,10 +402,21 @@ export function ReceiptDetailPage() {
                 }}
               />
             )}
+            {editable && (
+              <Cell
+                icon={menuIcon(<PenLine size={16} />)}
+                title={t("detail.editReceipt")}
+                sub={t("detail.editAria")}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setEditing(true);
+                }}
+              />
+            )}
             <Cell
               icon={menuIcon(<Trash2 size={16} />, true)}
               title={t("detail.deleteReceipt")}
-              sub={isDocument ? t("detail.deleteReceiptHint") : t("detail.deleteExpenseHint")}
+              sub={t("detail.deleteReceiptHint")}
               danger
               chevron={false}
               onClick={onDelete}
@@ -351,6 +425,94 @@ export function ReceiptDetailPage() {
         </div>
       </BottomSheet>
     </div>
+  );
+}
+
+/** Potvrdenie v strede obrazovky (ako v prototype) – nadpis, vysvetlenie, Zrušiť a potvrdenie. */
+function AskDialog({ ask, onClose, busy }: { ask: Ask | null; onClose: () => void; busy?: boolean }) {
+  return (
+    <ConfirmDialog
+      open={ask !== null}
+      title={ask?.title ?? ""}
+      body={ask?.body}
+      confirmLabel={ask?.label ?? ""}
+      danger={ask?.danger}
+      busy={busy}
+      onCancel={onClose}
+      onConfirm={() => {
+        ask?.run();
+        onClose();
+      }}
+    />
+  );
+}
+
+/** Doklad bez nákupu: „Priradiť k nákupu“ rozbalí nákupy bez dokladu so zhodou (prototyp A6). */
+function AssignTrip({ receipt: r }: { receipt: Receipt }) {
+  const [open, setOpen] = useState(false);
+  const candidates = useMatchCandidates(open ? r.id : undefined);
+  const attach = useAttachReceipt();
+  const toast = useToast();
+  const free = (candidates.data ?? []).filter((c) => !c.attached).slice(0, 5);
+
+  async function pick(listId: string, name: string, day: string) {
+    try {
+      await attach.mutateAsync({ receiptId: r.id, listId });
+      toast.show(t("detail.attachedTo", { name, day }), "success");
+      setOpen(false);
+    } catch (err) {
+      toast.show(readErrorMessage(err), "error");
+    }
+  }
+
+  return (
+    <>
+      <Cell
+        icon={
+          <span className="cat-ic sm">
+            <Unlink size={16} />
+          </span>
+        }
+        title={t("rpage.noTrip")}
+        sub={t("an.noTripHint")}
+      />
+      <button type="button" className="cell" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <Link2 size={18} color="var(--accent-text)" />
+        <span className="grow t-body fw-5 t-accent">{t("an.assignTrip")}</span>
+        <ChevronDown size={18} className="chev rc-chev" style={{ transform: open ? "rotate(180deg)" : undefined }} />
+      </button>
+      {open &&
+        (candidates.isPending ? (
+          <div className="cell t-sm t-2">
+            <Loader2 size={16} className="spin" /> {t("common.loading")}
+          </div>
+        ) : candidates.isError ? (
+          <div className="cell t-sm t-red">{readErrorMessage(candidates.error)}</div>
+        ) : free.length ? (
+          free.map((c) => (
+            <button
+              key={c.list_id}
+              type="button"
+              className="cell anim-rise"
+              disabled={attach.isPending}
+              onClick={() => void pick(c.list_id, c.name, dayLabel(c.completed_at))}
+            >
+              <StoreBadge name={c.name} size="sm" />
+              <span className="grow stack g-2">
+                <span className="t-body fw-5">
+                  {c.name} · {dayLabel(c.completed_at)}
+                </span>
+                <span className="t-xs t-2 num">
+                  {t("detail.tripScore", { pct: Math.round(c.score * 100), items: tn("rpage.items", c.hit.length + c.missing.length) })}
+                </span>
+              </span>
+              <Plus size={18} />
+            </button>
+          ))
+        ) : (
+          <div className="cell t-sm t-2 anim-rise">{t("detail.noFreeTrip")}</div>
+        ))}
+    </>
   );
 }
 
@@ -386,7 +548,7 @@ function SumCheck({
       </div>
     );
   const sum = r.items_sum ?? 0;
-  const diff = Math.round((r.total - sum) * 100) / 100;
+  const diff = round2(r.total - sum);
   if (Math.abs(diff) <= 0.05)
     return (
       <span className="row g-6 t-sm t-2">
@@ -416,23 +578,23 @@ function SumCheck({
   );
 }
 
-function ItemRow({ item: it, editable, onClick }: { item: ReceiptItem; editable: boolean; onClick: () => void }) {
-  const amount = it.quantity !== 1 || it.unit ? `${formatNumber(it.quantity, { maximumFractionDigits: 3 })} ${it.unit ? unitLabel(it.unit) : ""}`.trim() : null;
-  const meta = amount && it.unit_price != null ? `${amount} × ${formatMoney(it.unit_price)}` : amount;
+/** Položka (prototyp): pekný názov produktu, pod ním text z bločku strojovým písmom a „množstvo × cena“. */
+function ItemRow({ item: it, product, editable, onClick }: { item: ReceiptItem; product?: string; editable: boolean; onClick: () => void }) {
+  const unit = it.unit ? unitLabel(it.unit) : t("rpage.pieces");
+  const meta = `${formatNumber(it.quantity, { maximumFractionDigits: 3 })} ${unit}${it.unit_price != null ? ` × ${formatMoney(it.unit_price)}` : ""}`;
   const content = (
     <>
       <span className="grow stack g-2" style={{ minWidth: 0 }}>
-        <span className="t-body fw-5 ellipsis">{it.raw_name}</span>
-        {(meta || it.discount > 0) && (
-          <span className="t-xs t-2 num">
-            {meta}
-            {it.discount > 0 && (
-              <span className="badge b-green" style={{ marginLeft: meta ? 6 : 0 }}>
-                {t("detail.discount", { amount: formatMoney(it.discount) })}
-              </span>
-            )}
-          </span>
-        )}
+        <span className="t-body fw-5 ellipsis">{product ?? it.raw_name}</span>
+        {product && <span className="t-xs t-3 ellipsis rc-raw">{it.raw_name}</span>}
+        <span className="t-xs t-2 num">
+          {meta}
+          {it.discount > 0 && (
+            <span className="badge b-green" style={{ marginLeft: 6 }}>
+              {t("detail.discount", { amount: formatMoney(it.discount) })}
+            </span>
+          )}
+        </span>
       </span>
       <span className="t-body fw-6 num">{formatMoney(it.line_total)}</span>
     </>

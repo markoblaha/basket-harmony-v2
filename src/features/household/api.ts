@@ -192,3 +192,34 @@ export function useUpdateDisplayName(userId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.profiles }),
   });
 }
+
+/** Mesačný rozpočet domácnosti (celkový, bez kategórie); null = nenastavený. Ten istý ako v Analytike. */
+export function useMonthlyBudget(householdId: string) {
+  return useQuery({
+    queryKey: ["budget", householdId],
+    queryFn: async (): Promise<number | null> => {
+      const { data, error } = await supabase
+        .from("budgets")
+        .select("amount, category_id")
+        .eq("household_id", householdId)
+        .is("category_id", null)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.amount ?? null;
+    },
+  });
+}
+
+export function useSaveMonthlyBudget(householdId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (amount: number | null) => {
+      const { error } = await supabase.rpc("set_budget", { p_household_id: householdId, p_category_id: null, p_amount: amount });
+      if (error) throw error;
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["budget", householdId] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
+    },
+  });
+}

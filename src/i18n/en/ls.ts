@@ -201,4 +201,7 @@ export const enLs: Record<keyof typeof skLs, string> = {
   "ls.requestRejected": "Request declined",
   "ls.moveTargetSub": "{day} · {count}",
   "ls.listTitle": "List",
+  "ls.shopTitle": "Shopping",
+  "ls.shopEnded": "Shopping has ended",
+  "ls.shopEndedText": "You will find the bought items in the shopping history.",
 };

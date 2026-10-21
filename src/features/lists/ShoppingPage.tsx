@@ -201,6 +201,32 @@ export function ShoppingPage() {
     );
   }
 
+  // Sledovaný nákup medzitým skončil → prázdny stav s cestou do histórie (prototyp N4).
+  if (watching && !active && !session.isPending) {
+    return (
+      <div className="stack">
+        <header className="hdr with-back">
+          <button type="button" className="ibtn" onClick={() => setSearch({}, { replace: true })} aria-label={t("trip.backAria")}>
+            <ChevronLeft size={24} />
+          </button>
+          <div className="grow stack" style={{ minWidth: 0 }}>
+            <span className="ttl ellipsis">{t("ls.shopTitle")}</span>
+          </div>
+        </header>
+        <Empty
+          icon={ShoppingCart}
+          title={t("ls.shopEnded")}
+          text={t("ls.shopEndedText")}
+          action={
+            <button type="button" className="btn btn-soft" onClick={() => navigate("/history")}>
+              {t("ls.history")}
+            </button>
+          }
+        />
+      </div>
+    );
+  }
+
   const goRel = (d: number) => {
     const n = openLists[idx + d];
     if (n) navigate(`/lists/${n.id}`, { replace: true });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchStore, parseLocal } from "./parse";
+import { matchStore, parseLocal, splitStore } from "./parse";
 
 const add = (text: string) => parseLocal(text).filter((o) => o.op === "add");
 
@@ -66,5 +66,18 @@ describe("delenie vety bez čiarok", () => {
   it("prídavné meno ostáva pri podstatnom", () => {
     expect(names("maslo hovädzie mäso 250 g")).toEqual(["Maslo", "Hovädzie mäso 250 g"]);
     expect(names("kuracie prsia mlieko polotučné")).toEqual(["Kuracie prsia", "Mlieko polotučné"]);
+  });
+});
+
+describe("splitStore", () => {
+  const stores = ["Lidl", "Kaufland", "Billa", "Coop Jednota", "DM"];
+  it("oddelí známu predajňu v inom páde", () => {
+    expect(splitStore("idem do Lidla", stores)).toEqual({ store: "Lidl", rest: "" });
+    expect(splitStore("idem do Kauflandu, mlieko a rožky", stores)).toEqual({ store: "Kaufland", rest: "mlieko a rožky" });
+    expect(splitStore("v Coop Jednote maslo", stores)).toEqual({ store: "Coop Jednota", rest: "maslo" });
+  });
+  it("neznámu predajňu len za „idem do“", () => {
+    expect(splitStore("idem do Fresh", stores)).toEqual({ store: "Fresh", rest: "" });
+    expect(splitStore("mlieko a maslo", stores)).toEqual({ store: null, rest: "mlieko a maslo" });
   });
 });

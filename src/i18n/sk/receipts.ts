@@ -307,4 +307,5 @@ export const skReceipts = {
   "rpage.mergeTitle": "Spojiť doklady?",
   "rpage.deleteTitle": "Zmazať doklady?",
   "detail.edit": "Upraviť",
+  "rpage.pieces": "ks",
 } as const;

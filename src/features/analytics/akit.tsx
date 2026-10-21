@@ -221,7 +221,7 @@ export function WeekdayBars({ wd }: { wd: number[] }) {
   const gap = (W - bw * 7) / 6;
   const names = Array.from({ length: 7 }, (_, i) => formatDateTime(new Date(Date.UTC(2024, 0, 1 + i, 12)), { weekday: "short" }).replace(/\.$/, ""));
   return (
-    <svg className="an-chart" viewBox={`0 0 ${W} ${H + 34}`} width="100%" role="img" aria-label={wd.map((n, i) => `${names[i]} ${n}`).join(", ")}>
+    <svg className="an-chart" viewBox={`0 -8 ${W} ${H + 42}`} width="100%" role="img" aria-label={wd.map((n, i) => `${names[i]} ${n}`).join(", ")}>
       {wd.map((n, i) => {
         const h = n ? Math.max(4, (n / max) * H) : 2;
         const x = i * (bw + gap);

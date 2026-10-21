@@ -1,3 +1,7 @@
 /* Doplnky z prototypu – receipts. Farby len cez premenné tém. */
 @layer components {
+  /* Text riadku z bločku pod názvom produktu (prototyp A6/A7). */
+  .rc-raw { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
+  /* Šípka rozbaľovania sa otáča plynulo. */
+  .rc-chev { transition: transform 200ms cubic-bezier(.2,.8,.2,1); }
 }

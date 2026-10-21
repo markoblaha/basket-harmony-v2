@@ -199,4 +199,7 @@ export const skLs = {
   "ls.requestRejected": "Žiadosť odmietnutá",
   "ls.moveTargetSub": "{day} · {count}",
   "ls.listTitle": "Zoznam",
+  "ls.shopTitle": "Nákup",
+  "ls.shopEnded": "Nákup už skončil",
+  "ls.shopEndedText": "Kúpené položky nájdeš v histórii nákupov.",
 } as const;

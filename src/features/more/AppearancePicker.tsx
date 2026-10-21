@@ -1,44 +1,29 @@
 /**
- * Voľba vzhľadu (svetlá / tmavá / farebná / podľa systému) a jazyka.
+ * Voľba vzhľadu (svetlý / tmavý / farebný / podľa systému) a jazyka – ako v prototype (V1).
  *
  * Náhľady tém sú malé ukážky aplikácie nakreslené rolami z dizajnového systému
  * v pevnej téme (atribút data-theme-scope v styles.css) – nemenia sa podľa
  * aktuálnej témy, takže vždy ukazujú, ako bude aplikácia vyzerať po výbere.
  */
-import { Check } from "lucide-react";
+import { Seg } from "@/components/kit";
 import { cx } from "@/components/ui";
 import { LOCALES, t, useLocale, type Key, type Locale } from "@/i18n";
 import { useTheme, type ThemePreference } from "@/theme/ThemeProvider";
 
-/** Miniatúra obrazovky: nadpis, tri riadky zoznamu (jeden odškrtnutý) a hlavné tlačidlo. */
+/** Miniatúra obrazovky (ako v prototype): nadpis, karta a hlavné tlačidlo vpravo dole. */
 function Mini({ mode }: { mode: "light" | "dark" | "color" }) {
   return (
-    <div data-theme-scope={mode} className="absolute inset-0 flex flex-col gap-[5px] bg-bg p-3" style={mode === "color" ? { background: "var(--mesh)" } : undefined}>
-      <i className="mb-0.5 block h-[6px] w-[46%] rounded-full bg-text" />
-      {[false, true, false].map((done, i) => (
-        <div key={i} className="flex h-[17px] items-center gap-[5px] rounded-[5px] bg-surface px-[5px]">
-          <span className={cx("size-[7px] shrink-0 rounded-[2px]", done ? "bg-accent" : "shadow-[inset_0_0_0_1.5px_var(--line-strong)]")} />
-          <i className={cx("block h-[3px] flex-1 rounded-full bg-line-strong", done && "opacity-50")} />
-        </div>
-      ))}
-      <i className="mt-auto block h-[15px] rounded-[6px] bg-primary" />
-    </div>
+    <span
+      data-theme-scope={mode}
+      className="mr-mini"
+      style={mode === "color" ? { background: "var(--mesh)" } : undefined}
+      aria-hidden
+    >
+      <i className="mr-mini-ttl" />
+      <i className="mr-mini-card" />
+      <i className="mr-mini-btn" />
+    </span>
   );
-}
-
-function ThemePreview({ theme }: { theme: ThemePreference }) {
-  if (theme === "system") {
-    return (
-      <>
-        <Mini mode="light" />
-        {/* Tmavá polovica vpravo dole: „podľa zariadenia“ je buď jedno, alebo druhé. */}
-        <div className="absolute inset-0" style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}>
-          <Mini mode="dark" />
-        </div>
-      </>
-    );
-  }
-  return <Mini mode={theme} />;
 }
 
 const THEMES: { id: ThemePreference; label: Key }[] = [
@@ -51,47 +36,39 @@ const THEMES: { id: ThemePreference; label: Key }[] = [
 export function ThemePicker() {
   const { preference, resolved, setPreference } = useTheme();
   return (
-    <div>
-      <fieldset className="grid grid-cols-4 gap-2.5">
-        <legend className="sr-only">{t("more.appearance.title")}</legend>
+    <div className="card stack g-10" style={{ padding: 12 }}>
+      <div className="row g-8" role="radiogroup" aria-label={t("more.appearance.title")}>
         {THEMES.map(({ id, label }) => {
-          const checked = preference === id;
+          const on = preference === id;
           return (
-            <label key={id} className="flex cursor-pointer flex-col gap-2">
-              <input
-                type="radio"
-                name="theme"
-                value={id}
-                checked={checked}
-                onChange={() => setPreference(id)}
-                className="peer sr-only"
-              />
-              <span
-                className={cx(
-                  "relative block aspect-[4/5] overflow-hidden rounded-xl border transition-[box-shadow,border-color] duration-200",
-                  "peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-bg",
-                  checked ? "border-primary shadow-[0_0_0_2px_var(--primary)]" : "border-line-strong",
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              className="grow stack g-6"
+              style={{ alignItems: "center" }}
+              onClick={() => setPreference(id)}
+            >
+              <span className={cx("mr-theme", on && "on")}>
+                {id === "system" ? (
+                  <>
+                    <Mini mode="light" />
+                    <Mini mode="dark" />
+                  </>
+                ) : (
+                  <Mini mode={id} />
                 )}
-              >
-                <ThemePreview theme={id} />
               </span>
-              <span
-                className={cx(
-                  "flex min-h-6 items-center justify-center gap-1 text-center text-footnote font-strong",
-                  checked ? "text-text" : "text-text-2",
-                )}
-              >
-                {checked && <Check className="size-3.5" strokeWidth={2.4} aria-hidden />}
-                {t(label)}
-              </span>
-            </label>
+              <span className={cx("t-sm", on ? "fw-6" : "t-2")}>{t(label)}</span>
+            </button>
           );
         })}
-      </fieldset>
+      </div>
       {preference === "system" && (
-        <p className="mt-3 px-0.5 text-sm text-text-3">
+        <span className="t-xs t-3" style={{ padding: "0 4px" }}>
           {resolved === "dark" ? t("more.appearance.nowDark") : t("more.appearance.nowLight")}
-        </p>
+        </span>
       )}
     </div>
   );
@@ -99,44 +76,15 @@ export function ThemePicker() {
 
 const LANGUAGE_LABEL: Record<Locale, Key> = { sk: "more.language.sk", en: "more.language.en" };
 
-export function LanguagePicker() {
+/** Jazyk: prepínač v riadku nastavení (Slovenčina | English). */
+export function LanguagePicker({ style }: { style?: React.CSSProperties }) {
   const { locale, setLocale } = useLocale();
   return (
-    <fieldset className="grid grid-cols-2 gap-3">
-      <legend className="sr-only">{t("more.language.title")}</legend>
-      {LOCALES.map((code) => {
-        const checked = locale === code;
-        return (
-          <label key={code} className="cursor-pointer">
-            <input
-              type="radio"
-              name="language"
-              value={code}
-              checked={checked}
-              onChange={() => setLocale(code)}
-              className="peer sr-only"
-            />
-            <span
-              className={cx(
-                "flex min-h-14 items-center justify-center gap-3 rounded-[var(--radius-surface)] border px-3 font-strong transition-colors duration-200",
-                "peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-bg",
-                checked ? "border-transparent bg-primary-soft text-primary shadow-[inset_0_0_0_1.5px_var(--primary)]" : "border-transparent bg-surface text-text shadow-card active:bg-pressed",
-              )}
-            >
-              <span
-                className={cx(
-                  "grid h-6 min-w-8 place-items-center rounded-sm px-1 text-xs font-semibold tracking-wider",
-                  checked ? "bg-primary text-on-primary" : "bg-sunken text-text-2",
-                )}
-                aria-hidden
-              >
-                {code.toUpperCase()}
-              </span>
-              {t(LANGUAGE_LABEL[code])}
-            </span>
-          </label>
-        );
-      })}
-    </fieldset>
+    <Seg
+      style={{ width: 170, ...style }}
+      options={LOCALES.map((code) => ({ value: code, label: t(LANGUAGE_LABEL[code]) }))}
+      value={locale}
+      onChange={(v) => setLocale(v)}
+    />
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ChefHat, ChevronRight, History, Lock, Plus, ReceiptText, ShoppingBasket, ShoppingCart } from "lucide-react";
 import { ErrorState, Spinner, cx } from "@/components/ui";
 import { Avatars, Cell, Empty, ProgressBar, ScreenHeader, StoreBadge, useLongPress, type Person } from "@/components/kit";
@@ -33,11 +33,14 @@ export function ShoppingHub() {
   const [params, setParams] = useSearchParams();
   // „Nový zoznam“ z iných obrazoviek (prepínač zoznamov) otvorí panel rovno tu.
   const [creating, setCreating] = useState(() => params.get("novy") === "1");
-  // Nový zoznam (napr. z receptov: /?zvyraznit=<id>) sa krátko rozsvieti so štítkom „Nový“.
-  const [fresh] = useState(() => {
-    const id = params.get("zvyraznit");
-    return id ? { id, at: Date.now() } : null;
-  });
+  // Nový zoznam (z receptov: navigate("/", { state: { highlight: id } }) alebo /?zvyraznit=<id>)
+  // sa krátko rozsvieti so štítkom „Nový“ – ako v prototype N1.
+  const location = useLocation();
+  const highlight = (location.state as { highlight?: string } | null)?.highlight ?? params.get("zvyraznit");
+  const [fresh, setFresh] = useState<{ id: string; at: number } | null>(null);
+  useEffect(() => {
+    if (highlight) setFresh({ id: highlight, at: Date.now() });
+  }, [highlight, location.key]);
   useEffect(() => {
     if (params.has("novy") || params.has("zvyraznit")) setParams({}, { replace: true });
   }, [params, setParams]);
@@ -114,6 +117,7 @@ export function ShoppingHub() {
                 people={participants(l, stats.data?.get(l.id)?.adders ?? [], people)}
                 recipes={recipesOf(l.id)}
                 fresh={fresh?.id === l.id && Date.now() - fresh.at < 4000}
+                freshKey={fresh?.id === l.id ? fresh.at : 0}
                 onActions={() => setActionsFor(l)}
               />
             ))}
