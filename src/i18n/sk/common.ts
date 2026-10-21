@@ -22,6 +22,11 @@ export const skCommon = {
   "common.retry": "Skúsiť znova",
   "common.loadFailed": "Nepodarilo sa načítať údaje",
 
+  "common.undo": "Vrátiť",
+  "kit.remove": "Odstrániť",
+  "kit.less": "Menej",
+  "kit.more": "Viac",
+
   "status.offline": "Si offline – zmeny sa neuložia, kým sa nepripojíš.",
   "status.reconnecting": "Obnovujem živé spojenie…",
   "status.testEnv": "Testovacie prostredie",

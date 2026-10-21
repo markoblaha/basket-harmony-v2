@@ -8,6 +8,7 @@ import { TestEnvBadge } from "./components/ui";
 import { I18nProvider } from "./i18n";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import "./styles.css";
+import "./design.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

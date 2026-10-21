@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Plus, Star } from "lucide-react";
+import { Minus, Plus, Star } from "lucide-react";
 import { Button, Sheet, TextField, cx } from "@/components/ui";
+import { CatIcon, Seg, haptic, useLongPress } from "@/components/kit";
 import { useToast } from "@/components/toast";
-import { normalizeName } from "@/lib/categories";
+import { guessCategory, normalizeName } from "@/lib/categories";
+import { unitLabel } from "@/lib/parseItem";
 import { errorMessage } from "@/lib/errors";
 import { t } from "@/i18n";
 import { useFavoriteTiles, useFrequentItems, useRemoveFavorite, useSaveFavorite, type FavoriteTile, type Item } from "./api";
@@ -12,8 +14,7 @@ import type { FeedEntry } from "./feed";
 const SLOTS = 12;
 const MAX_FAVORITES = 12;
 /** Po poslednom ťuknutí počkáme chvíľu – ďalšie ťuknutia pripočítavajú kusy. */
-const COMMIT_MS = 1400;
-const LONG_PRESS_MS = 480;
+const COMMIT_MS = 2000;
 
 /** Pre novú domácnosť bez histórie, kým sa naučíme, čo kupujete (v jazyku rozhrania). */
 const starters = () => t("tiles.starters").split("|");
@@ -106,7 +107,7 @@ export function QuickTiles({
       if (k) next.push(k);
       else {
         const fill = pool.shift();
-        if (!fill) break;
+        if (!fill) continue;
         next.push(fill);
         if (prev.length) changed.add(i);
       }
@@ -168,91 +169,94 @@ export function QuickTiles({
 
   const [editor, setEditor] = useState<{ tile: FavoriteTile | null } | null>(null);
 
-  return (
-    <div>
-      <div role="tablist" aria-label={t("shop.quickAdd")} className="grid grid-cols-2 rounded-[var(--radius-control)] bg-sunken p-[3px]">
-        {(
-          [
-            ["freq", t("tiles.frequent")],
-            ["fav", t("tiles.favorites", { n: favs.length })],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={cx(
-              "h-10 rounded-lg text-sm font-strong transition-colors duration-200",
-              tab === id ? "bg-elevated text-text shadow-card" : "text-text-2",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+  function dec(name: string) {
+    const cur = pendingRef.current[name];
+    if (!cur) return;
+    const old = timers.current.get(name);
+    if (old) window.clearTimeout(old);
+    timers.current.delete(name);
+    if (cur.n <= 1) {
+      setPending((p) => {
+        const { [name]: _gone, ...rest } = p;
+        return rest;
+      });
+      return;
+    }
+    // Menej o jeden a odpočet znova od začiatku.
+    setPending((p) => ({ ...p, [name]: { n: cur.n - 1, flip: !cur.flip } }));
+    timers.current.set(
+      name,
+      window.setTimeout(() => {
+        timers.current.delete(name);
+        const entry = pendingRef.current[name];
+        setPending((p) => {
+          const { [name]: _gone, ...rest } = p;
+          return rest;
+        });
+        if (entry) {
+          committed.current.add(normalizeName(name));
+          onAdd(name, entry.n);
+        }
+      }, COMMIT_MS),
+    );
+  }
 
-      <div className="mt-3 grid grid-cols-4 gap-2">
+  const tile = (key: string, label: string, itemName: string, fav: boolean, extra?: { onLong?: () => void; className?: string }) => {
+    const p = pending[itemName];
+    const onList = openByKey.get(normalizeName(itemName));
+    return (
+      <Tile
+        key={key}
+        label={label}
+        category={guessCategory(itemName)}
+        pending={p}
+        sub={p ? unitLabel("ks") : onList ? t("tiles.onList", { qty: qtyLabel(countOf(onList.quantity), onList.unit) }) : ""}
+        fav={fav}
+        className={extra?.className}
+        onTap={() => tap(itemName)}
+        onMinus={() => dec(itemName)}
+        onStar={() => void toggleStar(itemName)}
+        onLong={extra?.onLong}
+        aria={p ? t("tiles.addAriaPending", { name: label, qty: qtyLabel(p.n, null) }) : t("tiles.addAria", { name: label })}
+        starAria={fav ? t("tiles.unstar", { name: label }) : t("tiles.star", { name: label })}
+      />
+    );
+  };
+
+  return (
+    <section className="stack g-10">
+      <div className="row between g-8">
+        <span className="section-title" style={{ whiteSpace: "nowrap" }}>{t("shop.quickAdd")}</span>
+        <Seg
+          value={tab}
+          onChange={setTab}
+          style={{ width: 220 }}
+          options={[
+            { value: "freq", label: t("tiles.frequent") },
+            { value: "fav", label: t("tiles.favorites", { n: favs.length }) },
+          ]}
+        />
+      </div>
+      <div className="tiles">
         {tab === "freq"
-          ? slots.map((name, i) => {
-              const p = pending[name];
-              const fav = favByKey.has(normalizeName(name));
-              return (
-                <div key={`${i}-${slotKeys[i] ?? 0}`} className={cx("relative", (slotKeys[i] ?? 0) > 0 && "[animation:bh-tile-in_.2s_ease-out]")}>
-                  <Tile label={name} pending={p} onTap={() => tap(name)} aria={p ? t("tiles.addAriaPending", { name, qty: qtyLabel(p.n, null) }) : t("tiles.addAria", { name })} />
-                  <button
-                    type="button"
-                    onClick={() => toggleStar(name)}
-                    aria-label={fav ? t("tiles.unstar", { name }) : t("tiles.star", { name })}
-                    aria-pressed={fav}
-                    className={cx(
-                      "absolute right-0 top-0 z-[2] grid size-8 place-items-center rounded-bl-lg rounded-tr-lg",
-                      fav ? "text-primary" : p ? "text-primary/60" : "text-line-strong",
-                    )}
-                  >
-                    <Star key={String(fav)} className={cx("size-[0.9375rem]", "[animation:bh-tile-in_.2s_ease-out]")} fill={fav ? "currentColor" : "none"} strokeWidth={2} aria-hidden />
-                  </button>
-                </div>
-              );
-            })
-          : [
-              ...favs.map((f) => {
-                const p = pending[f.item_name];
-                const onList = openByKey.get(normalizeName(f.item_name));
-                return (
-                  <div key={f.id} className="relative">
-                    <Tile
-                      label={f.label}
-                      pending={p}
-                      badge={!p && onList ? qtyLabel(countOf(onList.quantity), onList.unit) : undefined}
-                      onTap={() => tap(f.item_name)}
-                      onLongPress={() => setEditor({ tile: f })}
-                      aria={t("tiles.addFavAria", { name: f.item_name })}
-                    />
-                  </div>
-                );
+          ? slots.map((name, i) =>
+              tile(`${i}-${slotKeys[i] ?? 0}`, name, name, favByKey.has(normalizeName(name)), {
+                className: (slotKeys[i] ?? 0) > 0 ? "anim-pop" : undefined,
               }),
+            )
+          : [
+              ...favs.map((f) => tile(f.id, f.label, f.item_name, true, { onLong: () => setEditor({ tile: f }) })),
               favs.length < MAX_FAVORITES && (
-                <button
-                  key="new"
-                  type="button"
-                  onClick={() => setEditor({ tile: null })}
-                  className="flex h-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-lg bg-sunken text-xs font-strong text-primary active:scale-95"
-                >
-                  <Plus className="size-[1.125rem]" strokeWidth={2.4} aria-hidden />
-                  {t("tiles.new")}
+                <button key="new" type="button" className="ls-tile" onClick={() => setEditor({ tile: null })} style={{ color: "var(--accent-text)" }}>
+                  <Plus size={20} strokeWidth={2.4} aria-hidden />
+                  <span className="nm">{t("tiles.new")}</span>
                 </button>
               ),
             ]}
       </div>
-      <p className="mt-2 px-1 text-xs text-text-2">
-        {tab === "freq"
-          ? t("tiles.hintFrequent")
-          : favs.length
-            ? t("tiles.hintFavorites")
-            : t("tiles.hintNoFavorites")}
-      </p>
+      <span className="t-xs t-3" style={{ padding: "0 4px" }}>
+        {tab === "freq" ? t("tiles.hintFrequent") : favs.length ? t("tiles.hintFavorites") : t("tiles.hintNoFavorites")}
+      </span>
 
       {editor && (
         <TileEditor
@@ -284,7 +288,7 @@ export function QuickTiles({
           saving={save.isPending}
         />
       )}
-    </div>
+    </section>
   );
 }
 
@@ -292,85 +296,69 @@ function nextPosition(favs: FavoriteTile[]) {
   return favs.reduce((m, f) => Math.max(m, f.position), 0) + 1;
 }
 
+/** Dlaždica rýchleho pridania (prototyp): ikona kategórie, názov, ťuk = +1, po 2 s sa pridá (odpočet okolo okraja). */
 function Tile({
   label,
+  category,
   pending,
-  badge,
+  sub,
+  fav,
+  className,
   onTap,
-  onLongPress,
+  onMinus,
+  onStar,
+  onLong,
   aria,
+  starAria,
 }: {
   label: string;
+  category: string;
   pending?: { n: number; flip: boolean };
-  badge?: string;
+  sub: string;
+  fav: boolean;
+  className?: string;
   onTap: () => void;
-  onLongPress?: () => void;
+  onMinus: () => void;
+  onStar: () => void;
+  onLong?: () => void;
   aria: string;
+  starAria: string;
 }) {
-  const timer = useRef<number | null>(null);
-  const fired = useRef(false);
-  const [holding, setHolding] = useState(false);
-
-  function down() {
-    if (!onLongPress) return;
-    fired.current = false;
-    setHolding(true);
-    timer.current = window.setTimeout(() => {
-      fired.current = true;
-      setHolding(false);
-      navigator.vibrate?.(12);
-      onLongPress();
-    }, LONG_PRESS_MS);
-  }
-  function up() {
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = null;
-    setHolding(false);
-  }
-
+  const lp = useLongPress({
+    onTap: () => {
+      haptic(8);
+      onTap();
+    },
+    onLong,
+  });
+  const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onPointerUp: (e: React.PointerEvent) => e.stopPropagation() };
   return (
-    <button
-      type="button"
-      aria-label={aria}
-      onClick={() => {
-        if (fired.current) {
-          fired.current = false;
-          return;
-        }
-        navigator.vibrate?.(6);
-        onTap();
-      }}
-      onPointerDown={down}
-      onPointerUp={up}
-      onPointerLeave={up}
-      onPointerCancel={up}
-      onContextMenu={(e) => onLongPress && e.preventDefault()}
-      className={cx(
-        "relative flex h-[3.75rem] w-full select-none items-end overflow-hidden rounded-lg px-2 pb-2 pt-2 text-left shadow-card transition-[transform,background-color,color,box-shadow] duration-200 [-webkit-touch-callout:none] active:scale-[0.96]",
-        pending ? "bg-primary-soft text-text shadow-[inset_0_0_0_1.5px_var(--primary)]" : "bg-surface text-text",
-        holding && "scale-95 shadow-[inset_0_0_0_1.5px_var(--primary)]",
-      )}
-    >
-      {holding && <span aria-hidden className="absolute inset-0 origin-left bg-primary/10 [animation:bh-hold_.48s_linear_forwards]" />}
-      <span className={cx("line-clamp-2 pr-1 font-strong leading-[1.15]", label.length > 14 ? "text-xs" : "text-footnote")}>{label}</span>
+    <div className={cx("ls-tile", className)} role="button" tabIndex={0} aria-label={aria} {...lp}>
       {pending && (
-        <>
-          <span
-            key={String(pending.flip)}
-            className="absolute left-2 top-2 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-2 text-xs font-semibold text-on-primary [animation:bh-pop_.2s_ease]"
-          >
-            +{pending.n}
-          </span>
-          <span key={`bar-${pending.flip}`} aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] origin-left bg-primary [animation:bh-shrink_1.4s_linear_forwards]" />
-        </>
+        <svg key={String(pending.flip)} className="lsring" viewBox="0 0 100 104" preserveAspectRatio="none" aria-hidden>
+          <rect x="1.2" y="1.2" width="97.6" height="101.6" rx="16" ry="16" pathLength="100" vectorEffect="non-scaling-stroke" />
+        </svg>
       )}
-      {badge && (
-        <span className="absolute left-2 top-2 flex items-center gap-1 text-xs font-strong text-success">
-          <span className="size-1.5 rounded-full bg-success-solid" aria-hidden />
-          {badge}
+      {pending ? (
+        <span className="big" key={pending.n}>
+          +{pending.n}
         </span>
+      ) : (
+        <CatIcon id={category} size="sm" />
       )}
-    </button>
+      <span className="nm">{label}</span>
+      <span className="t-xs t-3" style={{ fontSize: 10.5, lineHeight: "12px", minHeight: 12 }}>
+        {sub}
+      </span>
+      {pending && (
+        <button type="button" className="minus" aria-label={t("tiles.oneLess")} {...stop} onClick={(e) => (e.stopPropagation(), onMinus())}>
+          <Minus size={15} />
+        </button>
+      )}
+      <button type="button" className={cx("star", fav && "on")} aria-label={starAria} aria-pressed={fav} {...stop} onClick={(e) => (e.stopPropagation(), onStar())}>
+        <Star size={13} fill={fav ? "currentColor" : "none"} />
+      </button>
+    </div>
   );
 }
 

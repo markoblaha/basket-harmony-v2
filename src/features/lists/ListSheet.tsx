@@ -1,27 +1,31 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { Archive, CalendarDays, Lock, Users } from "lucide-react";
-import { Avatar, Button, Sheet, cx } from "@/components/ui";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
+import { ChevronDown, ChevronUp, Lock, Plus, TriangleAlert, Users } from "lucide-react";
+import { BottomSheet, Seg, SheetHeader, StoreBadge } from "@/components/kit";
 import { useToast } from "@/components/toast";
+import { cx } from "@/components/ui";
 import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
-import { useCreateList, useUpdateList, type ShoppingList } from "./api";
 import { formatDateTime, t } from "@/i18n";
+import { useCreateList, useUpdateList, type ShoppingList } from "./api";
 import { addDays, dayLabel, isoDay, nextSaturday } from "./dates";
 
-const storeSuggestions = () => ["Lidl", "Kaufland", "Tesco", "Billa", "DM", "Teta", t("lsheet.pharmacy"), "Pepco", "IKEA"];
+const STORES = ["Lidl", "Kaufland", "Tesco", "Billa", "DM", "Teta"];
+
+type Day = "today" | "tomorrow" | "sat" | "pick";
 
 /**
- * Nový nákup (alebo úprava existujúceho). Hore prepínač, kto ho uvidí:
- * celá skupina naživo, alebo „Len ja“ – súkromný zoznam, ktorý sa nikomu nezdieľa.
+ * N2 – nový zoznam alebo úprava existujúceho (podľa prototypu): Kde (obchody ako čipy,
+ * „Zatiaľ neviem“, „Iný…“), Kedy (dnes, zajtra, sobota, vybrať dátum), Pre koho
+ * (domácnosť / Len ja) a pod „Ďalšie možnosti“ poznámka.
  */
 export function ListSheet({
   open,
   onClose,
   householdId,
   householdName,
-  memberNames,
   me,
-  recentNames,
+  lists,
   list,
   onCreated,
 }: {
@@ -29,230 +33,207 @@ export function ListSheet({
   onClose: () => void;
   householdId: string;
   householdName: string;
-  memberNames: string[];
   me: string;
-  /** Obchody z histórie – ponúkneme ich ako prvé. */
-  recentNames: string[];
-  /** Úprava existujúceho nákupu. */
+  /** Všetky zoznamy domácnosti – pre poradie obchodov a upozornenie na duplicitu. */
+  lists: ShoppingList[];
+  /** Úprava existujúceho zoznamu. */
   list?: ShoppingList | null;
   onCreated?: (id: string) => void;
 }) {
+  const navigate = useNavigate();
+  const toast = useToast();
   const create = useCreateList(householdId);
   const update = useUpdateList(householdId);
-  const toast = useToast();
-  const editing = !!list;
-  const canChangePrivacy = !list || list.created_by === me;
+  const edit = list ?? null;
+  const canChangePrivacy = !edit || edit.created_by === me;
 
-  const [isPrivate, setPrivate] = useState(list?.is_private ?? false);
-  const [name, setName] = useState(list?.name ?? "");
-  const [planned, setPlanned] = useState<string | null>(list?.planned_for ?? isoDay(new Date()));
-  const [note, setNote] = useState(list?.note ?? "");
-
+  // Obchody zoradené podľa počtu nákupov v histórii, potom bežné obchody.
   const stores = useMemo(() => {
-    const seen = new Set<string>();
-    return [...recentNames, ...storeSuggestions()].filter((n) => {
-      const k = normalizeName(n);
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    }).slice(0, 9);
-  }, [recentNames]);
+    const count = new Map<string, { name: string; n: number }>();
+    for (const l of lists) {
+      const k = normalizeName(l.name);
+      const c = count.get(k) ?? { name: l.name, n: 0 };
+      c.n++;
+      count.set(k, c);
+    }
+    const known = STORES.map((name) => ({ name, n: count.get(normalizeName(name))?.n ?? 0 }));
+    return known.sort((a, b) => b.n - a.n).map((s) => s.name);
+  }, [lists]);
 
+  const isKnown = (n: string) => stores.some((s) => normalizeName(s) === normalizeName(n));
   const today = isoDay(new Date());
   const tomorrow = isoDay(addDays(new Date(), 1));
-  const saturday = isoDay(nextSaturday());
-  const dayChips: [string, string | null][] = [
-    [t("lsheet.today"), today],
-    [t("lsheet.tomorrow"), tomorrow],
-    ...(saturday !== today && saturday !== tomorrow ? ([[t("lsheet.saturday", { date: formatDateTime(nextSaturday(), { day: "numeric", month: "numeric" }) }), saturday]] as [string, string][]) : []),
-    [t("lsheet.noDay"), null],
+  const sat = isoDay(nextSaturday(addDays(new Date(), 1)));
+
+  const [store, setStore] = useState<string | null>(edit && isKnown(edit.name) ? edit.name : null);
+  const [custom, setCustom] = useState(edit && !isKnown(edit.name) ? edit.name : "");
+  const [showCustom, setShowCustom] = useState(!!edit && !isKnown(edit.name));
+  const [unsure, setUnsure] = useState(false);
+  const initialDay: Day = !edit ? "today" : edit.planned_for === today ? "today" : edit.planned_for === tomorrow ? "tomorrow" : edit.planned_for === sat ? "sat" : "pick";
+  const [day, setDay] = useState<Day>(initialDay);
+  const [picked, setPicked] = useState(edit?.planned_for ?? isoDay(addDays(new Date(), 2)));
+  const [shared, setShared] = useState(edit ? !edit.is_private : true);
+  const [more, setMore] = useState(false);
+  const [note, setNote] = useState(edit?.note ?? "");
+
+  const date = day === "today" ? today : day === "tomorrow" ? tomorrow : day === "sat" ? sat : picked;
+  const name = showCustom || unsure ? custom.trim() || (unsure ? t("ls.defaultName") : "") : (store ?? "");
+  const canCreate = !!name;
+  const dup = name
+    ? lists.find((l) => !l.completed_at && l.id !== edit?.id && l.planned_for === date && normalizeName(l.name) === normalizeName(name))
+    : undefined;
+  const busy = create.isPending || update.isPending;
+
+  async function submit() {
+    if (!canCreate || busy) return;
+    try {
+      if (edit) {
+        await update.mutateAsync({
+          id: edit.id,
+          patch: { name, planned_for: date, note: note.trim() || null, ...(canChangePrivacy ? { is_private: !shared } : {}) },
+        });
+        onClose();
+        toast.show(t("ls.edited"));
+        return;
+      }
+      const id = await create.mutateAsync({ name, isPrivate: !shared, plannedFor: date, note: note.trim() || null });
+      onClose();
+      onCreated?.(id);
+      toast.show(t("ls.created", { name, day: dayLabel(date) }));
+    } catch (err) {
+      toast.show(errorMessage(err), "error");
+    }
+  }
+
+  const dayChips: [Day, string][] = [
+    ["today", t("lsheet.today")],
+    ["tomorrow", t("lsheet.tomorrow")],
+    ["sat", dayLabel(sat)],
+    ["pick", day === "pick" ? formatDateTime(new Date(`${picked}T12:00:00`), { day: "numeric", month: "numeric" }) : t("ls.pickDate")],
   ];
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    const n = name.trim();
-    if (!n) return;
-    try {
-      if (list) {
-        await update.mutateAsync({
-          id: list.id,
-          patch: { name: n, planned_for: planned, note: note.trim() || null, ...(canChangePrivacy ? { is_private: isPrivate } : {}) },
-        });
-        toast.show(t("lsheet.edited"), "success");
-        onClose();
-      } else {
-        const id = await create.mutateAsync({ name: n, isPrivate, plannedFor: planned, note: note.trim() || null });
-        onClose();
-        onCreated?.(id);
-      }
-    } catch (err) {
-      toast.show(errorMessage(err), "error");
-    }
-  }
-
-  async function archive() {
-    if (!list) return;
-    try {
-      await update.mutateAsync({ id: list.id, patch: { is_archived: true } });
-      toast.show(t("lsheet.archived", { name: list.name }));
-      onClose();
-    } catch (err) {
-      toast.show(errorMessage(err), "error");
-    }
-  }
-
   return (
-    <Sheet open={open} onClose={onClose} title={editing ? t("trip.edit") : t("hub.new")}>
-      <form onSubmit={submit} className="flex flex-col gap-6">
-        {/* Kto ho uvidí */}
-        <div>
-          <div role="radiogroup" aria-label={t("lsheet.whoAria")} className={cx("grid grid-cols-2 gap-1 rounded-lg bg-sunken p-1", !canChangePrivacy && "opacity-50")}>
-            {(
-              [
-                [false, householdName, t("lsheet.shared"), <Users key="u" className="size-4" aria-hidden />],
-                [true, t("trip.onlyMe"), t("hub.private"), <Lock key="l" className="size-4" aria-hidden />],
-              ] as const
-            ).map(([priv, title, sub, icon]) => (
+    <BottomSheet open={open} onClose={onClose} label={edit ? t("ls.editTitle") : t("ls.newList")}>
+      <SheetHeader title={edit ? t("ls.editTitle") : t("ls.newList")} onClose={onClose} />
+      <div className="sheet-body stack g-20">
+        <section className="stack g-10">
+          <span className="field-label">{t("ls.where")}</span>
+          <div className="row wrap g-8">
+            {stores.map((s) => (
               <button
-                key={String(priv)}
+                key={s}
                 type="button"
-                role="radio"
-                aria-checked={isPrivate === priv}
-                disabled={!canChangePrivacy}
-                onClick={() => setPrivate(priv)}
-                className={cx(
-                  "flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors duration-200",
-                  isPrivate === priv ? "bg-elevated shadow-card" : "text-text-2",
-                )}
+                className={cx("chip lg", !showCustom && !unsure && store === s && "on")}
+                style={{ paddingLeft: 6 }}
+                onClick={() => {
+                  setStore(s);
+                  setShowCustom(false);
+                  setUnsure(false);
+                }}
               >
-                <span className={cx("grid size-8 shrink-0 place-items-center rounded-full", isPrivate === priv ? "bg-primary-soft text-primary" : "bg-surface/60")}>
-                  {icon}
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-strong">{title}</span>
-                  <span className="block text-xs text-text-2">{sub}</span>
-                </span>
+                <StoreBadge name={s} size="sm" />
+                {s}
               </button>
             ))}
+            <button
+              type="button"
+              className={cx("chip lg", unsure && "on")}
+              onClick={() => {
+                setUnsure(true);
+                setShowCustom(false);
+                setStore(null);
+              }}
+            >
+              {t("ls.unsure")}
+            </button>
+            <button
+              type="button"
+              className={cx("chip lg", showCustom && "on")}
+              onClick={() => {
+                setShowCustom(true);
+                setUnsure(false);
+              }}
+            >
+              <Plus size={15} />
+              {t("ls.other")}
+            </button>
           </div>
-          <p className="mt-2 flex items-center gap-2 px-1 text-footnote text-text-2" aria-live="polite">
-            {isPrivate ? (
-              <>
-                <Lock className="size-3.5 shrink-0" aria-hidden />
-                {t("lsheet.privateNote")}
-              </>
-            ) : (
-              <>
-                <span className="flex shrink-0">
-                  {memberNames.slice(0, 3).map((n, i) => (
-                    <span key={n + i} className={cx(i > 0 && "-ml-2 rounded-full ring-2 ring-surface")}>
-                      <Avatar name={n} size="sm" me={i === 0} />
-                    </span>
-                  ))}
-                </span>
-                {t("lsheet.sharedNote")}
-              </>
-            )}
-          </p>
-          {!canChangePrivacy && <p className="mt-1 px-0.5 text-xs text-text-3">{t("lsheet.privacyLocked")}</p>}
-        </div>
-
-        {/* Kde */}
-        <div>
-          <label htmlFor="list-name" className="mb-2 block text-footnote font-medium text-text-2">
-            {t("lsheet.where")}
-          </label>
-          <input
-            id="list-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("lsheet.wherePlaceholder")}
-            maxLength={60}
-            autoComplete="off"
-            className="h-12 w-full rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-4 text-base font-strong outline-none transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-text-3 focus:border-primary focus:ring-3 focus:ring-primary/20"
-          />
-          <div className="mt-2 flex flex-wrap gap-2">
-            {stores.map((s) => {
-              const on = normalizeName(s) === normalizeName(name);
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setName(s)}
-                  className={cx(
-                    "h-11 rounded-full px-4 text-sm font-strong transition-colors duration-[120ms]",
-                    on ? "bg-primary-soft text-primary shadow-[inset_0_0_0_1.5px_var(--primary)]" : "bg-sunken text-text active:bg-pressed",
-                  )}
-                >
-                  {s}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Kedy */}
-        <div>
-          <span className="mb-2 block text-footnote font-medium text-text-2">{t("lsheet.when")}</span>
-          <div className="flex flex-wrap items-center gap-2">
-            {dayChips.map(([label, value]) => (
+          {(showCustom || unsure) && (
+            <input
+              className="input anim-pop"
+              autoFocus
+              maxLength={60}
+              placeholder={unsure ? t("ls.nameOptional") : t("ls.namePlaceholder")}
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+            />
+          )}
+          {dup && (
+            <div className="row g-10 anim-pop" style={{ padding: "10px 12px", borderRadius: 12, background: "var(--yellow-soft)", color: "var(--yellow)" }}>
+              <TriangleAlert size={16} />
+              <span className="grow t-sm fw-5">{t("ls.duplicateWarn", { name: dup.name, day: dayLabel(date) })}</span>
               <button
-                key={label}
                 type="button"
-                aria-pressed={planned === value}
-                onClick={() => setPlanned(value)}
-                className={cx(
-                  "h-11 rounded-full px-4 text-sm font-strong transition-colors duration-[120ms]",
-                  planned === value ? "bg-primary-soft text-primary shadow-[inset_0_0_0_1.5px_var(--primary)]" : "bg-sunken text-text active:bg-pressed",
-                )}
+                className="btn btn-sm btn-line"
+                onClick={() => {
+                  onClose();
+                  navigate(`/lists/${dup.id}`);
+                }}
               >
+                {t("ls.open")}
+              </button>
+            </div>
+          )}
+        </section>
+
+        <section className="stack g-10">
+          <span className="field-label">{t("lsheet.when")}</span>
+          <div className="row wrap g-8">
+            {dayChips.map(([v, label]) => (
+              <button key={v} type="button" className={cx("chip lg", day === v && "on")} onClick={() => setDay(v)}>
                 {label}
               </button>
             ))}
-            <label
-              className={cx(
-                "relative flex h-11 items-center gap-2 rounded-full px-4 text-sm font-strong",
-                planned && ![today, tomorrow, saturday].includes(planned) ? "bg-primary-soft text-primary shadow-[inset_0_0_0_1.5px_var(--primary)]" : "bg-sunken text-text active:bg-pressed",
-              )}
-            >
-              <CalendarDays className="size-4" aria-hidden />
-              {planned && ![today, tomorrow, saturday].includes(planned) ? dayLabel(planned) : t("lsheet.otherDay")}
-              <input
-                type="date"
-                aria-label={t("lsheet.pickDay")}
-                value={planned ?? ""}
-                onChange={(e) => setPlanned(e.target.value || null)}
-                className="absolute inset-0 cursor-pointer opacity-0"
-              />
-            </label>
           </div>
-        </div>
+          {day === "pick" && (
+            <input className="input" type="date" aria-label={t("lsheet.pickDay")} value={picked} min={today} onChange={(e) => setPicked(e.target.value || picked)} />
+          )}
+        </section>
 
-        <div>
-          <label htmlFor="list-note" className="mb-2 block text-footnote font-medium text-text-2">
-            {t("lsheet.note")} <span className="font-normal text-text-3">{t("lsheet.optional")}</span>
-          </label>
-          <input
-            id="list-note"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={t("lsheet.notePlaceholder")}
-            maxLength={200}
-            autoComplete="off"
-            className="h-12 w-full rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-4 text-callout outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-primary focus:ring-3 focus:ring-primary/20"
+        <section className="stack g-10">
+          <span className="field-label">{t("ls.forWhom")}</span>
+          <Seg
+            value={shared ? "shared" : "me"}
+            onChange={(v) => canChangePrivacy && setShared(v === "shared")}
+            className={cx(!canChangePrivacy && "opacity-50")}
+            options={[
+              { value: "shared", label: householdName, icon: <Users size={15} /> },
+              { value: "me", label: t("trip.onlyMe"), icon: <Lock size={15} /> },
+            ]}
           />
-        </div>
+          <span className="t-xs t-3" style={{ padding: "0 4px" }}>
+            {!canChangePrivacy ? t("lsheet.privacyLocked") : shared ? t("lsheet.sharedNote") : t("ls.privateNote")}
+          </span>
+        </section>
 
-        <Button type="submit" size="lg" block loading={create.isPending || update.isPending} disabled={!name.trim()}>
-          {editing ? t("lsheet.save") : isPrivate ? t("lsheet.createPrivate") : t("lsheet.create")}
-        </Button>
-        {editing && (
-          <Button type="button" variant="ghost" block onClick={archive}>
-            <Archive className="size-4" aria-hidden /> {t("lsheet.archive")}
-          </Button>
-        )}
-      </form>
-    </Sheet>
+        <section className="stack g-8">
+          <button type="button" className="row g-6 t-sm fw-6 t-2" style={{ minHeight: 40, padding: "0 4px" }} onClick={() => setMore(!more)} aria-expanded={more}>
+            {t("ls.moreOptions")}
+            {more ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          {more && (
+            <div className="cells anim-pop">
+              <div className="cell">
+                <input className="input" maxLength={200} placeholder={t("ls.notePlaceholder")} value={note} onChange={(e) => setNote(e.target.value)} />
+              </div>
+            </div>
+          )}
+        </section>
+
+        <button type="button" className="btn btn-ink btn-lg btn-block" disabled={!canCreate || busy} onClick={() => void submit()}>
+          {edit ? t("lsheet.save") : canCreate ? t("ls.createNamed", { name }) : t("ls.pickStore")}
+        </button>
+      </div>
+    </BottomSheet>
   );
 }

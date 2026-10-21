@@ -39,3 +39,8 @@ export function dayLabel(value: string | Date): string {
 export function isOverdue(value: string): boolean {
   return value.slice(0, 10) < isoDay(new Date());
 }
+
+/** Deň nákupu na karte: „dnes“, „so 18. 10.“ alebo „bez dňa“. */
+export function listDay(list: { planned_for: string | null }): string {
+  return list.planned_for ? dayLabel(list.planned_for) : t("trip.noDay");
+}

@@ -1,18 +1,41 @@
-import { useRef } from "react";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Minus, Plus, Trash2, X } from "lucide-react";
+import { Stepper, haptic } from "@/components/kit";
+import { CategoryGlyph } from "@/components/CategoryIcon";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
+import { category, categoryOrder } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
-import { formatNumber, t } from "@/i18n";
+import { formatEuro, t } from "@/i18n";
+import type { PriceHint } from "@/features/analytics/api";
 import { useDeleteItem, useUpdateItem, type Item } from "./api";
-import { countOf, isCountable, qtyLabel } from "./qty";
+import { countOf, qtyLabel } from "./qty";
+
+/** Krok a minimum podľa jednotky: kusy po 1, gramy po 100, kilá a litre po 0,1. */
+export const stepOf = (u: string | null) => (u === "g" || u === "ml" ? 100 : u === "kg" || u === "l" ? 0.1 : 1);
+const round = (v: number) => Math.round(v * 1000) / 1000;
+
+const HINT_KEY = "bh.swipeHint";
+function hintSeen(): boolean {
+  try {
+    return localStorage.getItem(HINT_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+function markHintSeen() {
+  try {
+    localStorage.setItem(HINT_KEY, "1");
+  } catch {
+    /* súkromné okno – nevadí */
+  }
+}
 
 /**
- * Zoznam pri plánovaní: karta s riadkami oddelenými jemnou čiarou.
- * Vpravo pri každej položke − počet +; pri 1 ks sa
- * mínus zmení na kôš (ďalšie ťuknutie by položku odstránilo, tak to ukážeme vopred).
- * Novo pridaný riadok krátko zasvieti.
+ * Položky zoznamu pri plánovaní (prototyp N3): po kategóriách, každý riadok
+ * potiahnutím doprava +1, doľava −1; pri poslednom kuse dlhší ťah doľava odstráni.
+ * Ťuk na riadok = úprava, ťuk na množstvo = − / + na pár sekúnd.
  */
 export function PlanList({
   listId,
@@ -26,12 +49,16 @@ export function PlanList({
   items: Item[];
   names: Map<string, string> | undefined;
   me: string;
-  hints?: Map<string, string>;
+  hints?: Map<string, PriceHint>;
   onEdit: (item: Item) => void;
 }) {
-  const update = useUpdateItem(listId);
-  const remove = useDeleteItem(listId);
-  const toast = useToast();
+  const [showHint, setShowHint] = useState(() => !hintSeen());
+  const seen = () => {
+    if (showHint) {
+      markHintSeen();
+      setShowHint(false);
+    }
+  };
 
   // Ktoré riadky sú „nové“ (pribudli po otvorení obrazovky) – tie zasvietia.
   const known = useRef<Set<string> | null>(null);
@@ -40,84 +67,254 @@ export function PlanList({
   else for (const i of items) if (!known.current.has(i.id)) fresh.add(i.id);
   queueMicrotask(() => items.forEach((i) => known.current?.add(i.id)));
 
-  function change(item: Item, delta: number) {
-    const next = countOf(item.quantity) + delta;
-    if (next <= 0) {
-      remove.mutate(item.id, {
-        onSuccess: () => toast.show(t("item.removed", { name: item.name })),
-        onError: (err) => toast.show(errorMessage(err), "error"),
-      });
-      return;
-    }
-    update.mutate({ id: item.id, patch: { quantity: next } }, { onError: (err) => toast.show(errorMessage(err), "error") });
-  }
+  const groups = new Map<string, Item[]>();
+  for (const i of items) groups.set(i.category_id, [...(groups.get(i.category_id) ?? []), i]);
+  const ordered = [...groups.entries()].sort((a, b) => categoryOrder(a[0]) - categoryOrder(b[0]));
 
   return (
-    <div>
-      <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
-        {items.map((item, idx) => {
-          const by = item.added_by && item.added_by !== me ? names?.get(item.added_by) : undefined;
-          const countable = isCountable(item.unit);
-          const n = countOf(item.quantity);
-          return (
-            <div
-              key={item.id}
-              className={cx(
-                "flex min-h-14 items-center gap-3 py-2 pl-4 pr-2",
-                idx > 0 && "border-t border-line",
-                fresh.has(item.id) && "[animation:bh-flash_.9s_ease]",
-              )}
-            >
-              <button type="button" onClick={() => onEdit(item)} className="min-w-0 flex-1 text-left" aria-label={t("item.edit", { name: item.name })}>
-                <span className="block truncate text-base font-strong">{item.name}</span>
-                {(by || item.note) && (
-                  <span className="mt-1 flex flex-wrap items-center gap-2 text-footnote text-text-2">
-                    {by && <span className="rounded-sm bg-person-soft px-2 py-px text-xs font-strong text-person">{t("item.addedBy", { name: shortName(by) })}</span>}
-                    {item.note && <span className="truncate">{item.note}</span>}
-                  </span>
-                )}
-                {hints?.get(item.id) && <span className="mt-0.5 block truncate text-xs text-text-3">{hints.get(item.id)}</span>}
-              </button>
-              {countable ? (
-                <div className="flex shrink-0 items-center rounded-lg bg-sunken">
-                  <button
-                    type="button"
-                    aria-label={n === 1 ? t("item.remove", { name: item.name }) : t("item.fewer", { name: item.name })}
-                    onClick={() => change(item, -1)}
-                    className={cx("grid size-11 place-items-center rounded-lg transition-transform active:scale-90 active:bg-pressed", n === 1 && "text-danger")}
-                  >
-                    {n === 1 ? <Trash2 className="size-4" aria-hidden /> : <Minus className="size-4" strokeWidth={2.2} aria-hidden />}
-                  </button>
-                  <Bump value={n} />
-                  <button
-                    type="button"
-                    aria-label={t("item.more", { name: item.name })}
-                    onClick={() => change(item, 1)}
-                    className="grid size-11 place-items-center rounded-lg transition-transform active:scale-90 active:bg-pressed"
-                  >
-                    <Plus className="size-4" strokeWidth={2.2} aria-hidden />
-                  </button>
-                </div>
-              ) : (
-                <button type="button" onClick={() => onEdit(item)} className="min-h-11 shrink-0 rounded-lg bg-sunken px-3 text-sm font-strong active:bg-pressed">
-                  {qtyLabel(item.quantity, item.unit)}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <>
+      {showHint && (
+        <div className="ls-hint">
+          <span className="ls-hint-demo" aria-hidden>
+            <span />
+          </span>
+          <span className="grow">
+            {t("ls.swipeHint1")} <b>+1</b>, {t("ls.swipeHint2")} <b>−1</b>. {t("ls.swipeHint3")}
+          </span>
+          <button type="button" className="ibtn sm" aria-label={t("ls.hideHint")} onClick={seen}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+      {ordered.map(([cat, group]) => (
+        <section key={cat} className="stack g-6">
+          <div className="ls-cat-head">
+            <CategoryGlyph id={cat} className="size-[15px]" />
+            {category(cat).name}
+            <span className="t-3 num">{group.length}</span>
+          </div>
+          <div className="cells">
+            {group.map((it) => (
+              <ItemRow
+                key={it.id}
+                listId={listId}
+                item={it}
+                fresh={fresh.has(it.id)}
+                by={it.added_by && it.added_by !== me ? names?.get(it.added_by) : undefined}
+                hint={hints?.get(it.id)}
+                onEdit={() => onEdit(it)}
+                onSwiped={seen}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </>
   );
 }
 
-/** Číslo, ktoré pri zmene krátko „pulzne“ (pri prvom zobrazení nie). */
-export function Bump({ value, className }: { value: number; className?: string }) {
-  const first = useRef(value);
-  const changed = first.current !== value;
+function ItemRow({
+  listId,
+  item,
+  fresh,
+  by,
+  hint,
+  onEdit,
+  onSwiped,
+}: {
+  listId: string;
+  item: Item;
+  fresh: boolean;
+  by?: string;
+  hint?: PriceHint;
+  onEdit: () => void;
+  onSwiped: () => void;
+}) {
+  const update = useUpdateItem(listId);
+  const remove = useDeleteItem(listId);
+  const toast = useToast();
+  const [dx, setDx] = useState(0);
+  const [gone, setGone] = useState(false);
+  const [edit, setEdit] = useState(false);
+  const st = useRef<{ x: number; y: number; moved: boolean; horiz: boolean | null; id: number } | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const idle = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(idle.current), []);
+
+  const qty = countOf(item.quantity);
+  const step = stepOf(item.unit);
+  const atMin = qty - step < step - 1e-9;
+  const width = box.current?.offsetWidth || 340;
+  const delZone = atMin && dx <= -width * 0.42;
+
+  const setQty = (v: number) =>
+    update.mutate({ id: item.id, patch: { quantity: round(Math.max(step, v)) } }, { onError: (err) => toast.show(errorMessage(err), "error") });
+  const change = (d: number) => {
+    haptic(10);
+    setQty(qty + d);
+    onSwiped();
+  };
+  const del = () => {
+    haptic(30);
+    setGone(true);
+    onSwiped();
+    setTimeout(
+      () =>
+        remove.mutate(item.id, {
+          onSuccess: () => toast.show(t("item.removed", { name: item.name })),
+          onError: (err) => {
+            setGone(false);
+            toast.show(errorMessage(err), "error");
+          },
+        }),
+      420,
+    );
+  };
+  const armIdle = () => {
+    clearTimeout(idle.current);
+    idle.current = setTimeout(() => setEdit(false), 4000);
+  };
+
+  const handlers = {
+    onPointerDown(e: React.PointerEvent) {
+      st.current = { x: e.clientX, y: e.clientY, moved: false, horiz: null, id: e.pointerId };
+    },
+    onPointerMove(e: React.PointerEvent) {
+      const c = st.current;
+      if (!c) return;
+      const ddx = e.clientX - c.x;
+      const ddy = e.clientY - c.y;
+      if (c.horiz === null && (Math.abs(ddx) > 8 || Math.abs(ddy) > 8)) {
+        c.horiz = Math.abs(ddx) > Math.abs(ddy);
+        c.moved = true;
+        if (c.horiz) (e.currentTarget as HTMLElement).setPointerCapture?.(c.id);
+      }
+      if (c.horiz) {
+        const max = atMin ? width * 0.7 : 120;
+        const next = Math.max(-max, Math.min(120, ddx));
+        if (atMin && next <= -width * 0.42 !== dx <= -width * 0.42) haptic(8);
+        setDx(next);
+      }
+    },
+    onPointerUp() {
+      const c = st.current;
+      st.current = null;
+      if (!c) return;
+      if (!c.moved) {
+        setDx(0);
+        onEdit();
+        return;
+      }
+      if (c.horiz && dx >= 64) change(step);
+      else if (c.horiz && dx <= -64) {
+        if (!atMin) change(-step);
+        else if (dx <= -width * 0.42) {
+          del();
+          return;
+        }
+      }
+      setDx(0);
+    },
+    onPointerCancel() {
+      st.current = null;
+      setDx(0);
+    },
+    onKeyDown(e: React.KeyboardEvent) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onEdit();
+      }
+    },
+  };
+
+  const label = qtyLabel(item.quantity, item.unit);
+  const stepLabel = item.unit && item.unit !== "ks" && item.unit !== "bal" ? qtyLabel(step, item.unit) : "1";
   return (
-    <span key={value} className={cx("min-w-8 text-center text-callout font-semibold", changed && "[animation:bh-pop_.2s_ease]", className)}>
-      {formatNumber(value, { maximumFractionDigits: 2 })}
-    </span>
+    <div className={cx("ls-swipe ls-item", gone && "gone")} ref={box}>
+      <div className="under ok" style={{ opacity: dx > 10 ? 1 : 0 }}>
+        <span className={cx("ls-step", dx >= 64 && "on")}>
+          <Plus size={16} strokeWidth={2.6} /> {stepLabel}
+        </span>
+      </div>
+      <div className={cx("under", atMin ? "del" : "minus", delZone && "armed")} style={{ opacity: dx < -10 ? 1 : 0 }}>
+        {atMin ? (
+          <span className="ls-step">
+            <Trash2 size={delZone ? 20 : 17} /> {delZone ? t("ls.releaseToDelete") : t("ls.pullToDelete")}
+          </span>
+        ) : (
+          <span className={cx("ls-step", dx <= -64 && "on")}>
+            <Minus size={16} strokeWidth={2.6} /> {stepLabel}
+          </span>
+        )}
+      </div>
+      <div
+        className={cx("front", fresh && "anim-flash")}
+        style={{ transform: gone ? "translateX(-110%)" : `translateX(${dx}px)`, transition: dx && !gone ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)" }}
+      >
+        <div className="ls-row ls-row2">
+          <div
+            className="grow stack g-2"
+            role="button"
+            tabIndex={0}
+            aria-label={t("ls.rowAria", { name: item.name, qty: label, step: stepLabel })}
+            {...handlers}
+            style={{ minHeight: 44, justifyContent: "center", cursor: "pointer", touchAction: "pan-y" }}
+          >
+            <span className="t-body fw-5 ls-name">{item.name}</span>
+            {(item.note || hint) && (
+              <span className="row g-6" style={{ minWidth: 0 }}>
+                {item.note && (
+                  <span className="t-sm t-2 ellipsis" style={{ flex: "0 1 auto" }}>
+                    {item.note}
+                    {hint ? " ·" : ""}
+                  </span>
+                )}
+                {hint && (
+                  <span className="ls-pl num">
+                    <b>~{formatEuro(hint.last_price)}</b>
+                    <span className="t-3"> · {t("ls.lastAt", { store: hint.last_store })}</span>
+                  </span>
+                )}
+              </span>
+            )}
+            {by && (
+              <span className="row g-6 wrap ls-tags">
+                <span className="row g-4 t-xs t-violet fw-5">{t("item.addedBy", { name: shortName(by) })}</span>
+              </span>
+            )}
+          </div>
+          {edit ? (
+            <div className="anim-pop" onPointerDown={armIdle}>
+              <Stepper
+                small
+                value={qty}
+                step={step}
+                min={step}
+                unit={item.unit && item.unit !== "ks" && item.unit !== "bal" ? item.unit : undefined}
+                onChange={(v) => {
+                  setQty(v);
+                  armIdle();
+                }}
+                onRemove={del}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="ls-qty num"
+              onClick={() => {
+                setEdit(true);
+                armIdle();
+              }}
+              aria-label={t("ls.qtyAria", { qty: label })}
+            >
+              <span key={qty} className="ls-qty-n">
+                {label}
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

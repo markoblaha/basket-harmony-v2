@@ -1,27 +1,43 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router";
-import { ArrowRight, Camera, Check, ChevronDown, ChevronLeft, Lock, MoreHorizontal, Play, Receipt } from "lucide-react";
-import { Avatar, ErrorState, SectionTitle, Spinner, cx } from "@/components/ui";
+import { Camera, Check, ChevronDown, ChevronLeft, ChevronUp, Ellipsis, Lock, Plus, Receipt, ShoppingCart } from "lucide-react";
+import { ErrorState, Spinner, cx } from "@/components/ui";
+import { Avatars, BottomSheet, Empty, SheetHeader, StoreBadge, type Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
+import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
-import { t, tn, type Key } from "@/i18n";
+import { shortName } from "@/lib/shortName";
+import { formatEuro, t, tn, type Key } from "@/i18n";
 import { useListPriceHints, type PriceHint } from "@/features/analytics/api";
 import { formatMoney } from "@/features/receipts/format";
-import { useActiveSession, useEndShopping, useItems, useLists, useRequests, useStartShopping, useUpdateItem, type Item } from "./api";
-import { AddFeed, useFeed } from "./feed";
+import {
+  useActiveSession,
+  useDeleteItem,
+  useEndShopping,
+  useItems,
+  useListStats,
+  useLists,
+  useRequests,
+  useStartShopping,
+  useUpdateItem,
+  type Item,
+  type ListStats,
+  type ShoppingList,
+} from "./api";
+import type { FeedEntry } from "./feed";
 import { Composer } from "./Composer";
 import { DoneScreen, type ShopSummary } from "./DoneScreen";
 import { EditItemSheet } from "./EditItemSheet";
-import { ListSheet } from "./ListSheet";
-import { dayLabel } from "./dates";
+import { ListActionsSheet } from "./ListActionsSheet";
+import { dayLabel, listDay } from "./dates";
 import { PlanList } from "./PlanList";
 import { QuickTiles } from "./QuickTiles";
 import { RequestCard } from "./RequestCard";
 import { ShoppingMode } from "./ShoppingMode";
-import { qtyLabel } from "./qty";
+import { qtyLabel, sameProduct } from "./qty";
 import { useSmartAdd } from "./useSmartAdd";
 
 /** Krátka veta s cenou z bločkov: "naposledy 1,19 € (Lidl) · lacnejšie: Tesco". */
@@ -79,12 +95,20 @@ export function ShoppingPage() {
   const end = useEndShopping(listId ?? "none");
 
   const [editing, setEditing] = useState<Item | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [showPurchased, setShowPurchased] = useState(false);
+  const swipeX = useRef<number | null>(null);
   const [summary, setSummary] = useState<ShopSummary | null>(null);
   /** Pri znovuotvorení nákupu ukážeme v košíku aj veci z pôvodného nákupu. */
   const [cartSince, setCartSince] = useState<string | null>(null);
-  const feed = useFeed();
+  const stats = useListStats(household.id);
+  const remove = useDeleteItem(listId ?? "none");
+  // Potvrdenie pridania: bublina hore, ktorá sa sama rozplynie.
+  const feedPush = useCallback(
+    (e: Omit<FeedEntry, "id" | "out">) => toast.added({ title: e.name, qty: e.qty ? `+${e.qty}` : undefined, note: e.tail }),
+    [toast],
+  );
 
   const active = session.data ?? null;
   const iAmShopping = !!active && active.shopper_id === me;
@@ -124,7 +148,7 @@ export function ShoppingPage() {
     return m;
   }, [hints.data]);
 
-  const smartAdd = useSmartAdd({ listId: listId ?? "none", items: all, someoneElseShopping: someoneElse, onFeed: feed.push });
+  const smartAdd = useSmartAdd({ listId: listId ?? "none", items: all, someoneElseShopping: someoneElse, onFeed: feedPush });
 
   async function startShopping() {
     if (iAmShopping) {
@@ -216,257 +240,297 @@ export function ShoppingPage() {
     );
   }
 
-  const memberIds = names ? [...names.keys()] : [];
-  const doneInSession = active ? recent.filter((i) => new Date(i.purchased_at ?? 0) >= new Date(active.started_at)).length : 0;
+  const people: Person[] = names ? [...names.entries()].map(([id, name]) => ({ id, name })) : [];
+  const openLists = (lists.data ?? [])
+    .filter((l) => !l.completed_at)
+    .sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999") || b.created_at.localeCompare(a.created_at));
+  const idx = openLists.findIndex((l) => l.id === list.id);
+  const goRel = (d: number) => {
+    const n = openLists[idx + d];
+    if (n) navigate(`/lists/${n.id}`, { replace: true });
+  };
+  const priced = open.filter((i) => hints.data?.has(i.id));
+  const estimate = priced.reduce((sum, i) => sum + (hints.data?.get(i.id)?.last_price ?? 0), 0);
 
   return (
-    <div className="pb-24">
-      <header className="flex items-center gap-1 pb-3 pl-1 pr-3 pt-3">
-        <button type="button" onClick={() => navigate("/")} aria-label={t("trip.backAria")} className="grid size-11 shrink-0 place-items-center rounded-xl active:bg-pressed">
-          <ChevronLeft className="size-6" aria-hidden />
-        </button>
-        <button type="button" onClick={() => setSettingsOpen(true)} className="min-w-0 flex-1 rounded-xl px-1 text-left active:bg-pressed" aria-label={t("trip.editAria", { name: list.name })}>
-          <h1 className="break-words text-xl font-semibold">{list.name}</h1>
-          <span className="flex items-center gap-2 truncate text-footnote font-medium text-text-2">
-            {list.is_private && (
-              <span className="flex items-center gap-1 rounded-sm bg-sunken px-2 py-px text-xs font-semibold">
-                <Lock className="size-3" aria-hidden /> {t("trip.onlyMe")}
-              </span>
-            )}
-            {list.planned_for ? dayLabel(list.planned_for) : t("trip.noDay")}
-            {list.note && ` · ${list.note}`}
-          </span>
-        </button>
-        {!list.is_private && (
-          <span className="flex shrink-0" aria-label={t("trip.sharedAria", { name: household.name })}>
-            {memberIds.slice(0, 3).map((id, i) => (
-              <span key={id} className={cx(i > 0 && "-ml-2 rounded-full ring-2 ring-bg")}>
-                <Avatar name={names?.get(id) ?? "?"} me={id === me} />
-              </span>
-            ))}
-          </span>
-        )}
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          aria-label={t("trip.edit")}
-          className="ml-1 grid size-11 shrink-0 place-items-center rounded-xl bg-surface shadow-card active:bg-pressed"
+    <div className="stack">
+      <div className="sticky top-0 z-20">
+        <header
+          className="hdr with-back"
+          onPointerDown={(e) => {
+            swipeX.current = e.clientX;
+          }}
+          onPointerUp={(e) => {
+            if (swipeX.current == null) return;
+            const d = e.clientX - swipeX.current;
+            swipeX.current = null;
+            if (d < -60) goRel(1);
+            else if (d > 60) goRel(-1);
+          }}
         >
-          <MoreHorizontal className="size-5" aria-hidden />
-        </button>
-      </header>
-
-      {list.completed_at && !active && (
-        <div className="mx-4 mb-3 flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-card animate-rise">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-success-soft text-success" aria-hidden>
-            <Check className="size-[1.125rem]" strokeWidth={2.4} />
-          </span>
-          <p className="min-w-0 flex-1 text-footnote text-text-2">
-            <b className="block text-callout font-strong text-text">{t("trip.boughtOn", { day: dayLabel(list.completed_at) })}</b>
-            {t("trip.reopenHint")}
-          </p>
-          {list.receipt_state === "ATTACHED" && list.receipt_id ? (
-            <button type="button" onClick={() => navigate(`/receipts/${list.receipt_id}`)} className="flex h-11 shrink-0 items-center gap-2 rounded-lg bg-success-soft px-3 text-footnote font-strong text-success">
-              <Receipt className="size-4" aria-hidden /> {t("trip.receipt")}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => navigate(`/receipts?pridat=1&nakup=${list.id}`)}
-              className={cx("flex h-11 shrink-0 items-center gap-2 rounded-lg px-3 text-footnote font-strong", list.receipt_state === "LATER" ? "bg-warning-soft text-warning" : "bg-sunken text-text")}
-            >
-              <Camera className="size-4" aria-hidden /> {list.receipt_state === "LATER" ? t("trip.completeReceipt") : t("trip.addReceipt")}
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="flex flex-col gap-3 px-4">
-        {iAmShopping && interrupted && active && (
-          <button type="button" onClick={resume} className="flex items-center gap-3 rounded-2xl bg-primary p-3 text-left text-on-primary shadow-card animate-rise active:bg-primary-pressed">
-            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-on-primary/15">
-              <Play className="size-[1.125rem]" fill="currentColor" aria-hidden />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-callout font-strong">{t("shop.inProgress.title")}</span>
-              <span className="block text-footnote opacity-80">
-                {t("shop.inProgress.text", { done: doneInSession, left: open.length })}
-              </span>
-            </span>
-            <ArrowRight className="mr-1 size-[1.125rem] opacity-70" aria-hidden />
+          <button type="button" className="ibtn" onClick={() => navigate("/")} aria-label={t("trip.backAria")}>
+            <ChevronLeft size={24} />
           </button>
-        )}
-        {someoneElse && (
-          <div role="status" className="flex items-center gap-3 rounded-2xl bg-person-soft p-3 text-sm">
-            <Avatar name={shopperName ?? "?"} />
-            <p className="min-w-0 text-text-2">
-              <b className="text-text">{t("shop.shopperNow", { name: shopperName ?? "" })}</b>
-              <br />
-              {t("shop.requestsHint")}
-            </p>
-          </div>
-        )}
-
-        <Composer requestMode={someoneElse} onAdd={smartAdd} />
+          <button
+            type="button"
+            className="grow stack"
+            style={{ minWidth: 0, minHeight: 44, justifyContent: "center", textAlign: "left" }}
+            onClick={() => setSwitching(true)}
+            aria-label={t("ls.switchList")}
+          >
+            <span className="row g-4">
+              <span className="ttl ellipsis" style={{ fontSize: 15.5 }}>
+                {list.name} · <span className="fw-5 t-2">{listDay(list)}</span>
+              </span>
+              <ChevronDown size={16} className="t-3" style={{ flex: "none" }} />
+            </span>
+            <span className="sub">
+              {openLists.length > 1 && idx >= 0 ? t("ls.listOf", { n: idx + 1, total: openLists.length }) : tn("shop.itemCount", open.length)}
+            </span>
+          </button>
+          {list.is_private ? (
+            <span className="badge b-gray">
+              <Lock size={11} />
+              {t("trip.onlyMe")}
+            </span>
+          ) : (
+            <Avatars people={people} max={3} />
+          )}
+          <button type="button" className="ibtn" aria-label={t("trip.edit")} onClick={() => setActionsOpen(true)}>
+            <Ellipsis size={20} />
+          </button>
+        </header>
+        <Composer
+          key={list.id}
+          householdId={household.id}
+          requestMode={someoneElse}
+          onAdd={smartAdd}
+          onRemove={(name) => {
+            const it = open.find((i) => sameProduct(i.name, name) || normalizeName(i.name).startsWith(normalizeName(name)));
+            if (it) remove.mutate(it.id, { onSuccess: () => toast.show(t("item.removed", { name: it.name })), onError: (err) => toast.show(errorMessage(err), "error") });
+          }}
+        />
       </div>
 
-      {someoneElse && myRequests.length > 0 && (
-        <section className="mt-6 px-4">
-          <SectionTitle>{t("shop.yourRequests")}</SectionTitle>
-          <div className="divide-y divide-line overflow-hidden rounded-2xl bg-surface shadow-card">
-            {myRequests.map((r) => (
-              <div key={r.id} className="px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="min-w-0 truncate font-strong">
-                    {r.name} <span className="font-normal text-text-2">· {qtyLabel(r.quantity, r.unit)}</span>
-                  </span>
-                  <RequestStatus status={r.status} />
-                </div>
-                {r.response_note && (
-                  <p className="mt-2 inline-block rounded-xl rounded-bl-sm bg-person-soft px-3 py-2 text-footnote text-text">
-                    {shopperName}: {r.response_note}
-                  </p>
-                )}
-              </div>
-            ))}
+      <div className="stack g-20 px" style={{ paddingTop: 14 }}>
+        {list.completed_at && !active && (
+          <div className="card row g-12 anim-rise" style={{ padding: 12 }}>
+            <span className="cat-ic" style={{ background: "var(--accent-soft)", color: "var(--accent-text)" }}>
+              <Check size={18} strokeWidth={2.4} />
+            </span>
+            <span className="grow stack g-2">
+              <span className="t-h">{t("trip.boughtOn", { day: dayLabel(list.completed_at) })}</span>
+              <span className="t-xs t-2">{t("trip.reopenHint")}</span>
+            </span>
+            {list.receipt_state === "ATTACHED" && list.receipt_id ? (
+              <button type="button" className="btn btn-sm btn-accent" onClick={() => navigate(`/receipts/${list.receipt_id}`)}>
+                <Receipt size={15} /> {t("trip.receipt")}
+              </button>
+            ) : (
+              <button type="button" className="btn btn-sm btn-soft" onClick={() => navigate(`/receipts?pridat=1&nakup=${list.id}`)}>
+                <Camera size={15} /> {list.receipt_state === "LATER" ? t("trip.completeReceipt") : t("trip.addReceipt")}
+              </button>
+            )}
           </div>
-        </section>
-      )}
-
-      {iAmShopping && interrupted && pendingForMe.length > 0 && (
-        <section className="mt-6 px-4">
-          <SectionTitle className="text-person">
-            <span className="size-2 rounded-full bg-person-solid [animation:bh-pulse_1.6s_ease_infinite]" aria-hidden />
-            {t("shop.waitingApproval")}
-          </SectionTitle>
-          <div className="divide-y divide-line overflow-hidden rounded-2xl bg-surface shadow-card">
-            {pendingForMe.map((r) => (
-              <RequestCard key={r.id} request={r} listId={listId} who={(r.requested_by && names?.get(r.requested_by)) || t("household.fallbackName")} />
-            ))}
+        )}
+        {someoneElse && (
+          <div className="row g-10" style={{ padding: "10px 12px", borderRadius: 14, background: "var(--violet-soft)", color: "var(--violet)" }}>
+            <span className="live" />
+            <span className="t-sm fw-5 grow">{t("ls.requestBanner", { name: shortName(shopperName ?? "") })}</span>
           </div>
-        </section>
-      )}
+        )}
+        {iAmShopping && interrupted && pendingForMe.length > 0 && (
+          <section className="stack g-8">
+            <div className="section-head">
+              <span className="section-title t-violet">{t("shop.waitingApproval")}</span>
+            </div>
+            <div className="cells">
+              {pendingForMe.map((r) => (
+                <RequestCard key={r.id} request={r} listId={listId} who={(r.requested_by && names?.get(r.requested_by)) || t("household.fallbackName")} />
+              ))}
+            </div>
+          </section>
+        )}
 
-      <section className="mt-6 px-4">
-        <SectionTitle>{t("shop.quickAdd")}</SectionTitle>
         <QuickTiles
           householdId={household.id}
           items={all}
-          onFeed={feed.push}
+          onFeed={feedPush}
           onAdd={(name, count) => void smartAdd({ name, quantity: count, unit: null, note: null })}
         />
-      </section>
 
-      <section className="mt-6 px-4">
-        <SectionTitle
-          trailing={
-            <span key={open.length} className="grid h-5 min-w-5 place-items-center rounded-full bg-sunken px-2 text-xs font-semibold normal-case text-text [animation:bh-pop_.2s_ease]">
-              {open.length}
-            </span>
-          }
-        >
-          {t("shop.onList")}
-        </SectionTitle>
+        {someoneElse && myRequests.length > 0 && (
+          <section className="stack g-8">
+            <div className="section-head">
+              <span className="section-title">{t("ls.myRequests")}</span>
+            </div>
+            <div className="cells">
+              {myRequests.map((r) => (
+                <div key={r.id} className="stack g-6" style={{ padding: "12px 14px" }}>
+                  <div className="row g-8">
+                    <span className="grow t-body fw-5 ellipsis">
+                      {r.name}
+                      <span className="t-2 fw-5"> · {qtyLabel(r.quantity, r.unit)}</span>
+                    </span>
+                    <RequestStatus status={r.status} />
+                  </div>
+                  {r.response_note && (
+                    <span className="t-sm" style={{ alignSelf: "flex-start", padding: "8px 12px", borderRadius: "4px 14px 14px 14px", background: "var(--violet-soft)", color: "var(--violet)" }}>
+                      {shortName(shopperName ?? "")}: „{r.response_note}“
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {items.isPending ? (
           <Spinner />
         ) : items.isError ? (
           <ErrorState error={errorMessage(items.error)} onRetry={() => items.refetch()} />
-        ) : open.length === 0 ? (
-          <div className="rounded-2xl bg-sunken px-6 py-6 text-center text-sm text-text-2">
-            {t("shop.emptyList")}
-          </div>
+        ) : open.length === 0 && recent.length === 0 ? (
+          <Empty icon={ShoppingCart} title={t("ls.listEmpty")} text={t("ls.listEmptyText")} />
         ) : (
-          <PlanList listId={listId} items={open} names={names} me={me} hints={hintMap} onEdit={setEditing} />
+          <PlanList listId={listId} items={open} names={names} me={me} hints={hints.data} onEdit={setEditing} />
         )}
 
         {recent.length > 0 && !active && (
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => setShowPurchased((v) => !v)}
-              aria-expanded={showPurchased}
-              className="flex min-h-11 items-center gap-1 px-1 text-footnote font-strong text-text-2"
-            >
-              {t("shop.recentlyBought", { n: recent.length })}
-              <ChevronDown className={cx("size-4 transition-transform", showPurchased && "rotate-180")} aria-hidden />
+          <section className="stack g-6">
+            <button type="button" className="section-head" onClick={() => setShowPurchased((v) => !v)} style={{ width: "100%" }} aria-expanded={showPurchased}>
+              <span className="section-title">{t("ls.inCart", { n: recent.length })}</span>
+              {showPurchased ? <ChevronUp size={16} className="t-3" /> : <ChevronDown size={16} className="t-3" />}
             </button>
             {showPurchased && (
-              <>
-                <div className="flex flex-wrap gap-2">
-                  {recent.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() =>
-                        update.mutate(
-                          { id: item.id, patch: { status: "OPEN" } },
-                          {
-                            onSuccess: () => feed.push({ name: item.name, tail: t("shop.backOnList") }),
-                            onError: (err) => toast.show(errorMessage(err), "error"),
-                          },
-                        )
-                      }
-                      className="h-11 rounded-lg bg-sunken px-3 text-footnote font-medium text-text-2 line-through decoration-text-3 active:bg-pressed"
-                    >
-                      {item.name}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-2 px-1 text-xs text-text-3">{t("shop.tapToRestore")}</p>
-              </>
+              <div className="cells">
+                {recent.map((it) => (
+                  <button
+                    key={it.id}
+                    type="button"
+                    className="cell"
+                    style={{ minHeight: 48 }}
+                    onClick={() =>
+                      update.mutate(
+                        { id: it.id, patch: { status: "OPEN" } },
+                        {
+                          onSuccess: () => toast.added({ title: it.name, note: t("shop.backOnList") }),
+                          onError: (err) => toast.show(errorMessage(err), "error"),
+                        },
+                      )
+                    }
+                  >
+                    <Check size={16} className="t-accent" />
+                    <span className="grow t-body t-2 strike ellipsis">{it.name}</span>
+                    <span className="t-sm fw-6 t-3">{t("ls.putBack")}</span>
+                  </button>
+                ))}
+              </div>
             )}
+          </section>
+        )}
+
+        {priced.length > 0 && (
+          <div className="stack center g-2" style={{ padding: "4px 0 8px" }}>
+            <span className="t-h num">{t("ls.estimate", { amount: formatEuro(estimate) })}</span>
+            <span className="t-xs t-3 num">{t("ls.estimateHint", { priced: priced.length, count: open.length })}</span>
           </div>
         )}
-      </section>
+      </div>
+      <div style={{ height: 180 }} />
 
-      {/* Hlavná akcia obrazovky (rumelka) */}
-      {(open.length > 0 || iAmShopping) && (
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-2xl bg-bg/90 px-4 pb-3 pt-3 backdrop-blur-md">
+      {(open.length > 0 || active) && (
+        <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}>
           {someoneElse ? (
-            <div className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-surface text-sm font-strong text-text-2 shadow-card">
-              <Avatar name={shopperName ?? "?"} size="sm" /> {t("shop.shopperNow", { name: shopperName ?? "" })}
-            </div>
+            <button type="button" className="btn btn-lg btn-block" style={{ background: "var(--violet-soft)", color: "var(--violet)" }} onClick={() => navigate(`/lists/${list.id}?sledovat=1`)}>
+              <span className="live" />
+              {t("ls.watchShopper", { name: shortName(shopperName ?? "") })}
+            </button>
           ) : (
-            <button
-              type="button"
-              onClick={startShopping}
-              disabled={start.isPending}
-              className="flex h-14 w-full items-center justify-between rounded-2xl bg-primary pl-4 pr-2 text-base font-strong text-on-primary shadow-raised transition-[transform,background-color] active:scale-[0.98] active:bg-primary-pressed disabled:opacity-60"
-            >
-              {iAmShopping ? t("shop.continue") : t("shop.start")}
-              <span className="flex h-10 items-center gap-2 rounded-lg bg-on-primary/15 px-3 text-sm font-strong">
-                {tn("shop.itemCount", open.length)}
-                <ArrowRight className="size-4" strokeWidth={2.2} aria-hidden />
-              </span>
+            <button type="button" className="btn btn-ink btn-lg btn-block" disabled={start.isPending || (!iAmShopping && !open.length)} onClick={startShopping}>
+              <ShoppingCart size={19} />
+              {iAmShopping ? t("shop.continue") : t("ls.startWith", { count: tn("shop.itemCount", open.length) })}
             </button>
           )}
         </div>
       )}
 
-      <AddFeed entries={feed.entries} />
-      <EditItemSheet key={editing?.id} item={editing} listId={listId} onClose={() => setEditing(null)} />
-      <ListSheet
-        key={`${list.id}-${settingsOpen}`}
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        householdId={household.id}
-        householdName={household.name}
-        memberNames={memberIds.map((id) => names?.get(id) ?? "?")}
-        me={me}
-        recentNames={[]}
-        list={list}
+      <EditItemSheet
+        item={editing}
+        listId={listId}
+        onClose={() => setEditing(null)}
+        addedBy={editing?.added_by && editing.added_by !== me ? names?.get(editing.added_by) : undefined}
+        hint={editing ? hints.data?.get(editing.id) : undefined}
       />
+      <SwitchListSheet open={switching} onClose={() => setSwitching(false)} lists={openLists} current={list.id} stats={stats.data} />
+      <ListActionsSheet list={actionsOpen ? list : null} onClose={() => setActionsOpen(false)} onDeleted={() => navigate("/")} />
     </div>
+  );
+}
+
+/** N3S – prepnúť zoznam. */
+function SwitchListSheet({
+  open,
+  onClose,
+  lists,
+  current,
+  stats,
+}: {
+  open: boolean;
+  onClose: () => void;
+  lists: ShoppingList[];
+  current: string;
+  stats?: Map<string, ListStats>;
+}) {
+  const navigate = useNavigate();
+  return (
+    <BottomSheet open={open} onClose={onClose} label={t("ls.switchList")}>
+      <SheetHeader title={t("ls.switchList")} sub={t("ls.switchListSub")} onClose={onClose} />
+      <div className="sheet-body stack g-12">
+        <div className="cells">
+          {lists.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              className="cell"
+              onClick={() => {
+                onClose();
+                navigate(`/lists/${l.id}`, { replace: true });
+              }}
+            >
+              <StoreBadge name={l.name} size="sm" />
+              <span className="grow stack">
+                <span className="t-body fw-5">{l.name}</span>
+                <span className="t-sm t-2">
+                  {listDay(l)} · {tn("shop.itemCount", stats?.get(l.id)?.open ?? 0)}
+                </span>
+              </span>
+              {l.id === current && <Check size={18} className="t-accent" />}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="btn btn-soft btn-block"
+          onClick={() => {
+            onClose();
+            navigate("/?novy=1");
+          }}
+        >
+          <Plus size={18} />
+          {t("ls.newList")}
+        </button>
+      </div>
+    </BottomSheet>
   );
 }
 
 function RequestStatus({ status }: { status: string }) {
   const map: Record<string, [Key, string]> = {
-    PENDING: ["request.status.PENDING", "bg-person-soft text-person"],
-    ACCEPTED: ["request.status.ACCEPTED", "bg-success-soft text-success"],
-    REJECTED: ["request.status.REJECTED", "bg-danger-soft text-danger"],
-    EXPIRED: ["request.status.EXPIRED", "bg-sunken text-text-3"],
+    PENDING: ["request.status.PENDING", "b-violet"],
+    ACCEPTED: ["request.status.ACCEPTED", "b-green"],
+    REJECTED: ["request.status.REJECTED", "b-red"],
+    EXPIRED: ["request.status.EXPIRED", "b-gray"],
   };
-  const [label, cls] = map[status] ?? [null, ""];
-  return <span className={cx("shrink-0 rounded-full px-3 py-1 text-xs font-strong", cls)}>{label ? t(label) : "?"}</span>;
+  const [label, cls] = map[status] ?? [null, "b-gray"];
+  return <span className={cx("badge", cls)}>{label ? t(label) : "?"}</span>;
 }

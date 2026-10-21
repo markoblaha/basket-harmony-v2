@@ -13,7 +13,7 @@ const VoiceSession = lazy(() => import("@/features/voice/VoiceSession").then((m)
 
 type Badge = "recipes" | "analytics";
 const TABS: { to: string; label: Key; icon: typeof Menu; match: (p: string) => boolean; badge?: Badge }[] = [
-  { to: "/", label: "nav.lists", icon: ShoppingBasket, match: (p) => p === "/" || p.startsWith("/lists") },
+  { to: "/", label: "nav.lists", icon: ShoppingBasket, match: (p) => p === "/" || p.startsWith("/lists") || p.startsWith("/history") },
   { to: "/recipes", label: "nav.recipes", icon: ChefHat, match: (p) => p.startsWith("/recipes"), badge: "recipes" },
   // Doklady sú časťou Analytiky (záložka Doklady).
   { to: "/analytics", label: "nav.analytics", icon: ChartColumn, match: (p) => p.startsWith("/analytics") || p.startsWith("/receipts"), badge: "analytics" },

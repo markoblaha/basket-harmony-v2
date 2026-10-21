@@ -1,24 +1,24 @@
-import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
-import { Camera, Check, ChevronRight, Lock, Plus, Receipt } from "lucide-react";
-import { Avatar, ErrorState, SectionTitle, Spinner, cx } from "@/components/ui";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
+import { ChevronRight, History, Lock, Plus, ReceiptText, ShoppingBasket, ShoppingCart } from "lucide-react";
+import { ErrorState, Spinner, cx } from "@/components/ui";
+import { Avatars, Cell, Empty, ProgressBar, ScreenHeader, StoreBadge, useLongPress, type Person } from "@/components/kit";
+import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
-import { useHubSessions, useListStats, useLists, type ListStats, type Session, type ShoppingList } from "./api";
-import { dayLabel, isOverdue } from "./dates";
+import { formatDateTime, t, tn } from "@/i18n";
+import { useHubSessions, useItems, useListStats, useLists, useStartShopping, type ListStats, type Session, type ShoppingList } from "./api";
+import { listDay } from "./dates";
+import { ListActionsSheet } from "./ListActionsSheet";
 import { ListSheet } from "./ListSheet";
-import { t, tn } from "@/i18n";
-
-const HISTORY_LIMIT = 20;
 
 /**
- * Karta „Nákupy“: prehľad všetkých nákupov domácnosti.
- *  - Rozpracované: zoznamy, do ktorých sa ešte pridáva alebo sa práve nakupuje.
- *  - História: nákupy, kde sa kúpilo všetko. Ak k nim chýba doklad, ukáže sa to.
- * Nový nákup (Lidl, DM, Kaufland…) sa zakladá tlačidlom hore.
+ * N1 – prehľad nákupných zoznamov (podľa prototypu): prebiehajúci nákup hore,
+ * karty zoznamov s tlačidlom Začať, podržaním karty sa otvoria akcie.
+ * História nákupov je tichý odkaz pod zoznamami, nový zoznam plávajúce tlačidlo.
  */
 export function ShoppingHub() {
   const { household } = useHousehold();
@@ -28,134 +28,141 @@ export function ShoppingHub() {
   const stats = useListStats(household.id);
   const sessions = useHubSessions(household.id);
   const names = useProfiles().data;
-  const [creating, setCreating] = useState(false);
+  const [params, setParams] = useSearchParams();
+  // „Nový zoznam“ z iných obrazoviek (prepínač zoznamov) otvorí panel rovno tu.
+  const [creating, setCreating] = useState(() => params.get("novy") === "1");
+  useEffect(() => {
+    if (params.has("novy")) setParams({}, { replace: true });
+  }, [params, setParams]);
+  const [actionsFor, setActionsFor] = useState<ShoppingList | null>(null);
 
-  const { open, history, recentNames } = useMemo(() => {
+  const people: Person[] = useMemo(() => {
+    const all = names ? [...names.entries()].map(([id, name]) => ({ id, name })) : [];
+    return all.sort((a, b) => (a.id === me ? -1 : b.id === me ? 1 : 0));
+  }, [names, me]);
+
+  const { open, history } = useMemo(() => {
     const all = lists.data ?? [];
     const open = all
       .filter((l) => !l.completed_at)
       .sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999") || b.created_at.localeCompare(a.created_at));
-    const history = all
-      .filter((l) => l.completed_at)
-      .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""))
-      .slice(0, HISTORY_LIMIT);
-    const recentNames = [...history, ...open].map((l) => l.name);
-    return { open, history, recentNames };
+    const history = all.filter((l) => l.completed_at);
+    return { open, history };
   }, [lists.data]);
 
   const sessionByList = new Map((sessions.data ?? []).map((s) => [s.list_id, s]));
-  const memberNames = names ? [names.get(me) ?? t("hub.me"), ...[...names.entries()].filter(([id]) => id !== me).map(([, n]) => n)] : [];
-  const missingReceipts = history.filter((l) => l.receipt_state === "LATER").length;
+  const live = (sessions.data ?? []).find((s) => open.some((l) => l.id === s.list_id));
+  const liveList = live ? open.find((l) => l.id === live.list_id) : undefined;
+  const missing = history.filter((l) => l.receipt_state === "LATER").length;
+  const nameOf = (id: string) => names?.get(id) ?? t("done.memberFallback");
 
   if (lists.isPending) return <Spinner />;
   if (lists.isError) return <ErrorState error={errorMessage(lists.error)} onRetry={() => lists.refetch()} />;
 
   return (
-    <div className="pb-6">
-      <header className="flex min-h-14 items-center justify-between gap-3 px-4 pb-3 pt-3">
-        <div>
-          <h1 className="text-lg font-semibold">{t("nav.shopping")}</h1>
-          <p className="mt-0.5 text-footnote font-medium text-text-2">
-            {open.length ? tn("hub.openCount", open.length) : t("hub.noneOpen")}
-            {missingReceipts > 0 && <span className="text-warning"> · {t("hub.missingReceipts", { n: missingReceipts })}</span>}
-          </p>
-        </div>
-        <span className="flex items-center gap-2 rounded-full bg-surface py-1 pl-1 pr-3 text-sm font-strong shadow-card">
-          <span className="flex">
-            {memberNames.slice(0, 3).map((n, i) => (
-              <span key={n + i} className={cx(i > 0 && "-ml-2 rounded-full ring-2 ring-surface")}>
-                <Avatar name={n} me={i === 0} />
-              </span>
-            ))}
-          </span>
-          <span className="max-w-28 truncate">{household.name}</span>
-        </span>
-      </header>
+    <div className="stack">
+      <ScreenHeader
+        title={t("nav.shopping")}
+        right={
+          <button type="button" className="row g-6 hdr-btn" onClick={() => navigate("/more/household")} aria-label={t("shop.householdLabel", { name: household.name })}>
+            <Avatars people={people} />
+          </button>
+        }
+      />
+      <div className="stack g-16 px" style={{ paddingTop: 4 }}>
+        {(liveList || missing > 0) && (
+          <section className="stack g-8">
+            {live && liveList && <LiveCard session={live} list={liveList} mine={live.shopper_id === me} shopper={shortName(nameOf(live.shopper_id))} />}
+            {missing > 0 && (
+              <button type="button" className="card ls-sub row g-12" style={{ padding: "10px 14px", minHeight: 52, textAlign: "left" }} onClick={() => navigate("/history?filter=missing")}>
+                <span className="cat-ic sm" style={{ background: "var(--orange-soft)", color: "var(--orange)" }}>
+                  <ReceiptText size={15} />
+                </span>
+                <span className="grow t-sm fw-5">{tn("ls.missingReceipts", missing)}</span>
+                <span className="t-sm fw-6 t-accent">{t("ls.complete")}</span>
+              </button>
+            )}
+          </section>
+        )}
 
-      <div className="px-4">
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          className="flex h-14 w-full items-center gap-3 rounded-2xl bg-primary pl-2 pr-4 text-left text-on-primary shadow-card transition-[transform,background-color] active:scale-[0.98] active:bg-primary-pressed"
-        >
-          <span className="grid size-10 place-items-center rounded-xl bg-on-primary/15">
-            <Plus className="size-5" strokeWidth={2.2} aria-hidden />
-          </span>
-          <span className="flex-1 text-base font-strong">{t("hub.new")}</span>
-          <span className="truncate text-footnote opacity-80">{t("hub.newHint")}</span>
-        </button>
-      </div>
-
-      <section className="mt-6 px-4" aria-label={t("hub.openAria")}>
-        <SectionTitle>{t("hub.open")}</SectionTitle>
         {open.length === 0 ? (
-          <div className="rounded-2xl bg-sunken px-6 py-8 text-center text-sm text-text-2">
-            {t("hub.emptyOpen1")}
-            <br />
-            {t("hub.emptyOpen2")}
-          </div>
+          <Empty icon={ShoppingBasket} title={t("ls.emptyTitle")} text={t("ls.emptyText")} />
         ) : (
-          <div className="flex flex-col gap-3">
+          <section className="stack g-10">
             {open.map((l) => (
               <ListCard
                 key={l.id}
                 list={l}
                 stats={stats.data?.get(l.id)}
                 session={sessionByList.get(l.id)}
-                shopperName={sessionByList.get(l.id) ? (names?.get(sessionByList.get(l.id)!.shopper_id) ?? t("done.memberFallback")) : undefined}
-                me={me}
-                creatorName={l.created_by ? names?.get(l.created_by) : undefined}
+                shopper={sessionByList.get(l.id) ? shortName(nameOf(sessionByList.get(l.id)!.shopper_id)) : ""}
+                people={people}
+                onActions={() => setActionsFor(l)}
               />
             ))}
-          </div>
+            <span className="t-xs t-3" style={{ textAlign: "center" }}>
+              {t("ls.holdHint")}
+            </span>
+          </section>
         )}
-      </section>
 
-      {history.length > 0 && (
-        <section className="mt-8 px-4" aria-label={t("hub.historyAria")}>
-          <SectionTitle>{t("hub.history")}</SectionTitle>
-          <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
-            {history.map((l, i) => {
-              const st = stats.data?.get(l.id);
-              return (
-                <div key={l.id} className={cx("flex min-h-16 items-center gap-3 py-2 pl-4 pr-2", i > 0 && "border-t border-line")}>
-                  <Link to={`/lists/${l.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-success-soft text-success" aria-hidden>
-                      <Check className="size-[1.125rem]" strokeWidth={2.4} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="flex items-center gap-2 font-strong">
-                        <span className="break-words">{l.name}</span>
-                        {l.is_private && <Lock className="size-3.5 shrink-0 text-text-3" aria-label={t("hub.private")} />}
-                      </span>
-                      <span className="block text-footnote text-text-2">
-                        {dayLabel(l.completed_at!)}
-                        {st && st.bought > 0 && ` · ${tn("shop.itemCount", st.bought)}`}
-                      </span>
-                    </span>
-                  </Link>
-                  <ReceiptChip list={l} onAdd={() => navigate(`/receipts?pridat=1&nakup=${l.id}`)} />
-                </div>
-              );
-            })}
-          </div>
-          <p className="mt-2 px-1 text-xs text-text-2">
-            {t("hub.receiptHint")}
-          </p>
-        </section>
-      )}
+        <div className="cells ls-sub ls-quiet">
+          <Cell
+            icon={
+              <span className="cat-ic sm">
+                <History size={15} />
+              </span>
+            }
+            title={t("ls.history")}
+            sub={tn("ls.historyCount", history.length)}
+            onClick={() => navigate("/history")}
+          />
+        </div>
+      </div>
+      <div className="tab-space" style={{ height: 160 }} />
+
+      <button type="button" className="fab fixed bottom-[calc(6.25rem+env(safe-area-inset-bottom))] right-4" onClick={() => setCreating(true)}>
+        <Plus size={20} strokeWidth={2.4} />
+        {t("ls.newList")}
+      </button>
 
       <ListSheet
+        key={creating ? "new-open" : "new"}
         open={creating}
         onClose={() => setCreating(false)}
         householdId={household.id}
         householdName={household.name}
-        memberNames={memberNames}
         me={me}
-        recentNames={recentNames}
+        lists={lists.data ?? []}
         onCreated={(id) => navigate(`/lists/${id}`)}
       />
+      <ListActionsSheet list={actionsFor} onClose={() => setActionsFor(null)} />
     </div>
+  );
+}
+
+function LiveCard({ session, list, mine, shopper }: { session: Session; list: ShoppingList; mine: boolean; shopper: string }) {
+  const navigate = useNavigate();
+  const items = useItems(list.id).data ?? [];
+  const since = new Date(session.started_at).getTime();
+  const handled = items.filter((i) => i.status === "PURCHASED" && new Date(i.purchased_at ?? 0).getTime() >= since).length;
+  const total = handled + items.filter((i) => i.status === "OPEN").length;
+  const at = formatDateTime(session.started_at, { hour: "2-digit", minute: "2-digit" });
+  return (
+    <button type="button" className="ls-now anim-rise" onClick={() => navigate(`/lists/${list.id}`)}>
+      <span className="live" />
+      <span className="grow stack g-6">
+        <span className="t-h">
+          {mine ? t("ls.youShop") : t("ls.someoneShops", { name: shopper })} · {list.name}
+        </span>
+        <ProgressBar value={total ? handled / total : 0} color="var(--violet)" />
+        <span className="t-xs num">{t("ls.liveProgress", { done: handled, total, time: at })}</span>
+      </span>
+      <span className="row g-4 t-sm fw-6">
+        {mine ? t("ls.continue") : t("ls.watch")}
+        <ChevronRight size={16} />
+      </span>
+    </button>
   );
 }
 
@@ -163,108 +170,84 @@ function ListCard({
   list,
   stats,
   session,
-  shopperName,
-  me,
-  creatorName,
+  shopper,
+  people,
+  onActions,
 }: {
   list: ShoppingList;
   stats?: ListStats;
   session?: Session;
-  shopperName?: string;
-  me: string;
-  creatorName?: string;
+  shopper: string;
+  people: Person[];
+  onActions: () => void;
 }) {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const start = useStartShopping(list.id);
   const open = stats?.open ?? 0;
-  const bought = stats?.bought ?? 0;
-  const live = !!session;
-  const mine = session?.shopper_id === me;
-  return (
-    <Link
-      to={`/lists/${list.id}`}
-      className={cx(
-        "block rounded-2xl p-4 shadow-card transition-transform active:scale-[0.99] animate-rise",
-        live ? "bg-primary-soft" : "bg-surface",
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h2 className="min-w-0 break-words text-lg font-semibold">{list.name}</h2>
-            {list.is_private ? (
-              <span className={cx("flex shrink-0 items-center gap-1 rounded-sm px-2 py-0.5 text-xs font-semibold", live ? "bg-surface text-text-2" : "bg-sunken text-text-2")}>
-                <Lock className="size-3" aria-hidden /> {t("trip.onlyMe")}
-              </span>
-            ) : (
-              creatorName &&
-              list.created_by !== me && <span className={cx("shrink-0 rounded-sm px-2 py-0.5 text-xs font-semibold", "bg-person-soft text-person")}>{t("hub.createdBy", { name: shortName(creatorName) })}</span>
-            )}
-          </div>
-          <p className="mt-1 text-callout text-text-2">
-            {live ? (
-              <span className="inline-flex items-center gap-2 font-strong text-primary">
-                <span className="size-2 rounded-full bg-primary [animation:bh-pulse_1.6s_ease_infinite]" aria-hidden />
-                {mine ? t("hub.shoppingNow") : t("hub.shopping", { name: shopperName ?? "" })}
-              </span>
-            ) : list.planned_for ? (
-              <span className={cx(isOverdue(list.planned_for) && "font-strong text-warning")}>
-                {isOverdue(list.planned_for) ? t("hub.planned", { day: dayLabel(list.planned_for) }) : dayLabel(list.planned_for)}
-              </span>
-            ) : (
-              t("trip.noDay")
-            )}
-            {list.note && <span> · {list.note}</span>}
-          </p>
-        </div>
-        <span className="flex shrink-0 items-center gap-1 text-footnote font-strong text-text-2">
-          {tn("shop.itemCount", open)}
-          <ChevronRight className="size-4" aria-hidden />
-        </span>
-      </div>
-      {stats && stats.preview.length > 0 && (
-        <p className="mt-2 truncate text-footnote text-text-3">
-          {stats.preview.join(" · ")}
-          {open > stats.preview.length && ` +${open - stats.preview.length}`}
-        </p>
-      )}
-      {live && open + bought > 0 && (
-        <div className="mt-3 h-1 overflow-hidden rounded-full bg-surface" aria-hidden>
-          <div className="h-full rounded-full bg-primary" style={{ width: `${(bought / (open + bought)) * 100}%` }} />
-        </div>
-      )}
-    </Link>
-  );
-}
+  const lp = useLongPress({ onTap: () => navigate(`/lists/${list.id}`), onLong: onActions });
 
-function ReceiptChip({ list, onAdd }: { list: ShoppingList; onAdd: () => void }) {
-  if (list.receipt_state === "ATTACHED" && list.receipt_id) {
-    return (
-      <Link
-        to={`/receipts/${list.receipt_id}`}
-        className="flex h-11 shrink-0 items-center gap-2 rounded-lg bg-success-soft px-3 text-footnote font-strong text-success"
-      >
-        <Receipt className="size-4" aria-hidden /> {t("trip.receipt")}
-      </Link>
-    );
+  async function go() {
+    if (session) {
+      navigate(`/lists/${list.id}`);
+      return;
+    }
+    try {
+      await start.mutateAsync();
+      navigate(`/lists/${list.id}`);
+    } catch (err) {
+      toast.show(errorMessage(err), "error");
+    }
   }
-  if (list.receipt_state === "LATER") {
-    return (
-      <button
-        type="button"
-        onClick={onAdd}
-        className="flex h-11 shrink-0 items-center gap-2 rounded-lg bg-warning-soft px-3 text-footnote font-strong text-warning"
-      >
-        <Camera className="size-4" aria-hidden /> {t("trip.completeReceipt")}
-      </button>
-    );
-  }
+
   return (
-    <button
-      type="button"
-      onClick={onAdd}
-      aria-label={t("hub.addReceiptAria", { name: list.name })}
-      className="grid size-11 shrink-0 place-items-center rounded-lg text-text-3 active:bg-pressed"
-    >
-      <Camera className="size-[1.125rem]" aria-hidden />
-    </button>
+    <div className="ls-listcard anim-rise" role="button" tabIndex={0} {...lp} aria-label={`${list.name}, ${listDay(list)}, ${tn("shop.itemCount", open)}`}>
+      <span className="row g-12">
+        <StoreBadge name={list.name} />
+        <span className="grow stack g-2">
+          <span className="row g-8" style={{ minWidth: 0 }}>
+            <span className="t-h ellipsis">{list.name}</span>
+            {list.is_private ? (
+              <Lock size={13} className="t-3 shrink-0" aria-label={t("trip.onlyMe")} />
+            ) : (
+              <span className="ls-ppl">
+                <Avatars people={people} max={3} size="xs" />
+              </span>
+            )}
+          </span>
+          <span className="t-sm t-2 num ellipsis">
+            {listDay(list)} · {tn("shop.itemCount", open)}
+          </span>
+        </span>
+        {(session || open > 0) && (
+          <button
+            type="button"
+            className={cx("ls-go", session && "live")}
+            disabled={start.isPending}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              void go();
+            }}
+            aria-label={session ? t("ls.openShopAria", { name: list.name }) : t("ls.startShopAria", { name: list.name })}
+          >
+            <ShoppingCart size={16} />
+            <span>{session ? t("ls.open") : t("ls.start")}</span>
+          </button>
+        )}
+      </span>
+      {(session || list.note) && (
+        <span className="row g-6 wrap">
+          {session && (
+            <span className="badge b-violet">
+              <span className="live" style={{ width: 6, height: 6 }} />
+              {t("hub.shopping", { name: shopper })}
+            </span>
+          )}
+          {list.note && <span className="t-xs t-3 ellipsis">{list.note}</span>}
+        </span>
+      )}
+    </div>
   );
 }

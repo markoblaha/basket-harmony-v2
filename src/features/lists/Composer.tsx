@@ -1,119 +1,217 @@
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
-import { Minus, PenLine, Plus } from "lucide-react";
-import { cx } from "@/components/ui";
-import { t } from "@/i18n";
+import { useMemo, useRef, useState } from "react";
+import { Keyboard, Mic, Plus } from "lucide-react";
+import { CatIcon, Stepper, haptic } from "@/components/kit";
+import { guessCategory, normalizeName } from "@/lib/categories";
 import { parseItemInput } from "@/lib/parseItem";
-import { qtyLabel } from "./qty";
+import { t } from "@/i18n";
+import { parseLocal } from "@/features/voice/parse";
+import { useSpeech } from "@/features/voice/useSpeech";
+import { useFrequentItems } from "./api";
 import type { AddOutcome } from "./useSmartAdd";
 
+export const UNITS = ["ks", "g", "kg", "ml", "l"] as const;
+/** Krok tlačidiel +/− podľa jednotky: kusy po 1, gramy po 50, kilá a litre po 0,5. */
+const stepFor = (u: string) => (u === "g" || u === "ml" ? 50 : u === "kg" || u === "l" ? 0.5 : 1);
+
+export type AddInput = { name: string; quantity: number | null; unit: string | null; note: string | null };
+
 /**
- * Pridanie položky: názov, vedľa počet kusov (− 1 +), pod tým detail.
- * Funguje aj rýchly zápis „3 rožky“ alebo „jablká 1,5 kg“ – vtedy má prednosť
- * množstvo z textu. Po pridaní ostane kurzor v poli, dá sa hneď písať ďalej.
+ * Pole na pridávanie (prototyp N3): názov s mikrofónom, počet (− 1 +), tlačidlo +,
+ * pod tým upresnenie a jednotka. Pri písaní ponúkne produkty z histórie domácnosti.
+ * Mikrofón diktuje celé vety („dve mlieka, maslo a štyri rožky“).
  */
 export function Composer({
-  onAdd,
+  householdId,
   requestMode,
+  onAdd,
+  onRemove,
 }: {
-  onAdd: (input: { name: string; quantity: number | null; unit: string | null; note: string | null }) => Promise<AddOutcome>;
-  /** Nakupuje niekto iný – pridanie sa pošle ako žiadosť. */
+  householdId: string;
   requestMode?: boolean;
+  onAdd: (input: AddInput) => Promise<AddOutcome>;
+  /** Diktovanie „zmaž maslo“. */
+  onRemove?: (name: string) => void;
 }) {
   const [text, setText] = useState("");
-  const [note, setNote] = useState("");
+  const [detail, setDetail] = useState("");
   const [qty, setQty] = useState(1);
-  const [busy, setBusy] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
+  const [unit, setUnit] = useState<string>("ks");
+  const [focus, setFocus] = useState(false);
+  const [dict, setDict] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const frequent = useFrequentItems(householdId);
 
-  async function submit(e?: FormEvent) {
-    e?.preventDefault();
-    const parsed = parseItemInput(text);
-    if (!parsed.name || busy) return;
-    const before = { text, note, qty };
-    setBusy(true);
+  const speech = useSpeech((said) => {
+    for (const op of parseLocal(said)) {
+      if (op.op === "add") void onAdd({ name: op.name, quantity: op.quantity, unit: op.unit && op.unit !== "ks" ? op.unit : null, note: null });
+      else if (op.op === "remove") onRemove?.(op.target);
+    }
+  });
+
+  const suggestions = useMemo(() => {
+    const k = normalizeName(text);
+    if (!k) return [];
+    const scored: [number, string, string][] = [];
+    for (const f of frequent.data ?? []) {
+      const n = normalizeName(f.name);
+      const score = n.startsWith(k) ? 2 : n.includes(k) ? 1 : 0;
+      if (score && n !== k) scored.push([score, f.name, f.category_id]);
+    }
+    return scored.sort((a, b) => b[0] - a[0]).slice(0, 5);
+  }, [text, frequent.data]);
+
+  const reset = () => {
     setText("");
-    setNote("");
+    setDetail("");
     setQty(1);
-    input.current?.focus();
-    const outcome = await onAdd({
-      name: parsed.name,
-      quantity: parsed.quantity ?? qty,
-      unit: parsed.quantity ? parsed.unit : null,
-      note: note.trim() || null,
-    });
-    setBusy(false);
+    setUnit("ks");
+  };
+
+  async function add(picked?: string) {
+    const untouched = qty === 1 && unit === "ks";
+    let input: AddInput;
+    if (picked) {
+      input = { name: picked, quantity: qty, unit: unit === "ks" ? null : unit, note: detail.trim() || null };
+    } else {
+      const p = parseItemInput(text);
+      if (!p.name) return;
+      const fromText = p.quantity != null;
+      input = {
+        name: p.name,
+        quantity: fromText && untouched ? p.quantity : qty,
+        unit: fromText && untouched ? p.unit : unit === "ks" ? null : unit,
+        note: detail.trim() || null,
+      };
+    }
+    const before = { text, detail, qty, unit };
+    reset();
+    inputRef.current?.focus();
+    const outcome = await onAdd(input);
     if (outcome === "FAILED") {
       // nič sa nestratí – text vrátime do polí
       setText(before.text);
-      setNote(before.note);
+      setDetail(before.detail);
       setQty(before.qty);
+      setUnit(before.unit);
     }
   }
 
-  const empty = !text.trim();
+  if (dict) {
+    return (
+      <div className="ls-composer">
+        <div className="ls-dict">
+          <div className="row g-10">
+            <span className="ls-mic-live" aria-hidden>
+              <Mic size={20} />
+            </span>
+            <div className="transcript grow">
+              {speech.interim ? (
+                <span className="fw-5">{speech.interim}</span>
+              ) : (
+                <span className="t-2">{speech.error ? t("ls.micBlocked") : t("ls.listening")}</span>
+              )}
+            </div>
+          </div>
+          <span className="t-xs t-3">{t("ls.dictHint")}</span>
+          <button
+            type="button"
+            className="btn btn-soft btn-sm"
+            onClick={() => {
+              speech.stop();
+              setDict(false);
+              setTimeout(() => inputRef.current?.focus(), 50);
+            }}
+          >
+            <Keyboard size={16} />
+            {t("ls.type")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-2 rounded-2xl bg-surface p-3 shadow-card">
-      <div className="flex gap-2">
-        <label className="min-w-0 flex-1">
+    <div className="ls-composer">
+      <div className="row g-8">
+        <label className="ls-field grow">
           <span className="sr-only">{t("composer.label")}</span>
           <input
-            ref={input}
+            ref={inputRef}
             value={text}
+            placeholder={requestMode ? t("ls.placeholderRequest") : t("composer.placeholder")}
             onChange={(e) => setText(e.target.value)}
-            placeholder={requestMode ? t("composer.placeholderRequest") : t("composer.placeholder")}
+            onFocus={() => setFocus(true)}
+            onBlur={() => setTimeout(() => setFocus(false), 150)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && text.trim()) void add();
+            }}
             autoComplete="off"
             enterKeyHint="done"
             maxLength={120}
-            className="h-12 w-full rounded-[var(--radius-control)] border border-transparent bg-sunken px-4 text-base outline-none transition-[border-color,box-shadow,background-color] placeholder:text-text-3 focus:border-primary focus:bg-elevated focus:ring-3 focus:ring-primary/20"
           />
+          {speech.supported && (
+            <button
+              type="button"
+              className="mic"
+              aria-label={t("ls.dictate")}
+              onClick={(e) => {
+                e.preventDefault();
+                haptic();
+                setDict(true);
+                speech.start();
+              }}
+            >
+              <Mic size={20} />
+            </button>
+          )}
         </label>
-        <div className="flex h-12 shrink-0 items-center rounded-[var(--radius-control)] bg-sunken">
-          <StepButton label={t("composer.fewer")} onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1}>
-            <Minus className="size-4" strokeWidth={2.2} />
-          </StepButton>
-          <span className="min-w-6 text-center text-base font-semibold" aria-live="polite" aria-label={qtyLabel(qty, null)}>
-            {qty}
-          </span>
-          <StepButton label={t("composer.more")} onClick={() => setQty((q) => Math.min(99, q + 1))}>
-            <Plus className="size-4" strokeWidth={2.2} />
-          </StepButton>
-        </div>
+        <Stepper value={qty} onChange={setQty} min={unit === "ks" ? 1 : stepFor(unit)} step={stepFor(unit)} unit={unit} small />
+        <button
+          type="button"
+          className="ibtn ink"
+          aria-label={requestMode ? t("composer.submitRequest") : t("composer.submit")}
+          disabled={!text.trim()}
+          style={{ opacity: text.trim() ? 1 : 0.35 }}
+          onClick={() => void add()}
+        >
+          <Plus size={22} strokeWidth={2.4} />
+        </button>
       </div>
-      <label className="relative block">
-        <span className="sr-only">{t("composer.noteLabel")}</span>
-        <PenLine className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-text-3" aria-hidden />
+      <div className="ls-detail">
         <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder={t("composer.notePlaceholder")}
-          autoComplete="off"
-          enterKeyHint="done"
+          placeholder={t("ls.detailPlaceholder")}
+          value={detail}
           maxLength={300}
-          className="h-11 w-full rounded-[var(--radius-control)] border border-transparent bg-transparent pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-text-3 focus:border-primary focus:bg-elevated"
+          onChange={(e) => setDetail(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && text.trim() && void add()}
         />
-      </label>
-      <button
-        type="submit"
-        disabled={empty}
-        className="h-12 rounded-[var(--radius-control)] bg-primary text-callout font-strong text-on-primary transition-[transform,opacity,background-color] active:scale-[0.98] active:bg-primary-pressed disabled:bg-sunken disabled:text-text-3 disabled:active:scale-100"
-      >
-        {requestMode ? t("composer.submitRequest") : qty > 1 ? t("composer.submitMany", { n: qty }) : t("composer.submit")}
-      </button>
-    </form>
-  );
-}
-
-function StepButton({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      className={cx("grid h-12 w-11 place-items-center rounded-lg transition-transform active:scale-90 active:bg-pressed disabled:opacity-35")}
-    >
-      {children}
-    </button>
+        <select
+          className="ls-unit"
+          aria-label={t("edit.unit")}
+          value={unit}
+          onChange={(e) => {
+            setUnit(e.target.value);
+            setQty(e.target.value === "g" || e.target.value === "ml" ? 250 : 1);
+          }}
+        >
+          {UNITS.map((u) => (
+            <option key={u} value={u}>
+              {u}
+            </option>
+          ))}
+        </select>
+      </div>
+      {focus && suggestions.length > 0 && (
+        <div className="ls-suggest">
+          {suggestions.map(([, name, cat]) => (
+            <button key={name} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => void add(name)}>
+              <CatIcon id={cat || guessCategory(name)} size="sm" />
+              <span className="grow t-body fw-5 ellipsis">{name}</span>
+              <Plus size={16} className="t-3" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

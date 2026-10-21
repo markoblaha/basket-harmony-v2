@@ -23,6 +23,11 @@ export const enCommon: Record<keyof typeof skCommon, string> = {
   "common.retry": "Try again",
   "common.loadFailed": "Couldn't load the data",
 
+  "common.undo": "Undo",
+  "kit.remove": "Remove",
+  "kit.less": "Less",
+  "kit.more": "More",
+
   "status.offline": "You're offline – changes won't be saved until you reconnect.",
   "status.reconnecting": "Restoring live connection…",
   "status.testEnv": "Test environment",
