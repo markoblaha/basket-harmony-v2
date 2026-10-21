@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useNavigate, useParams } from "react-router";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 import { Camera, Check, ChevronDown, ChevronLeft, ChevronUp, Ellipsis, Lock, Plus, Receipt, ShoppingCart } from "lucide-react";
-import { ErrorState, Spinner, cx } from "@/components/ui";
+import { ErrorState, Spinner } from "@/components/ui";
 import { Avatars, BottomSheet, Empty, SheetHeader, StoreBadge, type Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
@@ -10,13 +10,11 @@ import { useProfiles } from "@/features/household/api";
 import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
-import { formatEuro, t, tn, type Key } from "@/i18n";
-import { useListPriceHints, type PriceHint } from "@/features/analytics/api";
-import { formatMoney } from "@/features/receipts/format";
+import { formatEuro, t, tn } from "@/i18n";
+import { useListPriceHints } from "@/features/analytics/api";
 import {
   useActiveSession,
   useDeleteItem,
-  useEndShopping,
   useItems,
   useListStats,
   useLists,
@@ -27,29 +25,17 @@ import {
   type ListStats,
   type ShoppingList,
 } from "./api";
-import type { FeedEntry } from "./feed";
+import type { FeedEntry } from "./useSmartAdd";
 import { Composer } from "./Composer";
-import { DoneScreen, type ShopSummary } from "./DoneScreen";
 import { EditItemSheet } from "./EditItemSheet";
 import { ListActionsSheet } from "./ListActionsSheet";
 import { dayLabel, listDay } from "./dates";
 import { PlanList } from "./PlanList";
 import { QuickTiles } from "./QuickTiles";
-import { RequestCard } from "./RequestCard";
+import { MyRequests, PendingRequests } from "./Requests";
 import { ShoppingMode } from "./ShoppingMode";
-import { qtyLabel, sameProduct } from "./qty";
+import { sameProduct } from "./qty";
 import { useSmartAdd } from "./useSmartAdd";
-
-/** Krátka veta s cenou z bločkov: "naposledy 1,19 € (Lidl) · lacnejšie: Tesco". */
-function priceHint(h: PriceHint | undefined): string | undefined {
-  if (!h) return undefined;
-  const cheaper = h.cheapest_store && h.cheapest_store !== h.last_store && h.cheapest_unit < h.last_unit - 0.005;
-  const price = formatMoney(h.last_price);
-  return cheaper
-    ? t("shop.price.lastCheaper", { price, store: h.last_store, cheaper: h.cheapest_store })
-    : t("shop.price.last", { price, store: h.last_store });
-}
-
 
 /** Prerušený nákup si pamätáme v tomto okne prehliadača (po zatvorení aplikácie sa obnoví režim nákupu). */
 const interruptKey = (sessionId: string) => `bh.interrupted.${sessionId}`;
@@ -70,10 +56,11 @@ function writeFlag(key: string, on: boolean) {
 }
 
 /**
- * Karta Nákup. Tri stavy jednej obrazovky:
- *  1. Plánovanie – pridávanie (pole + dlaždice), žiadosti, zoznam ako účtenka.
- *  2. Práve nakupujem – celá obrazovka (ShoppingMode).
- *  3. Nákup dokončený – súhrn s návratom k nákupu (DoneScreen).
+ * N3 – zoznam (prototyp). Dva stavy jednej obrazovky:
+ *  1. Plánovanie – pole na pridávanie, dlaždice, položky po kategóriách.
+ *  2. Práve nakupujem – celá obrazovka N4 (ShoppingMode); šípka späť ju len zavrie,
+ *     nákup beží ďalej a tu sa ukáže „Pokračovať v nákupe“. Kto nakup sleduje
+ *     (?sledovat=1), vidí N4 bez ovládania.
  */
 export function ShoppingPage() {
   const { household } = useHousehold();
@@ -92,16 +79,14 @@ export function ShoppingPage() {
   const names = useProfiles().data;
   const update = useUpdateItem(listId ?? "none");
   const start = useStartShopping(listId ?? "none");
-  const end = useEndShopping(listId ?? "none");
 
   const [editing, setEditing] = useState<Item | null>(null);
   const [switching, setSwitching] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [showPurchased, setShowPurchased] = useState(false);
   const swipeX = useRef<number | null>(null);
-  const [summary, setSummary] = useState<ShopSummary | null>(null);
-  /** Pri znovuotvorení nákupu ukážeme v košíku aj veci z pôvodného nákupu. */
-  const [cartSince, setCartSince] = useState<string | null>(null);
+  const [search, setSearch] = useSearchParams();
+  const watching = search.get("sledovat") === "1";
   const stats = useListStats(household.id);
   const remove = useDeleteItem(listId ?? "none");
   // Potvrdenie pridania: bublina hore, ktorá sa sama rozplynie.
@@ -129,9 +114,6 @@ export function ShoppingPage() {
   }, [active]);
 
   const all = items.data ?? [];
-  // Pre automatické ukončenie: časovač musí vidieť najnovší stav, nie stav spred 1,5 s.
-  const latest = useRef({ all, active, cartSince });
-  latest.current = { all, active, cartSince };
   const open = useMemo(() => all.filter((i) => i.status === "OPEN").sort((a, b) => b.created_at.localeCompare(a.created_at)), [all]);
   const recent = useMemo(
     () => all.filter((i) => i.status === "PURCHASED").sort((a, b) => (b.purchased_at ?? "").localeCompare(a.purchased_at ?? "")),
@@ -139,15 +121,6 @@ export function ShoppingPage() {
   );
   const pendingForMe = (requests.data ?? []).filter((r) => r.status === "PENDING" && r.requested_for === me);
   const myRequests = (requests.data ?? []).filter((r) => r.requested_by === me);
-  const hintMap = useMemo(() => {
-    const m = new Map<string, string>();
-    hints.data?.forEach((h, id) => {
-      const text = priceHint(h);
-      if (text) m.set(id, text);
-    });
-    return m;
-  }, [hints.data]);
-
   const smartAdd = useSmartAdd({ listId: listId ?? "none", items: all, someoneElseShopping: someoneElse, onFeed: feedPush });
 
   async function startShopping() {
@@ -157,38 +130,6 @@ export function ShoppingPage() {
     }
     try {
       await start.mutateAsync();
-      setCartSince(null);
-    } catch (err) {
-      toast.show(errorMessage(err), "error");
-    }
-  }
-
-  async function finish() {
-    const { all, active, cartSince } = latest.current;
-    if (!active || end.isPending) return;
-    const since = Math.min(new Date(active.started_at).getTime(), cartSince ? new Date(cartSince).getTime() : Infinity);
-    const snapshot: ShopSummary = {
-      listName: list?.name ?? "",
-      startedAt: cartSince ?? active.started_at,
-      endedAt: new Date().toISOString(),
-      bought: all.filter((i) => i.status === "PURCHASED" && new Date(i.purchased_at ?? 0).getTime() >= since),
-      unbought: all.filter((i) => i.status === "OPEN"),
-    };
-    try {
-      await end.mutateAsync(active.id);
-      writeFlag(interruptKey(active.id), false);
-      setSummary(snapshot);
-    } catch (err) {
-      toast.show(errorMessage(err), "error");
-    }
-  }
-
-  async function reopen() {
-    if (!summary) return;
-    try {
-      await start.mutateAsync();
-      setCartSince(summary.startedAt);
-      setSummary(null);
     } catch (err) {
       toast.show(errorMessage(err), "error");
     }
@@ -199,52 +140,33 @@ export function ShoppingPage() {
   // Nákup neexistuje, bol odstránený z prehľadu, alebo je súkromný cudzí → späť na prehľad.
   if (!list || !listId) return <Navigate to="/" replace />;
 
-  if (summary) {
-    return (
-      <DoneScreen
-        listId={listId}
-        householdId={household.id}
-        summary={summary}
-        names={names}
-        me={me}
-        onReopen={reopen}
-        reopening={start.isPending}
-        onClose={() => {
-          setSummary(null);
-          setCartSince(null);
-          navigate("/");
-        }}
-      />
-    );
-  }
-
-  if (iAmShopping && active && !interrupted) {
-    return (
-      <>
-        <ShoppingMode
-          list={list}
-          items={all}
-          session={active}
-          cartSince={cartSince}
-          pending={pendingForMe}
-          names={names}
-          me={me}
-          hints={hintMap}
-          onEdit={setEditing}
-          onInterrupt={interrupt}
-          onFinish={finish}
-          finishing={end.isPending}
-        />
-        <EditItemSheet key={editing?.id} item={editing} listId={listId} onClose={() => setEditing(null)} />
-      </>
-    );
-  }
-
   const people: Person[] = names ? [...names.entries()].map(([id, name]) => ({ id, name })) : [];
   const openLists = (lists.data ?? [])
     .filter((l) => !l.completed_at)
     .sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999") || b.created_at.localeCompare(a.created_at));
   const idx = openLists.findIndex((l) => l.id === list.id);
+
+  if (active && ((iAmShopping && !interrupted) || (someoneElse && watching))) {
+    return (
+      <ShoppingMode
+        list={list}
+        items={all}
+        session={active}
+        shopper={iAmShopping}
+        me={me}
+        names={names}
+        people={people}
+        hints={hints.data}
+        pending={pendingForMe}
+        myRequests={myRequests}
+        openLists={openLists}
+        householdId={household.id}
+        onBack={iAmShopping ? interrupt : () => setSearch({}, { replace: true })}
+        onAdd={smartAdd}
+      />
+    );
+  }
+
   const goRel = (d: number) => {
     const n = openLists[idx + d];
     if (n) navigate(`/lists/${n.id}`, { replace: true });
@@ -339,18 +261,7 @@ export function ShoppingPage() {
             <span className="t-sm fw-5 grow">{t("ls.requestBanner", { name: shortName(shopperName ?? "") })}</span>
           </div>
         )}
-        {iAmShopping && interrupted && pendingForMe.length > 0 && (
-          <section className="stack g-8">
-            <div className="section-head">
-              <span className="section-title t-violet">{t("shop.waitingApproval")}</span>
-            </div>
-            <div className="cells">
-              {pendingForMe.map((r) => (
-                <RequestCard key={r.id} request={r} listId={listId} who={(r.requested_by && names?.get(r.requested_by)) || t("household.fallbackName")} />
-              ))}
-            </div>
-          </section>
-        )}
+        {iAmShopping && interrupted && <PendingRequests requests={pendingForMe} names={names} listId={listId} />}
 
         <QuickTiles
           householdId={household.id}
@@ -359,31 +270,7 @@ export function ShoppingPage() {
           onAdd={(name, count) => void smartAdd({ name, quantity: count, unit: null, note: null })}
         />
 
-        {someoneElse && myRequests.length > 0 && (
-          <section className="stack g-8">
-            <div className="section-head">
-              <span className="section-title">{t("ls.myRequests")}</span>
-            </div>
-            <div className="cells">
-              {myRequests.map((r) => (
-                <div key={r.id} className="stack g-6" style={{ padding: "12px 14px" }}>
-                  <div className="row g-8">
-                    <span className="grow t-body fw-5 ellipsis">
-                      {r.name}
-                      <span className="t-2 fw-5"> · {qtyLabel(r.quantity, r.unit)}</span>
-                    </span>
-                    <RequestStatus status={r.status} />
-                  </div>
-                  {r.response_note && (
-                    <span className="t-sm" style={{ alignSelf: "flex-start", padding: "8px 12px", borderRadius: "4px 14px 14px 14px", background: "var(--violet-soft)", color: "var(--violet)" }}>
-                      {shortName(shopperName ?? "")}: „{r.response_note}“
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        {someoneElse && <MyRequests requests={myRequests} shopperName={shopperName ?? ""} />}
 
         {items.isPending ? (
           <Spinner />
@@ -441,7 +328,7 @@ export function ShoppingPage() {
       {(open.length > 0 || active) && (
         <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}>
           {someoneElse ? (
-            <button type="button" className="btn btn-lg btn-block" style={{ background: "var(--violet-soft)", color: "var(--violet)" }} onClick={() => navigate(`/lists/${list.id}?sledovat=1`)}>
+            <button type="button" className="btn btn-lg btn-block" style={{ background: "var(--violet-soft)", color: "var(--violet)" }} onClick={() => setSearch({ sledovat: "1" })}>
               <span className="live" />
               {t("ls.watchShopper", { name: shortName(shopperName ?? "") })}
             </button>
@@ -522,15 +409,4 @@ function SwitchListSheet({
       </div>
     </BottomSheet>
   );
-}
-
-function RequestStatus({ status }: { status: string }) {
-  const map: Record<string, [Key, string]> = {
-    PENDING: ["request.status.PENDING", "b-violet"],
-    ACCEPTED: ["request.status.ACCEPTED", "b-green"],
-    REJECTED: ["request.status.REJECTED", "b-red"],
-    EXPIRED: ["request.status.EXPIRED", "b-gray"],
-  };
-  const [label, cls] = map[status] ?? [null, "b-gray"];
-  return <span className={cx("badge", cls)}>{label ? t(label) : "?"}</span>;
 }

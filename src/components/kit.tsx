@@ -34,6 +34,7 @@ export function ScreenHeader({
   titleLabel,
   children,
   className,
+  sticky = true,
 }: {
   title?: ReactNode;
   sub?: ReactNode;
@@ -43,10 +44,12 @@ export function ScreenHeader({
   titleLabel?: string;
   children?: ReactNode;
   className?: string;
+  /** Hlavička ostáva hore pri posúvaní (predvolene áno). */
+  sticky?: boolean;
 }) {
   const Title = onTitle ? "button" : "div";
   return (
-    <header className={cx("hdr sticky top-0 z-20", onBack && "with-back", className)}>
+    <header className={cx("hdr", sticky && "sticky top-0 z-20", onBack && "with-back", className)}>
       {onBack && (
         <button type="button" className="ibtn" onClick={onBack} aria-label={t("common.back")}>
           <ChevronLeft size={24} />

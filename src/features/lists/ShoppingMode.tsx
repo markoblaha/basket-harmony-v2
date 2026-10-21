@@ -1,470 +1,724 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowRight, Check, ChevronLeft, CornerUpLeft, Pause } from "lucide-react";
-import { Avatar, Sheet, cx } from "@/components/ui";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
+import { ArrowLeft, ArrowRightLeft, Camera, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Image, MoreHorizontal, Plus, Repeat, RotateCcw, TriangleAlert } from "lucide-react";
+import { Avatars, BottomSheet, CatIcon, Cell, ScreenHeader, SheetHeader, Stepper, haptic, type Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
-import { CATEGORIES, categoryOrder } from "@/lib/categories";
+import { cx } from "@/components/ui";
+import { category, categoryOrder } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
-import { formatDateTime, t } from "@/i18n";
-import { useUpdateItem, type AdditionRequest, type Item, type Session, type ShoppingList } from "./api";
-import { RequestCard } from "./RequestCard";
-import { qtyLabel } from "./qty";
-
-/** Ako dlho letí kúpená položka do lišty (musí sedieť s animáciou bh-funnel). */
-const FUNNEL_MS = 420;
-/** Po odškrtnutí poslednej položky – čas na „Vrátiť“, kým sa nákup sám uzavrie. */
-const AUTO_FINISH_MS = 1500;
-const TOAST_MS = 3200;
+import { formatDateTime, formatEuro, formatNumber, t, tn } from "@/i18n";
+import type { PriceHint } from "@/features/analytics/api";
+import {
+  useAddItem,
+  useCreateList,
+  useDeleteItem,
+  useEndShopping,
+  useSetReceiptLater,
+  useUpdateItem,
+  type AdditionRequest,
+  type Item,
+  type Session,
+  type ShoppingList,
+} from "./api";
+import { Composer, type AddInput } from "./Composer";
+import { addDays, dayLabel, isoDay, listDay } from "./dates";
+import { stepOf } from "./PlanList";
+import { countOf, isCountable, qtyLabel } from "./qty";
+import { MyRequests, PendingRequests } from "./Requests";
+import type { AddOutcome } from "./useSmartAdd";
 
 const time = (iso: string) => formatDateTime(iso, { hour: "2-digit", minute: "2-digit" });
 
-type Toast = { id: number; name: string; rest: string; undo?: Item; out?: boolean };
-
 /**
- * Aktívny nákup – celá obrazovka bez spodnej navigácie, aby nič nerušilo.
- * Ťuk na položku: zažiari, zúži sa ako do lievika a vletí do tmavej lišty dole.
- * Počet kúpených je LEN v lište (nie v hlavičke ani na tlačidle).
+ * N4 – aktívny nákup (prototyp, návrh A). Celá obrazovka nad aplikáciou.
+ * Ťuk na kartu = kúpené: štvorček s množstvom sa otočí na zelenú fajku, karta
+ * zosvetlie a spadne do „V košíku“. Ďalšie možnosti (náhrada, kúpim inde) sú pod ⋯.
+ * Kto nakup len sleduje, vidí to isté bez ovládania a pridáva žiadosti.
  */
 export function ShoppingMode({
   list,
   items,
   session,
-  cartSince,
-  pending,
-  names,
+  shopper,
   me,
+  names,
+  people,
   hints,
-  onEdit,
-  onInterrupt,
-  onFinish,
-  finishing,
+  pending,
+  myRequests,
+  openLists,
+  householdId,
+  onBack,
+  onAdd,
 }: {
   list: ShoppingList;
   items: Item[];
   session: Session;
-  /** Pri znovuotvorenom nákupe: od kedy rátať veci „v košíku“. */
-  cartSince?: string | null;
-  pending: AdditionRequest[];
-  hints?: Map<string, string>;
-  names: Map<string, string> | undefined;
+  /** Nakupujem ja (inak len sledujem). */
+  shopper: boolean;
   me: string;
-  onEdit: (item: Item) => void;
-  /** Prerušiť – vrátiť sa k plánovaniu, nákup ostáva otvorený. */
-  onInterrupt: () => void;
-  /** Ukončiť nákup (ručne alebo automaticky po poslednej položke). */
-  onFinish: () => void;
-  finishing: boolean;
+  names: Map<string, string> | undefined;
+  people: Person[];
+  hints?: Map<string, PriceHint>;
+  pending: AdditionRequest[];
+  myRequests: AdditionRequest[];
+  /** Ostatné rozpracované zoznamy – pre „Kúpim inde“. */
+  openLists: ShoppingList[];
+  householdId: string;
+  onBack: () => void;
+  onAdd: (input: AddInput) => Promise<AddOutcome>;
 }) {
-  const update = useUpdateItem(list.id);
-  const toastApi = useToast();
-  const [leaving, setLeaving] = useState<Set<string>>(new Set());
-  const [arrived, setArrived] = useState<string | null>(null);
-  const [toast, setToast] = useState<Toast | null>(null);
-  const [dockPulse, setDockPulse] = useState(0);
-  const [allFlash, setAllFlash] = useState(false);
-  const [sheet, setSheet] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const timers = useRef<number[]>([]);
-  const autoFinish = useRef<number | null>(null);
-  const toastSeq = useRef(1);
-  useEffect(() => () => timers.current.forEach((id) => window.clearTimeout(id)), []);
-  // Najnovší stav pre časovače (inak by videli stav z chvíle ťuknutia).
-  const itemsRef = useRef(items);
-  itemsRef.current = items;
-  const leavingRef = useRef(leaving);
-  leavingRef.current = leaving;
-  const onFinishRef = useRef(onFinish);
-  onFinishRef.current = onFinish;
+  const [finishing, setFinishing] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [showDone, setShowDone] = useState(true);
+  const [menu, setMenu] = useState<Item | null>(null);
 
-  const since = Math.min(new Date(session.started_at).getTime(), cartSince ? new Date(cartSince).getTime() : Infinity);
-  const { groups, inCart, total } = useMemo(() => {
-    const open = items.filter((i) => i.status === "OPEN");
-    const inCart = items
-      .filter((i) => i.status === "PURCHASED" && new Date(i.purchased_at ?? 0).getTime() >= since)
-      .sort((a, b) => (b.purchased_at ?? "").localeCompare(a.purchased_at ?? ""));
+  const since = new Date(session.started_at).getTime();
+  const open = useMemo(() => items.filter((i) => i.status === "OPEN"), [items]);
+  const done = useMemo(
+    () =>
+      items
+        .filter((i) => i.status === "PURCHASED" && new Date(i.purchased_at ?? 0).getTime() >= since)
+        .sort((a, b) => (b.purchased_at ?? "").localeCompare(a.purchased_at ?? "")),
+    [items, since],
+  );
+  const total = open.length + done.length;
+  useEffect(() => {
+    if (open.length > 0) setDismissed(false);
+  }, [open.length]);
+
+  const groups = useMemo(() => {
     const byCat = new Map<string, Item[]>();
     for (const i of open) byCat.set(i.category_id, [...(byCat.get(i.category_id) ?? []), i]);
-    const groups = [...byCat.entries()]
-      .sort(([a], [b]) => categoryOrder(a) - categoryOrder(b))
-      .map(([id, list]) => ({ name: (CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1]!).name, items: list }));
-    return { groups, inCart, total: open.length + inCart.length };
-  }, [items, since]);
-  const done = inCart.length;
-  const left = total - done;
+    return [...byCat.entries()].sort(([a], [b]) => categoryOrder(a) - categoryOrder(b));
+  }, [open]);
 
-  // Nová položka od iného člena (schválená žiadosť) krátko zasvieti fialovo.
-  const knownIds = useRef(new Set(items.map((i) => i.id)));
-  useEffect(() => {
-    for (const i of items) {
-      if (!knownIds.current.has(i.id)) {
-        knownIds.current.add(i.id);
-        if (i.status === "OPEN") setArrived(i.id);
-        cancelAutoFinish();
-      }
-    }
-  }, [items]);
+  const priced = done.filter((i) => hints?.has(i.id));
+  const cart = priced.reduce((sum, i) => sum + (hints?.get(i.id)?.last_price ?? 0), 0);
+  const shopperName = shortName(names?.get(session.shopper_id) ?? t("household.fallbackName"));
+  const autoFinish = shopper && total > 0 && open.length === 0 && !dismissed;
+  const showFinish = shopper && (finishing || autoFinish);
 
-  function cancelAutoFinish() {
-    if (autoFinish.current) window.clearTimeout(autoFinish.current);
-    autoFinish.current = null;
-    setAllFlash(false);
-  }
+  return (
+    <div className="fixed inset-0 z-[45] mx-auto flex max-w-2xl flex-col bg-bg pt-safe animate-rise" style={{ background: "var(--bg)" }}>
+      <ScreenHeader
+        onBack={onBack}
+        title={shopper ? t("ls.youShopIn", { name: list.name }) : t("ls.someoneShopsIn", { who: shopperName, name: list.name })}
+        sub={t("ls.shopSub", { time: time(session.started_at), left: tn("shop.itemCount", open.length) })}
+        right={list.is_private ? null : <Avatars people={people} />}
+        sticky={false}
+      />
+      <ShopProgress bought={done.length} total={total} />
 
-  function showToast(entry: Omit<Toast, "id">) {
-    const id = toastSeq.current++;
-    setToast({ ...entry, id });
-    timers.current.push(
-      window.setTimeout(() => setToast((cur) => (cur?.id === id ? { ...cur, out: true } : cur)), TOAST_MS),
-      window.setTimeout(() => setToast((cur) => (cur?.id === id ? null : cur)), TOAST_MS + 350),
-    );
-  }
+      {!shopper && (
+        <div className="stack g-8" style={{ padding: "0 16px 4px" }}>
+          <div className="row g-10 t-sm" style={{ padding: "10px 12px", borderRadius: 12, background: "var(--violet-soft)", color: "var(--violet)" }}>
+            <Eye size={16} />
+            <span className="grow">{t("ls.watching", { name: shopperName })}</span>
+          </div>
+        </div>
+      )}
+      {!shopper && <Composer householdId={householdId} requestMode onAdd={onAdd} />}
 
-  function buy(item: Item) {
-    if (leavingRef.current.has(item.id)) return;
-    navigator.vibrate?.(10);
-    setLeaving((s) => new Set(s).add(item.id));
-    timers.current.push(
-      window.setTimeout(() => {
+      <div className="scroll">
+        <div className="stack g-16 px" style={{ paddingTop: 8 }}>
+          {shopper && <PendingRequests requests={pending} names={names} listId={list.id} />}
+          {!shopper && <MyRequests requests={myRequests} shopperName={shopperName} />}
+
+          {open.length === 0 ? (
+            <div className="card stack center g-6" style={{ padding: 20, textAlign: "center" }}>
+              <span className="t-h">{t("ls.allDone")}</span>
+              <span className="t-sm t-2">{shopper ? t("ls.allDoneShopper") : t("ls.allDoneWatcher", { name: shopperName })}</span>
+            </div>
+          ) : (
+            groups.map(([cat, group]) => (
+              <section key={cat} className="stack g-6">
+                <div className="ls-cat-head">
+                  <CatIcon id={cat} size="sm" />
+                  {category(cat).name}
+                  <span className="t-3 num">{group.length}</span>
+                </div>
+                <div className="cells">
+                  {group.map((it) => (
+                    <ShopRow
+                      key={it.id}
+                      listId={list.id}
+                      item={it}
+                      by={it.added_by && it.added_by !== me ? names?.get(it.added_by) : undefined}
+                      hint={hints?.get(it.id)}
+                      shopper={shopper}
+                      onMenu={() => setMenu(it)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
+
+          {shopper && open.length > 0 && (
+            <span className="t-xs t-3" style={{ textAlign: "center" }}>
+              {t("ls.shopHint")}
+            </span>
+          )}
+
+          {done.length > 0 && (
+            <section className="stack g-6">
+              <button type="button" className="section-head" style={{ minHeight: 40 }} onClick={() => setShowDone(!showDone)} aria-expanded={showDone}>
+                <span className="section-title">{t("ls.inCart", { n: done.length })}</span>
+                {showDone ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {showDone && (
+                <div className="cells">
+                  {done.map((it) => (
+                    <DoneRow key={it.id} listId={list.id} item={it} shopper={shopper} who={it.purchased_by ? names?.get(it.purchased_by) : undefined} />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+        </div>
+        <div style={{ height: 120 }} />
+      </div>
+
+      {shopper ? (
+        <div className="ls-bottombar pb-[calc(22px+env(safe-area-inset-bottom))]">
+          <span className="grow stack g-2">
+            <span className="t-xs t-2">{priced.length > 0 ? t("ls.cartApprox") : t("ls.cart")}</span>
+            <span className="t-h num">{priced.length > 0 ? `~${formatEuro(cart)}` : tn("shop.itemCount", done.length)}</span>
+          </span>
+          <button type="button" className="btn btn-ink btn-lg" onClick={() => setFinishing(true)}>
+            {t("ls.finishShopping")}
+          </button>
+        </div>
+      ) : (
+        <div className="ls-bottombar pb-[calc(22px+env(safe-area-inset-bottom))]">
+          <span className="grow t-sm t-2">
+            {priced.length > 0 ? t("ls.cartApproxInline", { amount: formatEuro(cart) }) : t("ls.cartInline", { count: tn("shop.itemCount", done.length) })}
+          </span>
+          <button type="button" className="btn btn-line" onClick={onBack}>
+            {t("common.close")}
+          </button>
+        </div>
+      )}
+
+      <ItemMenu item={menu} list={list} openLists={openLists} householdId={householdId} by={menu?.added_by && menu.added_by !== me ? names?.get(menu.added_by) : undefined} onClose={() => setMenu(null)} />
+
+      {showFinish && (
+        <FinishScreen
+          list={list}
+          session={session}
+          open={open}
+          bought={done}
+          pending={pending}
+          names={names}
+          estimate={priced.length > 0 ? cart : null}
+          householdId={householdId}
+          onBack={() => {
+            setFinishing(false);
+            setDismissed(true);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Štvorček s množstvom – po kúpe sa otočí na fajku. */
+function QtyToken({ item, done }: { item: Item; done: boolean }) {
+  const piece = isCountable(item.unit);
+  const n = formatNumber(countOf(item.quantity), { maximumFractionDigits: 2 });
+  return (
+    <span className={cx("ls-tok", done && "done")} aria-hidden>
+      <span>
+        <span className="face front">
+          {piece ? (
+            <b className="num">{n}×</b>
+          ) : (
+            <span>
+              <b className="num">{n}</b>
+              <small>{item.unit}</small>
+            </span>
+          )}
+        </span>
+        <span className="face back">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path className="ls-draw" d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function ShopRow({ listId, item, by, hint, shopper, onMenu }: { listId: string; item: Item; by?: string; hint?: PriceHint; shopper: boolean; onMenu: () => void }) {
+  const update = useUpdateItem(listId);
+  const toast = useToast();
+  const [leaving, setLeaving] = useState(false);
+  const buy = () => {
+    if (leaving || !shopper) return;
+    haptic(12);
+    setLeaving(true);
+    setTimeout(
+      () =>
         update.mutate(
           { id: item.id, patch: { status: "PURCHASED" } },
           {
-            onError: (err) => toastApi.show(errorMessage(err), "error"),
-            onSettled: () =>
-              setLeaving((s) => {
-                const n = new Set(s);
-                n.delete(item.id);
-                return n;
-              }),
+            onError: (err) => {
+              setLeaving(false);
+              toast.show(errorMessage(err), "error");
+            },
           },
-        );
-        setDockPulse((p) => p + 1);
-        const remaining = itemsRef.current.filter((i) => i.status === "OPEN" && i.id !== item.id && !leavingRef.current.has(i.id)).length;
-        if (remaining === 0 && !autoFinish.current) {
-          setAllFlash(true);
-          showToast({ name: t("mode.allInCart"), rest: t("mode.closing"), undo: item });
-          autoFinish.current = window.setTimeout(() => {
-            autoFinish.current = null;
-            onFinishRef.current();
-          }, AUTO_FINISH_MS);
-        } else {
-          showToast({ name: item.name, rest: t("mode.itemInCart"), undo: item });
-        }
-      }, FUNNEL_MS),
+        ),
+      900,
     );
-  }
-
-  function back(item: Item) {
-    cancelAutoFinish();
-    setArrived(item.id);
-    update.mutate({ id: item.id, patch: { status: "OPEN" } }, { onError: (err) => toastApi.show(errorMessage(err), "error") });
-  }
-
-  const request = pending[0];
-  const requester = request ? (request.requested_by && names?.get(request.requested_by)) || t("household.fallbackName") : "";
-
+  };
+  const qty = qtyLabel(item.quantity, item.unit);
   return (
-    <div className="fixed inset-0 z-[45] mx-auto flex max-w-2xl flex-col bg-bg pt-safe animate-rise">
-      <header className="flex items-center gap-1 py-3 pl-1 pr-3">
-        <button type="button" aria-label={t("mode.backAria")} onClick={() => setSheet(true)} className="grid size-11 place-items-center rounded-xl active:bg-pressed">
-          <ChevronLeft className="size-6" aria-hidden />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-semibold">{list.name}</h1>
-          <p className="mt-1 flex items-center gap-2 text-footnote font-medium text-text-2">
-            <span className="size-2 rounded-full bg-success-solid [animation:bh-pulse_1.8s_ease_infinite]" aria-hidden />
-            {t("mode.since", { time: time(session.started_at) })}
-          </p>
-        </div>
-        <Avatar name={names?.get(me) ?? t("shop.me")} me />
-        <button
-          type="button"
-          aria-label={t("mode.pauseAria")}
-          onClick={() => setSheet(true)}
-          className="ml-2 grid size-11 place-items-center rounded-xl bg-surface shadow-card active:bg-pressed"
-        >
-          <Pause className="size-[1.125rem]" strokeWidth={2.2} aria-hidden />
-        </button>
-      </header>
-
-      <main className="no-scrollbar flex-1 overflow-y-auto px-4 pb-36">
-        {groups.map((g) => (
-          <section key={g.name} aria-label={g.name}>
-            <h2 className="mb-3 mt-6 px-1 text-overline font-semibold uppercase text-text-2">{g.name}</h2>
-            {g.items.map((item) => {
-              const isLeaving = leaving.has(item.id);
-              const by = item.added_by && item.added_by !== me ? names?.get(item.added_by) : undefined;
-              return (
-                <div
-                  key={item.id}
-                  className={cx("grid transition-[grid-template-rows,margin] delay-[260ms] duration-200", isLeaving ? "mb-0 grid-rows-[0fr]" : "mb-2 grid-rows-[1fr]")}
-                >
-                  <div className="min-h-0">
-                    <LongPressButton
-                      onTap={() => buy(item)}
-                      onLongPress={() => onEdit(item)}
-                      aria-label={t("mode.boughtAria", { name: item.name, qty: qtyLabel(item.quantity, item.unit) })}
-                      className={cx(
-                        "relative flex min-h-16 w-full items-center gap-4 rounded-2xl bg-surface px-4 py-3 text-left shadow-card",
-                        isLeaving && "pointer-events-none z-[5] [animation:bh-funnel_.42s_cubic-bezier(.4,0,.2,1)_forwards]",
-                        !isLeaving && arrived === item.id && "[animation:bh-arrive_.2s_ease-out]",
-                      )}
-                    >
-                      <span
-                        aria-hidden
-                        className={cx(
-                          "grid size-7 shrink-0 place-items-center rounded-sm border-2 transition-colors duration-[120ms]",
-                          isLeaving ? "border-primary bg-primary text-on-primary" : "border-line-strong",
-                        )}
-                      >
-                        <Check className={cx("size-4 transition-[opacity,transform] duration-[120ms]", isLeaving ? "scale-100 opacity-100" : "scale-50 opacity-0")} strokeWidth={2.4} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-base font-strong">{item.name}</span>
-                        {(by || item.note) && (
-                          <span className="mt-1 flex flex-wrap items-center gap-2 text-footnote text-text-2">
-                            {by && <span className="rounded-sm bg-person-soft px-2 py-px text-xs font-strong text-person">{t("item.addedBy", { name: shortName(by) })}</span>}
-                            {item.note && <span>{item.note}</span>}
-                          </span>
-                        )}
-                        {hints?.get(item.id) && <span className="mt-0.5 block truncate text-xs text-text-3">{hints.get(item.id)}</span>}
-                      </span>
-                      <span className="shrink-0 rounded-sm bg-sunken px-2 py-1 text-footnote font-strong text-text-2">{qtyLabel(item.quantity, item.unit)}</span>
-                    </LongPressButton>
-                  </div>
-                </div>
-              );
-            })}
-          </section>
-        ))}
-
-        {left === 0 && !allFlash && total > 0 && (
-          <div className="mt-6 rounded-2xl bg-success-soft px-6 py-6 text-center animate-rise">
-            <p className="text-lg font-semibold text-success">{t("mode.allInCart")}</p>
-            <p className="mt-2 text-sm text-text-2">{t("mode.allInCartHint")}</p>
+    <div className={cx("ls-swipe ls-shop", leaving && "leaving")}>
+      <div className="front">
+        <div className="ls-shop-row">
+          <div
+            className="row g-12 grow"
+            style={{ minWidth: 0, cursor: shopper ? "pointer" : "default", alignItems: "center" }}
+            {...(shopper
+              ? {
+                  role: "button",
+                  tabIndex: 0,
+                  "aria-label": t("ls.buyAria", { name: item.name, qty }),
+                  onClick: buy,
+                  onKeyDown: (e: React.KeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      buy();
+                    }
+                  },
+                }
+              : {})}
+          >
+            <QtyToken item={item} done={leaving} />
+            <span className="grow stack" style={{ minWidth: 0, gap: 1 }}>
+              <span className="ls-sname ls-name">{item.name}</span>
+              {item.note && <span className="ls-meta">{item.note}</span>}
+              {hint && (
+                <span className="ls-meta num">
+                  <span className="t-2">~{formatEuro(hint.last_price)}</span> · {hint.last_store} {dayLabel(hint.last_date)}
+                </span>
+              )}
+              {by && <span className="ls-meta ls-who">{t("item.addedBy", { name: shortName(by) })}</span>}
+            </span>
           </div>
-        )}
-        {total === 0 && (
-          <div className="mt-8 text-center text-text-2">{t("mode.emptyList")}</div>
-        )}
-
-        {inCart.length > 0 && (
-          <section className="mt-8">
-            <h2 className="mb-3 px-1 text-overline font-semibold uppercase text-text-2">{t("mode.inCartHeading")}</h2>
-            <div className="flex flex-wrap gap-2">
-              {inCart.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => back(item)}
-                  aria-label={t("mode.putBackAria", { name: item.name })}
-                  className="inline-flex h-11 items-center gap-2 rounded-lg bg-surface pl-2 pr-3 text-footnote font-medium text-text-2 line-through decoration-text-3 shadow-card active:bg-pressed [animation:bh-tile-in_.2s_ease-out]"
-                >
-                  <span className="grid size-6 place-items-center rounded-sm bg-primary text-on-primary no-underline">
-                    <Check className="size-3.5" strokeWidth={2.4} aria-hidden />
-                  </span>
-                  {item.name}
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
-
-      {/* Toast nad lištou – sám zmizne, tenký prúžok ukazuje zostávajúci čas */}
-      {toast && (
-        <div
-          role="status"
-          key={toast.id}
-          className={cx(
-            "absolute inset-x-6 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-[9] flex h-12 items-center gap-3 overflow-hidden rounded-lg bg-inverse pl-4 pr-1 text-sm text-on-inverse shadow-raised",
-            toast.out ? "[animation:bh-out-down_.2s_ease_forwards]" : "animate-rise",
-          )}
-        >
-          <span className="min-w-0 flex-1 truncate">
-            <b className="font-strong">{toast.name}</b> <span className="opacity-75">{toast.rest}</span>
-          </span>
-          {toast.undo && (
-            <button
-              type="button"
-              onClick={() => {
-                back(toast.undo!);
-                setToast((cur) => (cur ? { ...cur, out: true } : cur));
-              }}
-              className="h-10 shrink-0 rounded-sm px-3 text-footnote font-strong text-on-inverse underline underline-offset-4 active:bg-on-inverse/10"
-            >
-              {t("mode.undo")}
+          {shopper && (
+            <button type="button" className="ibtn" aria-label={t("ls.optionsAria", { name: item.name })} onClick={onMenu}>
+              <MoreHorizontal size={18} />
             </button>
           )}
-          <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-on-inverse/40 [animation:bh-shrink_3.2s_linear_forwards]" />
         </div>
-      )}
-
-      {/* Lišta – jediné miesto s počtom kúpených */}
-      <div
-        key={dockPulse}
-        className={cx(
-          "absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 flex items-center gap-3 rounded-2xl py-3 pl-4 pr-3 shadow-raised transition-colors duration-200",
-          allFlash ? "bg-primary text-on-primary" : "bg-elevated text-text",
-          dockPulse > 0 && "[animation:bh-dock_.2s_ease]",
-        )}
-      >
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-semibold">
-              {done}
-              <span className={allFlash ? "opacity-60" : "text-text-3"}>/{total}</span>
-            </span>
-            <span className={cx("truncate text-footnote", allFlash ? "opacity-80" : "text-text-2")}>{left === 0 ? t("mode.dockAll") : t("mode.dockLeft", { left })}</span>
-          </div>
-          <Progress done={done} total={total} light={allFlash} />
-        </div>
-        {!allFlash && (
-          <button
-            type="button"
-            onClick={onFinish}
-            disabled={finishing}
-            className={cx(
-              "flex h-12 shrink-0 items-center gap-2 rounded-lg px-4 text-sm font-strong disabled:opacity-50",
-              left === 0 ? "bg-primary text-on-primary active:bg-primary-pressed" : "bg-sunken text-text active:bg-pressed",
-            )}
-          >
-            {left === 0 ? t("mode.finish") : t("mode.end")}
-            <ArrowRight className="size-4" strokeWidth={2.2} aria-hidden />
-          </button>
-        )}
       </div>
-
-      {/* Žiadosť naživo – vyjde zhora */}
-      {request && !paused && (
-        <div className="absolute inset-x-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-20 [animation:bh-slide-down_.28s_cubic-bezier(.2,.8,.2,1)]" role="alertdialog" aria-label={t("mode.newRequest")}>
-          <RequestCard key={request.id} request={request} listId={list.id} who={requester} tone="ink" more={pending.length - 1} />
-        </div>
-      )}
-
-      <Sheet open={sheet} onClose={() => setSheet(false)} title={t("mode.sheetTitle")}>
-        <p className="-mt-1 mb-3 text-sm text-text-2">
-          {t("mode.sheetCount", { done, total })}
-        </p>
-        <div className="flex flex-col gap-2">
-          <SheetOption
-            icon={<Pause className="size-[1.125rem]" strokeWidth={2.4} />}
-            title={t("mode.pause")}
-            hint={t("mode.pauseHint")}
-            onClick={() => {
-              setSheet(false);
-              setPaused(true);
-            }}
-          />
-          <SheetOption
-            icon={<CornerUpLeft className="size-[1.125rem]" />}
-            title={t("mode.interrupt")}
-            hint={t("mode.interruptHint")}
-            onClick={() => {
-              setSheet(false);
-              onInterrupt();
-            }}
-          />
-          <button type="button" onClick={() => setSheet(false)} className="mt-1 h-12 rounded-xl text-callout font-strong text-text-2 active:bg-pressed">
-            {t("shop.continue")}
-          </button>
-        </div>
-      </Sheet>
-
-      {paused && (
-        <div className="absolute inset-0 z-30 flex animate-fade flex-col items-center justify-center gap-3 bg-bg/90 p-8 text-center backdrop-blur-md" role="dialog" aria-label={t("mode.pausedAria")}>
-          <span className="grid size-16 place-items-center rounded-full bg-primary-soft text-primary">
-            <Pause className="size-6" strokeWidth={2.2} aria-hidden />
-          </span>
-          <p className="mt-2 text-2xl font-semibold">{t("mode.pausedTitle")}</p>
-          <p className="max-w-xs text-sm text-text-2">
-            {t("mode.pausedText", { done, total })}
-          </p>
-          <button type="button" onClick={() => setPaused(false)} className="mt-3 h-14 rounded-xl bg-primary px-8 text-callout font-strong text-on-primary active:scale-[0.98] active:bg-primary-pressed">
-            {t("shop.continue")}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
 
-function Progress({ done, total, light }: { done: number; total: number; light: boolean }) {
-  if (total > 0 && total <= 24) {
+function DoneRow({ listId, item, shopper, who }: { listId: string; item: Item; shopper: boolean; who?: string }) {
+  const update = useUpdateItem(listId);
+  const toast = useToast();
+  const body = (
+    <>
+      <span className="ls-check on">
+        <Check size={15} strokeWidth={2.8} />
+      </span>
+      <span className="grow stack g-2" style={{ minWidth: 0 }}>
+        <span className="t-body fw-5 ellipsis strike t-2">{item.name}</span>
+        <span className="t-sm t-2 ellipsis">{item.note ?? (who ? t("ls.boughtBy", { name: shortName(who) }) : t("ls.bought"))}</span>
+      </span>
+      {shopper && <span className="t-sm fw-6 t-3">{t("ls.putBack")}</span>}
+    </>
+  );
+  if (!shopper)
     return (
-      <div className="mt-2 flex gap-[3px]" aria-hidden>
-        {Array.from({ length: total }, (_, i) => (
-          <span key={i} className={cx("h-1 flex-1 rounded-full transition-colors duration-200", light ? "bg-on-primary" : i < done ? "bg-primary" : "bg-sunken")} />
-        ))}
+      <div className="ls-shop-row" style={{ minHeight: 56 }}>
+        {body}
       </div>
     );
-  }
-  return (
-    <div className="mt-2 h-1 overflow-hidden rounded-full bg-sunken" aria-hidden>
-      <div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
-    </div>
-  );
-}
-
-function SheetOption({ icon, title, hint, onClick }: { icon: ReactNode; title: string; hint: string; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className="flex w-full items-center gap-4 rounded-2xl bg-surface p-3 text-left shadow-card active:bg-pressed">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-sunken text-text-2" aria-hidden>
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-callout font-strong">{title}</span>
-        <span className="block text-footnote text-text-2">{hint}</span>
-      </span>
-    </button>
-  );
-}
-
-/** Ťuk = kúpené, podržanie = upraviť položku. */
-function LongPressButton({
-  onTap,
-  onLongPress,
-  className,
-  children,
-  ...rest
-}: {
-  onTap: () => void;
-  onLongPress: () => void;
-  className?: string;
-  children: ReactNode;
-  "aria-label": string;
-}) {
-  const timer = useRef<number | null>(null);
-  const fired = useRef(false);
-  const clear = () => {
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = null;
-  };
   return (
     <button
       type="button"
-      {...rest}
-      onPointerDown={() => {
-        fired.current = false;
-        timer.current = window.setTimeout(() => {
-          fired.current = true;
-          navigator.vibrate?.(12);
-          onLongPress();
-        }, 550);
-      }}
-      onPointerUp={clear}
-      onPointerLeave={clear}
-      onPointerCancel={clear}
-      onContextMenu={(e) => e.preventDefault()}
-      onClick={() => {
-        if (fired.current) {
-          fired.current = false;
-          return;
-        }
-        onTap();
-      }}
-      className={cx("select-none transition-transform [-webkit-touch-callout:none] active:scale-[0.985]", className)}
+      className="ls-shop-row"
+      style={{ minHeight: 56 }}
+      onClick={() => update.mutate({ id: item.id, patch: { status: "OPEN" } }, { onError: (err) => toast.show(errorMessage(err), "error") })}
     >
-      {children}
+      {body}
     </button>
   );
 }
+
+/** Ukazovateľ postupu nákupu: čiarka za každú položku a počet vpravo. */
+function ShopProgress({ bought, total }: { bought: number; total: number }) {
+  const segs = Array.from({ length: total }, (_, i) => (i < bought ? "b" : "o"));
+  return (
+    <div className="ls-prog" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={bought} aria-label={t("ls.progressAria", { done: bought, total })}>
+      <div className={cx("ls-prog-segs", total > 40 && "dense")}>
+        {segs.map((k, i) => (
+          <span key={i} className={cx("ls-seg", k)} />
+        ))}
+      </div>
+      <span className="ls-prog-n num">
+        <b>{bought}</b>/{total}
+      </span>
+    </div>
+  );
+}
+
+/* ================================================================== N4M – akcie položky */
+function ItemMenu({
+  item,
+  list,
+  openLists,
+  householdId,
+  by,
+  onClose,
+}: {
+  item: Item | null;
+  list: ShoppingList;
+  openLists: ShoppingList[];
+  householdId: string;
+  by?: string;
+  onClose: () => void;
+}) {
+  return (
+    <BottomSheet open={!!item} onClose={onClose} label={item?.name ?? ""}>
+      {item && <MenuBody key={item.id} item={item} list={list} openLists={openLists} householdId={householdId} by={by} onClose={onClose} />}
+    </BottomSheet>
+  );
+}
+
+function MenuBody({
+  item,
+  list,
+  openLists,
+  householdId,
+  by,
+  onClose,
+}: {
+  item: Item;
+  list: ShoppingList;
+  openLists: ShoppingList[];
+  householdId: string;
+  by?: string;
+  onClose: () => void;
+}) {
+  const update = useUpdateItem(list.id);
+  const remove = useDeleteItem(list.id);
+  const add = useAddItem();
+  const create = useCreateList(householdId);
+  const toast = useToast();
+  const [mode, setMode] = useState<null | "sub" | "move">(null);
+  const [sub, setSub] = useState("");
+  const fail = (err: unknown) => toast.show(errorMessage(err), "error");
+  const isOpen = item.status === "OPEN";
+  const targets = openLists.filter((l) => l.id !== list.id);
+
+  async function moveTo(target: ShoppingList | null) {
+    onClose();
+    try {
+      const id = target
+        ? target.id
+        : await create.mutateAsync({ name: t("ls.laterList"), isPrivate: list.is_private, plannedFor: isoDay(addDays(new Date(), 1)), note: null });
+      await add.mutateAsync({ listId: id, name: item.name, quantity: item.quantity, unit: item.unit, note: item.note, categoryId: item.category_id });
+      await remove.mutateAsync(item.id);
+      toast.show(t("ls.moved", { name: item.name, list: target?.name ?? t("ls.laterList") }));
+    } catch (err) {
+      fail(err);
+    }
+  }
+
+  if (mode === "sub") {
+    return (
+      <>
+        <SheetHeader title={t("ls.subFor", { name: item.name })} onClose={onClose} />
+        <div className="sheet-body stack g-12">
+          <input className="input" autoFocus maxLength={120} placeholder={t("ls.subPlaceholder")} value={sub} onChange={(e) => setSub(e.target.value)} />
+          <button
+            type="button"
+            className="btn btn-ink btn-lg btn-block"
+            disabled={!sub.trim()}
+            onClick={() => {
+              onClose();
+              update.mutate(
+                { id: item.id, patch: { name: sub.trim(), note: t("ls.subNote", { name: item.name }), status: "PURCHASED" } },
+                { onError: fail },
+              );
+            }}
+          >
+            {t("ls.saveSub")}
+          </button>
+          <button type="button" className="btn btn-ghost btn-block" onClick={() => setMode(null)}>
+            {t("common.back")}
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  if (mode === "move") {
+    return (
+      <>
+        <SheetHeader title={t("ls.buyElsewhereTitle", { name: item.name })} sub={t("ls.moveSub")} onClose={onClose} />
+        <div className="sheet-body stack g-12">
+          <div className="cells">
+            {targets.map((l) => (
+              <Cell
+                key={l.id}
+                icon={
+                  <span className="cat-ic sm">
+                    <ArrowRightLeft size={15} />
+                  </span>
+                }
+                title={l.name}
+                sub={listDay(l)}
+                onClick={() => void moveTo(l)}
+              />
+            ))}
+            <Cell
+              icon={
+                <span className="cat-ic sm">
+                  <Plus size={15} />
+                </span>
+              }
+              title={t("ls.newLaterList")}
+              sub={t("date.tomorrow")}
+              onClick={() => void moveTo(null)}
+            />
+          </div>
+          <button type="button" className="btn btn-ghost btn-block" onClick={() => setMode(null)}>
+            {t("common.back")}
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  const meta = [qtyLabel(item.quantity, item.unit), item.note, by ? t("item.addedBy", { name: shortName(by) }) : ""].filter(Boolean).join(" · ");
+  const step = stepOf(item.unit);
+  return (
+    <>
+      <SheetHeader title={item.name} sub={meta || undefined} onClose={onClose} />
+      <div className="sheet-body stack g-12">
+        {isOpen && (
+          <div className="row between g-12" style={{ padding: "0 4px" }}>
+            <span className="t-body fw-5">{t("edit.quantity")}</span>
+            <Stepper
+              value={countOf(item.quantity)}
+              unit={item.unit}
+              step={step}
+              min={step}
+              onChange={(v) => update.mutate({ id: item.id, patch: { quantity: v } }, { onError: fail })}
+            />
+          </div>
+        )}
+        <div className="cells">
+          {isOpen ? (
+            <Cell
+              icon={
+                <span className="cat-ic sm" style={{ background: "var(--accent-soft)", color: "var(--accent-text)" }}>
+                  <Check size={15} />
+                </span>
+              }
+              title={t("ls.bought")}
+              chevron={false}
+              onClick={() => {
+                onClose();
+                update.mutate({ id: item.id, patch: { status: "PURCHASED" } }, { onError: fail });
+              }}
+            />
+          ) : (
+            <Cell
+              icon={
+                <span className="cat-ic sm">
+                  <RotateCcw size={15} />
+                </span>
+              }
+              title={t("ls.backToList")}
+              chevron={false}
+              onClick={() => {
+                onClose();
+                update.mutate({ id: item.id, patch: { status: "OPEN" } }, { onError: fail });
+              }}
+            />
+          )}
+          <Cell
+            icon={
+              <span className="cat-ic sm">
+                <Repeat size={15} />
+              </span>
+            }
+            title={t("ls.boughtSub")}
+            onClick={() => setMode("sub")}
+          />
+          <Cell
+            icon={
+              <span className="cat-ic sm">
+                <ArrowRightLeft size={15} />
+              </span>
+            }
+            title={t("ls.buyElsewhere")}
+            sub={t("ls.moveSub")}
+            onClick={() => setMode("move")}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ================================================================== N6 – koniec nákupu */
+function FinishScreen({
+  list,
+  session,
+  open,
+  bought,
+  pending,
+  names,
+  estimate,
+  householdId,
+  onBack,
+}: {
+  list: ShoppingList;
+  session: Session;
+  open: Item[];
+  bought: Item[];
+  pending: AdditionRequest[];
+  names: Map<string, string> | undefined;
+  estimate: number | null;
+  householdId: string;
+  onBack: () => void;
+}) {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const end = useEndShopping(list.id);
+  const later = useSetReceiptLater(householdId);
+  const create = useCreateList(householdId);
+  const add = useAddItem();
+  const remove = useDeleteItem(list.id);
+  const [unbought, setUnbought] = useState<"move" | "keep" | "drop">("move");
+  const [busy, setBusy] = useState(false);
+
+  async function finish(receipt: "photo" | "later") {
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (open.length && unbought === "move") {
+        const id = await create.mutateAsync({ name: list.name, isPrivate: list.is_private, plannedFor: isoDay(addDays(new Date(), 1)), note: list.note });
+        for (const i of open) await add.mutateAsync({ listId: id, name: i.name, quantity: i.quantity, unit: i.unit, note: i.note, categoryId: i.category_id });
+        for (const i of open) await remove.mutateAsync(i.id);
+      } else if (open.length && unbought === "drop") {
+        for (const i of open) await remove.mutateAsync(i.id);
+      }
+      await end.mutateAsync(session.id);
+      if (receipt === "later") await later.mutateAsync({ listId: list.id, later: true });
+      const moved = open.length
+        ? unbought === "move"
+          ? ` · ${t("ls.movedTomorrow", { count: tn("shop.itemCount", open.length) })}`
+          : unbought === "keep"
+            ? ` · ${t("ls.keptOnList", { count: tn("shop.itemCount", open.length) })}`
+            : ""
+        : "";
+      if (receipt === "photo") {
+        navigate(`/receipts?pridat=1&nakup=${list.id}`);
+        toast.show(t("ls.savedReading", { name: list.name }) + moved);
+      } else {
+        navigate("/");
+        toast.show(t("ls.savedLater", { name: list.name }) + moved);
+      }
+    } catch (err) {
+      toast.show(errorMessage(err), "error");
+      setBusy(false);
+    }
+  }
+
+  const options: ["move" | "keep" | "drop", string, string][] = [
+    ["move", t("ls.optMove"), t("ls.optMoveSub")],
+    ["keep", t("ls.optKeep"), t("ls.optKeepSub")],
+    ["drop", t("ls.optDrop"), t("ls.optDropSub")],
+  ];
+  const requester = pending[0]?.requested_by ? shortName(names?.get(pending[0].requested_by) ?? "") : "";
+
+  return (
+    <div className="ls-finish" role="dialog" aria-label={t("ls.finishTitle")} style={{ zIndex: 50 }}>
+      <ScreenHeader onBack={onBack} title={t("ls.finishTitle")} sticky={false} />
+      <div className="scroll">
+        <div className="stack g-20 px" style={{ paddingTop: 8 }}>
+          <div className="stack center g-10" style={{ textAlign: "center", paddingTop: 8 }}>
+            <span className="ls-done-mark">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+            </span>
+            <span className="t-title">{list.name}</span>
+            <span className="t-sm t-2 num">
+              {t("ls.inCartCount", { count: tn("shop.itemCount", bought.length) })}
+              {open.length ? ` · ${t("ls.unboughtCount", { n: open.length })}` : ""}
+            </span>
+            {estimate != null && <span className="t-big num">~{formatEuro(estimate)}</span>}
+            {estimate != null && <span className="t-xs t-3">{t("ls.estimateNote")}</span>}
+          </div>
+
+          {pending.length > 0 && (
+            <div className="row g-10 t-sm" style={{ padding: "10px 12px", borderRadius: 12, background: "var(--violet-soft)", color: "var(--violet)" }}>
+              <TriangleAlert size={16} />
+              <span className="grow">{tn("ls.pendingWarn", pending.length, { name: requester })}</span>
+            </div>
+          )}
+
+          {open.length > 0 && (
+            <section className="stack g-8">
+              <span className="field-label">{t("ls.unboughtList", { names: open.map((i) => i.name).join(", ") })}</span>
+              <div className="cells" role="radiogroup">
+                {options.map(([v, title, sub]) => (
+                  <button key={v} type="button" className="cell" role="radio" aria-checked={unbought === v} onClick={() => setUnbought(v)}>
+                    <span className={cx("ls-check", unbought === v && "on")}>{unbought === v && <Check size={15} strokeWidth={2.8} />}</span>
+                    <span className="grow stack g-2">
+                      <span className="t-body fw-5">{title}</span>
+                      <span className="t-sm t-2">{sub}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="stack g-10">
+            <span className="field-label">{t("trip.receipt")}</span>
+            <span className="t-sm t-2" style={{ padding: "0 4px" }}>
+              {t("ls.receiptWhyShort")}
+            </span>
+            <button type="button" className="btn btn-ink btn-lg btn-block" disabled={busy} onClick={() => void finish("photo")}>
+              <Camera size={18} />
+              {t("ls.takePhoto")}
+            </button>
+            <div className="row g-8">
+              <button type="button" className="btn btn-line grow" disabled={busy} onClick={() => void finish("photo")}>
+                <Image size={17} />
+                {t("ls.fromGallery")}
+              </button>
+              <button type="button" className="btn btn-line grow" disabled={busy} onClick={() => void finish("photo")}>
+                <FileText size={17} />
+                PDF
+              </button>
+            </div>
+            <button type="button" className="btn btn-soft btn-block" disabled={busy} onClick={() => void finish("later")}>
+              <Clock size={17} />
+              {t("ls.receiptLater")}
+            </button>
+            <button type="button" className="btn btn-ghost btn-block" onClick={onBack}>
+              <ArrowLeft size={17} />
+              {t("done.reopen")}
+            </button>
+          </section>
+        </div>
+        <div style={{ height: 32 }} />
+      </div>
+    </div>
+  );
+}
+

@@ -9,7 +9,7 @@ import { errorMessage } from "@/lib/errors";
 import { t } from "@/i18n";
 import { useFavoriteTiles, useFrequentItems, useRemoveFavorite, useSaveFavorite, type FavoriteTile, type Item } from "./api";
 import { countOf, qtyLabel } from "./qty";
-import type { FeedEntry } from "./feed";
+import type { FeedEntry } from "./useSmartAdd";
 
 const SLOTS = 12;
 const MAX_FAVORITES = 12;

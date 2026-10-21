@@ -4,7 +4,9 @@ import { errorMessage } from "@/lib/errors";
 import { t } from "@/i18n";
 import { useAddItem, useUpdateItem, type Item } from "./api";
 import { countOf, isCountable, qtyLabel, sameProduct } from "./qty";
-import type { FeedEntry } from "./feed";
+
+/** Potvrdenie pridania pre bublinu hore: „Banány +3 ks · na zozname“. */
+export type FeedEntry = { id: number; name: string; qty?: string; tail: string; out?: boolean };
 
 export type AddOutcome = "ITEM" | "MERGED" | "REQUEST" | "FAILED";
 
