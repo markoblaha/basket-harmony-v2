@@ -6,6 +6,8 @@ import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useHouseholdRealtime } from "@/features/realtime/useHouseholdRealtime";
 import { useLists } from "@/features/lists/api";
 import { needsAttention, useReceipts } from "@/features/receipts/api";
+import { useRecipePlans } from "@/features/recipes/api";
+import { useCart } from "@/features/recipes/cart";
 import { t, tn, type Key } from "@/i18n";
 import { OfflineBanner, cx } from "./ui";
 
@@ -25,7 +27,7 @@ const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 /**
  * Počet vecí, ktoré čakajú na používateľa – číslo na ikone lišty.
  * Analytika: nákupy bez dokladu za posledných 30 dní + bločky na kontrolu.
- * Recepty: zatiaľ 0 (čakajúce recepty pribudnú s receptami).
+ * Recepty: recepty čakajúce na uvarenie + rozpracovaný košík receptov (počíta sa ako jeden).
  */
 function useBadges(householdId: string): Record<Badge, number> {
   const lists = useLists(householdId);
@@ -35,7 +37,10 @@ function useBadges(householdId: string): Record<Badge, number> {
     (l) => l.completed_at && l.receipt_state === "LATER" && now - new Date(l.completed_at).getTime() <= MONTH_MS,
   ).length;
   const review = (receipts.data ?? []).filter(needsAttention).length;
-  return { recipes: 0, analytics: missing + review };
+  const plans = useRecipePlans(householdId);
+  const cart = useCart(householdId);
+  const waiting = (plans.data ?? []).filter((p) => p.status === "PENDING").length + (cart.items.length ? 1 : 0);
+  return { recipes: waiting, analytics: missing + review };
 }
 
 function useOnline() {

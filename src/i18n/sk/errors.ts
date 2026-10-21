@@ -20,6 +20,10 @@ export const skErrors = {
   "error.NOT_A_STATEMENT": "V súbore sa nenašiel bankový výpis (zoznam pohybov na účte).",
   "error.GEMINI_402": "Na účte služby Gemini došiel kredit. Dobi ho v Google AI Studio.",
   "error.PRODUCT_EXISTS": "Taký produkt už existuje. Použi radšej „Spojiť“.",
+  "error.LINK_INVALID": "Toto nie je platný odkaz na webovú stránku.",
+  "error.LINK_UNREADABLE": "Stránku sa nepodarilo načítať. Skús snímku obrazovky alebo vlož text receptu.",
+  "error.NOT_A_RECIPE": "V tom sa nenašiel recept. Skús inú fotku, odkaz alebo text.",
+  "error.RECIPE_AI_FAILED": "Gemini teraz recept nespracoval. Skús to o chvíľu znova.",
   // Supabase Auth
   "error.invalid_credentials": "Nesprávny e-mail alebo heslo.",
   "error.user_already_exists": "Účet s týmto e-mailom už existuje. Skús sa prihlásiť.",

@@ -22,6 +22,8 @@ const TABLE_KEYS: Record<string, string[][]> = {
   addition_requests: [["requests"], ["items"]],
   receipts: [["receipts"], ["receipt"], ["analytics"], ["lists"]],
   household_members: [["members"], ["profiles"], ["households"]],
+  recipes: [["recipes"]],
+  recipe_plans: [["recipe-plans"]],
 };
 
 export function useHouseholdRealtime(householdId: string): RealtimeStatus {
@@ -42,7 +44,7 @@ export function useHouseholdRealtime(householdId: string): RealtimeStatus {
     }
     // Mazanie sa podľa domácnosti filtrovať nedá (zmazaný riadok už nemá obsah,
     // príde len jeho ID). Počúvame preto mazanie bez filtra a len obnovíme zoznam.
-    for (const table of ["shopping_list_items", "shopping_lists", "receipts", "favorite_tiles"]) {
+    for (const table of ["shopping_list_items", "shopping_lists", "receipts", "favorite_tiles", "recipes"]) {
       channel.on("postgres_changes", { event: "DELETE", schema: "public", table }, () => {
         for (const queryKey of TABLE_KEYS[table]!) qc.invalidateQueries({ queryKey });
       });

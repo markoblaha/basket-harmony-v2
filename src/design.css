@@ -587,3 +587,124 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
   .input input:focus-visible { outline: none; }
   .input:focus-within { box-shadow: inset 0 0 0 2px var(--ink); }
 }
+
+/* ===================================================================== recepty (prototyp) */
+@layer components {
+/* Recepty – len doplnky k spoločným štýlom. Farby výhradne cez premenné tém. */
+
+/* ilustračný obal receptu: tónovaná plocha + veľká čiarová ikona (bez fotiek a gradientov) */
+.rc-cover { --h: 30; position: relative; display: grid; place-items: center; overflow: hidden; flex: none;
+  background: hsl(var(--h) var(--tint-sat) var(--tint-bg)); color: hsl(var(--h) 45% var(--tint-fg)); border-radius: 18px; }
+.rc-cover.lg { height: 196px; border-radius: 22px; }
+.rc-cover.md { height: 132px; }
+.rc-cover.sm { width: 56px; height: 56px; border-radius: 14px; }
+.rc-cover .rc-label { position: absolute; left: 10px; bottom: 8px; font-size: 11px; font-weight: 600; opacity: 0.8; }
+.rc-cover .rc-photo { position: absolute; right: 8px; bottom: 8px; min-height: 32px; padding: 0 10px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px; background: var(--surface); color: var(--text); box-shadow: var(--sh-1); }
+
+/* „Pre teba“ – vodorovný pás so zachytávaním */
+.rc-rail { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 16px 6px; margin: 0 -16px; scroll-padding: 0 16px; }
+.rc-rail > * { scroll-snap-align: start; flex: none; width: 76%; }
+.rc-card { display: flex; flex-direction: column; gap: 10px; padding: 8px 8px 12px; text-align: left; }
+.rc-card:active { transform: scale(0.98); }
+
+/* hľadanie ako pole */
+.rc-search { display: flex; align-items: center; gap: 4px; min-height: 52px; padding: 0 4px 0 14px; border-radius: 16px; background: var(--surface); box-shadow: var(--sh-1); }
+.rc-search input { flex: 1; min-width: 0; min-height: 50px; font-size: 16px; }
+.rc-search input:focus-visible { outline: none; }
+.rc-search:focus-within { box-shadow: inset 0 0 0 2px var(--ink); }
+
+/* mriežka kategórií 2 × 4 */
+.rc-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rc-cat { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 10px; border-radius: 16px; background: var(--surface); box-shadow: var(--sh-1);
+  font-size: 14px; font-weight: 600; line-height: 18px; text-align: left; }
+.rc-cat:active { background: var(--pressed); }
+.rc-cat .ic { --h: 30; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none;
+  background: hsl(var(--h) var(--tint-sat) var(--tint-bg)); color: hsl(var(--h) 45% var(--tint-fg)); }
+
+/* košík receptov nad spodnou lištou */
+.rc-cartbar { position: fixed; left: 12px; right: 12px; bottom: calc(4.75rem + env(safe-area-inset-bottom)); max-width: 40rem; margin: 0 auto; z-index: 26; display: flex; align-items: center; gap: 12px; min-height: 60px;
+  padding: 8px 8px 8px 12px; border-radius: 18px; background: var(--surface); box-shadow: var(--sh-2); text-align: left; animation: rise 260ms cubic-bezier(.2,.8,.2,1); }
+.rc-cartbar:active { background: var(--pressed); }
+.rc-cartbar .bk { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--accent-soft); color: var(--accent-text); }
+
+/* číselné značky receptov (R5) */
+.rc-mark { --h: 30; width: 20px; height: 20px; border-radius: 999px; display: inline-grid; place-items: center; flex: none; font-size: 11px; font-weight: 700;
+  background: hsl(var(--h) var(--tint-sat) var(--tint-bg)); color: hsl(var(--h) 50% var(--tint-fg)); }
+
+/* dlaždice surovín „Čo máš doma?“ – 2 stĺpce */
+.rc-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rc-tile { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-height: 104px; padding: 12px 12px 8px; border-radius: 16px;
+  background: var(--surface); box-shadow: var(--sh-1); text-align: left; transition: background-color 160ms, transform 120ms; }
+.rc-tile:active { transform: scale(0.97); }
+.rc-tile.home { background: var(--sunken); box-shadow: none; color: var(--text-3); }
+.rc-tile.home .rc-name { text-decoration: line-through; }
+.rc-tile .rc-name { font-size: 14.5px; line-height: 19px; font-weight: 600; }
+.rc-tile .rc-state { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 650; }
+.rc-tile .rc-marks { display: flex; gap: 4px; align-items: center; min-height: 32px; margin: 0 -4px; padding: 0 4px; border-radius: 9px; }
+.rc-tile .rc-marks:active { background: var(--pressed); }
+
+/* kontrola importu – neisté miesta */
+.rc-unsure { background: var(--yellow-soft); border-radius: 14px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--yellow) 35%, transparent); }
+.rc-unsure .hint { color: var(--yellow); font-size: 12.5px; line-height: 17px; font-weight: 600; }
+.rc-check-wrap { position: sticky; top: 0; z-index: 5; padding: 0 16px 8px; background: var(--bg); }
+.rc-check { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; border-radius: 14px;
+  background: var(--yellow-soft); color: var(--yellow); font-weight: 650; font-size: 14px; }
+.rc-check.done { background: var(--accent-soft); color: var(--accent-text); }
+
+/* čítanie receptu – časti sa postupne rozsvietia */
+.rc-part { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 12px; background: var(--sunken); color: var(--text-3);
+  font-weight: 600; transition: background-color 240ms, color 240ms; }
+.rc-part.on { background: var(--accent-soft); color: var(--accent-text); }
+
+/* postup */
+.rc-step { display: flex; gap: 12px; padding: 12px 14px; }
+.rc-step .no { width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center; flex: none; background: var(--sunken); font-size: 13px; font-weight: 700; }
+
+/* výživa */
+.rc-nstrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 12px 8px 12px 14px; align-items: center; }
+.rc-nrow { display: grid; grid-template-columns: minmax(0, 1fr) 92px 80px; gap: 10px; align-items: center; min-height: 44px; padding: 6px 14px; }
+.rc-nrow.sub { min-height: 36px; }
+.rc-nrow.sub .lbl { padding-left: 12px; color: var(--text-2); font-size: 13.5px; }
+
+/* varenie */
+.rc-cook-text { font-size: 25px; line-height: 34px; font-weight: 550; letter-spacing: -0.01em; }
+.rc-timer { font-size: 44px; line-height: 48px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.rc-bars { display: flex; gap: 4px; }
+.rc-bars span { flex: 1; height: 4px; border-radius: 99px; background: var(--line-2); }
+.rc-bars span.on { background: var(--ink); }
+
+/* Tichý štítok kategórie v dlaždici – menej výrazný ako názov suroviny. */
+.rc-tcat { display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--text-3); margin-bottom: 2px; }
+.rc-tcat .cat-ic { width: 18px; height: 18px; border-radius: 6px; opacity: .7; }
+.rc-tcat .cat-ic svg { width: 11px; height: 11px; }
+
+/* Výber na nákup v detaile receptu */
+.rc-sel { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border-radius: 12px; background: var(--surface-2); font-size: 13.5px; font-weight: 600; }
+/* Čakajúce recepty (R1) – výraznejšie karty */
+.rc-wait { display: flex; align-items: center; gap: 10px; min-height: 68px; padding: 10px 10px 10px 12px; border-radius: 18px; background: var(--surface); box-shadow: var(--sh-2); text-align: left; }
+.rc-wait.draft { border: 1.5px solid var(--accent); }
+.rc-wait .bk { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--accent-soft); color: var(--accent-text); }
+.rc-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+
+/* Pre teba / Ľudia varili – prepínač a bodky */
+.rc-feat-seg { grid-auto-columns: auto; }
+.rc-feat-seg button { padding: 0 12px; }
+.rc-dots { display: flex; justify-content: center; gap: 6px; margin-top: -2px; }
+.rc-dots button { width: 6px; height: 6px; border-radius: 999px; background: var(--line-2); transition: width 260ms ease, background-color 260ms; }
+.rc-dots button.on { width: 18px; background: var(--ink); }
+
+/* Varenie: nápovedy, čet „Spýtaj sa“ */
+.rc-hint { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; font-size: 14px; line-height: 20px; }
+.rc-hint svg { flex: none; margin-top: 2px; }
+.rc-hint.ok { background: var(--accent-soft); color: var(--text); }
+.rc-hint.ok svg { color: var(--accent-text); }
+.rc-hint.tip { background: var(--yellow-soft); color: var(--text); }
+.rc-hint.tip svg { color: var(--yellow); }
+.rc-bubble { max-width: 88%; padding: 9px 12px; border-radius: 16px; font-size: 14px; line-height: 20px; }
+.rc-bubble.me { align-self: flex-end; background: var(--ink); color: var(--on-ink); border-bottom-right-radius: 6px; }
+.rc-bubble.ai { align-self: flex-start; background: var(--sunken); color: var(--text); border-bottom-left-radius: 6px; }
+.rc-bubble.off { background: var(--orange-soft); }
+
+}

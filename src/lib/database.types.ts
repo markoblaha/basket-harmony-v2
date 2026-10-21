@@ -58,6 +58,87 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      recipes: {
+        Row: {
+          ai: boolean;
+          category: string;
+          created_at: string;
+          created_by: string | null;
+          difficulty: number;
+          household_id: string;
+          icon: string | null;
+          id: string;
+          ingredients: Json;
+          meat: string;
+          minutes: number;
+          name: string;
+          portions: number;
+          qa: Json;
+          source: string | null;
+          source_url: string | null;
+          steps: Json;
+          tags: string[];
+          updated_at: string;
+        };
+        Insert: {
+          ai?: boolean;
+          category?: string;
+          difficulty?: number;
+          household_id: string;
+          icon?: string | null;
+          ingredients?: Json;
+          meat?: string;
+          minutes?: number;
+          name: string;
+          portions?: number;
+          qa?: Json;
+          source?: string | null;
+          source_url?: string | null;
+          steps?: Json;
+          tags?: string[];
+        };
+        Update: {
+          category?: string;
+          difficulty?: number;
+          icon?: string | null;
+          ingredients?: Json;
+          meat?: string;
+          minutes?: number;
+          name?: string;
+          portions?: number;
+          qa?: Json;
+          source?: string | null;
+          source_url?: string | null;
+          steps?: Json;
+          tags?: string[];
+        };
+        Relationships: [];
+      };
+      recipe_favorites: {
+        Row: { created_at: string; household_id: string; recipe_key: string; user_id: string };
+        Insert: { household_id: string; recipe_key: string };
+        Update: never;
+        Relationships: [];
+      };
+      recipe_plans: {
+        Row: {
+          cook_seconds: number | null;
+          cooked_at: string | null;
+          cooked_by: string | null;
+          created_at: string;
+          created_by: string | null;
+          household_id: string;
+          id: string;
+          list_id: string | null;
+          portions: number;
+          recipe_key: string;
+          recipe_name: string;
+          status: Database["public"]["Enums"]["recipe_plan_status"];
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       favorite_tiles: {
         Row: {
           created_at: string;
@@ -356,6 +437,15 @@ export type Database = {
       receipt_match_candidates: { Args: { p_receipt_id: string }; Returns: Json };
       receipt_match_suggestions: { Args: { p_household_id: string }; Returns: Json };
       dismiss_receipt_match: { Args: { p_receipt_id: string }; Returns: undefined };
+      plan_recipes: {
+        Args: { p_household_id: string; p_list_id?: string | null; p_new_list?: Json | null; p_items: Json; p_recipes: Json };
+        Returns: Json;
+      };
+      cook_recipe: {
+        Args: { p_household_id: string; p_recipe_key: string; p_recipe_name: string; p_portions: number; p_seconds?: number | null };
+        Returns: string;
+      };
+      set_recipe_plan_status: { Args: { p_plan_id: string; p_status: string }; Returns: undefined };
       reply_request: { Args: { p_message: string; p_request_id: string }; Returns: undefined };
       frequent_items: {
         Args: { p_household_id: string; p_limit?: number };
@@ -370,6 +460,7 @@ export type Database = {
       item_status: "OPEN" | "PURCHASED" | "UNAVAILABLE";
       member_role: "OWNER" | "MEMBER";
       receipt_status: "PROCESSING" | "OK" | "NEEDS_REVIEW" | "FAILED";
+      recipe_plan_status: "PENDING" | "COOKED" | "DISMISSED";
       request_status: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
       session_status: "ACTIVE" | "ENDED" | "EXPIRED";
     };

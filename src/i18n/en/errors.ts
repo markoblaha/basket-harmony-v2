@@ -18,6 +18,10 @@ export const enErrors: Record<keyof typeof skErrors, string> = {
   "error.NOT_A_STATEMENT": "No bank statement (a list of account transactions) was found in the file.",
   "error.GEMINI_402": "The Gemini service account has run out of credit. Top it up in Google AI Studio.",
   "error.PRODUCT_EXISTS": "A product like this already exists. Use “Merge” instead.",
+  "error.LINK_INVALID": "This isn't a valid web page link.",
+  "error.LINK_UNREADABLE": "The page couldn't be loaded. Try a screenshot or paste the recipe text.",
+  "error.NOT_A_RECIPE": "No recipe was found in it. Try another photo, link or text.",
+  "error.RECIPE_AI_FAILED": "Gemini couldn't process the recipe right now. Try again in a moment.",
   // Supabase Auth
   "error.invalid_credentials": "Incorrect email or password.",
   "error.user_already_exists": "An account with this email already exists. Try signing in.",

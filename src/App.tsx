@@ -26,6 +26,11 @@ import { MatchPage } from "@/features/receipts/MatchPage";
 import { ReceiptDetailPage } from "@/features/receipts/ReceiptDetailPage";
 import { StatementImportPage } from "@/features/receipts/StatementImportPage";
 import { RecipesPage } from "@/features/recipes/RecipesPage";
+import { SearchPage as RecipeSearchPage } from "@/features/recipes/SearchPage";
+import { CheckPage as RecipeCheckPage } from "@/features/recipes/CheckPage";
+import { RecipePage } from "@/features/recipes/RecipePage";
+import { CartPage as RecipeCartPage } from "@/features/recipes/CartPage";
+import { CookPage } from "@/features/recipes/CookPage";
 
 /** Stránky dostupné iba po prihlásení. Neprihláseného pošle na prihlásenie a potom späť. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -73,6 +78,11 @@ export function App() {
           <Route path="lists/:listId" element={<ShoppingPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="recipes" element={<RecipesPage />} />
+          <Route path="recipes/search" element={<RecipeSearchPage />} />
+          <Route path="recipes/check" element={<RecipeCheckPage />} />
+          <Route path="recipes/cart" element={<RecipeCartPage />} />
+          <Route path="recipes/r/:id" element={<RecipePage />} />
+          <Route path="recipes/r/:id/cook" element={<CookPage />} />
           <Route path="receipts" element={<ReceiptsPage />} />
           <Route path="receipts/statement" element={<StatementImportPage />} />
           <Route path="receipts/:id" element={<ReceiptDetailPage />} />
