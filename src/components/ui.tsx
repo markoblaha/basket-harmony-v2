@@ -142,15 +142,18 @@ export function Banner({
   );
 }
 
-/** Štítok testovacej verzie (zostavenej s testovacou databázou), aby sa nepomýlila s ostrou appkou. */
+/**
+ * Štítok testovacej verzie (zostavenej s testovacou databázou), aby sa nepomýlila s ostrou appkou.
+ * Visí z hornej hrany ako úzky jazýček, aby neprekrýval nadpis obrazovky.
+ */
 export function TestEnvBadge() {
   if (import.meta.env.MODE !== "staging") return null;
   return (
     <div
       role="status"
-      className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.25rem)] z-[70] flex justify-center"
+      className="pointer-events-none fixed inset-x-0 top-[env(safe-area-inset-top)] z-[70] flex justify-center"
     >
-      <span className="rounded-full bg-warning-solid px-3 py-0.5 text-overline font-semibold uppercase text-on-warning-solid shadow-raised">
+      <span className="rounded-b-lg bg-warning-solid px-2.5 text-[0.625rem] font-semibold uppercase leading-[0.875rem] tracking-wide text-on-warning-solid">
         {t("status.testEnv")}
       </span>
     </div>
