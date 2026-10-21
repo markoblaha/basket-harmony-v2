@@ -9,7 +9,7 @@ import { formatDateTime, t, tn, type Key } from "@/i18n";
 import { useDecideRequest, useReplyRequest, type AdditionRequest } from "./api";
 import { qtyLabel } from "./qty";
 
-const REPLIES: Key[] = ["request.quick.ok", "request.quick.inCart", "request.quick.unavailable", "ls.reply.nextTime"];
+const REPLIES: Key[] = ["ls.reply.ok", "ls.reply.inCart", "ls.reply.unavailable", "ls.reply.nextTime"];
 
 const STATUS: Record<string, [Key, string]> = {
   PENDING: ["request.status.PENDING", "b-violet"],
@@ -97,7 +97,7 @@ function RequestBody({ group, listId, onClose }: { group: Group; listId: string;
         if (msg) await reply.mutateAsync({ id: r.id, message: msg });
       }
       onClose();
-      toast.show(acc === 0 ? t("request.outcome.REJECTED") : t("request.outcome.ACCEPTED"));
+      toast.show(acc === 0 ? t("ls.requestRejected") : t("ls.addedToShop", { count: tn("shop.itemCount", acc) }));
     } catch (err) {
       toast.show(errorMessage(err), "error");
     } finally {
@@ -166,7 +166,7 @@ export function MyRequests({ requests, shopperName }: { requests: AdditionReques
             <div className="row g-8">
               <span className="grow t-body fw-5 ellipsis">
                 {r.name}
-                <span className="t-2 fw-5"> · {qtyLabel(r.quantity, r.unit)}</span>
+                {r.note ? <span className="t-2 fw-5"> · {r.note}</span> : null}
               </span>
               <RequestStatus status={r.status} />
             </div>

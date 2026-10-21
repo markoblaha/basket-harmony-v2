@@ -1,17 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, ArrowRightLeft, Camera, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Image, MoreHorizontal, PackageX, Plus, Repeat, RotateCcw, TriangleAlert, X } from "lucide-react";
 import { Avatars, BottomSheet, CatIcon, Cell, ScreenHeader, SheetHeader, Stepper, haptic, type Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { cx } from "@/components/ui";
-import { category, categoryOrder } from "@/lib/categories";
+import { category, categoryOrder, guessCategory, normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
-import { formatDateTime, formatEuro, formatNumber, t, tn } from "@/i18n";
+import { formatCalendarDate, formatDateTime, formatEuro, formatNumber, t, tn } from "@/i18n";
 import type { PriceHint } from "@/features/analytics/api";
 import {
   useDeleteItem,
   useFinishShopping,
+  useFrequentItems,
+  useListStats,
   useMoveItem,
   useSetReceiptLater,
   useUpdateItem,
@@ -21,7 +23,7 @@ import {
   type ShoppingList,
 } from "./api";
 import { Composer, type AddInput } from "./Composer";
-import { dayLabel, listDay } from "./dates";
+import { listDay } from "./dates";
 import { stepOf } from "./PlanList";
 import { countOf, isCountable, qtyLabel } from "./qty";
 import { MyRequests, PendingRequests } from "./Requests";
@@ -83,6 +85,21 @@ export function ShoppingMode({
     [items, since],
   );
   const total = open.length + done.length;
+  // Položky, ktoré pribudli počas nákupu (schválená žiadosť, pridanie z iného zariadenia), krátko zablikajú.
+  const seen = useRef<Set<string> | null>(null);
+  const [fresh, setFresh] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!seen.current) {
+      seen.current = new Set(items.map((i) => i.id));
+      return;
+    }
+    const added = items.filter((i) => !seen.current!.has(i.id)).map((i) => i.id);
+    if (!added.length) return;
+    for (const id of added) seen.current.add(id);
+    setFresh((f) => new Set([...f, ...added]));
+    const tm = setTimeout(() => setFresh((f) => new Set([...f].filter((id) => !added.includes(id)))), 1700);
+    return () => clearTimeout(tm);
+  }, [items]);
   useEffect(() => {
     if (open.length > 0) setDismissed(false);
   }, [open.length]);
@@ -148,6 +165,7 @@ export function ShoppingMode({
                       item={it}
                       by={it.added_by && it.added_by !== me ? names?.get(it.added_by) : undefined}
                       hint={hints?.get(it.id)}
+                      fresh={fresh.has(it.id)}
                       shopper={shopper}
                       onMenu={() => setMenu(it)}
                     />
@@ -270,7 +288,23 @@ function QtyToken({ item, done }: { item: Item; done: boolean }) {
   );
 }
 
-function ShopRow({ listId, item, by, hint, shopper, onMenu }: { listId: string; item: Item; by?: string; hint?: PriceHint; shopper: boolean; onMenu: () => void }) {
+function ShopRow({
+  listId,
+  item,
+  by,
+  hint,
+  fresh,
+  shopper,
+  onMenu,
+}: {
+  listId: string;
+  item: Item;
+  by?: string;
+  hint?: PriceHint;
+  fresh?: boolean;
+  shopper: boolean;
+  onMenu: () => void;
+}) {
   const update = useUpdateItem(listId);
   const toast = useToast();
   const [leaving, setLeaving] = useState(false);
@@ -295,7 +329,7 @@ function ShopRow({ listId, item, by, hint, shopper, onMenu }: { listId: string; 
   const qty = qtyLabel(item.quantity, item.unit);
   return (
     <div className={cx("ls-swipe ls-shop", leaving && "leaving")}>
-      <div className="front">
+      <div className={cx("front", fresh && "anim-flash")}>
         <div className="ls-shop-row">
           <div
             className="row g-12 grow"
@@ -321,7 +355,7 @@ function ShopRow({ listId, item, by, hint, shopper, onMenu }: { listId: string; 
               {item.note && <span className="ls-meta">{item.note}</span>}
               {hint && (
                 <span className="ls-meta num">
-                  <span className="t-2">~{formatEuro(hint.last_price)}</span> · {hint.last_store} {dayLabel(hint.last_date)}
+                  <span className="t-2">~{formatEuro(hint.last_price)}</span> · {hint.last_store} {formatCalendarDate(hint.last_date.slice(0, 10), { day: "numeric", month: "numeric" })}
                 </span>
               )}
               {by && <span className="ls-meta ls-who">{t("item.addedBy", { name: shortName(by) })}</span>}
@@ -348,7 +382,7 @@ function DoneRow({ listId, item, shopper, who, onMenu }: { listId: string; item:
       <span className="grow stack g-2" style={{ minWidth: 0 }}>
         <span className={cx("t-body fw-5 ellipsis", !na && "strike t-2")}>{item.name}</span>
         <span className="t-sm t-2 ellipsis">
-          {na ? t("ls.na") : (item.note ?? (who ? t("ls.boughtBy", { name: shortName(who) }) : t("ls.bought")))}
+          {na ? t("ls.na") : isSubNote(item.note) ? item.note : who ? t("ls.boughtBy", { name: shortName(who) }) : t("ls.bought")}
         </span>
       </span>
       {shopper && <span className="t-sm fw-6 t-3">{na ? t("ls.options") : t("ls.putBack")}</span>}
@@ -372,6 +406,12 @@ function DoneRow({ listId, item, shopper, who, onMenu }: { listId: string; item:
       {body}
     </button>
   );
+}
+
+/** Poznámka „Náhrada za: …“, ktorú zapíše „Kúpil som náhradu“. */
+function isSubNote(note: string | null): note is string {
+  const prefix = t("ls.subNote", { name: "" }).trim();
+  return !!note && note.startsWith(prefix);
 }
 
 /** Ukazovateľ postupu nákupu: čiarka za každú položku a počet vpravo. */
@@ -431,12 +471,22 @@ function MenuBody({
 }) {
   const update = useUpdateItem(list.id);
   const move = useMoveItem(householdId, list.id);
+  const stats = useListStats(householdId);
+  const frequent = useFrequentItems(householdId);
   const toast = useToast();
   const [mode, setMode] = useState<null | "sub" | "move">(null);
   const [sub, setSub] = useState("");
   const fail = (err: unknown) => toast.show(errorMessage(err), "error");
+  // Panel sa zatvorí hneď; zmena dobehne aj po jeho zatvorení (mutateAsync nezávisí od komponentu).
+  const patch = (p: Partial<Pick<Item, "status" | "name" | "note" | "quantity">>, ok?: () => void) =>
+    update.mutateAsync({ id: item.id, patch: p }).then(ok, fail);
   const isOpen = item.status === "OPEN";
   const targets = openLists.filter((l) => l.id !== list.id);
+  // Návrhy náhrady: časté položky domácnosti z tej istej kategórie.
+  const alts = (frequent.data ?? [])
+    .filter((f) => (f.category_id && f.category_id !== "other" ? f.category_id : guessCategory(f.name)) === item.category_id)
+    .filter((f) => normalizeName(f.name) !== normalizeName(item.name))
+    .slice(0, 5);
 
   async function moveTo(target: ShoppingList | null) {
     onClose();
@@ -453,6 +503,15 @@ function MenuBody({
       <>
         <SheetHeader title={t("ls.subFor", { name: item.name })} onClose={onClose} />
         <div className="sheet-body stack g-12">
+          {alts.length > 0 && (
+            <div className="row wrap g-8">
+              {alts.map((a) => (
+                <button key={a.name} type="button" className={cx("chip lg", sub === a.name && "on")} onClick={() => setSub(a.name)}>
+                  {a.name}
+                </button>
+              ))}
+            </div>
+          )}
           <input className="input" autoFocus maxLength={120} placeholder={t("ls.subPlaceholder")} value={sub} onChange={(e) => setSub(e.target.value)} />
           <button
             type="button"
@@ -460,10 +519,7 @@ function MenuBody({
             disabled={!sub.trim()}
             onClick={() => {
               onClose();
-              update.mutate(
-                { id: item.id, patch: { name: sub.trim(), note: t("ls.subNote", { name: item.name }), status: "PURCHASED" } },
-                { onError: fail },
-              );
+              void patch({ name: sub.trim(), note: t("ls.subNote", { name: item.name }), status: "PURCHASED" }, () => toast.show(t("ls.subSaved")));
             }}
           >
             {t("ls.saveSub")}
@@ -491,7 +547,7 @@ function MenuBody({
                   </span>
                 }
                 title={l.name}
-                sub={listDay(l)}
+                sub={t("ls.moveTargetSub", { day: listDay(l), count: tn("shop.itemCount", stats.data?.get(l.id)?.open ?? 0) })}
                 onClick={() => void moveTo(l)}
               />
             ))}
@@ -544,7 +600,7 @@ function MenuBody({
               chevron={false}
               onClick={() => {
                 onClose();
-                update.mutate({ id: item.id, patch: { status: "PURCHASED" } }, { onError: fail });
+                void patch({ status: "PURCHASED" });
               }}
             />
           ) : (
@@ -559,7 +615,7 @@ function MenuBody({
               chevron={false}
               onClick={() => {
                 onClose();
-                update.mutate({ id: item.id, patch: { status: "OPEN" } }, { onError: fail });
+                void patch({ status: "OPEN" });
               }}
             />
           )}
@@ -575,7 +631,9 @@ function MenuBody({
               chevron={false}
               onClick={() => {
                 onClose();
-                update.mutate({ id: item.id, patch: { status: "UNAVAILABLE" } }, { onError: fail });
+                void patch({ status: "UNAVAILABLE" }, () =>
+                  toast.show(t("ls.naToast", { name: item.name }), "info", { undo: () => void patch({ status: "OPEN" }) }),
+                );
               }}
             />
           )}

@@ -147,24 +147,42 @@ export function QuickTiles({
 
   const favs = favorites.data ?? [];
   const favByKey = new Map(favs.map((f) => [normalizeName(f.item_name), f]));
+  const favByKeyRef = useRef(favByKey);
+  favByKeyRef.current = favByKey;
 
+  /** Hviezdička: uloží/odoberie z obľúbených; hláška s „Vrátiť“ (prototyp). */
   async function toggleStar(name: string) {
     const existing = favByKey.get(normalizeName(name));
     try {
-      if (existing) {
-        await remove.mutateAsync(existing.id);
-        onFeed({ name, tail: t("tiles.feed.unstarred") });
-      } else {
+      if (existing) await unfavorite(existing);
+      else {
         if (favs.length >= MAX_FAVORITES) {
           toast.show(t("tiles.maxFavorites", { max: MAX_FAVORITES }), "error");
           return;
         }
         await save.mutateAsync({ label: name, itemName: name, position: nextPosition(favs) });
-        onFeed({ name, tail: t("tiles.feed.starred") });
+        toast.show(t("ls.favSaved", { name }), "info", {
+          undo: () => {
+            const saved = favByKeyRef.current.get(normalizeName(name));
+            if (saved) remove.mutate(saved.id, { onError: (err) => toast.show(errorMessage(err), "error") });
+          },
+        });
       }
     } catch (err) {
       toast.show(errorMessage(err), "error");
     }
+  }
+
+  /** Odobrať z obľúbených (hviezdička alebo podržanie v Obľúbených), „Vrátiť“ ju uloží späť. */
+  async function unfavorite(tile: FavoriteTile) {
+    await remove.mutateAsync(tile.id);
+    toast.show(t("ls.favRemoved", { name: tile.label }), "info", {
+      undo: () =>
+        save.mutate(
+          { label: tile.label, itemName: tile.item_name, position: tile.position },
+          { onError: (err) => toast.show(errorMessage(err), "error") },
+        ),
+    });
   }
 
   const [editor, setEditor] = useState<{ tile: FavoriteTile | null } | null>(null);
@@ -230,7 +248,7 @@ export function QuickTiles({
         <Seg
           value={tab}
           onChange={setTab}
-          style={{ width: 220 }}
+          style={{ width: 230 }}
           options={[
             { value: "freq", label: t("tiles.frequent") },
             { value: "fav", label: t("tiles.favorites", { n: favs.length }) },
@@ -245,7 +263,14 @@ export function QuickTiles({
               }),
             )
           : [
-              ...favs.map((f) => tile(f.id, f.label, f.item_name, true, { onLong: () => setEditor({ tile: f }) })),
+              ...favs.map((f) =>
+                tile(f.id, f.label, f.item_name, true, {
+                  onLong: () => {
+                    haptic(20);
+                    unfavorite(f).catch((err) => toast.show(errorMessage(err), "error"));
+                  },
+                }),
+              ),
               favs.length < MAX_FAVORITES && (
                 <button key="new" type="button" className="ls-tile" onClick={() => setEditor({ tile: null })} style={{ color: "var(--accent-text)" }}>
                   <Plus size={20} strokeWidth={2.4} aria-hidden />
@@ -255,7 +280,7 @@ export function QuickTiles({
             ]}
       </div>
       <span className="t-xs t-3" style={{ padding: "0 4px" }}>
-        {tab === "freq" ? t("tiles.hintFrequent") : favs.length ? t("tiles.hintFavorites") : t("tiles.hintNoFavorites")}
+        {tab === "freq" ? t("tiles.hintFrequent") : favs.length ? t("ls.favHoldHint") : t("ls.favEmpty")}
       </span>
 
       {editor && (

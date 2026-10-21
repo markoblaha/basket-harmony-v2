@@ -136,7 +136,9 @@ export function CookPage() {
       {
         onSuccess: () => {
           toast.show(t("rc.cookedSaved"), "success");
-          navigate("/recipes", { replace: true });
+          // Ako zatvorenie celoobrazovkového varenia v prototype: späť tam, odkiaľ sa začalo variť.
+          if ((window.history.state as { idx?: number } | null)?.idx) navigate(-1);
+          else navigate("/recipes", { replace: true });
         },
         onError: (e) => toast.show(errorMessage(e), "error"),
       },

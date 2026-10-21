@@ -1,23 +1,27 @@
 import { useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ChevronRight, Merge, Pencil, Plus, Search, X } from "lucide-react";
-import { CatIcon, ScreenHeader, StoreBadge, storeHue } from "@/components/kit";
+import { BottomSheet, CatIcon, ScreenHeader, SheetHeader, StoreBadge, storeHue } from "@/components/kit";
 import { useAddItem, useLists } from "@/features/lists/api";
 import { dayLabel, listDay } from "@/features/lists/dates";
 import { errorMessage } from "@/lib/errors";
-import { Button, ErrorState, Sheet, Spinner, TextField, cx } from "@/components/ui";
+import { ErrorState, Spinner, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { CATEGORIES, normalizeName } from "@/lib/categories";
-import { formatMoney, formatShortDate, parseAmount, readErrorMessage } from "@/features/receipts/format";
-import { formatEuro, formatNumber, t, tn } from "@/i18n";
+import { formatShortDate, parseAmount, readErrorMessage } from "@/features/receipts/format";
+import { formatEuro, formatNumber, t, tn, type Key } from "@/i18n";
 import { unitLabel as pieceUnit } from "@/lib/parseItem";
-import { useMergeProducts, useProduct, useProducts, useUpdateProduct, type ProductDetail } from "./api";
+import { useMergeProducts, useProduct, useProducts, useUpdateProduct, type Basis, type ProductDetail } from "./api";
 import { categoryInfo, sizeLabel, storeLabel, unitLabel } from "./bits";
 import { usePeriod } from "./period";
 
+const EUR_PER: Record<Basis, Key> = { kg: "an.eurPer.kg", l: "an.eurPer.l", ks: "an.eurPer.ks" };
+
 /** Graf jednotkovej ceny v čase (prototyp) – bodky podľa obchodu, akcia ako dutý krúžok. */
 function PriceDots({ points, unit }: { points: { key: string; date: string; v: number; store: string; promo: boolean }[]; unit: string }) {
+  // Ťuk na bodku ukáže cenu, obchod a dátum toho nákupu.
+  const [sel, setSel] = useState<string | null>(null);
   if (points.length < 2) return null;
   const pts = points.map((p) => ({ ...p, tm: Date.parse(p.date + "T00:00:00") })).sort((a, b) => a.tm - b.tm);
   const W = 320;
@@ -41,9 +45,10 @@ function PriceDots({ points, unit }: { points: { key: string; date: string; v: n
   const regular = pts.filter((p) => !p.promo);
   const path = regular.map((p, i) => `${i ? "L" : "M"}${x(p.tm).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
   const stores = [...new Set(pts.map((p) => p.store))];
+  const selected = pts.find((p) => p.key === sel);
   return (
     <div className="stack g-8">
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={t("pp.priceTitle")}>
+      <svg className="an-price" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={t("pp.priceTitle")} onClick={() => setSel(null)}>
         {ticks.map((v) => (
           <g key={v}>
             <line x1={L} x2={W - 4} y1={y(v)} y2={y(v)} style={{ stroke: "var(--line)", strokeWidth: 1 }} />
@@ -52,9 +57,18 @@ function PriceDots({ points, unit }: { points: { key: string; date: string; v: n
             </text>
           </g>
         ))}
-        {path && <path d={path} style={{ fill: "none", stroke: "var(--line-2)", strokeWidth: 1.5 }} />}
-        {pts.map((p) => (
-          <circle key={p.key} cx={x(p.tm)} cy={y(p.v)} r={p.promo ? 4.5 : 4} className={cx("an-pt", p.promo && "promo")} style={{ "--h": storeHue(p.store) } as CSSProperties} />
+        {path && <path d={path} pathLength={1} style={{ fill: "none", stroke: "var(--line-2)", strokeWidth: 1.5 }} />}
+        {pts.map((p, i) => (
+          <g key={p.key} style={{ cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); setSel(sel === p.key ? null : p.key); }}>
+            <circle cx={x(p.tm)} cy={y(p.v)} r={12} style={{ fill: "transparent" }} />
+            <circle
+              cx={x(p.tm)}
+              cy={y(p.v)}
+              r={sel === p.key ? 6 : p.promo ? 4.5 : 4}
+              className={cx("an-pt", p.promo && "promo")}
+              style={{ "--h": storeHue(p.store), animationDelay: `${Math.min(i * 30, 400)}ms` } as CSSProperties}
+            />
+          </g>
         ))}
         <text x={L} y={H - 4} style={{ fill: "var(--text-3)", fontSize: 10.5 }}>
           {formatShortDate(pts[0]!.date)}
@@ -63,6 +77,18 @@ function PriceDots({ points, unit }: { points: { key: string; date: string; v: n
           {formatShortDate(pts[pts.length - 1]!.date)}
         </text>
       </svg>
+      {selected && (
+        <div className="row g-8 t-sm anim-pop" style={{ padding: "8px 12px", borderRadius: 12, background: "var(--sunken)" }}>
+          <span className="an-dot" style={{ "--h": storeHue(selected.store) } as CSSProperties} />
+          <span className="grow">
+            {storeLabel(selected.store)} · {formatShortDate(selected.date)}
+            {selected.promo ? ` · ${t("an.promo")}` : ""}
+          </span>
+          <span className="fw-6 num">
+            {formatNumber(selected.v, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {unit}
+          </span>
+        </div>
+      )}
       <div className="row wrap g-12 t-xs t-2">
         {unit && <span>{unit}</span>}
         {stores.map((st) => (
@@ -74,7 +100,7 @@ function PriceDots({ points, unit }: { points: { key: string; date: string; v: n
         {pts.some((p) => p.promo) && (
           <span className="row g-4">
             <span className="an-dot" style={{ background: "transparent", boxShadow: "inset 0 0 0 2px var(--text-3)" }} />
-            {t("pp.promoLegend")}
+            {t("an.promo")}
           </span>
         )}
       </div>
@@ -95,8 +121,13 @@ export function ProductPage() {
   const [merging, setMerging] = useState(false);
   const [pick, setPick] = useState(false);
 
-  if (query.isPending) return <Spinner />;
-  if (query.isError) return <ErrorState error={readErrorMessage(query.error)} onRetry={() => query.refetch()} />;
+  if (query.isPending || query.isError)
+    return (
+      <div className="stack">
+        <ScreenHeader title={t("an.searchProduct")} onBack={() => navigate(-1)} />
+        {query.isPending ? <Spinner /> : <ErrorState error={readErrorMessage(query.error)} onRetry={() => query.refetch()} />}
+      </div>
+    );
   const d = query.data;
   const p = d.product;
   const info = categoryInfo(p.category_id);
@@ -105,6 +136,7 @@ export function ProductPage() {
   const basis = last?.basis ?? "ks";
   const showUnit = basis !== "ks" || (p.size_value ?? 1) > 1;
   const unit = showUnit ? unitLabel(basis) : t("an.perPiece");
+  const eurUnit = showUnit ? t(EUR_PER[basis]) : t("an.perPiece");
   const total = d.purchases.reduce((a, x) => a + x.line_total, 0);
   const cheapest = d.stores[0];
   const open = (lists.data ?? []).filter((l) => !l.completed_at);
@@ -155,12 +187,12 @@ export function ProductPage() {
 
         <section className="card stack g-10" style={{ padding: 18 }}>
           <span className="t-h">{t("an.priceOverTime")}</span>
-          {points.length >= 2 ? <PriceDots points={points} unit={unit} /> : <span className="t-sm t-2">{t("an.needTwo")}</span>}
+          {points.length >= 2 ? <PriceDots points={points} unit={eurUnit} /> : <span className="t-sm t-2">{t("an.needTwo")}</span>}
         </section>
 
         {d.stores.length > 0 && (
           <section className="stack g-8">
-            <span className="section-title">{t("an.compareStores", { unit })}</span>
+            <span className="section-title">{t("an.compareStores", { unit: eurUnit })}</span>
             <div className="cells">
               {d.stores.map((st, i) => (
                 <div key={st.key} className="cell">
@@ -190,7 +222,7 @@ export function ProductPage() {
                   <span className="t-xs t-2 num">
                     {formatNumber(x.quantity)} ×{" "}
                     {showUnit && x.shelf_unit !== null ? `${formatEuro(x.shelf_unit)} ${unitLabel(x.basis)}` : formatEuro(x.line_total / Math.max(1, x.quantity))}
-                    {x.discount > 0 ? ` · ${t("ov.promoTag")}` : ""}
+                    {x.discount > 0 ? ` · ${t("an.promo")}` : ""}
                   </span>
                 </span>
                 <span className="t-body fw-6 num">{formatEuro(x.line_total)}</span>
@@ -213,7 +245,7 @@ export function ProductPage() {
         </button>
 
         {pick && (
-          <section className="card stack g-8 anim-rise" style={{ padding: 14 }}>
+          <section ref={(el) => el?.scrollIntoView({ behavior: "smooth", block: "nearest" })} className="card stack g-8 anim-rise" style={{ padding: 14 }}>
             <div className="row between">
               <span className="t-h">{t("an.whichList")}</span>
               <button type="button" className="ibtn sm" onClick={() => setPick(false)} aria-label={t("common.close")}>
@@ -244,7 +276,7 @@ export function ProductPage() {
         </button>
         <button type="button" className="btn btn-ink grow" onClick={() => setPick(true)}>
           <Plus size={18} />
-          {t("pp.toList")}
+          {t("an.addToList")}
         </button>
       </div>
 
@@ -291,20 +323,26 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
     }
   }
 
-  const selectClass =
-    "min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-3 focus:ring-primary/20";
   return (
-    <Sheet open onClose={onClose} title={t("pp.editTitle")}>
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        <TextField label={t("edit.name")} value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
-        <TextField label={t("pp.brand")} value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={80} />
-        <div className="grid grid-cols-[1fr_auto] gap-3">
-          <TextField label={t("pp.pack")} inputMode="decimal" value={size} onChange={(e) => setSize(e.target.value)} placeholder={t("pp.packPlaceholder")} />
-          <div className="flex flex-col gap-2">
-            <label htmlFor="product-unit" className="text-sm font-medium text-text-2">
-              {t("edit.unit")}
-            </label>
-            <select id="product-unit" value={unit} onChange={(e) => setUnit(e.target.value)} className={selectClass}>
+    <BottomSheet open onClose={onClose} label={t("pp.editTitle")}>
+      <SheetHeader title={t("pp.editTitle")} onClose={onClose} />
+      <form onSubmit={submit} className="sheet-body stack g-12">
+        <label className="stack g-4">
+          <span className="field-label">{t("edit.name")}</span>
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
+        </label>
+        <label className="stack g-4">
+          <span className="field-label">{t("pp.brand")}</span>
+          <input className="input" value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={80} />
+        </label>
+        <div className="row g-8" style={{ alignItems: "flex-end" }}>
+          <label className="grow stack g-4">
+            <span className="field-label">{t("pp.pack")}</span>
+            <input className="input num" inputMode="decimal" value={size} onChange={(e) => setSize(e.target.value)} placeholder={t("pp.packPlaceholder")} />
+          </label>
+          <label className="stack g-4" style={{ width: 96 }}>
+            <span className="field-label">{t("edit.unit")}</span>
+            <select className="input" value={unit} onChange={(e) => setUnit(e.target.value)}>
               <option value="">—</option>
               <option value="g">g</option>
               <option value="kg">kg</option>
@@ -312,31 +350,29 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
               <option value="l">l</option>
               <option value="ks">{pieceUnit("ks")}</option>
             </select>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <label htmlFor="product-category" className="text-sm font-medium text-text-2">
-            {t("edit.category")}
           </label>
-          <select id="product-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={selectClass}>
+        </div>
+        <label className="stack g-4">
+          <span className="field-label">{t("edit.category")}</span>
+          <select className="input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             {CATEGORIES.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
           </select>
-          <p className="text-sm text-text-3">{t("pp.categoryNote")}</p>
-        </div>
+          <span className="t-xs t-3" style={{ padding: "0 4px" }}>{t("pp.categoryNote")}</span>
+        </label>
         {error && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="t-sm" style={{ color: "var(--red)", margin: 0 }}>
             {error}
           </p>
         )}
-        <Button type="submit" size="lg" block loading={update.isPending}>
+        <button type="submit" className="btn btn-ink btn-lg btn-block" style={{ marginTop: 4 }} disabled={update.isPending}>
           {t("common.save")}
-        </Button>
+        </button>
       </form>
-    </Sheet>
+    </BottomSheet>
   );
 }
 
@@ -376,47 +412,49 @@ function MergeProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => vo
   }
 
   return (
-    <Sheet open onClose={onClose} title={t("pp.mergeTitle")}>
-      <p className="mb-3 text-sm text-text-2">
-        {t("pp.mergeText", { name: d.product.name })}
-      </p>
-      <div className="relative mb-3">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-text-3" aria-hidden />
-        <input
-          type="search"
-          autoFocus
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("pt.searchAria")}
-          aria-label={t("pt.searchAria")}
-          className="min-h-11 w-full rounded-full border border-line-strong/40 bg-surface pl-10 pr-4 text-base outline-none focus:border-primary"
-        />
-      </div>
-      {products.isPending ? (
-        <Spinner />
-      ) : candidates.length === 0 ? (
-        <p className="py-6 text-center text-sm text-text-2">{query ? t("pt.nothingFound") : t("pp.typePart")}</p>
-      ) : (
-        <div className="divide-y divide-line overflow-hidden rounded-[var(--radius-surface)] bg-sunken">
-          {candidates.map((x) => (
-            <button
-              key={x.id}
-              type="button"
-              disabled={merge.isPending}
-              onClick={() => void pick(x.id, x.name)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-pressed"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{x.name}</p>
-                <p className="truncate text-xs text-text-3">
-                  {[x.brand, sizeLabel(x.size_value, x.size_unit), `${x.purchases}×`, storeLabel(x.last_store)].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-              <span className="text-sm font-semibold tabular-nums">{formatMoney(x.last_price)}</span>
+    <BottomSheet open onClose={onClose} label={t("pp.mergeTitle")}>
+      <SheetHeader title={t("pp.mergeTitle")} sub={t("pp.mergeText", { name: d.product.name })} onClose={onClose} />
+      <div className="sheet-body stack g-12">
+        <div className="row g-8 input" style={{ paddingRight: 6 }}>
+          <Search size={18} color="var(--text-3)" />
+          <input
+            autoFocus
+            className="grow"
+            style={{ minHeight: 46, fontSize: 16 }}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("pt.searchAria")}
+            aria-label={t("pt.searchAria")}
+          />
+          {query && (
+            <button type="button" className="ibtn sm" onClick={() => setQuery("")} aria-label={t("an.clear")}>
+              <X size={16} />
             </button>
-          ))}
+          )}
         </div>
-      )}
-    </Sheet>
+        {products.isPending ? (
+          <Spinner />
+        ) : candidates.length === 0 ? (
+          <p className="t-sm t-2" style={{ textAlign: "center", padding: "24px 0", margin: 0 }}>
+            {query ? t("pt.nothingFound") : t("pp.typePart")}
+          </p>
+        ) : (
+          <div className="cells">
+            {candidates.map((x) => (
+              <button key={x.id} type="button" className="cell" disabled={merge.isPending} onClick={() => void pick(x.id, x.name)}>
+                <CatIcon id={x.category_id} size="sm" />
+                <span className="grow stack" style={{ minWidth: 0 }}>
+                  <span className="t-body fw-5 ellipsis">{x.name}</span>
+                  <span className="t-xs t-2 num ellipsis">
+                    {[x.brand, sizeLabel(x.size_value, x.size_unit), `${x.purchases}×`, storeLabel(x.last_store)].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+                <span className="t-body fw-6 num">{formatEuro(x.last_price)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </BottomSheet>
   );
 }

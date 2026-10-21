@@ -135,7 +135,7 @@ export function MonthBars({ data, height = 120, onPick }: { data: MonthBar[]; he
   const bw = Math.min(56, (w - (data.length - 1) * 16) / data.length);
   const gap = data.length > 1 ? (w - bw * data.length) / (data.length - 1) : 0;
   return (
-    <svg viewBox={`0 0 ${w} ${height + 38}`} width="100%" role="img" aria-label={data.map((d) => `${d.label} ${formatEuro(d.total)}`).join(", ")}>
+    <svg className="an-chart" viewBox={`0 0 ${w} ${height + 38}`} width="100%" role="img" aria-label={data.map((d) => `${d.label} ${formatEuro(d.total)}`).join(", ")}>
       {data.map((d, i) => {
         const h = Math.max(2, (d.total / max) * height);
         const x = i * (bw + gap);
@@ -144,7 +144,7 @@ export function MonthBars({ data, height = 120, onPick }: { data: MonthBar[]; he
           <g key={d.key} onClick={onPick ? () => onPick(d) : undefined} style={onPick ? { cursor: "pointer" } : undefined}>
             <rect x={x} y={height + 14 - h} width={bw} height={h} rx="6" style={{ fill: last ? "var(--ink)" : "var(--chart-muted)" }} />
             <text x={x + bw / 2} y={height + 8 - h} textAnchor="middle" style={{ fill: "var(--text-2)", fontSize: 11, fontWeight: 600 }}>
-              {formatNumber(Math.round(d.total), { maximumFractionDigits: 0 })} €
+              {euro0(d.total)}
             </text>
             <text x={x + bw / 2} y={height + 32} textAnchor="middle" style={{ fill: "var(--text-2)", fontSize: 11.5 }}>
               {d.label}
@@ -221,7 +221,7 @@ export function WeekdayBars({ wd }: { wd: number[] }) {
   const gap = (W - bw * 7) / 6;
   const names = Array.from({ length: 7 }, (_, i) => formatDateTime(new Date(Date.UTC(2024, 0, 1 + i, 12)), { weekday: "short" }).replace(/\.$/, ""));
   return (
-    <svg viewBox={`0 0 ${W} ${H + 34}`} width="100%" role="img" aria-label={wd.map((n, i) => `${names[i]} ${n}`).join(", ")}>
+    <svg className="an-chart" viewBox={`0 0 ${W} ${H + 34}`} width="100%" role="img" aria-label={wd.map((n, i) => `${names[i]} ${n}`).join(", ")}>
       {wd.map((n, i) => {
         const h = n ? Math.max(4, (n / max) * H) : 2;
         const x = i * (bw + gap);
@@ -242,6 +242,12 @@ export function WeekdayBars({ wd }: { wd: number[] }) {
     </svg>
   );
 }
+
+/** Suma zaokrúhlená na celé eurá „54 €“ (ako fmtEur0 v prototype). */
+export const euro0 = (n: number) => `${formatNumber(Math.round(n), { maximumFractionDigits: 0 })} €`;
+
+/** Poznámka pod stĺpcami: „* zatiaľ do 21. 10.“ */
+export const partialUntil = () => t("an.partialUntil", { date: formatDateTime(new Date(), { day: "numeric", month: "numeric" }) });
 
 /** Percentuálny podiel ako celé číslo „23 %“. */
 export const pct = (share: number) => `${formatNumber(share * 100, { maximumFractionDigits: 0 })} %`;

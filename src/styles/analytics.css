@@ -1,3 +1,27 @@
 /* Doplnky z prototypu – analytics. Farby len cez premenné tém. */
 @layer components {
+  /* Stĺpce grafov: pri zmene obdobia sa plynulo prelejú (ako pruhy .bar), pri otvorení vyrastú zdola. */
+  .an-chart rect {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: anBarIn 420ms cubic-bezier(.2, .8, .2, 1) backwards;
+    transition: y 400ms cubic-bezier(.2, .8, .2, 1), height 400ms cubic-bezier(.2, .8, .2, 1), fill 200ms;
+  }
+  .an-chart g:nth-child(2) rect { animation-delay: 40ms; }
+  .an-chart g:nth-child(3) rect { animation-delay: 80ms; }
+  .an-chart g:nth-child(4) rect { animation-delay: 120ms; }
+  .an-chart g:nth-child(5) rect { animation-delay: 160ms; }
+  .an-chart g:nth-child(6) rect { animation-delay: 200ms; }
+  .an-chart g:nth-child(7) rect { animation-delay: 240ms; }
+  .an-chart text { animation: fadeIn 300ms ease-out 200ms backwards; }
+  /* Graf ceny: čiara sa nakreslí, bodky naskočia. */
+  .an-price path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: anDraw 700ms ease-out forwards; }
+  .an-price circle { transform-box: fill-box; transform-origin: center; animation: anDotIn 320ms cubic-bezier(.2, .8, .2, 1) backwards; }
+  .an-stack > span { transition: width 400ms cubic-bezier(.2, .8, .2, 1); }
+}
+@keyframes anBarIn { from { transform: scaleY(0); } to { transform: none; } }
+@keyframes anDraw { to { stroke-dashoffset: 0; } }
+@keyframes anDotIn { from { transform: scale(0); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .an-chart rect, .an-chart text, .an-price path, .an-price circle, .an-stack > span { animation: none; transition: none; stroke-dashoffset: 0; }
 }

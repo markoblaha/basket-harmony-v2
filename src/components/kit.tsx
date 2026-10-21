@@ -2,7 +2,8 @@
  * Stavebné prvky obrazoviek prenesených z prototypu (triedy sú v src/design.css).
  * Hlavička, spodný panel, riadok, prepínač, počítadlo, avatary, odznak obchodu.
  */
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { getSetting } from "@/lib/settings";
 import { ChevronLeft, ChevronRight, Minus, Plus, Trash2, X, type LucideIcon } from "lucide-react";
 import { CategoryGlyph } from "./CategoryIcon";
 import { cx } from "./ui";
@@ -69,10 +70,24 @@ export function ScreenHeader({
   );
 }
 
-/* ------------------------------------------------------------------ spodný panel */
+/* ------------------------------------------------------------------ spodný panel
+ * Vysunie sa zdola (sheetUp 300 ms), pod ním stmavené pozadie (scrim). Zatvorí sa ťuknutím
+ * na pozadie, klávesou Escape alebo potiahnutím za úchyt/hlavičku smerom dole
+ * (stačí ~1/4 výšky alebo rýchly švih) – panel pri tom ide za prstom a pozadie bledne.
+ */
+const DRAG_START = "button, a, input, textarea, select, [role=switch], [role=tab]";
+
 export function BottomSheet({ open, onClose, label, children }: { open: boolean; onClose: () => void; label: string; children: ReactNode }) {
+  const sheet = useRef<HTMLDivElement>(null);
+  const scrim = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ y: number; t: number; dy: number } | null>(null);
+  const closing = useRef(false);
+  const [leaving, setLeaving] = useState(false);
+
   useEffect(() => {
     if (!open) return;
+    closing.current = false;
+    setLeaving(false);
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
     const overflow = document.body.style.overflow;
@@ -82,11 +97,75 @@ export function BottomSheet({ open, onClose, label, children }: { open: boolean;
       document.body.style.overflow = overflow;
     };
   }, [open, onClose]);
+
+  /** Zatvorenie s animáciou (panel zíde dole, pozadie zmizne), potom onClose. */
+  const dismiss = useCallback(() => {
+    if (closing.current) return;
+    closing.current = true;
+    setLeaving(true);
+    window.setTimeout(onClose, 200);
+  }, [onClose]);
+
+  const move = (dy: number) => {
+    const el = sheet.current;
+    if (!el) return;
+    el.style.transition = "none";
+    el.style.transform = dy > 0 ? `translateY(${dy}px)` : "";
+    if (scrim.current) scrim.current.style.opacity = String(Math.max(0.2, 1 - dy / (el.offsetHeight || 1)));
+  };
+
   if (!open) return null;
   return (
     <>
-      <div className="scrim fixed" onClick={onClose} aria-hidden />
-      <div className="sheet fixed mx-auto max-w-2xl pb-safe" role="dialog" aria-modal="true" aria-label={label}>
+      <div ref={scrim} className={cx("scrim fixed", leaving && "sheet-scrim-out")} onClick={dismiss} aria-hidden />
+      <div
+        ref={sheet}
+        className={cx("sheet fixed mx-auto max-w-2xl pb-safe", leaving && "sheet-out")}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        onPointerDown={(e) => {
+          const target = e.target as HTMLElement;
+          // Ťahať sa dá za úchyt a hlavičku (nie za tlačidlá a polia), alebo kdekoľvek, keď je obsah navrchu.
+          if (target.closest(DRAG_START)) return;
+          const inHead = !!target.closest(".grab, .sheet-hdr");
+          const scroller = target.closest(".sheet-body, .scroll") as HTMLElement | null;
+          if (!inHead && scroller && scroller.scrollTop > 0) return;
+          drag.current = { y: e.clientY, t: Date.now(), dy: 0 };
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current;
+          if (!d) return;
+          d.dy = Math.max(0, e.clientY - d.y);
+          if (d.dy > 6) move(d.dy);
+        }}
+        onPointerUp={() => {
+          const d = drag.current;
+          drag.current = null;
+          const el = sheet.current;
+          if (!d || !el) return;
+          const fast = d.dy > 40 && d.dy / Math.max(1, Date.now() - d.t) > 0.6;
+          if (d.dy > el.offsetHeight / 4 || fast) {
+            haptic(10);
+            el.style.transition = "transform 200ms cubic-bezier(.4,0,1,1)";
+            el.style.transform = "translateY(100%)";
+            if (scrim.current) {
+              scrim.current.style.transition = "opacity 200ms";
+              scrim.current.style.opacity = "0";
+            }
+            closing.current = true;
+            window.setTimeout(onClose, 200);
+          } else if (d.dy > 0) {
+            el.style.transition = "transform 260ms cubic-bezier(.2,.8,.2,1)";
+            el.style.transform = "";
+            if (scrim.current) scrim.current.style.opacity = "";
+          }
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+          move(0);
+        }}
+      >
         <div className="grab" />
         {children}
       </div>
@@ -309,10 +388,10 @@ export function ProgressBar({ value, color }: { value: number; color?: string })
   );
 }
 
-/** Krátka vibrácia (ak ju telefón podporuje). */
+/** Krátka vibrácia (ak ju telefón podporuje a používateľ ju vo Viac nevypol). */
 export function haptic(ms = 12) {
   try {
-    navigator.vibrate?.(ms);
+    if (getSetting("haptics")) navigator.vibrate?.(ms);
   } catch {
     /* nepodporované */
   }
@@ -363,4 +442,57 @@ export function useLongPress({ onLong, onTap, ms = 500 }: { onLong?: () => void;
       }
     },
   };
+}
+
+/* ------------------------------------------------------------------ potvrdenie (dialóg v strede)
+ * Ako v prototype: nadpis, vysvetlenie, Zrušiť + potvrdzujúce tlačidlo (pri nevratnej akcii červené).
+ * Zatvorí sa ťuknutím mimo, klávesou Escape alebo Zrušiť.
+ */
+export function ConfirmDialog({
+  open,
+  title,
+  body,
+  confirmLabel,
+  danger,
+  busy,
+  hideCancel,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: ReactNode;
+  body?: ReactNode;
+  confirmLabel: string;
+  danger?: boolean;
+  busy?: boolean;
+  /** Len informácia s jedným tlačidlom (napr. „Rozumiem“). */
+  hideCancel?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onCancel]);
+  if (!open) return null;
+  return (
+    <div className="dialog-wrap fixed" onClick={onCancel}>
+      <div className="dialog stack g-12" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <span className="t-title">{title}</span>
+        {body && <span className="t-sm t-2">{body}</span>}
+        <div className="row g-8" style={{ marginTop: 6 }}>
+          {!hideCancel && (
+            <button type="button" className="btn btn-soft grow" onClick={onCancel}>
+              {t("common.cancel")}
+            </button>
+          )}
+          <button type="button" className={cx("btn grow", danger ? "btn-danger" : "btn-ink")} onClick={onConfirm} disabled={busy}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

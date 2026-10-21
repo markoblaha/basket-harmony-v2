@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Row } from "@/lib/database.types";
 import { guessCategory } from "@/lib/categories";
+import { uploadReceipt } from "@/features/receipts/api";
 
 export type ShoppingList = Row<"shopping_lists">;
 export type Item = Row<"shopping_list_items">;
@@ -408,7 +409,8 @@ export function useRemoveFavorite(householdId: string) {
 
 // ------------------------------------------------------------------ prehľad nákupov
 
-export type ListStats = { open: number; bought: number; preview: string[] };
+/** adders = kto pridal otvorené položky (ľudia na karte); boughtNames/unavailable/shopper slúžia histórii nákupov (čo sa kúpilo, čo nemali, kto nakupoval). */
+export type ListStats = { open: number; bought: number; preview: string[]; unavailable: number; boughtNames: string[]; shopper: string | null; adders: string[] };
 
 /** Počty položiek a náhľad mien pre karty v prehľade Nákupy (jeden dotaz pre všetky zoznamy). */
 export function useListStats(householdId: string) {
@@ -418,21 +420,33 @@ export function useListStats(householdId: string) {
       const since = new Date(Date.now() - 120 * 86_400_000).toISOString();
       const { data, error } = await supabase
         .from("shopping_list_items")
-        .select("list_id, status, name, created_at")
+        .select("list_id, status, name, created_at, purchased_by, added_by")
         .eq("household_id", householdId)
         .or(`status.eq.OPEN,purchased_at.gte.${since}`)
         .order("created_at", { ascending: false })
         .limit(3000);
       if (error) throw error;
       const map = new Map<string, ListStats>();
+      const buyers = new Map<string, Map<string, number>>();
       for (const row of data) {
-        const st = map.get(row.list_id) ?? { open: 0, bought: 0, preview: [] };
+        const st = map.get(row.list_id) ?? { open: 0, bought: 0, preview: [], unavailable: 0, boughtNames: [], shopper: null, adders: [] };
         if (row.status === "OPEN") {
           st.open++;
           if (st.preview.length < 4) st.preview.push(row.name);
-        } else if (row.status === "PURCHASED") st.bought++;
+          if (row.added_by && !st.adders.includes(row.added_by)) st.adders.push(row.added_by);
+        } else if (row.status === "PURCHASED") {
+          st.bought++;
+          if (st.boughtNames.length < 4) st.boughtNames.push(row.name);
+          if (row.purchased_by) {
+            const b = buyers.get(row.list_id) ?? new Map<string, number>();
+            b.set(row.purchased_by, (b.get(row.purchased_by) ?? 0) + 1);
+            buyers.set(row.list_id, b);
+          }
+        } else if (row.status === "UNAVAILABLE") st.unavailable++;
         map.set(row.list_id, st);
       }
+      // Kto nakupoval = kto odškrtol najviac položiek.
+      for (const [listId, b] of buyers) map.get(listId)!.shopper = [...b.entries()].sort((x, y) => y[1] - x[1])[0]![0];
       return map;
     },
   });
@@ -464,5 +478,32 @@ export function useSetReceiptLater(householdId: string) {
       if (error) throw error;
     },
     onSettled: () => qc.invalidateQueries({ queryKey: listKeys.lists(householdId) }),
+  });
+}
+
+/** Všetky položky jedného (aj ukončeného) nákupu – pre „Pridať nekúpené“ a „Skopírovať minulý nákup“. */
+export function useTripItems(listId: string | undefined) {
+  return useQuery({
+    queryKey: ["trip-items", listId ?? "none"],
+    enabled: !!listId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Item[]> => {
+      const { data, error } = await supabase.from("shopping_list_items").select("*").eq("list_id", listId!).order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/** Doklad k ukončenému nákupu (z Histórie): nahratie, priradenie k nákupu a čítanie na serveri. */
+export function useUploadTripReceipt(householdId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ listId, files }: { listId: string; files: File[] }) => uploadReceipt(householdId, files, listId),
+    onMutate: () => qc.invalidateQueries({ queryKey: ["receipts"] }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["receipts"] });
+      qc.invalidateQueries({ queryKey: listKeys.lists(householdId) });
+    },
   });
 }

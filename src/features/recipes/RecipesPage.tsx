@@ -13,7 +13,7 @@ import { formatDateTime, t, tn } from "@/i18n";
 import { useRecipePlans, useRecipes, useSetPlanStatus, type RecipePlan } from "./api";
 import { useCart } from "./cart";
 import { RECIPE_CATEGORIES } from "./catalog";
-import { CartBar, Cover, RIcon, RecipeRow, VoiceSearch } from "./common";
+import { Cover, RIcon, RecipeRow, VoiceSearch } from "./common";
 import { ImportSheet } from "./ImportSheet";
 import { categoryName, mergeIngredients, recipeMeta, recommendations } from "./logic";
 import type { Recipe } from "./types";
@@ -95,8 +95,7 @@ export function RecipesPage() {
           )}
         </section>
       </div>
-      <div className="tab-space" style={{ height: 176 }} />
-      <CartBar />
+      <div className="tab-space" />
       {voice && (
         <VoiceSearch
           onClose={() => setVoice(false)}
@@ -150,7 +149,7 @@ function Waiting() {
           </span>
           <span className="grow stack g-2" style={{ minWidth: 0 }}>
             <span className="t-xs t-2">
-              {t("rc.draftShop")} · {tn("rc.ingredientCount", nIng)}
+              {t("rc.draft")} · {tn("rc.ingFor", cartItems.length)} · <span className="num">{nIng}</span>
             </span>
             <span className="t-h ellipsis">{cartItems.map((x) => recipes.find(x.recipeId)!.name).join(" + ")}</span>
           </span>
@@ -170,7 +169,7 @@ function Waiting() {
             <button type="button" className="row g-12 grow" style={{ minWidth: 0, textAlign: "left" }} onClick={() => r && navigate(`/recipes/r/${r.id}`)}>
               {r ? <Cover recipe={r} size="sm" /> : <span className="rc-cover sm"><ChefHat size={24} /></span>}
               <span className="grow stack g-2" style={{ minWidth: 0 }}>
-                <span className="t-h ellipsis">{r?.name ?? p.recipe_name}</span>
+                <span className="t-h">{r?.name ?? p.recipe_name}</span>
                 <span className="t-xs t-2 rc-clamp">
                   {tn("rc.portions", p.portions)} · {status}
                 </span>

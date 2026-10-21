@@ -1,3 +1,13 @@
 /* Doplnky z prototypu – recipes. Farby len cez premenné tém. */
 @layer components {
+  /* Hľadanie hlasom – stmavenie sa rozsvieti, panel vyjde zdola (prototyp .rc-voice). */
+  .rc-voice { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; justify-content: flex-end; background: var(--scrim); animation: fadeIn 160ms; }
+  .rc-voice > div { width: 100%; max-width: 42rem; margin: 0 auto; background: var(--surface); border-radius: 24px 24px 0 0;
+    padding: 16px 16px calc(28px + env(safe-area-inset-bottom)); box-shadow: var(--sh-3); animation: sheetUp 280ms cubic-bezier(.2,.8,.2,1); }
+
+  /* Obrazovka bez spodnej lišty: celá plocha nad lištou, vlastné posúvanie, tlačidlo dole bez medzery na lištu. */
+  .rc-full { position: fixed; inset: 0; z-index: 45; max-width: 42rem; margin: 0 auto; display: flex; flex-direction: column;
+    background: var(--bg); padding-top: env(safe-area-inset-top); }
+  .rc-full-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .rc-full > .bottom-cta.no-tab { padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
 }

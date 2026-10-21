@@ -120,21 +120,22 @@ export type SaveResult = { listId: string; added: number; merged: number; reques
 export function useSaveVoiceList(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ store, items }: { store: string; items: DraftItem[] }): Promise<SaveResult> => {
-      // Použije sa rozpracovaný nákup v tej istej predajni; nákup z Histórie sa neotvára – vznikne nový.
-      const lists = await supabase
-        .from("shopping_lists")
-        .select("id, name, completed_at")
-        .eq("household_id", householdId)
-        .eq("is_archived", false)
-        .is("completed_at", null);
-      if (lists.error) throw lists.error;
-      let listId = lists.data.find((l) => normalizeName(l.name) === normalizeName(store))?.id;
+    mutationFn: async ({ store, listId: target, date, items }: { store: string; listId: string | null; date: string; items: DraftItem[] }): Promise<SaveResult> => {
+      let listId = target ?? undefined;
+      if (!listId) {
+        // Rozpracovaný nákup v tej istej predajni na ten istý deň sa použije, inak vznikne nový zoznam.
+        const lists = await supabase
+          .from("shopping_lists")
+          .select("id, name, planned_for")
+          .eq("household_id", householdId)
+          .eq("is_archived", false)
+          .is("completed_at", null);
+        if (lists.error) throw lists.error;
+        listId = lists.data.find((l) => normalizeName(l.name) === normalizeName(store) && (l.planned_for ?? "").slice(0, 10) === date)?.id;
+      }
       const created = !listId;
       if (!listId) {
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-        const ins = await supabase.from("shopping_lists").insert({ household_id: householdId, name: store, planned_for: today }).select("id").single();
+        const ins = await supabase.from("shopping_lists").insert({ household_id: householdId, name: store, planned_for: date }).select("id").single();
         if (ins.error) throw ins.error;
         listId = ins.data.id;
       }
@@ -144,7 +145,8 @@ export function useSaveVoiceList(householdId: string) {
       let added = 0;
       let merged = 0;
       let requests = 0;
-      for (const it of items) {
+      // Najstaršia nadiktovaná položka ide do zoznamu prvá (na obrazovke je navrchu najnovšia).
+      for (const it of [...items].reverse()) {
         const existing = open.data.find((o) => sameProduct(o.name, it.name) && isCountable(o.unit) && isCountable(it.unit));
         if (existing) {
           const quantity = countOf(existing.quantity) + countOf(it.quantity);
@@ -172,6 +174,7 @@ export function useSaveVoiceList(householdId: string) {
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: listKeys.lists(householdId) });
       qc.invalidateQueries({ queryKey: listKeys.items(r.listId) });
+      qc.invalidateQueries({ queryKey: listKeys.stats(householdId) });
       qc.invalidateQueries({ queryKey: ["frequent"] });
     },
   });
@@ -179,7 +182,8 @@ export function useSaveVoiceList(householdId: string) {
 
 // ------------------------------------------------------------------ rozpracovaný zoznam
 
-export type Draft = { store: string; items: DraftItem[]; savedAt: number };
+/** store "" = bez obchodu; targetListId = pridávanie do existujúceho zoznamu; date = YYYY-MM-DD. */
+export type Draft = { store: string; date: string; targetListId: string | null; items: DraftItem[]; savedAt: number };
 const draftKey = (hid: string) => `bh.voiceDraft.${hid}`;
 
 /** Rozdiktovaný zoznam prežije zatvorenie obrazovky aj obnovenie stránky (24 h). */
@@ -189,7 +193,7 @@ export function loadDraft(hid: string): Draft | null {
     if (!raw) return null;
     const d = JSON.parse(raw) as Draft;
     if (!d.items?.length || Date.now() - d.savedAt > 86_400_000) return null;
-    return d;
+    return { ...d, store: d.store ?? "", date: d.date ?? "", targetListId: d.targetListId ?? null };
   } catch {
     return null;
   }

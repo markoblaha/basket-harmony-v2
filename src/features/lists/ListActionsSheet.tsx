@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Copy, Pencil, Trash2 } from "lucide-react";
 import { BottomSheet, Cell, SheetHeader } from "@/components/kit";
 import { useToast } from "@/components/toast";
@@ -7,7 +8,7 @@ import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { errorMessage } from "@/lib/errors";
 import { t, tn } from "@/i18n";
-import { useAddItem, useCreateList, useItems, useLists, useUpdateList, type ShoppingList } from "./api";
+import { listKeys, useAddItem, useCreateList, useItems, useLists, useUpdateList, type ShoppingList } from "./api";
 import { addDays, isoDay, listDay } from "./dates";
 import { ListSheet } from "./ListSheet";
 
@@ -22,6 +23,7 @@ export function ListActionsSheet({ list, onClose, onDeleted }: { list: ShoppingL
   const create = useCreateList(household.id);
   const update = useUpdateList(household.id);
   const add = useAddItem();
+  const qc = useQueryClient();
   const [editing, setEditing] = useState<ShoppingList | null>(null);
 
   const open = (items.data ?? []).filter((i) => i.status === "OPEN");
@@ -29,9 +31,23 @@ export function ListActionsSheet({ list, onClose, onDeleted }: { list: ShoppingL
   async function duplicate(l: ShoppingList) {
     onClose();
     try {
-      const id = await create.mutateAsync({ name: l.name, isPrivate: l.is_private, plannedFor: isoDay(addDays(new Date(), 1)), note: l.note });
-      for (const i of open) await add.mutateAsync({ listId: id, name: i.name, quantity: i.quantity, unit: i.unit, note: i.note, categoryId: i.category_id });
-      toast.show(t("ls.duplicated", { name: l.name }), "success");
+      const id = await create.mutateAsync({
+        name: l.name,
+        isPrivate: l.is_private,
+        plannedFor: isoDay(addDays(new Date(), 1)),
+        plannedTime: l.planned_time,
+        note: l.note,
+      });
+      // Ako v prototype: skopíruje sa celý obsah zoznamu (aj už kúpené), všetko ako nekúpené.
+      const seen = new Set<string>();
+      for (const i of items.data ?? []) {
+        const key = i.name.trim().toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        await add.mutateAsync({ listId: id, name: i.name, quantity: i.quantity, unit: i.unit, note: i.note, categoryId: i.category_id });
+      }
+      qc.invalidateQueries({ queryKey: listKeys.stats(household.id) });
+      toast.show(t("ls.copiedTomorrow", { name: l.name }), "success");
     } catch (err) {
       toast.show(errorMessage(err), "error");
     }
@@ -42,7 +58,7 @@ export function ListActionsSheet({ list, onClose, onDeleted }: { list: ShoppingL
     try {
       await update.mutateAsync({ id: l.id, patch: { is_archived: true } });
       onDeleted?.();
-      toast.show(t("lsheet.archived", { name: l.name }), "info", {
+      toast.show(t("ls.deleted", { name: l.name }), "info", {
         undo: () =>
           update.mutate({ id: l.id, patch: { is_archived: false } }, { onError: (err) => toast.show(errorMessage(err), "error") }),
       });

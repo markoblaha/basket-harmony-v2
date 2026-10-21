@@ -1,72 +1,268 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Keyboard, Mic, MicOff, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Check, ChevronDown, ChevronRight, History, Keyboard, ListPlus, Mic, MicOff, Pause, SendHorizontal, X } from "lucide-react";
+import { StoreBadge, haptic } from "@/components/kit";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
+import { useLists, useListStats } from "@/features/lists/api";
+import { addDays, dayLabel, isoDay } from "@/features/lists/dates";
+import { guessCategory, normalizeName } from "@/lib/categories";
 import { t, tn } from "@/i18n";
 import { errorMessage } from "@/lib/errors";
 import { interpretAI, loadDraft, saveDraft, useKnownStores, useSaveVoiceList, type DraftItem, type SaveResult } from "./api";
-import { matchStore, parseLocal } from "./parse";
-import { applyOps, diff, reconcile, stepOf } from "./engine";
-import { buzz, useSpeech } from "./useSpeech";
-import { VoiceRow, type RowAnim } from "./VoiceRow";
+import { parseLocal, splitStore, type VoiceOp } from "./parse";
+import { applyOps, diff, findItem, reconcile } from "./engine";
+import { useSpeech } from "./useSpeech";
+import { VoiceCard } from "./VoiceRow";
 
-/** Vlna hlasu – tri periodické krivky; posun o 390 px nadväzuje bez skoku. */
-function wavePath(fn: (x: number) => number) {
-  let d = "M0 32";
-  for (let x = 5; x <= 780; x += 5) d += ` L${x} ${(32 + fn(x)).toFixed(1)}`;
-  return d;
+/** Mikrofón sa po otvorení zapne sám (nastavenie v zariadení, predvolene áno). */
+function micAutostart(): boolean {
+  try {
+    return localStorage.getItem("bh.micAutostart") !== "0";
+  } catch {
+    return true;
+  }
 }
-const W1 = wavePath((x) => Math.sin((x / 130) * Math.PI * 2) * 22 * (0.55 + 0.45 * Math.sin((x / 390) * Math.PI * 2)));
-const W2 = wavePath((x) => Math.sin((x / 195) * Math.PI * 2 + 1) * 15);
-const W3 = wavePath((x) => Math.sin((x / 78) * Math.PI * 2 + 2) * 12 * Math.abs(Math.sin((x / 390) * Math.PI * 2)));
+
+const cap = (s: string) => (s ? s[0]!.toLocaleUpperCase("sk-SK") + s.slice(1) : s);
+
+/** Krok pri +1/−1 ako v prototype: gramy a ml po 100, kilá a litre po pol, inak kusy. */
+function stepOf(unit: string | null): number {
+  if (unit === "g" || unit === "ml") return 100;
+  if (unit === "kg" || unit === "l") return 0.5;
+  return 1;
+}
+
+type Modal = "store" | "pickStore" | "unsure" | null;
 
 /**
- * Hlasový nákup. Otvorí sa tlačidlom v strede navigácie s už zapnutým mikrofónom:
- *  1. Kam ideš? – predajňa ťuknutím, napísaním alebo hlasom („idem do Lidla“).
- *  2. Diktovanie – každá veta ide na rozbor (AI, záloha lokálne), položky padajú zhora.
- *  3. Hotovo – zoznam sa uloží do Nákupu ako bežný zoznam s názvom predajne.
- * Rozdiktovaný zoznam sa priebežne ukladá v prehliadači, takže sa nestratí.
+ * Hlasový nákup (H1 + H2 z prototypu). Otvorí sa stredným tlačidlom lišty:
+ *  H1 Kam ideš? – obchod ťuknutím alebo hlasom, pokračovanie v rozdiktovanom, pridanie do existujúceho zoznamu.
+ *  H2 Diktovanie – každá veta sa hneď rozoberie lokálne a o chvíľu spresní cez AI; položky pribúdajú hore,
+ *     upravujú sa hlasom („nie, tri“, „zmaž maslo“) aj ťukom/potiahnutím.
+ *  Vytvoriť zoznam – uloží položky do Nákupu (nový zoznam alebo vybraný existujúci).
+ * Rozdiktovaný zoznam sa priebežne ukladá v zariadení, takže sa nestratí.
  */
 export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSaved: (store: string, r: SaveResult) => void }) {
   const { household } = useHousehold();
   const stores = useKnownStores(household.id).data ?? [];
+  const lists = useLists(household.id).data ?? [];
+  const stats = useListStats(household.id).data;
   const save = useSaveVoiceList(household.id);
   const toast = useToast();
+  const today = isoDay(new Date());
 
-  const [phase, setPhase] = useState<"pick" | "dict">("pick");
-  const [leaving, setLeaving] = useState(false);
-  const [closing, setClosing] = useState(false);
+  const [phase, setPhase] = useState<"h1" | "h2">("h1");
+  const [draft] = useState(() => loadDraft(household.id));
   const [store, setStore] = useState("");
-  const [custom, setCustom] = useState("");
+  const [date, setDate] = useState(today);
+  const [targetListId, setTargetListId] = useState<string | null>(null);
   const [items, setItems] = useState<DraftItem[]>([]);
-  const [anims, setAnims] = useState<Record<string, Partial<RowAnim>>>({});
-  const [lastId, setLastId] = useState<string | null>(null);
-  const [pushKey, setPushKey] = useState<"a" | "b">("a");
-  const [shake, setShake] = useState<"a" | "b" | null>(null);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [goneId, setGoneId] = useState<string | null>(null);
-  const [said, setSaid] = useState("");
-  const [paused, setPaused] = useState(false);
+  const [flash, setFlash] = useState<Record<string, number>>({});
+  const [selected, setSelected] = useState<string | null>(null);
+  const [discardArm, setDiscardArm] = useState(false);
+  const [modal, setModal] = useState<Modal>(null);
   const [typing, setTyping] = useState(false);
-  const [typed, setTyped] = useState("");
-  const [hint, setHint] = useState<{ text: string; k: number; ms: number } | null>(null);
-  const [unclearWarned, setUnclearWarned] = useState(false);
-  const [draft, setDraft] = useState(() => loadDraft(household.id));
+  const [doneHint, setDoneHint] = useState(false);
+  const [listening, setListening] = useState(micAutostart);
+  const [said, setSaid] = useState("");
+  const [refining, setRefining] = useState(0);
+  const [busy, setBusy] = useState(false);
 
   const itemsRef = useRef(items);
   itemsRef.current = items;
+  const selRef = useRef(selected);
+  selRef.current = selected;
+  const seq = useRef(0);
+  const pendingText = useRef<string | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const later = useCallback((fn: () => void, ms: number) => {
-    timers.current.push(setTimeout(fn, ms));
-  }, []);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const showHint = useCallback((text: string, ms = 4000) => {
-    setHint((h) => ({ text, k: (h?.k ?? 0) + 1, ms }));
-    later(() => setHint((h) => (h?.text === text ? null : h)), ms);
-  }, [later]);
+  const openLists = useMemo(() => lists.filter((l) => !l.completed_at), [lists]);
+  const target = targetListId ? (lists.find((l) => l.id === targetListId) ?? null) : null;
+  const storeName = target ? target.name : store || t("voice.noStore");
+
+  // Rozdiktovaný zoznam priebežne ukladáme, aby ho nič nezmazalo (ani obnovenie stránky).
+  useEffect(() => {
+    if (phase === "h2") saveDraft(household.id, { store, date, targetListId, items, savedAt: Date.now() });
+  }, [phase, store, date, targetListId, items, household.id]);
+
+  // ---------------------------------------------------------------- zmeny zoznamu
+
+  /** Nový stav zoznamu: zmenené karty znova „dopadnú“ (ako v prototype), nové pribudnú hore. */
+  const present = useCallback((next: DraftItem[]) => {
+    const d = diff(itemsRef.current, next);
+    itemsRef.current = next;
+    setItems(next);
+    if (d.changed.length) {
+      setFlash((f) => {
+        const n = { ...f };
+        for (const id of d.changed) n[id] = (n[id] ?? 0) + 1;
+        return n;
+      });
+    }
+  }, []);
+
+  const patch = useCallback(
+    (id: string, p: Partial<DraftItem>) => present(itemsRef.current.map((i) => (i.id === id ? { ...i, ...p } : i))),
+    [present],
+  );
+
+  const removeCard = useCallback(
+    (id: string) => {
+      const base = itemsRef.current;
+      const idx = base.findIndex((c) => c.id === id);
+      const c = base[idx];
+      if (!c) return;
+      present(base.filter((x) => x.id !== id));
+      if (selRef.current === id) setSelected(null);
+      toast.show(t("voice.removed", { name: c.name }), "info", {
+        undo: () => {
+          const n = [...itemsRef.current];
+          n.splice(Math.min(idx, n.length), 0, c);
+          present(n);
+        },
+      });
+    },
+    [present, toast],
+  );
+
+  const delta = useCallback(
+    (id: string, d: 1 | -1) => {
+      const c = itemsRef.current.find((x) => x.id === id);
+      if (!c) return;
+      const step = stepOf(c.unit);
+      const q = c.quantity ?? 1;
+      if (d < 0 && q <= step) return removeCard(id);
+      haptic(d > 0 ? 12 : 8);
+      patch(id, { quantity: Math.round((q + d * step) * 1000) / 1000, unit: c.unit ?? "ks" });
+    },
+    [patch, removeCard],
+  );
+
+  // ---------------------------------------------------------------- vety
+
+  /** H2: jedna veta – hneď lokálny rozbor, súčasne AI, ktorá výsledok vety spresní. */
+  const apply = useCallback(
+    (text: string) => {
+      const sp = splitStore(text, stores);
+      if (sp.store && !targetListId) setStore(sp.store);
+      let rest = sp.rest;
+      if (!rest) {
+        if (sp.store) haptic(10);
+        return;
+      }
+      // „nie, tri“ / „nie 250 g“ = oprava vybranej alebo poslednej (najvyššej) karty.
+      const correction = /^nie\b[\s,]*/i.exec(rest);
+      if (correction) rest = rest.slice(correction[0].length);
+      const before = itemsRef.current;
+      const sel = selRef.current ? before.find((c) => c.id === selRef.current) : undefined;
+      let target = sel?.name ?? (correction ? (before[0]?.name ?? null) : null);
+      let ops: VoiceOp[] = parseLocal(rest, target);
+      // samotné množstvo („250 g“, „tri“) → oprava poslednej karty
+      if (!target && !ops.length && before[0]) {
+        target = before[0].name;
+        ops = parseLocal(rest, target);
+      }
+      const missing = ops.filter((o): o is Extract<VoiceOp, { op: "remove" }> => o.op === "remove" && !findItem(before, o.target));
+      for (const m of missing) toast.show(t("voice.notInList", { name: m.target }));
+      const local = applyOps(before, ops);
+      if (local.done) setDoneHint(true);
+      if (local.understood) {
+        present(local.items);
+        haptic(10);
+      }
+      for (const r of local.removed) {
+        toast.show(t("voice.removed", { name: r.item.name }), "info", {
+          undo: () => {
+            const n = [...itemsRef.current];
+            n.splice(Math.min(r.index, n.length), 0, r.item);
+            present(n);
+          },
+        });
+      }
+      if (sel && (local.understood || target)) setSelected(null);
+      if (local.done && !local.added.length && !local.merged.length && !local.removed.length) return;
+
+      const mine = ++seq.current;
+      setRefining((r) => r + 1);
+      void interpretAI(rest, before, target).then((aiOps) => {
+        setRefining((r) => r - 1);
+        if (!aiOps) {
+          if (!local.understood && seq.current === mine) toast.show(t("voice.notUnderstood"));
+          return;
+        }
+        const r = reconcile(itemsRef.current, local, aiOps);
+        present(r.items);
+        if (r.done) setDoneHint(true);
+      });
+    },
+    [stores, targetListId, present, toast],
+  );
+
+  function openH2(o: { store?: string; targetListId?: string | null; text?: string; fromDraft?: boolean }) {
+    if (o.fromDraft && draft) {
+      setStore(draft.store);
+      setDate(draft.date || today);
+      setTargetListId(draft.targetListId);
+      itemsRef.current = draft.items;
+      setItems(draft.items);
+    } else {
+      setStore(o.store ?? "");
+      setTargetListId(o.targetListId ?? null);
+    }
+    pendingText.current = o.text ?? null;
+    setSaid("");
+    setPhase("h2");
+  }
+
+  // Veta povedaná už na H1 („mlieko a rožky“) sa spracuje hneď po prechode na diktovanie.
+  useEffect(() => {
+    if (phase !== "h2" || !pendingText.current) return;
+    const text = pendingText.current;
+    pendingText.current = null;
+    apply(text);
+  }, [phase, apply]);
+
+  /** H1: obchod, alebo rovno položky (s obchodom aj bez neho). */
+  const handleH1 = useCallback(
+    (text: string) => {
+      const sp = splitStore(text, stores);
+      const ops = sp.rest ? parseLocal(sp.rest) : [];
+      if (ops.some((o) => o.op !== "done")) openH2({ store: sp.store ?? "", text: sp.rest });
+      else if (sp.store) openH2({ store: sp.store });
+      else toast.show(t("voice.storeNotUnderstood"));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stores, toast],
+  );
+
+  const onFinal = useCallback(
+    (text: string) => {
+      setSaid(text);
+      if (phase === "h1") handleH1(text);
+      else apply(text);
+    },
+    [phase, handleH1, apply],
+  );
+
+  const speech = useSpeech(onFinal);
+  const blocked = speech.error === "denied";
+
+  // Mikrofón počúva, kým nie je pozastavený (a kým sa neukladá).
+  useEffect(() => {
+    if (!speech.supported) {
+      setTyping(true);
+      return;
+    }
+    if (listening && !blocked && !busy) speech.start();
+    else speech.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listening, blocked, busy, speech.supported]);
+
+  useEffect(() => {
+    if (blocked) setTyping(true);
+  }, [blocked]);
 
   // iPhone: Safari sa na mikrofón pýta pri každom otvorení stránky, kým ho pre ňu natrvalo nepovolíš.
   useEffect(() => {
@@ -78,211 +274,60 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
     } catch {
       /* nevadí */
     }
-    if (n < 3) later(() => showHint(t("voice.iosTip"), 7000), 1200);
-  }, [later, showHint]);
+    if (n < 3) timers.current.push(setTimeout(() => toast.show(t("voice.iosTip")), 1200));
+  }, [toast]);
 
-  // Rozdiktovaný zoznam priebežne ukladáme, aby ho nič nezmazalo.
-  useEffect(() => {
-    if (phase === "dict") saveDraft(household.id, { store, items, savedAt: Date.now() });
-  }, [phase, store, items, household.id]);
+  // ---------------------------------------------------------------- zatvorenie, zahodenie, uloženie
 
-  // ---------------------------------------------------------------- animácie
-
-  const listRef = useRef<HTMLDivElement>(null);
-  const seq = useRef(0);
-  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
-  const [ghosts, setGhosts] = useState<{ item: DraftItem; index: number }[]>([]);
-  const [refining, setRefining] = useState(0);
-  const [discardArmed, setDiscardArmed] = useState(false);
-
-  const flash = useCallback((ids: string[]) => {
-    setAnims((a) => {
-      const n = { ...a };
-      for (const id of ids) {
-        const p = n[id] ?? {};
-        n[id] = { ...p, bump: p.bump === "a" ? "b" : "a", glow: p.glow === "a" ? "b" : "a" };
-      }
-      return n;
-    });
-  }, []);
-
-  /**
-   * Prechod na nový stav zoznamu: nové položky padajú po jednej (najnovšia dopadne hore),
-   * odstránené odídu doľava, zmenené bliknú. Dáta sa menia hneď – animácia len dobieha.
-   */
-  const present = useCallback((next: DraftItem[]) => {
-    const d = diff(itemsRef.current, next);
-    itemsRef.current = next;
-    setItems(next);
-    if (d.removed.length) {
-      setGhosts((g) => [...g, ...d.removed]);
-      later(() => setGhosts((g) => g.filter((x) => !d.removed.some((r) => r.item.id === x.item.id))), 300);
-    }
-    if (d.changed.length) {
-      flash(d.changed);
-      buzz(10);
-    }
-    if (!d.added.length) return;
-    setLastId(null);
-    const order = [...d.added].reverse();
-    setHidden((h) => new Set([...h, ...order]));
-    order.forEach((id, k) =>
-      later(() => {
-        setHidden((h) => {
-          const n = new Set(h);
-          n.delete(id);
-          return n;
-        });
-        setLastId(id);
-        setPushKey((p) => (p === "a" ? "b" : "a"));
-        const el = listRef.current;
-        // Keď si posunutý nižšie (kontroluješ zoznam), nepreskakujeme – len jemne upozorníme.
-        if (el && el.scrollTop < 140) el.scrollTo({ top: 0, behavior: "smooth" });
-        else if (k === 0) showHint(t("voice.newOnTop"));
-        later(() => {
-          setShake((s) => (s === "a" ? "b" : "a"));
-          const it = itemsRef.current.find((i) => i.id === id);
-          buzz(it && it.status !== "ok" ? [16, 50, 16] : 14);
-        }, 420);
-      }, k * 320),
-    );
-    if (itemsRef.current.length === d.added.length) later(() => showHint(t("voice.swipeHint")), 900 + order.length * 320);
-  }, [later, showHint, flash]);
-
-  const patch = useCallback((id: string, p: Partial<DraftItem>) => {
-    present(itemsRef.current.map((i) => (i.id === id ? { ...i, ...p } : i)));
-  }, [present]);
-
-  const remove = useCallback((id: string) => {
-    setConfirmId(null);
-    setGoneId(id);
-    buzz([10, 30, 26]);
-    later(() => {
-      const next = itemsRef.current.filter((i) => i.id !== id);
-      itemsRef.current = next;
-      setItems(next);
-      setGoneId(null);
-      setLastId(null);
-      setEditId((e) => (e === id ? null : e));
-    }, 300);
-  }, [later]);
-
-  const askDelete = useCallback((id: string) => {
-    buzz(22);
-    setConfirmId(id);
-    later(() => setConfirmId((c) => (c === id ? null : c)), 3000);
-  }, [later]);
-
-  const step = useCallback((id: string, dir: 1 | -1) => {
-    const it = itemsRef.current.find((i) => i.id === id);
-    if (!it) return;
-    const st = stepOf(it.unit);
-    if (it.quantity == null) {
-      if (dir > 0) patch(id, it.status === "needs_qty" ? { quantity: 250, unit: "g", status: "ok" } : { quantity: 1, unit: it.unit ?? "ks" });
-      else askDelete(id);
-      return;
-    }
-    const next = Math.round((it.quantity + dir * st) * 1000) / 1000;
-    if (next < st) askDelete(id);
-    else patch(id, { quantity: next });
-  }, [patch, askDelete]);
-
-  const finishRef = useRef<() => void>(() => {});
-
-  // ---------------------------------------------------------------- vety
-
-  const pickStore = useCallback((name: string) => {
-    const s = name.trim();
-    if (!s || leaving) return;
-    buzz(12);
-    setStore(s);
-    setLeaving(true);
-    later(() => {
-      setPhase("dict");
-      setLeaving(false);
-    }, 380);
-  }, [leaving, later]);
-
-  /**
-   * Jedna veta: okamžite lokálny rozbor (položky padnú bez čakania), súčasne AI.
-   * Keď AI odpovie (zvyčajne do 1,5 s), lokálny výsledok vety nahradí presnejším –
-   * napr. rozdelí „banány 3 rožky maslo“ správne alebo opraví tvar slova.
-   */
-  const handleSentence = useCallback((text: string, typedByHand = false) => {
-    if (phase === "pick") {
-      // Napísaný text je rovno názov predajne; povedaný hľadáme vo vete („idem do Lidla“).
-      const s = matchStore(text, stores) ?? (typedByHand ? text : null);
-      if (s) pickStore(s);
-      else showHint(t("voice.storeHint", { text }));
-      return;
-    }
-    const target = editId ? (itemsRef.current.find((i) => i.id === editId)?.name ?? null) : null;
-    if (target) setEditId(null);
-    const before = itemsRef.current;
-    const local = applyOps(before, parseLocal(text, target));
-    if (local.done && !local.added.length && !local.merged.length) {
-      finishRef.current();
-      return;
-    }
-    if (local.understood) present(local.items);
-    const mergedName = !target && local.merged.length ? itemsRef.current.find((i) => i.id === local.merged[0])?.name : null;
-    if (mergedName) showHint(t("voice.dupe", { name: mergedName }));
-
-    const mine = ++seq.current;
-    setSaid(text);
-    setRefining((r) => r + 1);
-    void interpretAI(text, before, target).then((ops) => {
-      setRefining((r) => r - 1);
-      if (seq.current === mine) setSaid("");
-      if (!ops) {
-        if (!local.understood) showHint("Nerozumel som — skús to povedať inak");
-        return;
-      }
-      const r = reconcile(itemsRef.current, local, ops);
-      present(r.items);
-      if (r.done) finishRef.current();
-      else if (!r.understood && !local.understood) showHint("Nerozumel som — skús to povedať inak");
-    });
-  }, [phase, stores, pickStore, showHint, editId, present]);
-
-  function discard() {
-    if (!discardArmed) {
-      buzz(16);
-      setDiscardArmed(true);
-      later(() => setDiscardArmed(false), 3000);
-      return;
-    }
-    buzz([10, 30, 26]);
-    saveDraft(household.id, null);
-    itemsRef.current = [];
-    setItems([]);
-    close();
+  function close() {
+    speech.stop();
+    if (phase === "h2" && itemsRef.current.length) toast.show(t("voice.draftSaved"));
+    onClose();
   }
 
-  const speech = useSpeech(handleSentence);
-
-  // Mikrofón je zapnutý hneď po otvorení (pokiaľ ho prehliadač má a nie je pauza).
-  useEffect(() => {
-    if (!speech.supported) {
-      setTyping(true);
+  function discard() {
+    if (!discardArm) {
+      haptic(16);
+      setDiscardArm(true);
+      timers.current.push(setTimeout(() => setDiscardArm(false), 3000));
       return;
     }
-    if (!paused && !closing) speech.start();
-    else speech.stop();
-  }, [paused, closing, speech.supported]);
+    saveDraft(household.id, null);
+    speech.stop();
+    onClose();
+    toast.show(t("voice.discarded"));
+  }
 
-  useEffect(() => {
-    if (speech.error === "denied") {
-      setTyping(true);
-      showHint(t("voice.micDenied"));
+  function create(force = false) {
+    if (!items.length || busy) return;
+    if (items.some((c) => c.status === "unclear") && !force) return setModal("unsure");
+    if (!target && !store) return setModal("pickStore");
+    void finish();
+  }
+
+  async function finish(storeOverride?: string) {
+    const all = itemsRef.current;
+    if (!all.length) return;
+    const name = target ? target.name : (storeOverride ?? store) || t("voice.defaultListName");
+    setBusy(true);
+    try {
+      const r = await save.mutateAsync({ store: name, listId: target?.id ?? null, date, items: all });
+      saveDraft(household.id, null);
+      haptic(22);
+      onSaved(name, r);
+    } catch (err) {
+      setBusy(false);
+      toast.show(errorMessage(err), "error");
     }
-  }, [speech.error, showHint]);
+  }
 
   useEffect(() => {
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key !== "Escape") return;
+      if (modal) setModal(null);
+      else close();
     };
     document.addEventListener("keydown", onKey);
     return () => {
@@ -291,350 +336,408 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
     };
   });
 
-  function close() {
-    if (closing) return;
-    speech.stop();
-    setClosing(true);
-    setTimeout(onClose, 420);
-  }
-
-  async function finish() {
-    const all = itemsRef.current;
-    if (!all.length) {
-      close();
-      return;
-    }
-    const unclear = all.filter((i) => i.status === "unclear");
-    if (unclear.length && !unclearWarned) {
-      setUnclearWarned(true);
-      buzz([16, 50, 16]);
-      showHint(tn("voice.unclear", unclear.length));
-      return;
-    }
-    speech.stop();
-    try {
-      const r = await save.mutateAsync({ store, items: all.filter((i) => i.status !== "unclear") });
-      saveDraft(household.id, null);
-      buzz([10, 40, 10, 40, 22]);
-      setClosing(true);
-      setTimeout(() => onSaved(store, r), 420);
-    } catch (err) {
-      toast.show(errorMessage(err), "error");
-      if (!paused) speech.start();
-    }
-  }
-  finishRef.current = () => void finish();
-
-  function sendTyped(e: FormEvent) {
-    e.preventDefault();
-    const line = typed.trim();
-    if (!line) return;
-    setTyped("");
-    handleSentence(line, true);
-  }
-
-  function resumeDraft() {
-    if (!draft) return;
-    setItems(draft.items);
-    setStore(draft.store);
-    setDraft(null);
-    setLeaving(true);
-    later(() => {
-      setPhase("dict");
-      setLeaving(false);
-    }, 380);
-  }
-
   // ---------------------------------------------------------------- zobrazenie
 
   const n = items.length;
-  const pending = items.filter((i) => i.status !== "ok").length;
-  const editName = editId ? items.find((i) => i.id === editId)?.name : null;
-  const live = speech.interim || said;
-  const thinking = refining > 0 && !speech.interim;
-  const talk = speech.hearing || !!speech.interim;
-  const waveState = paused || (!speech.listening && !typing) ? "off" : thinking ? "think" : talk ? "talk" : "idle";
-  const status = paused
-    ? t("voice.st.paused")
-    : thinking
-      ? t("voice.st.refining")
-      : talk
-        ? t("voice.st.listening")
-        : editName
-          ? t("voice.st.editing", { name: editName })
-          : !speech.supported || speech.error
-            ? t("voice.st.typing")
-            : phase === "pick"
-              ? t("voice.st.pick")
-              : t("voice.st.listening");
-  const ghost = paused
-    ? t("voice.ghost.paused")
-    : editName
-      ? t("voice.ghost.edit")
-      : phase === "pick"
-        ? t("voice.ghost.pick")
-        : n === 0
-          ? t("voice.ghost.first")
-          : t("voice.ghost.next");
-  // Zobrazené riadky: bez tých, čo ešte len padnú, a s odchádzajúcimi na pôvodnom mieste.
-  const rows: { it: DraftItem; leaving: boolean }[] = items.filter((i) => !hidden.has(i.id)).map((it) => ({ it, leaving: goneId === it.id }));
-  for (const g of ghosts) rows.splice(Math.min(g.index, rows.length), 0, { it: g.item, leaving: true });
-  const meta = useMemo(
-    () =>
-      n === 0
-        ? t("voice.meta.empty")
-        : t(pending ? "voice.meta.pending" : "voice.meta.clear", { count: tn("shop.itemCount", n), n: pending }),
-    [n, pending],
-  );
+  const unsureCount = items.filter((c) => c.status === "unclear").length;
+  const days = [0, 1, 2, 4].map((d) => isoDay(addDays(new Date(), d)));
+  const tileStores = store && !stores.some((s) => normalizeName(s) === normalizeName(store)) ? [...stores, store] : stores;
+
+  const panelProps = {
+    speech,
+    blocked,
+    listening,
+    typing,
+    said,
+    thinking: refining > 0 && !speech.interim,
+    onMic: () => {
+      if (blocked || !speech.supported) return;
+      haptic(8);
+      setListening((l) => !l);
+      setTyping(false);
+    },
+    onTypingToggle: () => setTyping((x) => !x),
+    onTyped: (text: string) => {
+      setSaid(text);
+      if (phase === "h1") handleH1(text);
+      else apply(text);
+    },
+  };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("voice.open")}
-      className={cx("fixed inset-0 z-50 flex flex-col overflow-hidden bg-bg pt-safe", closing ? "vo-out" : "animate-sheet")}
-    >
-      <div className={cx("mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col", shake && `vo-shake-${shake}`)}>
-        {phase === "pick" ? (
-          <section className={cx("flex min-h-0 flex-1 flex-col px-6 pt-2", leaving && "vo-leave")}>
-            <div className="flex items-center justify-between">
-              <button type="button" onClick={close} aria-label={t("common.close")} className="-ml-3 grid size-11 place-items-center rounded-full text-text active:bg-pressed">
-                <X className="size-[22px]" />
+    <div role="dialog" aria-modal="true" aria-label={t("voice.open")} className="v-root fixed inset-0 z-50 bg-bg pt-safe">
+      <div className="relative mx-auto flex h-full w-full max-w-2xl flex-col">
+        {phase === "h1" ? (
+          <div key="h1" className="stack v-screen min-h-0 flex-1">
+            <div className="v-top">
+              <button type="button" className="ibtn" onClick={close} aria-label={t("common.close")}>
+                <X size={22} />
               </button>
-              <HouseholdChip name={household.name} />
-              <span className="size-11" />
+              <span className="grow t-sm t-2 fw-6" style={{ textAlign: "center", paddingRight: 44 }}>
+                {t("voice.open")}
+              </span>
             </div>
-            <p className="mt-9 text-footnote text-text-2">{t("voice.newTrip")}</p>
-            <h1 className="mt-1 text-[2.75rem] font-semibold leading-none">{t("voice.where")}</h1>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {stores.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => pickStore(s)}
-                  className={cx(
-                    "h-[3.125rem] rounded-full px-6 text-lg font-semibold transition-[background-color,color,transform] duration-300 active:scale-[0.97]",
-                    store === s ? "scale-[1.04] bg-primary text-on-primary" : "bg-surface text-text",
-                  )}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-            <form
-              className="mt-3 flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                pickStore(custom);
-              }}
-            >
-              <label className="flex min-w-0 flex-1">
-                <span className="sr-only">{t("voice.otherStore")}</span>
-                <input
-                  value={custom}
-                  onChange={(e) => setCustom(e.target.value)}
-                  placeholder={t("voice.otherStorePlaceholder")}
-                  maxLength={60}
-                  className="h-[3.25rem] min-w-0 flex-1 rounded-2xl border border-transparent bg-surface px-4 text-base outline-none placeholder:text-text-3 focus:border-primary"
-                />
-              </label>
-              {custom.trim() && (
-                <button type="submit" className="h-[3.25rem] animate-drop rounded-2xl bg-primary px-6 font-semibold text-on-primary">
-                  {t("voice.next")}
-                </button>
-              )}
-            </form>
-            {draft && (
-              <div className="mt-6 animate-rise rounded-2xl bg-surface p-4">
-                <p className="text-footnote text-text-2">{t("voice.draftLabel")}</p>
-                <p className="mt-0.5 text-lg font-semibold">
-                  {t("voice.draftTitle", { store: draft.store, count: tn("shop.itemCount", draft.items.length) })}
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <button type="button" onClick={resumeDraft} className="h-11 rounded-full bg-primary px-6 text-sm font-semibold text-on-primary">
-                    {t("voice.resume")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      saveDraft(household.id, null);
-                      setDraft(null);
-                    }}
-                    className="h-11 rounded-full px-4 text-sm font-semibold text-text-2 active:bg-pressed"
-                  >
-                    {t("voice.discard")}
-                  </button>
+            <div className="scroll">
+              <div className="stack g-20" style={{ padding: "4px 16px 20px" }}>
+                <div className="stack g-4">
+                  <span className="t-big">{t("voice.where")}</span>
+                  <span className="t-sm t-2">{t("voice.whereSub")}</span>
                 </div>
+                <div className="v-store-tiles">
+                  {stores.map((s) => (
+                    <button key={s} type="button" className="v-store-tile" onClick={() => openH2({ store: s })}>
+                      <StoreBadge name={s} size="lg" />
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                {(draft || openLists.length > 0) && (
+                  <div className="stack g-8">
+                    <span className="section-title">{t("voice.orContinue")}</span>
+                    <div className="cells">
+                      {draft && (
+                        <button type="button" className="cell" onClick={() => openH2({ fromDraft: true })}>
+                          <span className="cat-ic">
+                            <History size={18} />
+                          </span>
+                          <span className="grow stack g-2">
+                            <span className="t-body fw-5">{t("voice.continueDraft")}</span>
+                            <span className="t-sm t-2">
+                              {(draft.targetListId ? lists.find((l) => l.id === draft.targetListId)?.name : draft.store) || t("voice.noStore")} ·{" "}
+                              {tn("shop.itemCount", draft.items.length)}
+                            </span>
+                          </span>
+                          <ChevronRight size={18} className="chev" />
+                        </button>
+                      )}
+                      {openLists.slice(0, 3).map((l) => (
+                        <button key={l.id} type="button" className="cell" onClick={() => openH2({ targetListId: l.id })}>
+                          <span className="cat-ic">
+                            <ListPlus size={18} />
+                          </span>
+                          <span className="grow stack g-2">
+                            <span className="t-body fw-5">{t("voice.addTo", { name: l.name })}</span>
+                            <span className="t-sm t-2">
+                              {l.planned_for ? dayLabel(l.planned_for) : t("trip.noDay")} · {tn("shop.itemCount", stats?.get(l.id)?.open ?? 0)}
+                            </span>
+                          </span>
+                          <ChevronRight size={18} className="chev" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </section>
-        ) : (
-          <section className="flex min-h-0 flex-1 flex-col">
-            <div className="flex items-center justify-between px-4 pt-2">
-              <button type="button" onClick={close} aria-label={t("voice.closeKeep")} className="-ml-1 grid size-11 place-items-center rounded-full text-text active:bg-pressed">
-                <X className="size-[22px]" />
-              </button>
-              <HouseholdChip name={household.name} />
-              {n > 0 ? (
-                <button
-                  type="button"
-                  onClick={discard}
-                  className={cx(
-                    "-mr-1 h-9 rounded-full px-3 text-footnote font-semibold transition-colors",
-                    discardArmed ? "animate-drop bg-danger-solid text-on-danger-solid" : "text-text-2 active:bg-pressed",
-                  )}
-                >
-                  {discardArmed ? t("voice.discardConfirm") : t("voice.discard")}
-                </button>
-              ) : (
-                <span className="size-11" />
-              )}
             </div>
-            {/* Celý obsah (názov + zoznam) sa dá posúvať aj počas počúvania. */}
-            <div ref={listRef} className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
-              <div className="px-6 pt-4">
-                <h1 className="animate-rise truncate text-[3.5rem] font-semibold leading-[0.95]">{store}</h1>
-                <p className="mt-3 text-footnote text-text-2">{meta}</p>
-              </div>
-              <ul className="relative z-[2] px-4 pb-8 pt-4" aria-live="polite">
-                {n === 0 && <li className="list-none animate-fade px-3 pt-2 text-lg text-text-3">{t("voice.emptyHint")}</li>}
-                {rows.map(({ it, leaving: out }, i) => (
-                  <VoiceRow
-                    key={it.id}
-                    item={it}
-                    anim={{
-                      fall: i === 0 && it.id === lastId,
-                      push: lastId && i > 0 ? pushKey : null,
-                      bump: anims[it.id]?.bump ?? null,
-                      glow: anims[it.id]?.glow ?? null,
-                    }}
-                    editing={editId === it.id}
-                    confirming={confirmId === it.id}
-                    leaving={out}
-                    onStep={(d) => step(it.id, d)}
-                    onAskDelete={() => askDelete(it.id)}
-                    onDelete={() => remove(it.id)}
-                    onTap={() => {
-                      buzz(10);
-                      setEditId((e) => (e === it.id ? null : it.id));
-                    }}
-                    onResolve={(p) => {
-                      if (p === "remove") remove(it.id);
-                      else if (p === "voice") setEditId(it.id);
-                      else patch(it.id, p);
-                    }}
-                  />
-                ))}
-              </ul>
-            </div>
-          </section>
-        )}
-
-        <div className="relative z-[3] rounded-t-3xl bg-surface px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3">
-          <div className="flex min-h-[1.375rem] items-center justify-center">
-            {hint && (
-              <p key={hint.k} className="vo-hint text-center text-footnote leading-snug text-text-3" style={{ animationDuration: `${hint.ms}ms` }}>
-                {hint.text}
-              </p>
-            )}
           </div>
-
-          {typing ? (
-            <form onSubmit={sendTyped} className="mt-1 flex gap-2">
-              <label className="flex min-w-0 flex-1">
-                <span className="sr-only">{t("voice.typeAria")}</span>
-                <input
-                  autoFocus
-                  value={typed}
-                  onChange={(e) => setTyped(e.target.value)}
-                  placeholder={phase === "pick" ? t("voice.storePlaceholder") : t("voice.itemsPlaceholder")}
-                  maxLength={300}
-                  enterKeyHint="send"
-                  className="h-12 min-w-0 flex-1 rounded-2xl bg-bg px-4 text-base outline-none placeholder:text-text-3"
-                />
-              </label>
-              <button type="submit" disabled={!typed.trim()} className="h-12 rounded-2xl bg-primary px-4 font-semibold text-on-primary disabled:opacity-40">
-                {t("voice.add")}
+        ) : (
+          <div key="h2" className="stack v-screen min-h-0 flex-1">
+            <div className="v-top">
+              <button type="button" className="ibtn" onClick={close} aria-label={t("voice.closeKeep")}>
+                <X size={22} />
               </button>
-            </form>
-          ) : (
-            <p
-              className={cx(
-                "flex min-h-[3.4rem] items-center justify-center px-2 text-center text-xl font-semibold leading-tight transition-[opacity,transform] duration-300",
-                !live && "text-text-3/70",
-                thinking && "vo-think -translate-y-1.5 scale-[0.97]",
-              )}
-            >
-              {live || ghost}
-            </p>
-          )}
-
-          <svg className={cx("vo-wave mt-1 block h-16 w-full", waveState)} viewBox="0 0 390 64" preserveAspectRatio="none" aria-hidden>
-            <g className="g2"><path className="w2" d={W2} /></g>
-            <g className="g3"><path className="w3" d={W3} /></g>
-            <g className="g1"><path className="w1" d={W1} /></g>
-          </svg>
-
-          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
-            <span className="flex justify-start">
-              {speech.supported && !speech.error && (
-                <button
-                  type="button"
-                  onClick={() => setTyping((on) => !on)}
-                  className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-semibold text-text-2 active:bg-pressed"
-                >
-                  {typing ? <Mic className="size-4" aria-hidden /> : <Keyboard className="size-4" aria-hidden />}
-                  {typing ? t("voice.speak") : t("voice.type")}
-                </button>
-              )}
-            </span>
-            <span className="flex flex-col items-center gap-2 px-2">
               <button
                 type="button"
-                disabled={!speech.supported || speech.error === "denied"}
-                onClick={() => {
-                  buzz(8);
-                  setPaused((p) => !p);
-                }}
-                aria-label={paused ? t("voice.resumeAria") : t("voice.pauseAria")}
-                className={cx(
-                  "grid size-16 place-items-center rounded-full transition-[background-color,color,box-shadow,transform] duration-300 active:scale-[0.94] disabled:opacity-40",
-                  paused ? "bg-surface text-text shadow-[inset_0_0_0_1.5px_var(--text)]" : talk || thinking ? "bg-primary text-on-primary" : "bg-primary text-on-primary",
-                )}
+                className="grow stack center"
+                onClick={() => !target && setModal("store")}
+                style={{ minHeight: 44 }}
+                aria-label={target ? undefined : t("voice.changeStoreAria")}
               >
-                {paused ? <MicOff className="size-6" aria-hidden /> : <Mic className="size-6" aria-hidden />}
+                <span className="row g-6 t-h">
+                  {(store || target) && <StoreBadge name={storeName} size="sm" />}
+                  {storeName}
+                  {!target && <ChevronDown size={16} className="t-3" />}
+                </span>
+                <span className="t-xs t-2">{target ? t("voice.addingToExisting") : dayLabel(date)}</span>
               </button>
-              <span className="whitespace-nowrap text-xs text-text-2">{status}</span>
-            </span>
-            <span className="flex justify-end">
-              {phase === "dict" ? (
-                <button
-                  type="button"
-                  onClick={() => void finish()}
-                  disabled={save.isPending}
-                  className="h-11 animate-drop rounded-full bg-primary px-6 text-sm font-semibold text-on-primary disabled:opacity-60"
-                >
-                  {save.isPending ? t("voice.saving") : t("voice.done")}
-                </button>
+              <button type="button" className={cx("btn btn-sm", discardArm ? "btn-danger" : "btn-ghost")} onClick={discard} style={{ minWidth: 76 }}>
+                {discardArm ? t("voice.discardConfirm") : t("voice.discard")}
+              </button>
+            </div>
+            <div className="row between px" style={{ paddingBottom: 6 }}>
+              <span className="t-sm t-2 fw-6 num">{n ? tn("shop.itemCount", n) : t("voice.emptyShort")}</span>
+              {n > 0 && <span className="t-xs t-3">{t("voice.gestureHint")}</span>}
+            </div>
+            <div
+              className="scroll"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setSelected(null);
+              }}
+            >
+              {n === 0 ? (
+                <div className="stack center g-8" style={{ padding: "48px 32px", textAlign: "center" }}>
+                  <span className="t-title">{t("voice.emptyHint")}</span>
+                  <span className="t-sm t-2">{t("voice.emptyExample")}</span>
+                </div>
               ) : (
-                <button type="button" onClick={close} className="h-11 rounded-full px-3 text-sm font-semibold text-text-2 active:bg-pressed">
-                  {t("common.cancel")}
-                </button>
+                <div className="v-cards" aria-live="polite">
+                  {items.map((c) => (
+                    <VoiceCard
+                      key={`${c.id}-${flash[c.id] ?? 0}`}
+                      item={c}
+                      selected={selected === c.id}
+                      onSelect={() => setSelected((s) => (s === c.id ? null : c.id))}
+                      onDelta={(d) => delta(c.id, d)}
+                      onRemove={() => removeCard(c.id)}
+                      onSetQty={(q, u) => patch(c.id, { quantity: q, unit: u, status: "ok" })}
+                      onRename={(name) => {
+                        const v = name.trim();
+                        if (!v || v === c.name) return;
+                        patch(c.id, { name: cap(v), categoryId: guessCategory(v), status: c.status === "unclear" ? "ok" : c.status, suggestions: [] });
+                      }}
+                      onResolve={(name) => {
+                        patch(c.id, { name, categoryId: guessCategory(name), status: "ok", suggestions: [] });
+                        haptic(10);
+                      }}
+                    />
+                  ))}
+                </div>
               )}
-            </span>
+            </div>
           </div>
-        </div>
+        )}
+
+        <AssistantPanel
+          {...panelProps}
+          placeholder={phase === "h1" ? t("voice.ph.h1") : selected ? t("voice.ph.edit") : t("voice.ph.dictate")}
+          action={
+            phase === "h2" ? (
+              <button type="button" className={cx("btn btn-ink v-create", doneHint && "pulse-strong")} disabled={!n || busy} onClick={() => create()}>
+                <Check size={18} />
+                {busy ? t("voice.saving") : `${target ? t("voice.addAction") : t("voice.createList")} (${n})`}
+              </button>
+            ) : null
+          }
+        />
+
+        {modal && (
+          <div className="v-modal-wrap" onClick={() => setModal(null)}>
+            <div className="v-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+              {modal === "unsure" && (
+                <>
+                  <span className="t-title">{tn("voice.unsureTitle", unsureCount)}</span>
+                  <span className="t-sm t-2">{t("voice.unsureText")}</span>
+                  <div className="row g-8">
+                    <button
+                      type="button"
+                      className="btn btn-soft grow"
+                      onClick={() => {
+                        setModal(null);
+                        setSelected(items.find((c) => c.status === "unclear")?.id ?? null);
+                      }}
+                    >
+                      {t("voice.refine")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ink grow"
+                      onClick={() => {
+                        setModal(null);
+                        if (!target && !store) setModal("pickStore");
+                        else void finish();
+                      }}
+                    >
+                      {t("voice.createAnyway")}
+                    </button>
+                  </div>
+                </>
+              )}
+              {(modal === "store" || modal === "pickStore") && (
+                <>
+                  <span className="t-title">{modal === "pickStore" ? t("voice.whichStore") : t("voice.storeAndDay")}</span>
+                  <div className="v-store-tiles">
+                    {tileStores.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        className={cx("v-store-tile sm", store === s && "on")}
+                        onClick={() => {
+                          setStore(s);
+                          if (modal === "pickStore") {
+                            setModal(null);
+                            void finish(s);
+                          }
+                        }}
+                      >
+                        <StoreBadge name={s} />
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  {modal === "store" ? (
+                    <>
+                      <span className="field-label">{t("voice.when")}</span>
+                      <div className="row g-8 wrap">
+                        {days.map((d) => (
+                          <button key={d} type="button" className={cx("chip lg", date === d && "on")} onClick={() => setDate(d)}>
+                            {dayLabel(d)}
+                          </button>
+                        ))}
+                      </div>
+                      <button type="button" className="btn btn-ink btn-block" onClick={() => setModal(null)}>
+                        {t("voice.done")}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-soft btn-block"
+                      onClick={() => {
+                        setModal(null);
+                        void finish("");
+                      }}
+                    >
+                      {t("voice.noStore")}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function HouseholdChip({ name }: { name: string }) {
+/** Zvlnená animácia hlasu (stĺpiky ako v prototype). */
+function Wave({ active, height = 22, bars = 7 }: { active: boolean; height?: number; bars?: number }) {
   return (
-    <span className="inline-flex h-8 max-w-[60%] items-center gap-2 rounded-full bg-surface px-3 text-footnote font-semibold">
-      <span aria-hidden className="size-1.5 rounded-full bg-person-solid" />
-      <span className="truncate">{name}</span>
+    <span className="row g-4" style={{ height }} aria-hidden>
+      {Array.from({ length: bars }).map((_, i) => (
+        <span key={i} className={cx("v-bar", active && "on")} style={{ animationDelay: `${i * 0.12}s` }} />
+      ))}
     </span>
   );
 }
 
+/** Živý prepis – posledné slová výraznejšie, počas reči trojbodka. */
+function Transcript({ text, speaking, placeholder }: { text: string; speaking: boolean; placeholder: string }) {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!words.length) return <p className="v-transcript t-3">{placeholder}</p>;
+  return (
+    <p className="v-transcript" aria-live="polite">
+      „
+      {words.map((w, i) => (
+        <span key={i} style={{ opacity: i >= words.length - 3 ? 1 : 0.55 }}>
+          {w}
+          {i < words.length - 1 ? " " : ""}
+        </span>
+      ))}
+      {speaking ? "…" : "“"}
+    </p>
+  );
+}
+
+/** Spodný panel asistenta: prepis, (písanie), mikrofón s vlnou, klávesnica a hlavná akcia. */
+function AssistantPanel({
+  speech,
+  blocked,
+  listening,
+  typing,
+  said,
+  thinking,
+  placeholder,
+  action,
+  onMic,
+  onTypingToggle,
+  onTyped,
+}: {
+  speech: ReturnType<typeof useSpeech>;
+  blocked: boolean;
+  listening: boolean;
+  typing: boolean;
+  said: string;
+  thinking: boolean;
+  placeholder: string;
+  action: ReactNode;
+  onMic: () => void;
+  onTypingToggle: () => void;
+  onTyped: (text: string) => void;
+}) {
+  const [text, setText] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const noMic = blocked || !speech.supported;
+  const speaking = !!speech.interim;
+  const active = listening && !noMic;
+  const status = noMic
+    ? blocked
+      ? t("voice.st.blocked")
+      : t("voice.st.unsupported")
+    : speaking
+      ? t("voice.st.listening")
+      : thinking
+        ? t("voice.st.understanding")
+        : listening
+          ? t("voice.st.listening")
+          : t("voice.st.paused");
+
+  useEffect(() => {
+    if (typing) inputRef.current?.focus();
+  }, [typing]);
+
+  function send(e: FormEvent) {
+    e.preventDefault();
+    const v = text.trim();
+    if (!v) return;
+    setText("");
+    onTyped(v);
+  }
+
+  return (
+    <div className="v-panel">
+      {noMic ? (
+        <div className="v-blocked stack g-6">
+          <span className="t-h">{blocked ? t("voice.blockedTitle") : t("voice.unsupportedTitle")}</span>
+          <span className="t-sm t-2">{blocked ? t("voice.blockedText") : t("voice.unsupportedText")}</span>
+          {!typing && (
+            <button type="button" className="btn btn-soft btn-sm" style={{ alignSelf: "flex-start" }} onClick={onTypingToggle}>
+              <Keyboard size={16} /> {t("voice.type")}
+            </button>
+          )}
+        </div>
+      ) : (
+        <Transcript text={speech.interim || said} speaking={speaking} placeholder={placeholder} />
+      )}
+      {typing && (
+        <form className="row g-6 anim-pop" onSubmit={send}>
+          <input
+            ref={inputRef}
+            className="input"
+            style={{ minHeight: 44, fontSize: 15 }}
+            placeholder={t("voice.typingPlaceholder")}
+            value={text}
+            maxLength={300}
+            enterKeyHint="send"
+            onChange={(e) => setText(e.target.value)}
+            aria-label={t("voice.typeAria")}
+          />
+          <button type="submit" className="ibtn soft" aria-label={t("voice.sendAria")}>
+            <SendHorizontal size={18} />
+          </button>
+        </form>
+      )}
+      <div className="v-controls">
+        <button type="button" className={cx("ibtn soft", typing && "v-on")} onClick={onTypingToggle} aria-label={typing ? t("voice.speak") : t("voice.type")}>
+          {typing ? <Mic size={19} /> : <Keyboard size={19} />}
+        </button>
+        <div className="stack center g-4" style={{ flex: "none" }}>
+          <button
+            type="button"
+            className={cx("v-mic", active && "on")}
+            onClick={onMic}
+            disabled={noMic}
+            aria-label={listening ? t("voice.pauseAria") : t("voice.resumeAria")}
+          >
+            {active && <span className="v-ring" />}
+            {noMic ? <MicOff size={28} /> : listening ? <Wave active={speaking || thinking || active} height={26} bars={5} /> : <Pause size={26} />}
+          </button>
+          <span className="t-xs t-2 fw-6">{typing ? t("voice.st.typing") : status}</span>
+        </div>
+        <div className="grow row" style={{ justifyContent: "flex-end" }}>
+          {action}
+        </div>
+      </div>
+    </div>
+  );
+}

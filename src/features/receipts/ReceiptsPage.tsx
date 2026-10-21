@@ -13,9 +13,9 @@ import { t, tn } from "@/i18n";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useLists, type ShoppingList } from "@/features/lists/api";
 import { dayLabel } from "@/features/lists/dates";
-import { MAX_PAGES, isStale, needsAttention, useDeleteReceipt, useMatchSuggestions, useMergeReceipts, useReceipts, type Receipt } from "./api";
+import { MAX_PAGES, isStale, needsAttention, useDeleteReceipt, useMatchSuggestions, useMergeReceipts, useReceiptItemIndex, useReceipts, type Receipt } from "./api";
 import { AddMenu, ManualExpenseSheet, PendingSheet, type Pending, type PendingMode } from "./AddFlow";
-import { ReceiptRow } from "./ReceiptRow";
+import { AttentionRow, ReceiptRow } from "./ReceiptRow";
 import { Dock, UploadStatus } from "./UploadStatus";
 import { useBatch } from "./useBatch";
 import { formatDate, formatMoney, monthLabel, readErrorMessage } from "./format";
@@ -26,6 +26,7 @@ const INBOX_PREVIEW = 4;
 export function ReceiptsPage() {
   const { household } = useHousehold();
   const receipts = useReceipts(household.id);
+  const itemIndex = useReceiptItemIndex(household.id);
   const toast = useToast();
   // Doklad k nákupu (?nakup=<id> z obrazovky „Nákup dokončený“ alebo z Histórie nákupov).
   const [params, setParams] = useSearchParams();
@@ -67,22 +68,30 @@ export function ReceiptsPage() {
   const searching = query.trim() !== "";
   const flat = filter !== "all" || searching;
 
+  const needle = normalizeName(query);
+  const index = itemIndex.data;
   const visible = useMemo(() => {
-    const needle = normalizeName(query);
     return all.filter((r) => {
       if (filter === "review" && !needsAttention(r)) return false;
       if (filter === "ok" && r.status !== "OK") return false;
       if (!needle) return true;
       const hay = normalizeName(`${r.store_name ?? ""} ${formatDate(r.purchased_on)} ${r.total ?? ""}`);
-      return hay.includes(needle);
+      // Hľadá sa aj v položkách dokladu (prototyp: „Hľadať obchod alebo položku“).
+      return hay.includes(needle) || !!index?.get(r.id)?.names.some((n) => normalizeName(n).includes(needle));
     });
-  }, [all, filter, query]);
+  }, [all, filter, needle, index]);
+  // Pri hľadaní podľa položky ukážeme v riadku, ktorá položka sa našla.
+  const hintFor = (r: Receipt) => {
+    if (!needle || normalizeName(r.store_name ?? "").includes(needle)) return undefined;
+    return index?.get(r.id)?.names.find((n) => normalizeName(n).includes(needle));
+  };
 
   const inPeriod = (r: Receipt) => {
     const d = r.purchased_on ?? r.created_at.slice(0, 10);
     return d >= period.from && d <= period.to;
   };
-  const listed = visible.filter((r) => (searching || filter !== "all" ? true : inPeriod(r))).filter((r) => (flat ? true : !needsAttention(r)));
+  // Doklad na kontrolu je v „Na vybavenie“ aj vo svojom mesiaci (prototyp).
+  const listed = visible.filter((r) => (flat ? true : inPeriod(r)));
   const groups = groupByMonth(listed);
   const missing = (lists.data ?? []).filter((l) => l.completed_at && l.receipt_state === "LATER");
   const suggestions = (suggest.data ?? []).filter((m) => all.some((r) => r.id === m.receipt_id));
@@ -167,15 +176,16 @@ export function ReceiptsPage() {
 
   const busy = batch.running || merge.isPending || remove.isPending;
 
-  const row = (r: Receipt, isAttention = false) => (
+  const row = (r: Receipt) => (
     <ReceiptRow
       key={r.id}
       receipt={r}
       selecting={selecting}
       order={picked.indexOf(r.id)}
-      attention={isAttention}
       onToggle={() => toggle(r.id)}
       onLongPress={() => startSelecting(r.id)}
+      itemCount={index?.get(r.id)?.count}
+      hint={hintFor(r)}
     />
   );
 
@@ -253,7 +263,9 @@ export function ReceiptsPage() {
                       </button>
                     );
                   })}
-                  {(inboxOpen ? attention : attention.slice(0, INBOX_PREVIEW)).map((r) => row(r, true))}
+                  {(inboxOpen ? attention : attention.slice(0, INBOX_PREVIEW)).map((r) => (
+                    <AttentionRow key={r.id} receipt={r} />
+                  ))}
                 </div>
                 <div className="row wrap g-8">
                   {attention.length > INBOX_PREVIEW && (

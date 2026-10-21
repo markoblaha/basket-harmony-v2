@@ -1,3 +1,5 @@
 /* Doplnky z prototypu – lists. Farby len cez premenné tém. */
 @layer components {
+  /* Kolieska „Číta sa“ v Histórii nákupov (prototyp mal prázdny prvok – tu je viditeľné). */
+  .ls-spin { display: inline-block; flex: none; border-radius: 999px; border: 2px solid currentColor; border-right-color: transparent; }
 }

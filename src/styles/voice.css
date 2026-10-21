@@ -1,3 +1,61 @@
-/* Doplnky z prototypu – voice. Farby len cez premenné tém. */
+/* Doplnky z prototypu – voice (hlasový nákup H1/H2). Farby len cez premenné tém. */
 @layer components {
+  .v-root { display: flex; flex-direction: column; animation: rise 240ms cubic-bezier(.2,.8,.2,1); }
+  .v-screen { animation: rise 240ms cubic-bezier(.2,.8,.2,1); }
+  .v-top { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 6px 12px; flex: none; }
+  .v-panel {
+    flex: none; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px calc(22px + env(safe-area-inset-bottom));
+    background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); position: relative; z-index: 2;
+  }
+  .v-transcript { margin: 0; min-height: 44px; font-size: 18px; line-height: 24px; font-weight: 550; letter-spacing: -0.01em; }
+  .v-controls { display: flex; align-items: center; gap: 12px; }
+  .v-mic {
+    position: relative; width: 72px; height: 72px; border-radius: 999px; display: grid; place-items: center;
+    background: var(--sunken); color: var(--text); transition: background-color 200ms, color 200ms, transform 140ms;
+  }
+  .v-mic.on { background: var(--ink); color: var(--on-ink); }
+  .v-mic:active { transform: scale(0.95); }
+  .v-mic:disabled { color: var(--text-3); }
+  .v-ring { position: absolute; inset: -6px; border-radius: 999px; box-shadow: 0 0 0 2px var(--ink); opacity: 0.25; animation: vring 1.8s ease-out infinite; pointer-events: none; }
+  @keyframes vring { from { transform: scale(0.92); opacity: 0.35; } to { transform: scale(1.15); opacity: 0; } }
+  .v-bar { width: 4px; height: 100%; border-radius: 99px; background: currentColor; transform-origin: center; transform: scaleY(0.3); }
+  .v-bar.on { animation: wave 1s ease-in-out infinite; }
+  .v-on { background: var(--ink) !important; color: var(--on-ink) !important; }
+  .v-blocked { padding: 12px; border-radius: 14px; background: var(--orange-soft); }
+
+  .v-store-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .v-store-tile {
+    min-height: 104px; border-radius: 18px; background: var(--surface); box-shadow: var(--sh-1); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px; font-weight: 600; transition: transform 120ms; padding: 8px 6px; text-align: center; overflow-wrap: anywhere;
+  }
+  .v-store-tile:active { transform: scale(0.96); }
+  .v-store-tile.sm { min-height: 84px; }
+  .v-store-tile.on { box-shadow: inset 0 0 0 2px var(--ink); }
+
+  .v-cards { display: flex; flex-direction: column; gap: 8px; padding: 4px 16px 16px; }
+  .v-card-wrap { position: relative; border-radius: 18px; }
+  .v-under { position: absolute; inset: 0; border-radius: 18px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-weight: 700; font-size: 15px; }
+  .v-under.plus { background: var(--accent-soft); color: var(--accent-text); }
+  .v-under.minus { background: var(--orange-soft); color: var(--orange); }
+  .v-under.del { background: var(--red-soft); color: var(--red); }
+  .v-card {
+    position: relative; background: var(--surface); border-radius: 18px; box-shadow: var(--sh-1); padding: 12px 14px;
+    touch-action: pan-y; user-select: none; -webkit-user-select: none; display: flex; flex-direction: column; gap: 10px; outline: none;
+  }
+  .v-card:focus-visible { box-shadow: inset 0 0 0 2px var(--accent), var(--sh-1); }
+  .v-card.sel { box-shadow: inset 0 0 0 2px var(--ink), var(--sh-2); }
+  .v-card.unsure { background: var(--yellow-soft); }
+  .v-unsure-ic { background: var(--surface); color: var(--yellow); }
+  .v-unsure-text { color: var(--yellow); }
+  .v-qty { font-size: 20px; line-height: 24px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; }
+  .v-modal-wrap { position: absolute; inset: 0; z-index: 70; display: flex; flex-direction: column; justify-content: flex-end; background: var(--scrim); animation: fadeIn 160ms; }
+  .v-modal {
+    background: var(--surface); border-radius: 24px 24px 0 0; padding: 18px 16px calc(24px + env(safe-area-inset-bottom)); box-shadow: var(--sh-3);
+    animation: sheetUp 260ms cubic-bezier(.2,.8,.2,1); display: flex; flex-direction: column; gap: 14px; max-height: 85%; overflow-y: auto;
+  }
+  .v-create { min-height: 52px; border-radius: 16px; padding: 0 18px; white-space: nowrap; }
+  .v-create.pulse-strong { box-shadow: 0 0 0 4px var(--accent-soft); }
+
+  /* Kým je otvorený hlasový nákup, hláška ide hore (ako v prototype), aby nezakryla panel s mikrofónom. */
+  body:has(.v-root) .toast { top: calc(env(safe-area-inset-top) + 64px) !important; bottom: auto !important; }
 }

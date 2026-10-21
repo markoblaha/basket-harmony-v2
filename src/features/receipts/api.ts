@@ -38,16 +38,46 @@ export function useReceipt(id: string | undefined) {
   return useQuery({
     queryKey: receiptKeys.one(id ?? "none"),
     enabled: !!id,
-    queryFn: async (): Promise<{ receipt: Receipt; items: ReceiptItem[] } | null> => {
+    queryFn: async (): Promise<{ receipt: Receipt; items: ReceiptItem[]; products: Record<string, string> } | null> => {
       const [r, i] = await Promise.all([
         supabase.from("receipts").select("*").eq("id", id!).maybeSingle(),
         supabase.from("receipt_items").select("*").eq("receipt_id", id!).order("position"),
       ]);
       if (r.error) throw r.error;
       if (i.error) throw i.error;
-      return r.data ? { receipt: r.data, items: i.data } : null;
+      if (!r.data) return null;
+      // Pekné názvy produktov (napr. „Mlieko polotučné 1,5 %“) k riadkom z bločku.
+      const ids = [...new Set(i.data.map((x) => x.product_id).filter((x): x is string => !!x))];
+      const products: Record<string, string> = {};
+      if (ids.length > 0) {
+        const p = await supabase.from("products").select("id, name").in("id", ids);
+        if (p.error) throw p.error;
+        for (const x of p.data ?? []) products[x.id] = x.name;
+      }
+      return { receipt: r.data, items: i.data, products };
     },
     refetchInterval: (q) => (q.state.data?.receipt.status === "PROCESSING" ? 4_000 : false),
+  });
+}
+
+/** Počet položiek a ich názvy ku každému dokladu domácnosti – pre riadky zoznamu a hľadanie podľa položky. */
+export type ItemIndex = Map<string, { count: number; names: string[] }>;
+export function useReceiptItemIndex(householdId: string) {
+  return useQuery({
+    queryKey: ["receipts", householdId, "item-index"],
+    queryFn: async (): Promise<ItemIndex> => {
+      const { data, error } = await supabase.from("receipt_items").select("receipt_id, raw_name").eq("household_id", householdId);
+      if (error) throw error;
+      const map: ItemIndex = new Map();
+      for (const it of data ?? []) {
+        const e = map.get(it.receipt_id) ?? { count: 0, names: [] };
+        e.count++;
+        e.names.push(it.raw_name);
+        map.set(it.receipt_id, e);
+      }
+      return map;
+    },
+    staleTime: 60_000,
   });
 }
 

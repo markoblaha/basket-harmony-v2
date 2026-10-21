@@ -180,7 +180,7 @@ export function RecipePage() {
           <div className="rc-sel">
             <ShoppingBasket size={16} />
             <span className="grow">
-              {t("rc.selection")} · <span className="num">{selection.length}</span>
+              {tn("rc.selectionN", selection.length)} · <span className="num">{selection.length}</span>
             </span>
             <span className="num t-2">{tn("rc.ingredientCount", nIng)}</span>
           </div>

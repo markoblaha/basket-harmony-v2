@@ -4,18 +4,21 @@ import { AudioLines, ChartColumn, ChefHat, Menu, ShoppingBasket } from "lucide-r
 import { useToast } from "./toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useHouseholdRealtime } from "@/features/realtime/useHouseholdRealtime";
-import { useLists } from "@/features/lists/api";
+import { useHubSessions, useLists, useRequests } from "@/features/lists/api";
+import { useUserId } from "@/features/auth/AuthProvider";
+import { haptic } from "./kit";
+import { useInAppNotices } from "./useInAppNotices";
 import { needsAttention, useReceipts } from "@/features/receipts/api";
 import { useRecipePlans } from "@/features/recipes/api";
 import { useCart } from "@/features/recipes/cart";
 import { t, tn, type Key } from "@/i18n";
-import { OfflineBanner, cx } from "./ui";
+import { OfflineBanner } from "./ui";
 
 const VoiceSession = lazy(() => import("@/features/voice/VoiceSession").then((m) => ({ default: m.VoiceSession })));
 
-type Badge = "recipes" | "analytics";
+type Badge = "recipes" | "analytics" | "lists";
 const TABS: { to: string; label: Key; icon: typeof Menu; match: (p: string) => boolean; badge?: Badge }[] = [
-  { to: "/", label: "nav.lists", icon: ShoppingBasket, match: (p) => p === "/" || p.startsWith("/lists") || p.startsWith("/history") },
+  { to: "/", label: "nav.lists", icon: ShoppingBasket, match: (p) => p === "/" || p.startsWith("/lists") || p.startsWith("/history"), badge: "lists" },
   { to: "/recipes", label: "nav.recipes", icon: ChefHat, match: (p) => p.startsWith("/recipes"), badge: "recipes" },
   // Doklady sú časťou Analytiky (záložka Doklady).
   { to: "/analytics", label: "nav.analytics", icon: ChartColumn, match: (p) => p.startsWith("/analytics") || p.startsWith("/receipts"), badge: "analytics" },
@@ -30,6 +33,11 @@ const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
  * Recepty: recepty čakajúce na uvarenie + rozpracovaný košík receptov (počíta sa ako jeden).
  */
 function useBadges(householdId: string): Record<Badge, number> {
+  // Zoznamy: fialová bodka, keď nakupujem a čaká na mňa žiadosť o pridanie.
+  const me = useUserId();
+  const mine = (useHubSessions(householdId).data ?? []).find((s) => s.shopper_id === me);
+  const requests = useRequests(mine?.list_id, mine?.id);
+  const pendingReq = (requests.data ?? []).filter((r) => r.status === "PENDING").length;
   const lists = useLists(householdId);
   const receipts = useReceipts(householdId);
   const now = Date.now();
@@ -40,7 +48,7 @@ function useBadges(householdId: string): Record<Badge, number> {
   const plans = useRecipePlans(householdId);
   const cart = useCart(householdId);
   const waiting = (plans.data ?? []).filter((p) => p.status === "PENDING").length + (cart.items.length ? 1 : 0);
-  return { recipes: waiting, analytics: missing + review };
+  return { recipes: waiting, analytics: missing + review, lists: pendingReq };
 }
 
 function useOnline() {
@@ -68,6 +76,7 @@ export function AppShell() {
   const toast = useToast();
   const [voice, setVoice] = useState(false);
   const badges = useBadges(household.id);
+  useInAppNotices(household.id);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col pt-safe">
@@ -78,25 +87,24 @@ export function AppShell() {
         </div>
       )}
       <main className="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
-        {/* Prechod obrazovky: nová sekcia sa jemne zosvetlí a posunie o 8 px (0,2 s). */}
-        <div key={screenKey(pathname)} className="animate-screen">
+        {/* Prechod obrazovky ako v prototype: nová obrazovka sa vynorí zdola (10 px) a zosvetlí (0,24 s). */}
+        <div key={screenKey(pathname)} className="screen-in">
           <Outlet />
         </div>
       </main>
-      <nav aria-label={t("nav.label")} className="tabbar fixed inset-x-0 bottom-0 z-40 pb-safe">
-        {/* Mäkký prechod nad lištou namiesto ostrej čiary: obsah sa pod ňou plynulo stráca. */}
-        <div className="tabbar-fade" aria-hidden />
-        <ul className="relative mx-auto grid max-w-2xl grid-cols-5">
+      <nav aria-label={t("nav.label")} className="tabbar">
+        <div className="tabbar-in">
           {TABS.map((tab, i) => (
             <TabItem
               key={tab.to}
               tab={tab}
               active={tab.match(pathname)}
-              count={tab.badge ? badges[tab.badge] : 0}
+              count={tab.badge && tab.badge !== "lists" ? badges[tab.badge] : 0}
+              dot={tab.badge === "lists" && badges.lists > 0}
               before={i === 2 ? <VoiceButton onClick={() => setVoice(true)} /> : null}
             />
           ))}
-        </ul>
+        </div>
       </nav>
       {voice && (
         <Suspense fallback={null}>
@@ -127,56 +135,53 @@ function screenKey(pathname: string) {
   return /^\/analytics(\/(products|stores))?\/?$/.test(pathname) ? "/analytics" : pathname;
 }
 
-function TabItem({ tab, active, count, before }: { tab: Tab; active: boolean; count: number; before: ReactNode }) {
+function TabItem({ tab, active, count, dot, before }: { tab: Tab; active: boolean; count: number; dot: boolean; before: ReactNode }) {
   const Icon = tab.icon;
+  const extra = count > 0 ? `, ${tn("nav.waiting", count)}` : dot ? `, ${t("nav.request")}` : "";
   return (
     <>
       {before}
-      <li>
-        <NavLink
-          to={tab.to}
-          aria-current={active ? "page" : undefined}
-          aria-label={count > 0 ? `${t(tab.label)}, ${tn("nav.waiting", count)}` : undefined}
-          className={cx(
-            "flex h-16 flex-col items-center justify-center gap-1 text-xs font-strong transition-colors",
-            active ? "text-text" : "text-text-3",
+      <NavLink
+        to={tab.to}
+        className={active ? "tab on" : "tab"}
+        aria-current={active ? "page" : undefined}
+        aria-label={extra ? `${t(tab.label)}${extra}` : undefined}
+        onClick={() => {
+          // Ťuk na aktívnu kartu = späť na jej začiatok a navrch.
+          if (active) window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      >
+        <span className="pill">
+          <Icon size={21} strokeWidth={active ? 2.2 : 1.9} aria-hidden />
+          {dot && <span className="dot" aria-hidden />}
+          {/* Počet čakajúcich vecí: malá značka v rohu ikony, „9+“ pri väčšom počte. */}
+          {count > 0 && (
+            <span key={count} className="cnt num" aria-hidden>
+              {count > 9 ? "9+" : count}
+            </span>
           )}
-        >
-          <span className={cx("relative grid h-8 w-14 place-items-center rounded-full transition-colors duration-200", active && "tab-on bg-accent-soft text-accent-text")}>
-            <Icon className="size-[1.375rem]" strokeWidth={active ? 2.2 : 1.9} aria-hidden />
-            {/* Počet čakajúcich vecí: malá značka v rohu ikony, „9+“ pri väčšom počte. */}
-            {count > 0 && (
-              <span key={count} className="tab-count" aria-hidden>
-                {count > 9 ? "9+" : count}
-              </span>
-            )}
-          </span>
-          {t(tab.label)}
-        </NavLink>
-      </li>
+        </span>
+        {t(tab.label)}
+      </NavLink>
     </>
   );
 }
 
-/** Stredné tlačidlo navigácie: otvorí hlasový nákup s už zapnutým mikrofónom. */
+/** Stredné tlačidlo navigácie: otvorí hlasový nákup. */
 function VoiceButton({ onClick }: { onClick: () => void }) {
   return (
-    <li className="flex items-center justify-center">
+    <div className="center">
       <button
         type="button"
         onClick={() => {
-          try {
-            navigator.vibrate?.(12);
-          } catch {
-            /* nepodporované */
-          }
+          haptic(12);
           onClick();
         }}
         aria-label={t("voice.open")}
-        className="voice-orb relative z-[1] -mt-6 grid size-14 place-items-center rounded-full bg-primary text-on-primary shadow-raised transition-transform duration-[120ms] active:scale-95 active:bg-primary-pressed"
+        className="voice-btn"
       >
-        <AudioLines className="size-6" strokeWidth={2} aria-hidden />
+        <AudioLines size={26} aria-hidden />
       </button>
-    </li>
+    </div>
   );
 }

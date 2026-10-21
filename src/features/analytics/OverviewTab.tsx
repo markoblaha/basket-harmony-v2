@@ -10,10 +10,10 @@ import { readErrorMessage } from "@/features/receipts/format";
 import { Receipt as ReceiptIcon } from "lucide-react";
 import { formatEuro, formatNumber, t, tn } from "@/i18n";
 import { useOverview, useProductNormalization, type Overview } from "./api";
-import { AnalyticsTop, ChangeBadge, MonthBars, ShareRow, pct, toMonthBars } from "./akit";
+import { AnalyticsTop, ChangeBadge, MonthBars, ShareRow, euro0, partialUntil, pct, toMonthBars } from "./akit";
 import { BudgetSheet } from "./BudgetSheet";
 import { categoryInfo, percent, storeLabel, unitLabel } from "./bits";
-import { daysBetween, usePeriod, type Period } from "./period";
+import { daysBetween, thisMonth, usePeriod, type Period } from "./period";
 import { useAddToList } from "./useAddToList";
 
 const MIX = [
@@ -99,7 +99,7 @@ export function OverviewTab() {
             <section className="card stack g-8" style={{ padding: "18px 18px 10px" }}>
               <div className="row between">
                 <span className="t-h">{t("an.byMonth")}</span>
-                <span className="t-xs t-3">{t("an.partialNote")}</span>
+                <span className="t-xs t-3">{o.months.some((m) => m.month === thisMonth()) ? partialUntil() : ""}</span>
               </div>
               <MonthBars
                 data={toMonthBars(o.months)}
@@ -167,15 +167,29 @@ function Hero({ o, period }: { o: Overview; period: Period }) {
   const topCat = [...o.categories].filter((c) => !c.id.startsWith("_")).sort((a, b) => b.amount - a.amount)[0];
   const topStore = [...o.stores].filter((s) => s.key !== "_none").sort((a, b) => b.receipts - a.receipts)[0];
 
-  let s = t("an.sentence.spent", { period: period.label, amount: formatEuro(o.total) });
+  // Veta ako v prototype: „Tento mesiac ste zatiaľ minuli…“, „Minulý mesiac…“, inak podľa obdobia.
+  const amount = formatEuro(o.total);
+  let s =
+    period.preset === "month"
+      ? t("an.sentence.month", { amount })
+      : period.preset === "last"
+        ? t("an.sentence.last", { amount })
+        : period.preset === "custom"
+          ? t("an.sentence.custom", { amount })
+          : t("an.sentence.spent", { period: period.label, amount });
   if (before > 0) {
     const p = Math.round(((o.total - before) / before) * 100);
-    const prev = comparable ? t("an.sentence.prevSame") : t("an.sentence.prev");
+    const prev =
+      period.range === "month" && comparable
+        ? t("an.sentence.prevMonthSame")
+        : period.range === "month"
+          ? t("an.sentence.prevMonth")
+          : t("an.sentence.prevPeriod");
     s += p === 0 ? t("an.sentence.same", { prev }) : t(p < 0 ? "an.sentence.less" : "an.sentence.more", { pct: Math.abs(p), prev });
   }
   s += ".";
   if (topCat) {
-    s += ` ${t("an.sentence.top", { cat: categoryInfo(topCat.id).name, amount: formatEuro(topCat.amount) })}`;
+    s += ` ${t("an.sentence.top", { cat: categoryInfo(topCat.id).name, amount: euro0(topCat.amount) })}`;
     if (topStore) s += t("an.sentence.store", { store: storeLabel(topStore.name) });
     s += ".";
   }
@@ -299,7 +313,7 @@ function TopStores({ o, onAll, onPick }: { o: Overview; onAll: () => void; onPic
       <div className="section-head">
         <span className="section-title">{t("an.where")}</span>
         <button type="button" className="link t-sm" onClick={onAll} style={{ minHeight: 32 }}>
-          {t("ov.allStores")}
+          {t("an.allStores")}
         </button>
       </div>
       <div className="cells">
@@ -340,11 +354,11 @@ function Changes({ o, onPick }: { o: Overview; onPick: (id: string) => void }) {
                 {categoryInfo(c.id).name}{" "}
                 <span className="num">
                   {c.diff > 0 ? "+" : "−"}
-                  {formatEuro(Math.abs(c.diff))}
+                  {euro0(Math.abs(c.diff))}
                 </span>
               </span>
               <span className="t-xs t-2 num">
-                {formatEuro(c.prev_amount)} → {formatEuro(c.amount)}
+                {euro0(c.prev_amount)} → {euro0(c.amount)}
               </span>
             </span>
             <ChevronRight size={18} className="chev" />

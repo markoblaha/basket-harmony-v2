@@ -26,6 +26,17 @@ const TABLE_KEYS: Record<string, string[][]> = {
   recipe_plans: [["recipe-plans"]],
 };
 
+/** Zmena riadku z živého kanála (pre upozornenia v appke). */
+export type RowChange = { table: string; event: "INSERT" | "UPDATE" | "DELETE"; row: Record<string, unknown>; old: Record<string, unknown> };
+const listeners = new Set<(c: RowChange) => void>();
+/** Prihlásenie na zmeny z toho istého kanála (nevytvára nový). Vráti odhlásenie. */
+export function onHouseholdChange(fn: (c: RowChange) => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
 export function useHouseholdRealtime(householdId: string): RealtimeStatus {
   const qc = useQueryClient();
   const [status, setStatus] = useState<RealtimeStatus>("connecting");
@@ -37,8 +48,15 @@ export function useHouseholdRealtime(householdId: string): RealtimeStatus {
       channel.on(
         "postgres_changes",
         { event: "*", schema: "public", table, filter: `household_id=eq.${householdId}` },
-        () => {
+        (payload) => {
           for (const queryKey of TABLE_KEYS[table]!) qc.invalidateQueries({ queryKey });
+          const change: RowChange = {
+            table,
+            event: payload.eventType,
+            row: (payload.new ?? {}) as Record<string, unknown>,
+            old: (payload.old ?? {}) as Record<string, unknown>,
+          };
+          listeners.forEach((f) => f(change));
         },
       );
     }

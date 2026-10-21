@@ -10,6 +10,12 @@ export function formatDate(iso: string | null): string {
   return formatCalendarDate(iso, { day: "numeric", month: "numeric", year: "numeric" });
 }
 
+/** "2026-10-15" -> "15. októbra 2026" (hlavička detailu dokladu). */
+export function formatLongDate(iso: string | null): string {
+  if (!iso) return t("receipts.noDate");
+  return formatCalendarDate(iso, { day: "numeric", month: "long", year: "numeric" });
+}
+
 /** "2026-10-13" -> "13. 10." (rok len keď nie je tohtoročný). */
 export function formatShortDate(iso: string | null): string {
   if (!iso) return t("receipts.noDate");

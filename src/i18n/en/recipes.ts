@@ -328,4 +328,11 @@ export const enRecipes: Record<keyof typeof skRecipes, string> = {
   "rc.unit.hrst.few": "{n} handfuls",
   "rc.unit.hrst.many": "{n} handfuls",
   "rc.unit.hrst.other": "{n} handfuls",
+  "rc.draft": "Shopping in progress",
+  "rc.ingFor.one": "ingredients for a recipe",
+  "rc.ingFor.few": "ingredients for recipes",
+  "rc.ingFor.other": "ingredients for recipes",
+  "rc.selectionN.one": "Ingredients for a recipe",
+  "rc.selectionN.few": "Ingredients for recipes",
+  "rc.selectionN.other": "Ingredients for recipes",
 };

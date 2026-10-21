@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ChevronRight, History, Lock, Plus, ReceiptText, ShoppingBasket, ShoppingCart } from "lucide-react";
+import { ChefHat, ChevronRight, History, Lock, Plus, ReceiptText, ShoppingBasket, ShoppingCart } from "lucide-react";
 import { ErrorState, Spinner, cx } from "@/components/ui";
 import { Avatars, Cell, Empty, ProgressBar, ScreenHeader, StoreBadge, useLongPress, type Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
@@ -9,7 +9,9 @@ import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
-import { formatDateTime, t, tn } from "@/i18n";
+import { formatDateTime, formatEuro, t, tn } from "@/i18n";
+import { useListPriceHints } from "@/features/analytics/api";
+import { useRecipePlans } from "@/features/recipes/api";
 import { useHubSessions, useItems, useListStats, useLists, useStartShopping, type ListStats, type Session, type ShoppingList } from "./api";
 import { listDay } from "./dates";
 import { ListActionsSheet } from "./ListActionsSheet";
@@ -31,9 +33,15 @@ export function ShoppingHub() {
   const [params, setParams] = useSearchParams();
   // „Nový zoznam“ z iných obrazoviek (prepínač zoznamov) otvorí panel rovno tu.
   const [creating, setCreating] = useState(() => params.get("novy") === "1");
+  // Nový zoznam (napr. z receptov: /?zvyraznit=<id>) sa krátko rozsvieti so štítkom „Nový“.
+  const [fresh] = useState(() => {
+    const id = params.get("zvyraznit");
+    return id ? { id, at: Date.now() } : null;
+  });
   useEffect(() => {
-    if (params.has("novy")) setParams({}, { replace: true });
+    if (params.has("novy") || params.has("zvyraznit")) setParams({}, { replace: true });
   }, [params, setParams]);
+  const plans = useRecipePlans(household.id);
   const [actionsFor, setActionsFor] = useState<ShoppingList | null>(null);
 
   const people: Person[] = useMemo(() => {
@@ -45,7 +53,12 @@ export function ShoppingHub() {
     const all = lists.data ?? [];
     const open = all
       .filter((l) => !l.completed_at)
-      .sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999") || b.created_at.localeCompare(a.created_at));
+      .sort(
+        (a, b) =>
+          (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999") ||
+          (a.planned_time ?? "99").localeCompare(b.planned_time ?? "99") ||
+          b.created_at.localeCompare(a.created_at),
+      );
     const history = all.filter((l) => l.completed_at);
     return { open, history };
   }, [lists.data]);
@@ -55,6 +68,8 @@ export function ShoppingHub() {
   const liveList = live ? open.find((l) => l.id === live.list_id) : undefined;
   const missing = history.filter((l) => l.receipt_state === "LATER").length;
   const nameOf = (id: string) => names?.get(id) ?? t("done.memberFallback");
+  // Recepty, na ktoré sa nakupuje (čakajú na uvarenie) – štítok „Z receptu“ na karte.
+  const recipesOf = (listId: string) => [...new Set((plans.data ?? []).filter((p) => p.list_id === listId && p.status === "PENDING").map((p) => p.recipe_name))];
 
   if (lists.isPending) return <Spinner />;
   if (lists.isError) return <ErrorState error={errorMessage(lists.error)} onRetry={() => lists.refetch()} />;
@@ -96,7 +111,9 @@ export function ShoppingHub() {
                 stats={stats.data?.get(l.id)}
                 session={sessionByList.get(l.id)}
                 shopper={sessionByList.get(l.id) ? shortName(nameOf(sessionByList.get(l.id)!.shopper_id)) : ""}
-                people={people}
+                people={participants(l, stats.data?.get(l.id)?.adders ?? [], people)}
+                recipes={recipesOf(l.id)}
+                fresh={fresh?.id === l.id && Date.now() - fresh.at < 4000}
                 onActions={() => setActionsFor(l)}
               />
             ))}
@@ -172,6 +189,8 @@ function ListCard({
   session,
   shopper,
   people,
+  recipes,
+  fresh,
   onActions,
 }: {
   list: ShoppingList;
@@ -179,6 +198,8 @@ function ListCard({
   session?: Session;
   shopper: string;
   people: Person[];
+  recipes: string[];
+  fresh: boolean;
   onActions: () => void;
 }) {
   const navigate = useNavigate();
@@ -186,6 +207,10 @@ function ListCard({
   const start = useStartShopping(list.id);
   const open = stats?.open ?? 0;
   const lp = useLongPress({ onTap: () => navigate(`/lists/${list.id}`), onLong: onActions });
+  // Orientačný odhad podľa posledných cien z bločkov (ak nejaké sú).
+  const hints = useListPriceHints(open > 0 ? list.id : undefined);
+  const priced = [...(hints.data?.values() ?? [])].filter((h) => h.last_price > 0);
+  const estimate = priced.reduce((sum, h) => sum + Number(h.last_price), 0);
 
   async function go() {
     if (session) {
@@ -201,7 +226,14 @@ function ListCard({
   }
 
   return (
-    <div className="ls-listcard anim-rise" role="button" tabIndex={0} {...lp} aria-label={`${list.name}, ${listDay(list)}, ${tn("shop.itemCount", open)}`}>
+    <div
+      className={cx("ls-listcard anim-rise", fresh && "ls-fresh")}
+      data-new={t("ls.newTag")}
+      role="button"
+      tabIndex={0}
+      {...lp}
+      aria-label={`${list.name}, ${listDay(list)}, ${tn("shop.itemCount", open)}`}
+    >
       <span className="row g-12">
         <StoreBadge name={list.name} />
         <span className="grow stack g-2">
@@ -217,6 +249,7 @@ function ListCard({
           </span>
           <span className="t-sm t-2 num ellipsis">
             {listDay(list)} · {tn("shop.itemCount", open)}
+            {priced.length > 0 ? ` · ~${formatEuro(estimate)}` : ""}
           </span>
         </span>
         {(session || open > 0) && (
@@ -237,7 +270,7 @@ function ListCard({
           </button>
         )}
       </span>
-      {(session || list.note) && (
+      {(session || recipes.length > 0 || list.note) && (
         <span className="row g-6 wrap">
           {session && (
             <span className="badge b-violet">
@@ -245,9 +278,22 @@ function ListCard({
               {t("hub.shopping", { name: shopper })}
             </span>
           )}
-          {list.note && <span className="t-xs t-3 ellipsis">{list.note}</span>}
+          {recipes.length > 0 && (
+            <span className="badge b-gray">
+              <ChefHat size={12} />
+              {t("ls.fromRecipe", { names: recipes.join(" + ") })}
+            </span>
+          )}
+          {list.note && recipes.length === 0 && <span className="t-xs t-3 ellipsis">{list.note}</span>}
         </span>
       )}
     </div>
   );
+}
+
+/** Ľudia na karte (ako v prototype): kto zoznam založil a kto doň pridal položky. */
+function participants(list: ShoppingList, adders: string[], people: Person[]): Person[] {
+  const ids = [...new Set([list.created_by, ...adders].filter((x): x is string => !!x))];
+  const found = ids.map((id) => people.find((p) => p.id === id)).filter((p): p is Person => !!p);
+  return found.length ? found : people;
 }

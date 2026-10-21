@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { ChevronDown, ChevronUp, Lock, Plus, TriangleAlert, Users } from "lucide-react";
-import { BottomSheet, Seg, SheetHeader, StoreBadge } from "@/components/kit";
+import { BottomSheet, Seg, SheetHeader, StoreBadge, Switch } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { cx } from "@/components/ui";
 import { normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
-import { formatDateTime, t } from "@/i18n";
-import { useCreateList, useUpdateList, type ShoppingList } from "./api";
+import { formatDateTime, t, tn } from "@/i18n";
+import { useReceipts } from "@/features/receipts/api";
+import { listKeys, useAddItem, useCreateList, useTripItems, useUpdateList, type Item, type ShoppingList } from "./api";
+import { useQueryClient } from "@tanstack/react-query";
 import { addDays, dayLabel, isoDay, nextSaturday } from "./dates";
 
 const STORES = ["Lidl", "Kaufland", "Tesco", "Billa", "DM", "Teta"];
@@ -17,7 +19,8 @@ type Day = "today" | "tomorrow" | "sat" | "pick";
 /**
  * N2 – nový zoznam alebo úprava existujúceho (podľa prototypu): Kde (obchody ako čipy,
  * „Zatiaľ neviem“, „Iný…“), Kedy (dnes, zajtra, sobota, vybrať dátum), Pre koho
- * (domácnosť / Len ja) a pod „Ďalšie možnosti“ poznámka.
+ * (domácnosť / Len ja) a pod „Ďalšie možnosti“ nekúpené a obsah minulého nákupu v tom
+ * istom obchode a poznámka.
  */
 export function ListSheet({
   open,
@@ -44,21 +47,21 @@ export function ListSheet({
   const toast = useToast();
   const create = useCreateList(householdId);
   const update = useUpdateList(householdId);
+  const add = useAddItem();
+  const qc = useQueryClient();
+  const receipts = useReceipts(householdId);
   const edit = list ?? null;
   const canChangePrivacy = !edit || edit.created_by === me;
 
-  // Obchody zoradené podľa počtu nákupov v histórii, potom bežné obchody.
+  // Obchody zoradené podľa počtu nákupov (doklady a zoznamy), potom bežné obchody.
   const stores = useMemo(() => {
-    const count = new Map<string, { name: string; n: number }>();
-    for (const l of lists) {
-      const k = normalizeName(l.name);
-      const c = count.get(k) ?? { name: l.name, n: 0 };
-      c.n++;
-      count.set(k, c);
-    }
-    const known = STORES.map((name) => ({ name, n: count.get(normalizeName(name))?.n ?? 0 }));
+    const count = new Map<string, number>();
+    const bump = (n: string | null) => n && count.set(normalizeName(n), (count.get(normalizeName(n)) ?? 0) + 1);
+    for (const l of lists) bump(l.name);
+    for (const r of receipts.data ?? []) bump(r.store_name);
+    const known = STORES.map((name) => ({ name, n: count.get(normalizeName(name)) ?? 0 }));
     return known.sort((a, b) => b.n - a.n).map((s) => s.name);
-  }, [lists]);
+  }, [lists, receipts.data]);
 
   const isKnown = (n: string) => stores.some((s) => normalizeName(s) === normalizeName(n));
   const today = isoDay(new Date());
@@ -76,6 +79,8 @@ export function ListSheet({
   const [shared, setShared] = useState(edit ? !edit.is_private : true);
   const [more, setMore] = useState(false);
   const [note, setNote] = useState(edit?.note ?? "");
+  const [leftover, setLeftover] = useState(true);
+  const [copyLast, setCopyLast] = useState(false);
 
   const date = day === "today" ? today : day === "tomorrow" ? tomorrow : day === "sat" ? sat : picked;
   const name = showCustom || unsure ? custom.trim() || (unsure ? t("ls.defaultName") : "") : (store ?? "");
@@ -83,7 +88,18 @@ export function ListSheet({
   const dup = name
     ? lists.find((l) => !l.completed_at && l.id !== edit?.id && l.planned_for === date && normalizeName(l.name) === normalizeName(name))
     : undefined;
-  const busy = create.isPending || update.isPending;
+  const busy = create.isPending || update.isPending || add.isPending;
+
+  // Posledný ukončený nákup v tomto obchode – nekúpené položky a celý obsah.
+  const storeId = !showCustom && !unsure ? store : null;
+  const lastTrip = storeId
+    ? lists
+        .filter((l) => l.completed_at && normalizeName(l.name) === normalizeName(storeId))
+        .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""))[0]
+    : undefined;
+  const tripItems = useTripItems(!edit && more ? lastTrip?.id : undefined).data ?? [];
+  const leftovers = tripItems.filter((i) => i.status !== "PURCHASED");
+  const lastBought = tripItems.filter((i) => i.status === "PURCHASED");
 
   async function submit() {
     if (!canCreate || busy) return;
@@ -98,9 +114,21 @@ export function ListSheet({
         return;
       }
       const id = await create.mutateAsync({ name, isPrivate: !shared, plannedFor: date, plannedTime: time || null, note: note.trim() || null });
+      // Nekúpené z minulého nákupu a/alebo celý minulý nákup (bez duplicít).
+      const copy: Item[] = [...(more && leftover ? leftovers : []), ...(more && copyLast ? lastBought : [])];
+      const seen = new Set<string>();
+      const items = copy.filter((i) => {
+        const k = normalizeName(i.name);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+      for (const i of items) await add.mutateAsync({ listId: id, name: i.name, quantity: i.quantity, unit: i.unit, note: i.note, categoryId: i.category_id });
+      if (items.length) qc.invalidateQueries({ queryKey: listKeys.stats(householdId) });
       onClose();
       onCreated?.(id);
-      toast.show(t("ls.created", { name, day: time ? `${dayLabel(date)} ${time}` : dayLabel(date) }));
+      const created = t("ls.created", { name, day: time ? `${dayLabel(date)} ${time}` : dayLabel(date) });
+      toast.show(items.length ? `${created} · ${tn("shop.itemCount", items.length)}` : created);
     } catch (err) {
       toast.show(errorMessage(err), "error");
     }
@@ -223,7 +251,7 @@ export function ListSheet({
             ]}
           />
           <span className="t-xs t-3" style={{ padding: "0 4px" }}>
-            {!canChangePrivacy ? t("lsheet.privacyLocked") : shared ? t("lsheet.sharedNote") : t("ls.privateNote")}
+            {!canChangePrivacy ? t("lsheet.privacyLocked") : shared ? t("ls.sharedNote") : t("ls.privateNote")}
           </span>
         </section>
 
@@ -234,6 +262,30 @@ export function ListSheet({
           </button>
           {more && (
             <div className="cells anim-pop">
+              {!edit && (
+                <>
+                  <div className="cell">
+                    <span className="grow stack g-2">
+                      <span className="t-body fw-5">{t("ls.leftover")}</span>
+                      <span className="t-sm t-2">
+                        {storeId ? (leftovers.length ? leftovers.map((i) => i.name).join(", ") : t("ls.leftoverNone")) : t("ls.pickStoreFirst")}
+                      </span>
+                    </span>
+                    <Switch on={leftover && leftovers.length > 0} onChange={setLeftover} label={t("ls.leftover")} disabled={leftovers.length === 0} />
+                  </div>
+                  <div className="cell">
+                    <span className="grow stack g-2">
+                      <span className="t-body fw-5">{t("ls.copyLast")}</span>
+                      <span className="t-sm t-2">
+                        {lastTrip
+                          ? t("ls.copyLastSub", { name: lastTrip.name, day: dayLabel(lastTrip.completed_at!), items: tn("shop.itemCount", lastBought.length) })
+                          : t("ls.copyLastNone")}
+                      </span>
+                    </span>
+                    <Switch on={copyLast && lastBought.length > 0} onChange={setCopyLast} label={t("ls.copyLast")} disabled={lastBought.length === 0} />
+                  </div>
+                </>
+              )}
               <div className="cell">
                 <input className="input" maxLength={200} placeholder={t("ls.notePlaceholder")} value={note} onChange={(e) => setNote(e.target.value)} />
               </div>

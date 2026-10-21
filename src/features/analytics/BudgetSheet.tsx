@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Button, Sheet, TextField } from "@/components/ui";
+import { BottomSheet, SheetHeader } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { t } from "@/i18n";
@@ -47,40 +47,30 @@ function BudgetForm({ onClose, overview }: { onClose: () => void; overview: Over
     }
   }
 
+  const field = (key: string, label: string, hint?: string) => (
+    <label key={key} className="stack g-4">
+      <span className="field-label">{label}</span>
+      <input className="input num" inputMode="decimal" placeholder="—" value={values[key] ?? ""} onChange={(e) => setValues({ ...values, [key]: e.target.value })} />
+      {hint && <span className="t-xs t-3" style={{ padding: "0 4px" }}>{hint}</span>}
+    </label>
+  );
+
   return (
-    <Sheet open onClose={onClose} title={t("budget.title")}>
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        <p className="text-sm text-text-2">{t("budget.hint")}</p>
-        <TextField
-          label={t("budget.total")}
-          inputMode="decimal"
-          value={values["*"] ?? ""}
-          onChange={(e) => setValues({ ...values, "*": e.target.value })}
-          hint={t("budget.sofar", { amount: formatMoney(overview.total) })}
-        />
-        {categories.length > 0 && <p className="text-sm font-semibold text-text-2">{t("budget.categories")}</p>}
-        {categories.map((id) => {
-          const info = categoryInfo(id);
-          return (
-            <TextField
-              key={id}
-              label={`${info.name} (€)`}
-              inputMode="decimal"
-              value={values[id] ?? ""}
-              onChange={(e) => setValues({ ...values, [id]: e.target.value })}
-              hint={spent.get(id) ? t("budget.sofar", { amount: formatMoney(spent.get(id)!) }) : undefined}
-            />
-          );
-        })}
+    <BottomSheet open onClose={onClose} label={t("budget.title")}>
+      <SheetHeader title={t("budget.title")} sub={t("budget.hint")} onClose={onClose} />
+      <form onSubmit={submit} className="sheet-body stack g-12">
+        {field("*", t("budget.total"), t("budget.sofar", { amount: formatMoney(overview.total) }))}
+        {categories.length > 0 && <span className="section-title" style={{ padding: "6px 4px 0" }}>{t("budget.categories")}</span>}
+        {categories.map((id) => field(id, `${categoryInfo(id).name} (€)`, spent.get(id) ? t("budget.sofar", { amount: formatMoney(spent.get(id)!) }) : undefined))}
         {error && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="t-sm" style={{ color: "var(--red)", margin: 0 }}>
             {error}
           </p>
         )}
-        <Button type="submit" size="lg" block loading={save.isPending}>
+        <button type="submit" className="btn btn-ink btn-lg btn-block" style={{ marginTop: 4 }} disabled={save.isPending}>
           {t("common.save")}
-        </Button>
+        </button>
       </form>
-    </Sheet>
+    </BottomSheet>
   );
 }

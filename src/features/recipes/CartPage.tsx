@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Check, ChevronRight, House, Plus, ShoppingBasket, X } from "lucide-react";
 import { BottomSheet, CatIcon, Empty, ScreenHeader, Seg, SheetHeader, Stepper, StoreBadge, haptic } from "@/components/kit";
@@ -17,7 +17,7 @@ import { shortName } from "@/lib/shortName";
 import { t, tn } from "@/i18n";
 import { usePlanRecipes, useRecipes } from "./api";
 import { cart, useCart, type CartState } from "./cart";
-import { Cover } from "./common";
+import { Cover, NoTabScreen } from "./common";
 import { buyPlan, formatAmount, mergeIngredients, recipeMeta, toListEntry, type Row } from "./logic";
 import { NutritionSheet } from "./RecipePage";
 import type { Recipe } from "./types";
@@ -93,7 +93,8 @@ export function CartPage() {
 
   if (!recipes.length) {
     return (
-      <div className="stack">
+      <NoTabScreen>
+        <div className="rc-full-scroll">
         <ScreenHeader onBack={() => navigate(-1)} title={t("rc.cartEmptyTitle")} />
         <Empty
           icon={ShoppingBasket}
@@ -101,7 +102,8 @@ export function CartPage() {
           text={t("rc.cartEmptyText")}
           action={<button type="button" className="btn btn-soft" onClick={() => navigate("/recipes")}>{t("rc.pickRecipes")}</button>}
         />
-      </div>
+        </div>
+      </NoTabScreen>
     );
   }
 
@@ -110,8 +112,9 @@ export function CartPage() {
   const editX = recipes.find((y) => y.recipeId === editing);
 
   return (
-    <div className="stack">
-      <ScreenHeader onBack={() => navigate(-1)} title={t("rc.whatAtHome")} sub={t("rc.step1", { what: tn("rc.forRecipes", recipes.length) })} />
+    <NoTabScreen>
+      <div className="rc-full-scroll">
+      <ScreenHeader onBack={() => navigate(-1)} title={t("rc.whatAtHome")} sub={t("rc.step1", { what: `${tn("rc.ingFor", recipes.length)} · ${recipes.length}` })} />
       <div className="stack g-16" style={{ padding: "0 16px" }}>
         <span className="field-label" style={{ marginBottom: -8 }}>{t("rc.recipesInShop")}</span>
         <div className="row wrap g-8">
@@ -225,7 +228,8 @@ export function CartPage() {
         </section>
       </div>
       <div style={{ height: 150 }} />
-      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}>
+      </div>
+      <div className="bottom-cta no-tab">
         <div className="stack g-6">
           <span className="t-xs t-2" style={{ textAlign: "center" }}>{t("rc.homeCount", { n: home.length })}</span>
           <button type="button" className="btn btn-ink btn-lg btn-block" disabled={!nBuy} onClick={() => setTarget(true)}>
@@ -238,7 +242,7 @@ export function CartPage() {
       <AddRecipeSheet open={more} onClose={() => setMore(false)} />
       <TargetSheet open={target} onClose={() => setTarget(false)} />
       <NutritionSheet open={nutri} onClose={() => setNutri(false)} cartMode />
-    </div>
+    </NoTabScreen>
   );
 }
 
@@ -304,6 +308,12 @@ function TargetSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
   const names = recipes.map((x) => x.r.name);
   const openLists = (lists.data ?? []).filter((l) => !l.is_archived && !l.completed_at);
   const [mode, setMode] = useState<"new" | "existing">("new");
+  const [name, setName] = useState("");
+  const joined = names.join(", ");
+  // Pri každom otvorení navrhni názov podľa receptov v nákupe.
+  useEffect(() => {
+    if (open) setName(joined);
+  }, [open, joined]);
   const [store, setStore] = useState<string | null>(null);
   const [date, setDate] = useState<string | null>(iso(new Date()));
   const [picked, setTarget] = useState<string | null>(null);
@@ -314,7 +324,9 @@ function TargetSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
   const viaRequest = mode === "existing" && !!sess && sess.shopper_id !== me;
 
   const finish = () => {
-    const newList = mode === "new" ? { name: store ?? names.join(", ").slice(0, 60), planned_for: date, note: store ? names.join(", ") : "" } : null;
+    // Názov zoznamu v aplikácii je obchod; vlastný názov (recepty) ide do poznámky.
+    const title = name.trim() || names.join(", ");
+    const newList = mode === "new" ? { name: (store ?? title).slice(0, 60), planned_for: date, note: store ? title : "" } : null;
     plan.mutate(
       {
         listId: mode === "existing" ? target : null,
@@ -330,7 +342,8 @@ function TargetSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
             res.requests ? t("rc.sentRequests", { what: tn("shop.itemCount", res.requests) }) : mode === "new" ? t("rc.listCreated", { what: tn("shop.itemCount", res.items) }) : t("rc.addedTo", { what: tn("shop.itemCount", res.items) }),
             "success",
           );
-          navigate(`/lists/${res.list_id}`, { replace: true });
+          // späť na prehľad zoznamov – nový (doplnený) zoznam sa krátko rozsvieti
+          navigate("/", { replace: true, state: { highlight: res.list_id } });
         },
         onError: (e) => toast.show(errorMessage(e), "error"),
       },
@@ -353,6 +366,10 @@ function TargetSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
         <Seg options={[{ value: "new", label: t("rc.newList") }, { value: "existing", label: t("rc.existingList") }]} value={mode} onChange={setMode} />
         {mode === "new" ? (
           <>
+            <div className="stack g-6">
+              <label className="field-label" htmlFor="r6-name">{t("rc.name")}</label>
+              <input id="r6-name" className="input" value={name} maxLength={300} onChange={(e) => setName(e.target.value)} />
+            </div>
             <div className="stack g-6">
               <span className="field-label">{t("rc.store")}</span>
               <div className="chips">

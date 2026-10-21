@@ -104,6 +104,17 @@ export function CartBar() {
   );
 }
 
+/** Zvlnená animácia hlasu (počúvanie). */
+function Wave({ color = "currentColor", height = 18, bars = 7 }: { color?: string; height?: number; bars?: number }) {
+  return (
+    <span className="row g-4" style={{ height, color }} aria-hidden="true">
+      {Array.from({ length: bars }).map((_, i) => (
+        <span key={i} style={{ width: 4, height: "100%", borderRadius: 99, background: color, transformOrigin: "center", animation: `wave 1s ease-in-out ${i * 0.12}s infinite` }} />
+      ))}
+    </span>
+  );
+}
+
 /** Hľadanie hlasom: mikrofón v prehliadači, výsledok ide do hľadania. */
 export function VoiceSearch({ onResult, onClose }: { onResult: (q: string) => void; onClose: () => void }) {
   const speech = useSpeech((said) => {
@@ -115,15 +126,10 @@ export function VoiceSearch({ onResult, onClose }: { onResult: (q: string) => vo
     return () => speech.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const blocked = !!speech.error || !speech.supported;
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "var(--scrim)" }} onClick={onClose}>
-      <div
-        className="mx-auto w-full max-w-2xl stack g-16"
-        style={{ background: "var(--surface)", borderRadius: "24px 24px 0 0", padding: "16px 16px calc(28px + env(safe-area-inset-bottom))", boxShadow: "var(--sh-3)", animation: "sheetUp 280ms cubic-bezier(.2,.8,.2,1)" }}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-label={t("rc.voiceSearch")}
-      >
+    <div className="rc-voice" onClick={onClose}>
+      <div className="stack g-16" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t("rc.voiceSearch")}>
         <div className="row g-8">
           <span className="t-h grow">{t("rc.voiceSearch")}</span>
           <button type="button" className="ibtn soft sm" onClick={onClose} aria-label={t("common.close")}>
@@ -131,16 +137,26 @@ export function VoiceSearch({ onResult, onClose }: { onResult: (q: string) => vo
           </button>
         </div>
         <div className="stack g-10" style={{ minHeight: 92, alignItems: "center", justifyContent: "center" }}>
-          <span className={`ibtn ink${speech.listening ? " pulse" : ""}`} style={{ width: 56, height: 56 }}>
+          <span className="ibtn ink" style={{ width: 56, height: 56 }}>
             <Mic size={24} />
           </span>
-          <span className="t-title" style={{ textAlign: "center" }}>
-            {speech.interim || (speech.error || !speech.supported ? t("ls.micBlocked") : t("rc.voiceHint"))}
-          </span>
+          {speech.interim ? (
+            <span className="t-title" style={{ textAlign: "center" }}>{speech.interim}</span>
+          ) : blocked ? (
+            <span className="t-sm t-2" style={{ textAlign: "center" }}>{t("ls.micBlocked")}</span>
+          ) : (
+            <Wave color="var(--text-3)" />
+          )}
         </div>
+        {!speech.interim && !blocked && <span className="t-sm t-2" style={{ textAlign: "center" }}>{t("rc.voiceHint")}</span>}
       </div>
     </div>
   );
+}
+
+/** Obrazovka bez spodnej lišty (kontrola receptu, „Čo máš doma?“) – ako v prototype `tabBar: false`. */
+export function NoTabScreen({ children }: { children: React.ReactNode }) {
+  return <div className="rc-full">{children}</div>;
 }
 
 /** Štítok „Návrh AI“. */

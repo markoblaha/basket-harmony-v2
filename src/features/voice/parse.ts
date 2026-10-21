@@ -269,3 +269,35 @@ export function matchStore(text: string, stores: string[]): string | null {
   const m = text.match(/(?:idem|ideme|pôjdem|pojdem|nákup|nakup|going|heading|shopping)\s+(?:do|v|na|to|at)\s+(.+)$/i);
   return m ? cap(m[1]!.replace(/[.!?]+$/, "")) : null;
 }
+
+const GO_WORDS = new Set(["idem", "ideme", "pojdem", "pojdeme", "nakupujem", "nakupujeme", "do", "v", "vo", "na", "going", "heading", "go", "im", "to", "at", "shopping"]);
+
+/**
+ * Oddelí z vety predajňu („idem do Lidla, mlieko a rožky“ → Lidl + „mlieko a rožky“).
+ * Známe predajne spozná aj v inom páde („do Kauflandu“); neznámu len za „idem do …“.
+ */
+export function splitStore(text: string, stores: string[]): { store: string | null; rest: string } {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const keys = words.map((w) => normalizeName(w).replace(/[^a-z0-9]/g, ""));
+  const cut = (from: number, to: number) => {
+    let a = from;
+    while (a > 0 && GO_WORDS.has(keys[a - 1]!)) a--;
+    const rest = [...words.slice(0, a), ...words.slice(to)].join(" ").replace(/^[\s,.;:–-]+|[\s,;:–-]+$/g, "");
+    return rest;
+  };
+  for (const s of stores) {
+    const parts = normalizeName(s).split(/\s+/);
+    const head = parts[0] ?? "";
+    if (!head) continue;
+    const stem = head.length > 5 ? head.slice(0, head.length - 1) : head.length >= 4 ? head : null;
+    const i = keys.findIndex((k) => (stem ? k.startsWith(stem) : k === head));
+    if (i < 0) continue;
+    // Viacslovný názov („Coop Jednota“) – zhltne aj ďalšie slová názvu, ak zazneli.
+    let j = i + 1;
+    for (const p of parts.slice(1)) if (keys[j]?.startsWith(p.slice(0, 4))) j++;
+    return { store: s, rest: cut(i, j) };
+  }
+  const m = /^(?:idem|ideme|pôjdem|pojdem|going|heading)\s+(?:do|vo|v|na|to)\s+(\S+)(.*)$/i.exec(text.trim());
+  if (m) return { store: cap(m[1]!.replace(/[.,!?]+$/, "")), rest: m[2]!.replace(/^[\s,.;:–-]+/, "").trim() };
+  return { store: null, rest: text.trim() };
+}

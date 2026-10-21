@@ -12,9 +12,11 @@ import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
 import { formatEuro, t, tn } from "@/i18n";
 import { useListPriceHints } from "@/features/analytics/api";
+import { useRecipePlans } from "@/features/recipes/api";
 import {
   useActiveSession,
   useDeleteItem,
+  useHubSessions,
   useItems,
   useListStats,
   useLists,
@@ -89,9 +91,11 @@ export function ShoppingPage() {
   const watching = search.get("sledovat") === "1";
   const stats = useListStats(household.id);
   const remove = useDeleteItem(listId ?? "none");
+  const plans = useRecipePlans(household.id);
+  const hubSessions = useHubSessions(household.id);
   // Potvrdenie pridania: bublina hore, ktorá sa sama rozplynie.
   const feedPush = useCallback(
-    (e: Omit<FeedEntry, "id" | "out">) => toast.added({ title: e.name, qty: e.qty ? `+${e.qty}` : undefined, note: e.tail }),
+    (e: Omit<FeedEntry, "id" | "out">) => toast.added({ title: e.name, qty: e.qty ? `+${e.qty}` : undefined, note: e.tail, undo: e.undo }),
     [toast],
   );
 
@@ -138,13 +142,43 @@ export function ShoppingPage() {
   if (lists.isPending) return <Spinner />;
   if (lists.isError) return <ErrorState error={errorMessage(lists.error)} onRetry={() => lists.refetch()} />;
   // Nákup neexistuje, bol odstránený z prehľadu, alebo je súkromný cudzí → späť na prehľad.
-  if (!list || !listId) return <Navigate to="/" replace />;
+  // Zoznam zmizol (dokončený alebo zmazaný niekým iným) – prototyp ukáže prázdny stav s cestou späť.
+  if (!list || !listId) {
+    if (!params.listId) return <Navigate to="/" replace />;
+    return (
+      <div className="stack">
+        <header className="hdr with-back">
+          <button type="button" className="ibtn" onClick={() => navigate("/")} aria-label={t("trip.backAria")}>
+            <ChevronLeft size={24} />
+          </button>
+          <div className="grow stack" style={{ minWidth: 0 }}>
+            <span className="ttl ellipsis">{t("ls.listTitle")}</span>
+          </div>
+        </header>
+        <Empty
+          icon={ShoppingCart}
+          title={t("ls.listGone")}
+          text={t("ls.listGoneText")}
+          action={
+            <button type="button" className="btn btn-soft" onClick={() => navigate("/")}>
+              {t("ls.toLists")}
+            </button>
+          }
+        />
+      </div>
+    );
+  }
 
   const people: Person[] = names ? [...names.entries()].map(([id, name]) => ({ id, name })) : [];
   const openLists = (lists.data ?? [])
     .filter((l) => !l.completed_at)
     .sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999") || b.created_at.localeCompare(a.created_at));
   const idx = openLists.findIndex((l) => l.id === list.id);
+  // Recepty, pre ktoré sa nakupuje (hlavička „· pre: Segedínsky guláš“).
+  const recipeNames = [...new Set((plans.data ?? []).filter((p) => p.list_id === list.id && p.status === "PENDING").map((p) => p.recipe_name))];
+  // Nakupujem práve v inom zozname → najprv ten treba dokončiť.
+  const mySessionElsewhere = (hubSessions.data ?? []).find((s) => s.shopper_id === me && s.list_id !== list.id);
+  const elsewhereList = mySessionElsewhere ? lists.data?.find((l) => l.id === mySessionElsewhere.list_id) : undefined;
 
   if (active && ((iAmShopping && !interrupted) || (someoneElse && watching))) {
     return (
@@ -208,6 +242,7 @@ export function ShoppingPage() {
             </span>
             <span className="sub">
               {openLists.length > 1 && idx >= 0 ? t("ls.listOf", { n: idx + 1, total: openLists.length }) : tn("shop.itemCount", open.length)}
+              {recipeNames.length > 0 ? t("ls.forRecipes", { names: recipeNames.join(", ") }) : ""}
             </span>
           </button>
           {list.is_private ? (
@@ -282,7 +317,7 @@ export function ShoppingPage() {
           <PlanList listId={listId} items={open} names={names} me={me} hints={hints.data} onEdit={setEditing} />
         )}
 
-        {recent.length > 0 && !active && (
+        {recent.length > 0 && (
           <section className="stack g-6">
             <button type="button" className="section-head" onClick={() => setShowPurchased((v) => !v)} style={{ width: "100%" }} aria-expanded={showPurchased}>
               <span className="section-title">
@@ -293,7 +328,13 @@ export function ShoppingPage() {
             </button>
             {showPurchased && (
               <div className="cells">
-                {recent.map((it) => (
+                {recent.map((it) =>
+                  active ? (
+                    <div key={it.id} className="cell" style={{ minHeight: 48 }}>
+                      {it.status === "UNAVAILABLE" ? <PackageX size={16} className="t-orange" /> : <Check size={16} className="t-accent" />}
+                      <span className={cx("grow t-body t-2 ellipsis", it.status === "PURCHASED" && "strike")}>{it.name}</span>
+                    </div>
+                  ) : (
                   <button
                     key={it.id}
                     type="button"
@@ -313,7 +354,8 @@ export function ShoppingPage() {
                     <span className={cx("grow t-body t-2 ellipsis", it.status === "PURCHASED" && "strike")}>{it.name}</span>
                     <span className="t-sm fw-6 t-3">{t("ls.putBack")}</span>
                   </button>
-                ))}
+                  ),
+                )}
               </div>
             )}
           </section>
@@ -328,12 +370,15 @@ export function ShoppingPage() {
       </div>
       <div style={{ height: 180 }} />
 
-      {(open.length > 0 || active) && (
-        <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}>
+      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}>
           {someoneElse ? (
             <button type="button" className="btn btn-lg btn-block" style={{ background: "var(--violet-soft)", color: "var(--violet)" }} onClick={() => setSearch({ sledovat: "1" })}>
               <span className="live" />
               {t("ls.watchShopper", { name: shortName(shopperName ?? "") })}
+            </button>
+          ) : !iAmShopping && mySessionElsewhere ? (
+            <button type="button" className="btn btn-soft btn-lg btn-block" onClick={() => navigate(`/lists/${mySessionElsewhere.list_id}`)}>
+              {t("ls.finishFirst", { name: elsewhereList?.name ?? "" })}
             </button>
           ) : (
             <button type="button" className="btn btn-ink btn-lg btn-block" disabled={start.isPending || (!iAmShopping && !open.length)} onClick={startShopping}>
@@ -341,8 +386,7 @@ export function ShoppingPage() {
               {iAmShopping ? t("shop.continue") : t("ls.startWith", { count: tn("shop.itemCount", open.length) })}
             </button>
           )}
-        </div>
-      )}
+      </div>
 
       <EditItemSheet
         item={editing}

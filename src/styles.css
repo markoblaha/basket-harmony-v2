@@ -476,62 +476,7 @@
 .vo-wave.think .g2, .vo-wave.think .g3 { transform: scaleY(0.25); }
 .vo-wave.off g { transform: scaleY(0.02); }
 
-/* ------------------------------------------------------------------ spodná lišta
- * Sklenená lišta bez ostrej čiary: nad ňou je mäkký prechod, v ktorom sa obsah plynulo
- * stráca. Hlasové tlačidlo vyčnieva nad lištu, nemá rámik a je vždy nad prechodom.
- * Číslo na ikone = počet vecí, ktoré čakajú (tlmený koral, výrez vo farbe lišty).
- */
-.tabbar {
-  background: color-mix(in srgb, var(--elevated) 92%, transparent);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-}
-.tabbar-fade {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: 28px;
-  pointer-events: none;
-  background: linear-gradient(to top, color-mix(in srgb, var(--elevated) 92%, transparent), transparent);
-}
-.tab-count {
-  position: absolute;
-  top: 0;
-  left: calc(50% + 7px);
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-size: 10px;
-  font-weight: 750;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  background: var(--badge);
-  color: var(--on-badge);
-  box-shadow: 0 0 0 2.5px var(--elevated);
-  animation: bh-pop 0.22s var(--ease-out);
-}
-[data-theme="color"] .tabbar {
-  background: rgb(250 248 255 / 0.9);
-}
-[data-theme="color"] .tabbar-fade {
-  height: 34px;
-  background: linear-gradient(to top, rgb(250 248 255 / 0.9), rgb(250 248 255 / 0));
-}
-[data-theme="color"] .tab-count {
-  box-shadow: 0 0 0 2.5px rgb(250 248 255);
-}
-[data-theme="color"] .tab-on {
-  background: linear-gradient(120deg, #dfe4f2, #f1ead6);
-  color: #3a4a8c;
-}
-[data-theme="color"] .voice-orb {
-  background: #6a76ad;
-  box-shadow: 0 14px 30px -10px rgb(60 75 140 / 0.55), 0 0 40px -6px rgb(220 170 190 / 0.35);
-}
+/* Spodná lišta, prechody obrazoviek, panely a hlášky: src/styles/shell.css. */
 
 /* Nadpisy sekcií: vo farebnej téme malé veľké písmená s riedkym písmom. */
 [data-theme="color"] .section-title {

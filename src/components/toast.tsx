@@ -5,16 +5,21 @@
  * Chyby nikdy nemiznú potichu – každá zlyhaná akcia ukáže hlášku.
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check } from "lucide-react";
+import { Bell, Check } from "lucide-react";
+import { haptic } from "./kit";
 import { t } from "@/i18n";
 
 type Tone = "info" | "error" | "success";
-type Toast = { id: number; text: string; tone: Tone; undo?: () => void };
+type Toast = { id: number; text: string; tone: Tone; undo?: () => void; high: boolean };
+/** Upozornenie v appke (banner hore): kto/čo sa stalo, ťuknutím otvorí cieľ. */
+export type Notice = { title: string; body?: string; onOpen?: () => void };
 export type Added = { title: string; qty?: string; note?: string; undo?: () => void };
 type Api = {
   show: (text: string, tone?: Tone, opts?: { undo?: () => void }) => void;
   /** Bublina hore po pridaní položky. */
   added: (a: Added) => void;
+  /** Banner hore ako upozornenie z telefónu; sám zmizne po 5 s. */
+  notify: (n: Notice) => void;
 };
 const ToastContext = createContext<Api | null>(null);
 
@@ -24,10 +29,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const nextId = useRef(1);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const pillTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [notice, setNotice] = useState<(Notice & { id: number }) | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const show = useCallback<Api["show"]>((text, tone = "info", opts) => {
     const id = nextId.current++;
-    setToast({ id, text, tone, undo: opts?.undo });
+    // Bez spodnej lišty (nákup, hlas, varenie) je hláška hore, aby neprekryla tlačidlá dole.
+    const high = typeof document !== "undefined" && !document.querySelector("nav.tabbar");
+    setToast({ id, text, tone, undo: opts?.undo, high });
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setToast((x) => (x?.id === id ? null : x)), tone === "error" ? 6000 : opts?.undo ? 5000 : 3000);
   }, []);
@@ -37,7 +46,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     clearTimeout(pillTimer.current);
     pillTimer.current = setTimeout(() => setPill((x) => (x?.id === id ? null : x)), 3400);
   }, []);
-  const value = useMemo(() => ({ show, added }), [show, added]);
+  const notify = useCallback<Api["notify"]>((n) => {
+    const id = nextId.current++;
+    setNotice({ ...n, id });
+    haptic(20);
+    clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice((x) => (x?.id === id ? null : x)), 5000);
+  }, []);
+  const value = useMemo(() => ({ show, added, notify }), [show, added, notify]);
 
   return (
     <ToastContext.Provider value={value}>
@@ -66,7 +82,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         </div>
       )}
       {toast && (
-        <div className="toast fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))]" aria-live="polite">
+        <div
+          className={toast.high ? "toast high fixed top-[calc(env(safe-area-inset-top)+4rem)]" : "toast fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))]"}
+          aria-live="polite"
+        >
           <div
             key={toast.id}
             role={toast.tone === "error" ? "alert" : "status"}
@@ -85,6 +104,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               </button>
             )}
           </div>
+        </div>
+      )}
+      {notice && (
+        <div className="banner fixed top-[calc(env(safe-area-inset-top)+0.5rem)]" key={notice.id} role="status" aria-live="polite">
+          <button
+            type="button"
+            onClick={() => {
+              setNotice(null);
+              notice.onOpen?.();
+            }}
+          >
+            <span className="app-ic">
+              <Bell size={18} />
+            </span>
+            <span className="grow stack g-2">
+              <span className="t-xs t-2">{t("notice.from")}</span>
+              <span className="t-h">{notice.title}</span>
+              {notice.body && <span className="t-sm t-2">{notice.body}</span>}
+            </span>
+          </button>
         </div>
       )}
     </ToastContext.Provider>

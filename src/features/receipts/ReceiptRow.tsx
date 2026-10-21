@@ -1,12 +1,13 @@
 import { useRef, type PointerEvent } from "react";
 import { Link } from "react-router";
-import { AlertTriangle, FileText, Landmark, Link2, Loader2, PenLine, Unlink } from "lucide-react";
-import { StoreBadge } from "@/components/kit";
+import { AlertTriangle, ChevronRight, FileText, Landmark, Link2, Loader2, PenLine, Unlink } from "lucide-react";
+import { CatIcon, StoreBadge } from "@/components/kit";
+import { category } from "@/lib/categories";
 import { dayLabel } from "@/features/lists/dates";
 import { cx } from "@/components/ui";
-import { t } from "@/i18n";
+import { t, tn } from "@/i18n";
 import { isNotAReceipt, isReceiptPdf, isStale, useReceiptImage, type Receipt } from "./api";
-import { formatMoney, nextStep, shortReason, storeHue, storeInitials } from "./format";
+import { formatMoney, formatShortDate, nextStep, shortReason, storeHue, storeInitials } from "./format";
 
 /** Farebný kruh s iniciálkami obchodu. Farba sa odvodí z názvu, takže je pre obchod stále rovnaká (svetlý aj tmavý režim). */
 export function StoreAvatar({ name, className }: { name: string | null; className?: string }) {
@@ -115,8 +116,14 @@ export function ReceiptRow({
   attention,
   onToggle,
   onLongPress,
+  itemCount,
+  hint,
 }: {
   receipt: Receipt;
+  /** Počet položiek dokladu (ak je známy). */
+  itemCount?: number;
+  /** Pri hľadaní: položka, ktorá sa našla („· Mlieko“). */
+  hint?: string;
   selecting: boolean;
   /** Poradie vo výbere (-1 = nevybraný). */
   order: number;
@@ -130,17 +137,25 @@ export function ReceiptRow({
   const press = useLongPress(selecting || processing ? undefined : onLongPress);
   const title = r.store_name ?? (processing ? t("row.reading") : r.status === "OK" ? t("row.receipt") : t("row.unknownStore"));
   const failed = r.status === "FAILED";
+  // Ručný výdavok a platba z výpisu nemajú bloček – v zozname majú ikonu kategórie (prototyp).
+  const noFile = r.origin !== "RECEIPT";
   const sub = processing
     ? t("row.readingLong")
     : attention || failed || stale
       ? stale
         ? t("row.stale")
         : nextStep(r)
-      : `${dayLabel(r.purchased_on ?? r.created_at)}${r.purchased_time ? ` · ${r.purchased_time.slice(0, 5)}` : ""}`;
+      : [
+          dayLabel(r.purchased_on ?? r.created_at),
+          r.purchased_time?.slice(0, 5),
+          noFile ? (r.category_id ? category(r.category_id).name : null) : itemCount ? tn("rpage.items", itemCount) : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") + (hint ? ` · ${hint}` : "");
 
   const body = (
     <>
-      {selecting ? <Thumb receipt={r} /> : <StoreBadge name={r.store_name ?? "?"} size="sm" />}
+      {selecting ? <Thumb receipt={r} /> : noFile ? <CatIcon id={r.category_id ?? "other"} size="sm" /> : <StoreBadge name={r.store_name ?? "?"} size="sm" />}
       <span className="grow stack g-2" style={{ minWidth: 0 }}>
         <span className={cx("t-body fw-5 ellipsis", processing && "t-2")}>{title}</span>
         <span className={cx("t-xs num ellipsis", attention || failed ? "t-orange" : "t-2")}>{sub}</span>
@@ -176,6 +191,33 @@ export function ReceiptRow({
       className="cell select-none [-webkit-touch-callout:none]"
     >
       {body}
+    </Link>
+  );
+}
+
+/** Riadok v časti „Na vybavenie“ (prototyp A5): ikona problému, „Obchod 15. 10. · 34,08 €“ a čo treba spraviť. */
+export function AttentionRow({ receipt: r }: { receipt: Receipt }) {
+  const stale = isStale(r);
+  const failed = r.status === "FAILED" && !isNotAReceipt(r);
+  const store = r.store_name ?? t("row.receipt");
+  const day = formatShortDate(r.purchased_on ?? r.created_at.slice(0, 10));
+  const title = r.total != null ? t("rpage.reviewTitle", { store, day, total: formatMoney(r.total) }) : t("rpage.failedTitle", { store, day });
+  const diff = r.total != null && r.items_sum != null ? Math.round((r.total - r.items_sum) * 100) / 100 : 0;
+  const sub = stale
+    ? t("row.stale")
+    : r.review_reason === "TOTAL_MISMATCH" && diff !== 0
+      ? t("detail.mismatchTitle", { diff: formatMoney(Math.abs(diff)) })
+      : nextStep(r);
+  return (
+    <Link to={`/receipts/${r.id}`} className="cell">
+      <span className="cat-ic sm" style={{ color: failed ? "var(--red)" : "var(--yellow)" }}>
+        <AlertTriangle size={16} />
+      </span>
+      <span className="grow stack g-2" style={{ minWidth: 0 }}>
+        <span className="t-body fw-5 ellipsis num">{title}</span>
+        <span className="t-xs t-2 ellipsis">{sub}</span>
+      </span>
+      <ChevronRight size={18} className="chev" />
     </Link>
   );
 }

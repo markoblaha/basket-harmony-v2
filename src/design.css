@@ -474,7 +474,7 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
 
 /* nový zoznam z receptov: krátko sa rozsvieti, aby si ho človek všimol */
 .ls-fresh { position: relative; animation: lsFreshIn 520ms cubic-bezier(.2,.9,.3,1.2) both, lsGlow 2.6s ease-out 320ms both; }
-.ls-fresh::after { content: "Nový"; position: absolute; top: -8px; right: 14px; height: 20px; padding: 0 8px; border-radius: 999px; display: grid; place-items: center;
+.ls-fresh::after { content: attr(data-new); position: absolute; top: -8px; right: 14px; height: 20px; padding: 0 8px; border-radius: 999px; display: grid; place-items: center;
   font-size: 11px; font-weight: 700; background: var(--accent); color: #fff; animation: lsTag 3.2s ease both; }
 @keyframes lsFreshIn { from { transform: translateY(-14px) scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes lsGlow {

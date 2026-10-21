@@ -7,7 +7,7 @@ import { useHousehold } from "@/features/household/HouseholdProvider";
 import { formatShortDate, readErrorMessage } from "@/features/receipts/format";
 import { formatEuro, formatNumber, t, tn } from "@/i18n";
 import { useCategoryDetail } from "./api";
-import { ChangeBadge, MonthBars, PeriodChips, ShareRow, pct, toMonthBars } from "./akit";
+import { ChangeBadge, MonthBars, PeriodChips, ShareRow, euro0, pct, toMonthBars } from "./akit";
 import { categoryInfo, storeLabel } from "./bits";
 import { usePeriod } from "./period";
 
@@ -51,7 +51,7 @@ export function CategoryPage() {
               <p className="an-sentence" style={{ margin: 0 }}>
                 {d.amount > 0
                   ? t("an.catDetailSentence", { name: info.name, amount: formatEuro(d.amount) }) +
-                    (products[0]?.name ? t("an.catDetailTop", { name: products[0].name, amount: formatEuro(products[0].amount) }) : ".")
+                    (products[0]?.name ? t("an.catDetailTop", { name: products[0].name, amount: euro0(products[0].amount) }) : ".")
                   : t("an.catNothing")}
               </p>
               {info.hint && <span className="t-sm t-2">{info.hint}</span>}

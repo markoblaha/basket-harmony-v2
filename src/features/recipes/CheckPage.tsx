@@ -9,7 +9,7 @@ import { errorMessage } from "@/lib/errors";
 import { t, tn, type Key } from "@/i18n";
 import { useSaveRecipe, type RecipeDraft } from "./api";
 import { clearDraft, loadDraft } from "./cart";
-import { AiBadge } from "./common";
+import { AiBadge, NoTabScreen } from "./common";
 import { formatAmount, ingName, renderStep } from "./logic";
 
 const CATS = ["hlavne", "cestoviny", "polievky", "sladke", "ranajky", "salaty"] as const;
@@ -28,10 +28,12 @@ export function CheckPage() {
 
   if (!draft || !stored) {
     return (
-      <div className="stack">
-        <ScreenHeader onBack={() => navigate("/recipes")} title={t("rc.checkTitle")} />
-        <Empty title={t("rc.checkGone")} action={<button type="button" className="btn btn-soft" onClick={() => navigate("/recipes")}>{t("rc.backToRecipes")}</button>} />
-      </div>
+      <NoTabScreen>
+        <div className="rc-full-scroll">
+          <ScreenHeader onBack={() => navigate("/recipes")} title={t("rc.checkTitle")} />
+          <Empty title={t("rc.checkGone")} action={<button type="button" className="btn btn-soft" onClick={() => navigate("/recipes")}>{t("rc.backToRecipes")}</button>} />
+        </div>
+      </NoTabScreen>
     );
   }
 
@@ -65,7 +67,8 @@ export function CheckPage() {
   const sub = stored.from === "ai" ? t("rc.fromAi") : t(`rc.from.${stored.from}` as Key);
 
   return (
-    <div className="stack">
+    <NoTabScreen>
+      <div className="rc-full-scroll">
       <ScreenHeader onBack={() => navigate(-1)} title={t("rc.checkTitle")} sub={sub} right={draft.ai ? <AiBadge /> : undefined} />
       <div className="rc-check-wrap" style={{ top: 56 }}>
         <div className={cx("rc-check", !pending.length && "done")}>
@@ -185,12 +188,13 @@ export function CheckPage() {
         </section>
         <span className="t-xs t-3">{t("rc.sourceNote", { source: draft.source || sub })}</span>
       </div>
-      <div style={{ height: 120 }} />
-      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}>
+      <div style={{ height: 110 }} />
+      </div>
+      <div className="bottom-cta no-tab">
         <button type="button" className="btn btn-ink btn-lg btn-block" disabled={save.isPending || !draft.name.trim() || !draft.ingredients.length} onClick={doSave}>
           {pending.length ? t("rc.saveWithPending", { n: pending.length }) : t("rc.saveRecipe")}
         </button>
       </div>
-    </div>
+    </NoTabScreen>
   );
 }

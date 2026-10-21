@@ -338,4 +338,11 @@ export const skRecipes = {
   "rc.unit.hrst.few": "{n} hrste",
   "rc.unit.hrst.many": "{n} hrste",
   "rc.unit.hrst.other": "{n} hrstí",
+  "rc.draft": "Rozpracovaný nákup",
+  "rc.ingFor.one": "suroviny na recept",
+  "rc.ingFor.few": "suroviny na recepty",
+  "rc.ingFor.other": "suroviny na recepty",
+  "rc.selectionN.one": "Suroviny na recept",
+  "rc.selectionN.few": "Suroviny na recepty",
+  "rc.selectionN.other": "Suroviny na recepty",
 } as const;

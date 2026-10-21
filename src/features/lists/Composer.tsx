@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { useToast } from "@/components/toast";
 import { Keyboard, Mic, Plus } from "lucide-react";
 import { CatIcon, Stepper, haptic } from "@/components/kit";
 import { guessCategory, normalizeName } from "@/lib/categories";
@@ -13,7 +14,7 @@ export const UNITS = ["ks", "g", "kg", "ml", "l"] as const;
 /** Krok tlačidiel +/− podľa jednotky: kusy po 1, gramy po 50, kilá a litre po 0,5. */
 const stepFor = (u: string) => (u === "g" || u === "ml" ? 50 : u === "kg" || u === "l" ? 0.5 : 1);
 
-export type AddInput = { name: string; quantity: number | null; unit: string | null; note: string | null };
+export type AddInput = { name: string; quantity: number | null; unit: string | null; note: string | null; quiet?: boolean };
 
 /**
  * Pole na pridávanie (prototyp N3): názov s mikrofónom, počet (− 1 +), tlačidlo +,
@@ -40,12 +41,22 @@ export function Composer({
   const [dict, setDict] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const frequent = useFrequentItems(householdId);
+  const toast = useToast();
 
-  const speech = useSpeech((said) => {
+  // Nadiktovaná veta: všetky položky naraz, potom jedna hláška „Pridané hlasom: …“ (prototyp).
+  const speech = useSpeech(async (said) => {
+    const adds: Promise<AddOutcome>[] = [];
+    const names: string[] = [];
     for (const op of parseLocal(said)) {
-      if (op.op === "add") void onAdd({ name: op.name, quantity: op.quantity, unit: op.unit && op.unit !== "ks" ? op.unit : null, note: null });
-      else if (op.op === "remove") onRemove?.(op.target);
+      if (op.op === "add") {
+        names.push(op.name);
+        adds.push(onAdd({ name: op.name, quantity: op.quantity, unit: op.unit && op.unit !== "ks" ? op.unit : null, note: null, quiet: true }));
+      } else if (op.op === "remove") onRemove?.(op.target);
     }
+    if (!adds.length) return;
+    const done = await Promise.all(adds);
+    const ok = names.filter((_, i) => done[i] !== "FAILED");
+    if (ok.length) toast.show(t("ls.addedByVoice", { names: ok.join(", ") }), "success");
   });
 
   const suggestions = useMemo(() => {
@@ -107,8 +118,13 @@ export function Composer({
             <div className="transcript grow">
               {speech.interim ? (
                 <span className="fw-5">{speech.interim}</span>
+              ) : speech.error ? (
+                <span className="t-2">{t("ls.micBlocked")}</span>
               ) : (
-                <span className="t-2">{speech.error ? t("ls.micBlocked") : t("ls.listening")}</span>
+                <>
+                  <Wave height={18} />
+                  <span className="t-2">{t("ls.listening")}</span>
+                </>
               )}
             </div>
           </div>
@@ -213,5 +229,19 @@ export function Composer({
         </div>
       )}
     </div>
+  );
+}
+
+/** Zvlnená animácia počúvania (prototyp Wave). */
+function Wave({ height = 22, bars = 7 }: { height?: number; bars?: number }) {
+  return (
+    <span className="row g-4" style={{ height, color: "var(--red)", flex: "none" }} aria-hidden>
+      {Array.from({ length: bars }).map((_, i) => (
+        <span
+          key={i}
+          style={{ width: 4, height: "100%", borderRadius: 99, background: "currentColor", transformOrigin: "center", animation: `wave 1s ease-in-out ${i * 0.12}s infinite` }}
+        />
+      ))}
+    </span>
   );
 }

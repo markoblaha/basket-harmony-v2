@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Trash2, X } from "lucide-react";
-import { Stepper, haptic } from "@/components/kit";
+import { PersonAvatar, Stepper, haptic, type Person } from "@/components/kit";
 import { CategoryGlyph } from "@/components/CategoryIcon";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
@@ -9,7 +9,7 @@ import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
 import { formatEuro, t } from "@/i18n";
 import type { PriceHint } from "@/features/analytics/api";
-import { useDeleteItem, useUpdateItem, type Item } from "./api";
+import { useAddItem, useDeleteItem, useUpdateItem, type Item } from "./api";
 import { countOf, qtyLabel } from "./qty";
 
 /** Krok a minimum podľa jednotky: kusy po 1, gramy po 100, kilá a litre po 0,1. */
@@ -100,7 +100,7 @@ export function PlanList({
                 listId={listId}
                 item={it}
                 fresh={fresh.has(it.id)}
-                by={it.added_by && it.added_by !== me ? names?.get(it.added_by) : undefined}
+                by={it.added_by && it.added_by !== me ? { id: it.added_by, name: names?.get(it.added_by) ?? t("household.fallbackName") } : undefined}
                 hint={hints?.get(it.id)}
                 onEdit={() => onEdit(it)}
                 onSwiped={seen}
@@ -125,13 +125,14 @@ function ItemRow({
   listId: string;
   item: Item;
   fresh: boolean;
-  by?: string;
+  by?: Person;
   hint?: PriceHint;
   onEdit: () => void;
   onSwiped: () => void;
 }) {
   const update = useUpdateItem(listId);
   const remove = useDeleteItem(listId);
+  const restore = useRestoreItem();
   const toast = useToast();
   const [dx, setDx] = useState(0);
   const [gone, setGone] = useState(false);
@@ -158,15 +159,16 @@ function ItemRow({
     haptic(30);
     setGone(true);
     onSwiped();
+    // Riadok sa po odstránení odpojí – hlášku preto viažeme na sľub, nie na callback mutate.
     setTimeout(
       () =>
-        remove.mutate(item.id, {
-          onSuccess: () => toast.show(t("item.removed", { name: item.name })),
-          onError: (err) => {
+        remove
+          .mutateAsync(item.id)
+          .then(() => toast.show(t("item.removed", { name: item.name }), "info", { undo: () => restore(item) }))
+          .catch((err) => {
             setGone(false);
             toast.show(errorMessage(err), "error");
-          },
-        }),
+          }),
       420,
     );
   };
@@ -279,7 +281,10 @@ function ItemRow({
             )}
             {by && (
               <span className="row g-6 wrap ls-tags">
-                <span className="row g-4 t-xs t-violet fw-5">{t("item.addedBy", { name: shortName(by) })}</span>
+                <span className="row g-4 t-xs t-violet fw-5" title={t("item.addedBy", { name: by.name })}>
+                  <PersonAvatar person={by} size="sm" />
+                  {shortName(by.name)}
+                </span>
               </span>
             )}
           </div>
@@ -317,4 +322,14 @@ function ItemRow({
       </div>
     </div>
   );
+}
+
+/** „Vrátiť“ po odstránení: položka sa pridá znova s rovnakým množstvom, upresnením a kategóriou. */
+export function useRestoreItem() {
+  const add = useAddItem();
+  const toast = useToast();
+  return (item: Item) =>
+    add
+      .mutateAsync({ listId: item.list_id, name: item.name, quantity: item.quantity, unit: item.unit, note: item.note, categoryId: item.category_id })
+      .catch((err) => toast.show(errorMessage(err), "error"));
 }
