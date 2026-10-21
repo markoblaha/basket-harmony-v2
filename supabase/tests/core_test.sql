@@ -685,6 +685,7 @@ begin
   if err = 'INVALID_INPUT' then report := report || E'ok: neznáma voľba pri konci nákupu sa odmietne\n';
   else report := report || 'FAIL: finish_shopping DROP -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
   execute 'reset role';
+  select id into lb from public.shopping_lists where household_id = hb limit 1;  -- zoznam Borisovej domácnosti
   perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
   execute 'set local role authenticated';
   err := null; begin perform public.move_item(it2, lb); exception when others then err := sqlerrm; end;
@@ -702,6 +703,37 @@ begin
   err := null; begin perform public.attach_receipt_to_list(rc1, ls); exception when others then err := sqlerrm; end;
   if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepriradí doklad k cudziemu nákupu\n';
   else report := report || 'FAIL: cudzí attach -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- párovanie dokladu s nákupom
+  err := null; begin perform public.receipt_match_candidates(rc1); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nevidí kandidátov na párovanie\n';
+  else report := report || 'FAIL: cudzí receipt_match_candidates -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.dismiss_receipt_match(rc1); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nezruší párovanie dokladu\n';
+  else report := report || 'FAIL: cudzí dismiss_receipt_match -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.receipt_match_suggestions(h); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nevidí návrhy párovania\n';
+  else report := report || 'FAIL: cudzí receipt_match_suggestions -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  res := public.receipt_match_candidates(rc1);
+  if res @> jsonb_build_array(jsonb_build_object('list_id', ls, 'attached', true))
+     and exists (select 1 from jsonb_array_elements(res) e where e->>'list_id' = ls::text and e->'hit' ? 'Banány' and e->'extra' @> '[{"name":"PIVO"}]')
+  then report := report || E'ok: párovanie ukáže, čo sedí a čo je na doklade navyše\n';
+  else report := report || 'FAIL: receipt_match_candidates -> ' || coalesce(res::text, 'null') || E'\n'; fails := fails + 1; end if;
+  select * into rg from public.register_receipt(h, repeat('8', 64));
+  rc2 := rg.receipt_id;
+  perform public.dismiss_receipt_match(rc2);
+  select count(*) into n from public.receipts where id = rc2 and match_score = 0;
+  res := public.receipt_match_suggestions(h);
+  if n = 1 and jsonb_typeof(res) = 'array' and not res @> jsonb_build_array(jsonb_build_object('receipt_id', rc2))
+  then report := report || E'ok: „Bez nákupu“ doklad už nenavrhuje\n';
+  else report := report || E'FAIL: dismiss_receipt_match\n'; fails := fails + 1; end if;
+  perform public.dismiss_receipt_match(rc1);
+  select list_id into nl from public.receipts where id = rc1;
+  if nl = ls then report := report || E'ok: „Bez nákupu“ neodpojí už priradený doklad\n';
+  else report := report || E'FAIL: dismiss odpojil doklad\n'; fails := fails + 1; end if;
 
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';
