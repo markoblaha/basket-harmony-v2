@@ -45,8 +45,8 @@ export type Card = {
   options: Option[];
   sel: number | null;
   portions: number;
-  /** Odškrtnuté suroviny (kľúče riadkov). */
-  off: string[];
+  /** Odškrtnuté suroviny (kľúče riadkov); null = predvolené (soľ, olej… ako „mám doma“). */
+  off: string[] | null;
 };
 
 const MAX = 4;
@@ -141,7 +141,7 @@ export function useRecipeCards(householdId: string) {
       if (ref.current.some((c) => sameDish(c.query, query))) return;
       const { terms, filters } = interpretQuery(query);
       const local = recipes.all.filter((r) => terms.length && matchesTerms(r, terms) && matchesFilters(r, filters)).slice(0, 2);
-      const card: Card = { id: crypto.randomUUID(), query, seq, status: "loading", options: local.map(fromRecipe), sel: null, portions: 4, off: [] };
+      const card: Card = { id: crypto.randomUUID(), query, seq, status: "loading", options: local.map(fromRecipe), sel: null, portions: 4, off: null };
       ref.current = [card, ...ref.current];
       setCards(ref.current);
       fetchVariants(card.id);
@@ -169,8 +169,7 @@ export function useRecipeCards(householdId: string) {
       update(id, (c) => {
         const o = c.options[index];
         if (!o) return c;
-        const rows = o.recipe ? ingredientRows(o.recipe, o.recipe.portions) : [];
-        return { ...c, sel: index, portions: o.recipe?.portions ?? c.portions, off: rows.filter((r) => r.staple).map((r) => r.key) };
+        return { ...c, sel: index, portions: o.recipe?.portions ?? c.portions, off: null };
       }),
     [update],
   );
@@ -191,10 +190,23 @@ export function useRecipeCards(householdId: string) {
   };
 }
 
+/** Odškrtnuté suroviny – kým človek nič nezmení, sú to tie, ktoré zvyčajne máš doma. Suroviny AI prídu až po výbere, preto sa to počíta až tu. */
+export function offOf(card: Card): string[] {
+  return card.off ?? cardRows(card).filter((r) => r.staple).map((r) => r.key);
+}
+
+/** Zaškrtnúť/odškrtnúť surovinu. */
+export const toggled = (card: Card, key: string, off?: boolean): string[] => {
+  const cur = offOf(card);
+  const turnOff = off ?? !cur.includes(key);
+  return turnOff ? [...new Set([...cur, key])] : cur.filter((k) => k !== key);
+};
+
 /** Položky zoznamu zo zaškrtnutých surovín. */
 export function cardItems(card: Card): DraftItem[] {
+  const off = offOf(card);
   return cardRows(card)
-    .filter((r) => !card.off.includes(r.key))
+    .filter((r) => !off.includes(r.key))
     .map((r) => {
       const e = rowToItem(r);
       return {
@@ -243,7 +255,8 @@ export function RecipeCardView({
 }) {
   const sel = card.sel != null ? card.options[card.sel] : undefined;
   const rows = useMemo(() => cardRows(card), [card]);
-  const on = rows.filter((r) => !card.off.includes(r.key)).length;
+  const off = offOf(card);
+  const on = rows.filter((r) => !off.includes(r.key)).length;
   const skeletons = card.status === "loading" ? Math.max(0, MAX - card.options.length) : 0;
 
   return (
@@ -332,7 +345,7 @@ export function RecipeCardView({
               </div>
               <div className="v-rc-ings">
                 {rows.map((r) => {
-                  const checked = !card.off.includes(r.key);
+                  const checked = !off.includes(r.key);
                   return (
                     <button key={r.key} type="button" className={cx("v-rc-ing", !checked && "off")} onClick={() => onToggle(r.key)} aria-pressed={checked}>
                       <span className={cx("v-check", checked && "on")}>{checked && <Check size={14} strokeWidth={3} />}</span>

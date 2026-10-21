@@ -29,7 +29,7 @@ import { recipeCommand, splitCook } from "./recipeVoice";
 import { useSpeech } from "./useSpeech";
 import { recorderSupported, useRecorder } from "./useRecorder";
 import { VoiceCard } from "./VoiceRow";
-import { PlanRow, RecipeCardView, cardItems, cardPlan, cardRows, useRecipeCards, type Card } from "./VoiceRecipe";
+import { PlanRow, RecipeCardView, cardItems, cardPlan, cardRows, toggled, useRecipeCards, type Card } from "./VoiceRecipe";
 
 const cap = (s: string) => (s ? s[0]!.toLocaleUpperCase("sk-SK") + s.slice(1) : s);
 
@@ -247,7 +247,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
       else if (cmd.kind === "portions") cards.update(card.id, (c) => ({ ...c, portions: cmd.n }));
       else if (cmd.kind === "without" || cmd.kind === "with") {
         const key = rows[cmd.index]!.key;
-        cards.update(card.id, (c) => ({ ...c, off: cmd.kind === "without" ? [...new Set([...c.off, key])] : c.off.filter((k) => k !== key) }));
+        cards.update(card.id, (c) => ({ ...c, off: toggled(c, key, cmd.kind === "without") }));
       } else if (cmd.kind === "add") {
         if (card.sel == null) toast.show(t("voice.rc.pickFirst"));
         else addRecipe(card);
@@ -601,7 +601,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
                     active={c.id === active?.id}
                     onPick={(i) => cards.pick(c.id, i)}
                     onPortions={(p) => cards.update(c.id, (x) => ({ ...x, portions: p }))}
-                    onToggle={(key) => cards.update(c.id, (x) => ({ ...x, off: x.off.includes(key) ? x.off.filter((k) => k !== key) : [...x.off, key] }))}
+                    onToggle={(key) => cards.update(c.id, (x) => ({ ...x, off: toggled(x, key) }))}
                     onAdd={() => addRecipe(c)}
                     onClose={() => dropRecipe(c.id)}
                     onRetry={() => cards.retry(c.id)}
