@@ -228,13 +228,15 @@ export function usePlanRecipes(householdId: string) {
       if (error) throw error;
       return data as { list_id: string; items: number; requests: number };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: recipeKeys.plans(householdId) });
-      qc.invalidateQueries({ queryKey: ["lists"] });
-      qc.invalidateQueries({ queryKey: ["items"] });
-      qc.invalidateQueries({ queryKey: ["requests"] });
-      qc.invalidateQueries({ queryKey: ["list-stats"] });
-    },
+    // Počká na nové zoznamy – aplikácia hneď otvorí (aj novo vytvorený) zoznam.
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: recipeKeys.plans(householdId) }),
+        qc.invalidateQueries({ queryKey: ["lists"] }),
+        qc.invalidateQueries({ queryKey: ["items"] }),
+        qc.invalidateQueries({ queryKey: ["requests"] }),
+        qc.invalidateQueries({ queryKey: ["list-stats"] }),
+      ]),
   });
 }
 

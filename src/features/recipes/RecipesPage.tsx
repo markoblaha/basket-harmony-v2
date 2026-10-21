@@ -208,7 +208,7 @@ function Featured({ catalog, find }: { catalog: Recipe[]; find: (id: string) => 
   const recs = useMemo(() => {
     const since = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10);
     const recent = (products.data ?? []).filter((p) => p.last_date >= since).map((p) => p.name);
-    return recommendations(catalog, recent);
+    return { list: recommendations(catalog, recent), basedOnShopping: recent.length > 0 };
   }, [catalog, products.data]);
 
   const often = useMemo(() => {
@@ -229,14 +229,14 @@ function Featured({ catalog, find }: { catalog: Recipe[]; find: (id: string) => 
 
   const items =
     mode === "me"
-      ? recs.map(({ recipe, reason }) => ({ recipe, line: reason, icon: Sparkles }))
+      ? recs.list.map(({ recipe, reason }) => ({ recipe, line: reason, icon: Sparkles }))
       : often.map((x) => ({ recipe: x.recipe, line: t("rc.cookedTimes", { n: x.n, date: formatDateTime(x.last, { day: "numeric", month: "numeric" }) }), icon: Repeat }));
 
   useEffect(() => {
     setIdx(0);
     rail.current?.scrollTo({ left: 0 });
   }, [mode]);
-  if (!recs.length) return null;
+  if (!recs.list.length) return null;
 
   const goTo = (i: number) => {
     const el = rail.current;
@@ -268,7 +268,7 @@ function Featured({ catalog, find }: { catalog: Recipe[]; find: (id: string) => 
         <span className="section-title">{t("rc.forYou")}</span>
       )}
       <span className="t-xs t-2" style={{ marginTop: -4, padding: "0 4px" }}>
-        {mode === "me" ? t("rc.forYouSub") : t("rc.oftenSub")}
+        {mode === "often" ? t("rc.oftenSub") : recs.basedOnShopping ? t("rc.forYouSub") : t("rc.forYouSubNone")}
       </span>
       <div className="rc-rail" ref={rail} onScroll={onScroll}>
         {items.map(({ recipe, line, icon: I }) => (
