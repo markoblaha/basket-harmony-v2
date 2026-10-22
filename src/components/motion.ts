@@ -86,3 +86,25 @@ export function animateOut(el: HTMLElement | null, dir: -1 | 1 | 0, done: () => 
   a.onfinish = done;
   a.oncancel = done;
 }
+
+/**
+ * Riadok sa zbalí do nulovej výšky (aj s medzerou pod ním), potom `done` – ostatné sa plynulo prisunú
+ * ešte pred tým, než položka zmizne z dát, takže po odstránení už nič neskočí.
+ */
+export function collapseOut(el: HTMLElement | null, done: () => void) {
+  if (!el || reduceMotion()) return done();
+  const h = el.offsetHeight;
+  const gap = parseFloat(getComputedStyle(el.parentElement ?? el).rowGap) || 0;
+  el.style.overflow = "hidden";
+  const a = el.animate(
+    [
+      { height: `${h}px`, marginBottom: "0px", opacity: 1 },
+      { height: "0px", marginBottom: `${-gap}px`, opacity: 0 },
+    ],
+    { duration: 240, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" },
+  );
+  a.onfinish = done;
+  a.oncancel = () => {
+    el.style.overflow = "";
+  };
+}

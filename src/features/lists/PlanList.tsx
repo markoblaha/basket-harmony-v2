@@ -3,7 +3,7 @@ import { Minus, Plus, Trash2, X } from "lucide-react";
 import { PersonAvatar, Stepper, haptic, type Person } from "@/components/kit";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
-import { animateOut, useFlip } from "@/components/motion";
+import { animateOut, collapseOut, useFlip } from "@/components/motion";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
 import { formatEuro, t } from "@/i18n";
@@ -218,13 +218,22 @@ const ItemRow = memo(function ItemRow({ listId, item, fresh, by, hint, onEdit, o
     onSwiped();
     // Karta najprv odíde (grafickým čipom), až potom zmizne z dát – ostatné sa k sebe dokĺžu.
     animateOut(front.current, -1, () =>
-      remove
-        .mutateAsync(item.id)
-        .then(() => toast.show(t("item.removed", { name: item.name }), "info", { undo: () => restore(item) }))
-        .catch((err) => {
-          front.current?.getAnimations().forEach((a) => a.cancel());
-          toast.show(errorMessage(err), "error");
-        }),
+      collapseOut(row.current, () =>
+        remove
+          .mutateAsync(item.id)
+          .then(() => toast.show(t("item.removed", { name: item.name }), "info", { undo: () => restore(item) }))
+          .catch((err) => {
+            // Nepodarilo sa – riadok sa vráti na miesto.
+            for (const el of [front.current, row.current])
+              el?.getAnimations().forEach((a) => {
+                a.onfinish = a.oncancel = null; // zrušenie nesmie znova spustiť mazanie
+                a.cancel();
+              });
+            setZone("none");
+            place(0, true);
+            toast.show(errorMessage(err), "error");
+          }),
+      ),
     );
   };
   const armIdle = () => {
@@ -234,15 +243,24 @@ const ItemRow = memo(function ItemRow({ listId, item, fresh, by, hint, onEdit, o
 
   const zoneOf = (dx: number, w: number): Zone =>
     dx >= 64 ? "plus" : dx > 10 ? "right" : atMin && dx <= -w * 0.42 ? "del" : dx <= -64 && !atMin ? "minus" : dx < -10 ? "left" : "none";
+  const underR = useRef<HTMLDivElement>(null);
+  const underL = useRef<HTMLDivElement>(null);
+  /** Poloha karty + podklad pod ňou sa objavuje postupne s ťahom (priamo v štýle, bez Reactu). */
   const place = (dx: number, animate: boolean) => {
     const el = front.current;
     if (!el) return;
-    el.style.transition = animate ? "transform 260ms cubic-bezier(.2,.8,.2,1)" : "none";
+    el.style.transition = animate ? "transform 340ms cubic-bezier(.2,.9,.3,1.15)" : "none";
     el.style.transform = dx ? `translate3d(${dx}px,0,0)` : "";
+    for (const [u, on] of [[underR.current, dx > 0], [underL.current, dx < 0]] as const) {
+      if (!u) continue;
+      u.style.transition = animate ? "opacity 260ms ease-out" : "none";
+      u.style.opacity = on ? String(Math.min(1, Math.abs(dx) / 48)) : "0";
+    }
   };
 
   const handlers = {
     onPointerDown(e: React.PointerEvent) {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
       st.current = { x: e.clientX, y: e.clientY, moved: false, horiz: null, id: e.pointerId, dx: 0, w: row.current?.offsetWidth || 340, raf: 0 };
     },
     onPointerMove(e: React.PointerEvent) {
@@ -256,8 +274,9 @@ const ItemRow = memo(function ItemRow({ listId, item, fresh, by, hint, onEdit, o
         if (c.horiz) (e.currentTarget as HTMLElement).setPointerCapture?.(c.id);
       }
       if (!c.horiz) return;
-      const max = atMin ? c.w * 0.7 : 120;
-      const next = Math.max(-max, Math.min(120, ddx));
+      // Za hranicou +1 / −1 karta ide ďalej len s odporom (ako guma) – nie tvrdý doraz.
+      const rubber = (d: number, lim: number) => (Math.abs(d) <= lim ? d : Math.sign(d) * (lim + (Math.abs(d) - lim) * 0.3));
+      const next = rubber(ddx, ddx < 0 && atMin ? c.w * 0.75 : 96);
       const z = zoneOf(next, c.w);
       if (z !== zoneOf(c.dx, c.w)) {
         if (z === "plus" || z === "minus" || z === "del") haptic(8);
@@ -269,25 +288,25 @@ const ItemRow = memo(function ItemRow({ listId, item, fresh, by, hint, onEdit, o
         place(c.dx, false);
       });
     },
-    onPointerUp() {
+    onPointerUp(e: React.PointerEvent) {
       const c = st.current;
       st.current = null;
       if (!c) return;
       cancelAnimationFrame(c.raf);
       if (!c.moved) {
-        onEdit(item);
+        // Ťuk na množstvo alebo stepper rieši samotné tlačidlo; inde na karte = úprava položky.
+        if (!(e.target as HTMLElement).closest("button, .anim-pop")) onEdit(item);
+        return;
+      }
+      if (c.horiz && atMin && c.dx <= -c.w * 0.42) {
+        // Červený podklad ostáva „ostrý“, kým karta odletí a riadok sa zbalí.
+        place(c.dx, false);
+        del();
         return;
       }
       setZone("none");
       if (c.horiz && c.dx >= 64) change(step);
-      else if (c.horiz && c.dx <= -64) {
-        if (!atMin) change(-step);
-        else if (c.dx <= -c.w * 0.42) {
-          place(c.dx, false);
-          del();
-          return;
-        }
-      }
+      else if (c.horiz && c.dx <= -64 && !atMin) change(-step);
       place(0, true);
     },
     onPointerCancel() {
@@ -307,16 +326,14 @@ const ItemRow = memo(function ItemRow({ listId, item, fresh, by, hint, onEdit, o
 
   const label = qtyLabel(item.quantity, item.unit);
   const stepLabel = item.unit && item.unit !== "ks" && item.unit !== "bal" ? qtyLabel(step, item.unit) : "1";
-  const right = zone === "right" || zone === "plus";
-  const left = zone === "left" || zone === "minus" || zone === "del";
   return (
     <div className="ls-swipe ls-item" ref={row} data-flip={item.id}>
-      <div className="under ok" style={{ opacity: right ? 1 : 0 }}>
+      <div ref={underR} className="under ok" style={{ opacity: 0 }}>
         <span className={cx("ls-step", zone === "plus" && "on")}>
           <Plus size={16} strokeWidth={2.6} /> {stepLabel}
         </span>
       </div>
-      <div className={cx("under", atMin ? "del" : "minus", zone === "del" && "armed")} style={{ opacity: left ? 1 : 0 }}>
+      <div ref={underL} className={cx("under", atMin ? "del" : "minus", zone === "del" && "armed")} style={{ opacity: 0 }}>
         {atMin ? (
           <span className="ls-step">
             <Trash2 size={zone === "del" ? 20 : 17} /> {zone === "del" ? t("ls.releaseToDelete") : t("ls.pullToDelete")}
@@ -327,14 +344,21 @@ const ItemRow = memo(function ItemRow({ listId, item, fresh, by, hint, onEdit, o
           </span>
         )}
       </div>
-      <div ref={front} className={cx("front", fresh && "anim-flash")}>
+      <div
+        ref={front}
+        className={cx("front", fresh && "anim-flash")}
+        onPointerDown={handlers.onPointerDown}
+        onPointerMove={handlers.onPointerMove}
+        onPointerUp={handlers.onPointerUp}
+        onPointerCancel={handlers.onPointerCancel}
+      >
         <div className="ls-row ls-row2">
           <div
             className="grow stack g-2"
             role="button"
             tabIndex={0}
             aria-label={t("ls.rowAria", { name: item.name, qty: label, step: stepLabel })}
-            {...handlers}
+            onKeyDown={handlers.onKeyDown}
             style={{ minHeight: 44, justifyContent: "center", cursor: "pointer", touchAction: "pan-y" }}
           >
             <span className="t-body fw-5 ls-name">{item.name}</span>
