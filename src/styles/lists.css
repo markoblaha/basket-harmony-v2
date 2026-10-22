@@ -25,10 +25,19 @@
     border-radius: 26px 26px 0 0; background: var(--elevated); box-shadow: var(--sh-3);
     transition: bottom 180ms cubic-bezier(.2,.8,.2,1);
   }
-  .ls-dock.typing { border-radius: 22px 22px 0 0; padding-bottom: 8px; transition: none; }
-  /* Kým sa píše, spodná lišta zmizne – pole je prilepené ku klávesnici. */
-  .tabbar { transition: transform 220ms cubic-bezier(.2,.8,.2,1); }
-  body.kb-typing .tabbar { transform: translateY(110%); }
+  .ls-dock.typing { z-index: 45; border-radius: 22px 22px 0 0; padding-bottom: 8px; transition: none; }
+  /* Pod panelom až po klávesnicu je jeho farba – v zaoblených rohoch klávesnice nič nepresvitá. */
+  .ls-dock.typing::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 120px; background: var(--elevated); }
+  /* iPhone (iOS 26) kreslí nad klávesnicu plávajúci pásik ˄ ˅ ✓, ktorý web nevie skryť.
+     Necháme mu miesto vo farbe panelu, aby neprekrýval pole a vyzeral ako súčasť klávesnice. */
+  @supports (-webkit-touch-callout: none) and (anchor-name: --a) {
+    @media (max-width: 600px) { .ls-dock.typing { padding-bottom: 66px; } }
+  }
+  /* Kým sa píše, spodná lišta úplne zmizne – pole je prilepené ku klávesnici. */
+  .tabbar { transition: transform 220ms cubic-bezier(.2,.8,.2,1), visibility 0s; }
+  body.kb-typing .tabbar { transform: translateY(110%); visibility: hidden; transition: transform 220ms cubic-bezier(.2,.8,.2,1), visibility 0s 220ms; }
+  /* Rámik zamerania kreslí celé pole – vlastný obdĺžnik vstupu by bol druhý „štvorček“ v ňom. */
+  .ls-field input:focus, .ls-field input:focus-visible { outline: none; }
 
   .qd { display: flex; flex-direction: column; }
   .qd-head { display: flex; align-items: center; gap: 4px; height: 40px; }

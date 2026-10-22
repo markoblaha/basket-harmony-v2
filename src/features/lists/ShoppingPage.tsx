@@ -28,7 +28,7 @@ import {
   type ShoppingList,
 } from "./api";
 import type { FeedEntry } from "./useSmartAdd";
-import { Composer, useKeyboardInset } from "./Composer";
+import { Composer, useKeyboardEdge } from "./Composer";
 import { EditItemSheet } from "./EditItemSheet";
 import { ListActionsSheet } from "./ListActionsSheet";
 import { dayLabel, listDay } from "./dates";
@@ -90,7 +90,7 @@ export function ShoppingPage() {
   const [showPurchased, setShowPurchased] = useState(false);
   // Písanie: pole sa prilepí ku klávesnici, dok s dlaždicami aj spodná lišta sa schovajú.
   const [typing, setTyping] = useState(false);
-  const kb = useKeyboardInset(typing);
+  const kbEdge = useKeyboardEdge(typing);
   useEffect(() => {
     document.body.classList.toggle("kb-typing", typing);
     return () => document.body.classList.remove("kb-typing");
@@ -416,7 +416,7 @@ export function ShoppingPage() {
       <div
         ref={dockRef}
         className={cx("ls-dock fixed inset-x-0 mx-auto max-w-2xl", typing && "typing")}
-        style={typing ? { bottom: kb } : undefined}
+        style={typing && kbEdge != null ? { top: kbEdge, bottom: "auto", transform: "translateY(-100%)" } : undefined}
       >
         {!typing && <QuickDock householdId={household.id} items={all} onAdd={(name, count) => smartAdd({ name, quantity: count, unit: null, note: null })} />}
         <Composer

@@ -20,18 +20,19 @@ const CHIPS = 6;
 export type AddInput = { name: string; quantity: number | null; unit: string | null; note: string | null; quiet?: boolean };
 
 /**
- * Ako vysoko je klávesnica (iPhone ju kreslí cez stránku – pole by inak ostalo pod ňou).
- * Na Androide sa stránka zmenší sama, vtedy vyjde 0.
+ * Kde začína klávesnica (horný okraj viditeľnej časti stránky). iPhone kreslí klávesnicu cez stránku
+ * a výšku okna pritom hlási rôzne, preto sa meria priamo viditeľná oblasť – nie rozdiel výšok.
+ * Na Androide sa stránka zmenší sama, vtedy je to spodok obrazovky. Mimo písania null.
  */
-export function useKeyboardInset(active: boolean) {
-  const [inset, setInset] = useState(0);
+export function useKeyboardEdge(active: boolean) {
+  const [edge, setEdge] = useState<number | null>(null);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!active || !vv) {
-      setInset(0);
+      setEdge(null);
       return;
     }
-    const update = () => setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    const update = () => setEdge(Math.round(vv.offsetTop + vv.height));
     update();
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
@@ -40,7 +41,7 @@ export function useKeyboardInset(active: boolean) {
       vv.removeEventListener("scroll", update);
     };
   }, [active]);
-  return inset;
+  return edge;
 }
 
 /**
