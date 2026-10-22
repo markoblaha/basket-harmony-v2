@@ -43,6 +43,7 @@ export function PlanList({
   names,
   me,
   hints,
+  landed,
   onEdit,
 }: {
   listId: string;
@@ -50,6 +51,8 @@ export function PlanList({
   names: Map<string, string> | undefined;
   me: string;
   hints?: Map<string, PriceHint>;
+  /** Práve pridaná (alebo navýšená) položka – zoznam k nej dôjde a zasvieti ju. */
+  landed?: { id: string; n: number } | null;
   onEdit: (item: Item) => void;
 }) {
   const [showHint, setShowHint] = useState(() => !hintSeen());
@@ -77,6 +80,7 @@ export function PlanList({
   const swiped = useCallback(() => seenRef.current(), []);
   const box = useRef<HTMLDivElement>(null);
   useFlip(box);
+  useLandedRow(box, landed);
 
   return (
     <>
@@ -100,7 +104,7 @@ export function PlanList({
             key={it.id}
             listId={listId}
             item={it}
-            fresh={fresh.has(it.id)}
+            fresh={fresh.has(it.id) && it.id !== landed?.id}
             by={it.added_by && it.added_by !== me ? { id: it.added_by, name: names?.get(it.added_by) ?? t("household.fallbackName") } : undefined}
             hint={prices ? hints?.get(it.id) : undefined}
             onEdit={editItem}
@@ -110,6 +114,61 @@ export function PlanList({
       </div>
     </>
   );
+}
+
+/**
+ * Po pridaní: počká, kým riadok príde zo servera, dorolujte k nemu (nový je hore – zoznam vyjde
+ * úplne hore; navýšený sa vycentruje medzi hlavičkou a dokom) a až potom ho zasvieti.
+ */
+function useLandedRow(box: React.RefObject<HTMLDivElement | null>, landed: { id: string; n: number } | null | undefined) {
+  useEffect(() => {
+    if (!landed) return;
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const t0 = performance.now();
+    let raf = 0;
+    let timer = 0;
+    let done: (() => void) | null = null;
+    let row: HTMLElement | null = null;
+    const glow = () => {
+      if (!row) return;
+      row.classList.remove("ls-landed");
+      void row.offsetWidth; // znova spustiť animáciu aj pri opakovanom pridaní toho istého
+      row.classList.add("ls-landed");
+      const el = row;
+      window.setTimeout(() => el.classList.remove("ls-landed"), 2200);
+    };
+    const find = () => {
+      row = box.current?.querySelector<HTMLElement>(`[data-flip="${CSS.escape(landed.id)}"]`) ?? null;
+      if (!row) {
+        if (performance.now() - t0 < 4000) raf = requestAnimationFrame(find);
+        return;
+      }
+      const r = row.getBoundingClientRect();
+      const top = (document.querySelector("[data-list-head]")?.getBoundingClientRect().bottom ?? 0) + 8;
+      const bottom = (document.querySelector(".ls-dock")?.getBoundingClientRect().top ?? innerHeight) - 8;
+      if (r.top >= top && r.bottom <= bottom) return glow();
+      const first = row === box.current?.firstElementChild;
+      const target = first ? 0 : scrollY + r.top - (top + (bottom - top) / 2 - r.height / 2);
+      window.scrollTo({ top: Math.max(0, target), behavior: reduce ? "auto" : "smooth" });
+      if (reduce) return glow();
+      // Rozsvieti sa, keď rolovanie dobehne (staršie Safari nepozná „scrollend“ – preto aj časovač).
+      done = () => {
+        if (done) window.removeEventListener("scrollend", done);
+        done = null;
+        window.clearTimeout(timer);
+        glow();
+      };
+      window.addEventListener("scrollend", done);
+      timer = window.setTimeout(done, 700);
+    };
+    // Dva snímky: nech sa riadok najprv vloží a FLIP rozostúpi ostatné.
+    raf = requestAnimationFrame(() => (raf = requestAnimationFrame(find)));
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+      if (done) window.removeEventListener("scrollend", done);
+    };
+  }, [box, landed]);
 }
 
 type RowProps = {

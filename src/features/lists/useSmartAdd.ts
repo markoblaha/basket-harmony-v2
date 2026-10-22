@@ -22,11 +22,14 @@ export function useSmartAdd({
   items,
   someoneElseShopping,
   onFeed,
+  onLanded,
 }: {
   listId: string;
   items: Item[];
   someoneElseShopping: boolean;
   onFeed: (entry: Omit<FeedEntry, "id" | "out">) => void;
+  /** Riadok, do ktorého pridanie dopadlo (nový alebo navýšený) – zoznam k nemu dôjde a zasvieti ho. */
+  onLanded?: (itemId: string) => void;
 }) {
   const add = useAddItem();
   const update = useUpdateItem(listId);
@@ -59,6 +62,7 @@ export function useSmartAdd({
             patch: { quantity, ...(input.note ? { note: input.note } : {}) },
           });
           const before = { quantity: existing.quantity, note: existing.note };
+          onLanded?.(existing.id);
           if (!input.quiet)
             onFeed({
               name: existing.name,
@@ -76,6 +80,7 @@ export function useSmartAdd({
 
       try {
         const result = await add.mutateAsync({ listId, name, quantity: input.quantity ?? null, unit, note: input.note ?? null });
+        if (result.kind === "ITEM") onLanded?.(result.id);
         if (!input.quiet)
           onFeed({
             name,
@@ -90,6 +95,6 @@ export function useSmartAdd({
         return "FAILED";
       }
     },
-    [add, update, remove, items, listId, someoneElseShopping, onFeed, toast],
+    [add, update, remove, items, listId, someoneElseShopping, onFeed, onLanded, toast],
   );
 }

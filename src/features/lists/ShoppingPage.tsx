@@ -144,7 +144,10 @@ export function ShoppingPage() {
   );
   const pendingForMe = (requests.data ?? []).filter((r) => r.status === "PENDING" && r.requested_for === me);
   const myRequests = (requests.data ?? []).filter((r) => r.requested_by === me);
-  const smartAdd = useSmartAdd({ listId: listId ?? "none", items: all, someoneElseShopping: someoneElse, onFeed: feedPush });
+  // Posledné pridanie: zoznam k riadku dôjde a zasvieti ho (n = aj opakované pridanie toho istého).
+  const [landed, setLanded] = useState<{ id: string; n: number } | null>(null);
+  const onLanded = useCallback((id: string) => setLanded((l) => ({ id, n: (l?.n ?? 0) + 1 })), []);
+  const smartAdd = useSmartAdd({ listId: listId ?? "none", items: all, someoneElseShopping: someoneElse, onFeed: feedPush, onLanded });
 
   async function startShopping() {
     if (iAmShopping) {
@@ -255,7 +258,7 @@ export function ShoppingPage() {
 
   return (
     <div className="stack">
-      <div className="sticky top-[env(safe-area-inset-top)] z-20">
+      <div className="sticky top-[env(safe-area-inset-top)] z-20" data-list-head>
         <header
           className="hdr with-back"
           onPointerDown={(e) => {
@@ -357,7 +360,7 @@ export function ShoppingPage() {
         ) : open.length === 0 && recent.length === 0 ? (
           <Empty icon={ShoppingCart} title={t("ls.listEmpty")} text={t("ls.listEmptyText")} />
         ) : (
-          <PlanList listId={listId} items={open} names={names} me={me} hints={hints.data} onEdit={setEditing} />
+          <PlanList listId={listId} items={open} names={names} me={me} hints={hints.data} landed={landed} onEdit={setEditing} />
         )}
 
         {recent.length > 0 && (
