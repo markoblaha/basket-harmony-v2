@@ -36,6 +36,10 @@ export type Settings = {
   storeOrder: string[];
   /** Ktoré upozornenia v appke chcem dostávať. */
   notif: Record<NotifKind, boolean>;
+  /** Rýchle pridanie v zozname: rozbalené, záložka a či sa má otvárať s obľúbenými. */
+  quickOpen: boolean;
+  quickTab: "auto" | "fav";
+  quickFavFirst: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -51,6 +55,9 @@ export const DEFAULT_SETTINGS: Settings = {
   favStores: ["Lidl", "Kaufland", "Tesco", "DM"],
   storeOrder: [],
   notif: { start: true, request: true, reply: true, unavailable: true, end: true, receiptMissing: true, receiptRead: true, receiptMatch: true },
+  quickOpen: true,
+  quickTab: "auto",
+  quickFavFirst: false,
 };
 
 function read(): Settings {

@@ -1,11 +1,9 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, Trash2, X } from "lucide-react";
 import { PersonAvatar, Stepper, haptic, type Person } from "@/components/kit";
-import { CategoryGlyph } from "@/components/CategoryIcon";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { animateOut, useFlip } from "@/components/motion";
-import { category, categoryOrder } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
 import { formatEuro, t } from "@/i18n";
@@ -35,7 +33,7 @@ function markHintSeen() {
 }
 
 /**
- * Položky zoznamu pri plánovaní (prototyp N3): po kategóriách, každý riadok
+ * Položky zoznamu pri plánovaní: jednoduchý zoznam, najnovšie hore (kategórie až v nákupe), každý riadok
  * potiahnutím doprava +1, doľava −1; pri poslednom kuse dlhší ťah doľava odstráni.
  * Ťuk na riadok = úprava, ťuk na množstvo = − / + na pár sekúnd.
  */
@@ -80,10 +78,6 @@ export function PlanList({
   const box = useRef<HTMLDivElement>(null);
   useFlip(box);
 
-  const groups = new Map<string, Item[]>();
-  for (const i of items) groups.set(i.category_id, [...(groups.get(i.category_id) ?? []), i]);
-  const ordered = [...groups.entries()].sort((a, b) => categoryOrder(a[0]) - categoryOrder(b[0]));
-
   return (
     <>
       {showHint && (
@@ -99,30 +93,20 @@ export function PlanList({
           </button>
         </div>
       )}
-      <div ref={box} className="stack g-20">
-      {ordered.map(([cat, group]) => (
-        <section key={cat} className="stack g-6" data-flip={`cat:${cat}`}>
-          <div className="ls-cat-head">
-            <CategoryGlyph id={cat} className="size-[15px]" />
-            {category(cat).name}
-            <span className="t-3 num">{group.length}</span>
-          </div>
-          <div className="cells">
-            {group.map((it) => (
-              <ItemRow
-                key={it.id}
-                listId={listId}
-                item={it}
-                fresh={fresh.has(it.id)}
-                by={it.added_by && it.added_by !== me ? { id: it.added_by, name: names?.get(it.added_by) ?? t("household.fallbackName") } : undefined}
-                hint={prices ? hints?.get(it.id) : undefined}
-                onEdit={editItem}
-                onSwiped={swiped}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {/* Pri plánovaní jednoduchý zoznam v poradí pridania (najnovšie hore) – kategórie až pri nákupe. */}
+      <div ref={box} className="ls-flat">
+        {items.map((it) => (
+          <ItemRow
+            key={it.id}
+            listId={listId}
+            item={it}
+            fresh={fresh.has(it.id)}
+            by={it.added_by && it.added_by !== me ? { id: it.added_by, name: names?.get(it.added_by) ?? t("household.fallbackName") } : undefined}
+            hint={prices ? hints?.get(it.id) : undefined}
+            onEdit={editItem}
+            onSwiped={swiped}
+          />
+        ))}
       </div>
     </>
   );

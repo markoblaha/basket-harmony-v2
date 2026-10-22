@@ -68,6 +68,21 @@ export function categoryOrder(id: string): number {
   return ORDER.get(id) ?? ORDER.get("other")!;
 }
 
+/**
+ * Poradie kategórií počas nákupu = najčastejšie usporiadanie supermarketov (Lidl, Kaufland, Billa, Tesco…):
+ * ovocie a zelenina pri vchode → pečivo → chladené (mäso, lahôdky, mliečne) → trvanlivé → káva a sladkosti
+ * → nápoje → mrazené (takmer na konci, aby sa neroztopili) → drogéria a domácnosť → ostatné.
+ */
+const ROUTE = [
+  "produce", "bakery", "meat_fish", "deli_chilled", "dairy_eggs", "groceries", "pantry", "breakfast", "snacks_sweets",
+  "beverages", "alcohol", "frozen", "personal_care", "health", "baby", "household_cleaning", "pet", "home",
+  "clothing", "toys_hobby", "electronics",
+];
+const ROUTE_ORDER = new Map<string, number>(ROUTE.map((id, i) => [id, i]));
+export function storeRouteOrder(id: string): number {
+  return ROUTE_ORDER.get(id) ?? ROUTE.length + categoryOrder(id);
+}
+
 export function category(id: string): CategoryInfo {
   return BY_ID.get(id) ?? BY_ID.get("other")!;
 }

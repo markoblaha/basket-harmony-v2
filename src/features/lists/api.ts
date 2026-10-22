@@ -360,6 +360,22 @@ export function useFrequentItems(householdId: string) {
   });
 }
 
+/**
+ * „Istý nákup“ – produkty, ktoré domácnosť kupuje pravidelne a sú práve na rade
+ * (výpočet je v databáze, staple_items). Pri krátkej histórii je prázdne – vtedy sa použijú najčastejšie.
+ */
+export function useStapleItems(householdId: string) {
+  return useQuery({
+    queryKey: [...listKeys.frequent(householdId), "staples"],
+    queryFn: async (): Promise<FrequentItem[]> => {
+      const { data, error } = await supabase.rpc("staple_items", { p_household_id: householdId, p_limit: 12 });
+      if (error) throw error;
+      return (data ?? []).map((r) => ({ name: r.name, times: 0, category_id: r.category_id }));
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
 /** Moje obľúbené dlaždice (každý člen má vlastné). */
 export function useFavoriteTiles(householdId: string) {
   return useQuery({

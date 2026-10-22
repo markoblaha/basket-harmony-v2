@@ -2,4 +2,103 @@
 @layer components {
   /* Kolieska „Číta sa“ v Histórii nákupov (prototyp mal prázdny prvok – tu je viditeľné). */
   .ls-spin { display: inline-block; flex: none; border-radius: 999px; border: 2px solid currentColor; border-right-color: transparent; }
+
+  /* ------------------------------------------------------------- plánovanie: jednoduchý zoznam (najnovšie hore) */
+  .ls-flat { display: flex; flex-direction: column; gap: 8px; }
+  .ls-flat > .ls-item { border-radius: 18px; background: var(--surface); box-shadow: var(--sh-1); }
+
+  /* „Nakúpiť“ v hlavičke zoznamu */
+  .hdr-go {
+    flex: none; display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border-radius: 999px;
+    background: var(--ink); color: var(--on-ink); font-size: 14px; font-weight: 650; transition: transform 120ms, opacity 150ms;
+  }
+  .hdr-go:active { transform: scale(0.95); }
+  .hdr-go:disabled { opacity: 0.4; }
+  .hdr-go .num { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; display: grid; place-items: center; font-size: 12px; background: color-mix(in srgb, var(--on-ink) 18%, transparent); }
+  .hdr-go.soft { background: var(--sunken); color: var(--text); }
+  .hdr-go.live { background: var(--violet-soft); color: var(--violet); }
+
+  /* ------------------------------------------------------------- dok pri palci (rýchle pridanie + pole) */
+  .ls-dock {
+    z-index: 30; bottom: calc(60px + max(10px, env(safe-area-inset-bottom)));
+    margin-left: auto; margin-right: auto; padding: 8px 12px 10px;
+    border-radius: 26px 26px 0 0; background: var(--elevated); box-shadow: var(--sh-3);
+    transition: bottom 180ms cubic-bezier(.2,.8,.2,1);
+  }
+  .ls-dock.typing { border-radius: 22px 22px 0 0; padding-bottom: 8px; transition: none; }
+  /* Kým sa píše, spodná lišta zmizne – pole je prilepené ku klávesnici. */
+  .tabbar { transition: transform 220ms cubic-bezier(.2,.8,.2,1); }
+  body.kb-typing .tabbar { transform: translateY(110%); }
+
+  .qd { display: flex; flex-direction: column; }
+  .qd-head { display: flex; align-items: center; gap: 4px; height: 40px; }
+  .qd-seg { display: flex; padding: 3px; border-radius: 12px; background: var(--sunken); }
+  .qd-seg button { height: 32px; padding: 0 12px; border-radius: 9px; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--text-2); transition: background-color 180ms, color 180ms, box-shadow 180ms; }
+  .qd-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgb(0 0 0 / 0.14); }
+  .qd-star { color: #e3a200; }
+  .qd-more { display: inline-flex; align-items: center; gap: 3px; height: 34px; padding: 0 10px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--ink); }
+  .qd-body { animation: qd-up 260ms cubic-bezier(.2,.8,.2,1) backwards; }
+  .qd-empty { display: block; padding: 4px 4px 8px; }
+
+  /* 5 štvorcových dlaždíc: ikona kategórie v strede, názov pod ňou */
+  .qd-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 6px 0 4px; }
+  .qd-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 2px 0; animation: qd-in 340ms cubic-bezier(.2,.8,.2,1) backwards; transition: transform 120ms ease-out; }
+  .qd-tile:active { transform: scale(0.93); }
+  .qd-sq {
+    position: relative; overflow: hidden; width: 58px; height: 58px; border-radius: 19px; display: grid; place-items: center;
+    background: oklch(0.93 0.045 var(--h)); color: oklch(0.42 0.09 var(--h));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6); transition: background-color 200ms, color 200ms;
+  }
+  [data-theme="dark"] .qd-sq { background: oklch(0.31 0.05 var(--h)); color: oklch(0.86 0.08 var(--h)); box-shadow: none; }
+  .qd-tile.on .qd-sq { background: var(--ink); color: var(--on-ink); }
+  .qd-nm { max-width: 70px; min-height: 28px; font-size: 11.5px; line-height: 14px; font-weight: 600; text-align: center; color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* Bubliny: mriežka 3 stĺpcov, všetky rovnako široké aj vysoké; dlhý názov sa zalomí do 2 riadkov */
+  .qd-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 8px 0; }
+  .qd-drop { border-top: 1px solid var(--line); animation: qd-up 260ms cubic-bezier(.2,.8,.2,1) backwards; }
+  .qd-chip {
+    position: relative; overflow: hidden; height: 44px; min-width: 0; border-radius: 13px; padding: 0 8px;
+    display: flex; align-items: center; justify-content: center; gap: 5px; text-align: center;
+    background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--line);
+    animation: qd-in 320ms cubic-bezier(.2,.8,.2,1) backwards; transition: transform 120ms ease-out, background-color 200ms, color 200ms;
+  }
+  .qd-chip:active { transform: scale(0.95); }
+  .qd-chip.big { height: 48px; border-radius: 14px; box-shadow: var(--sh-1); }
+  .qd-chip.on { background: var(--ink); color: var(--on-ink); box-shadow: none; }
+  .qd-chip.ok { background: var(--accent-soft); color: var(--accent-text); }
+  .qd-chip.picked { background: var(--ink); color: var(--on-ink); box-shadow: none; }
+  .qd-edit { color: var(--ink); background: transparent; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 35%, transparent); font-size: 13px; font-weight: 600; }
+  .qd-cl { font-size: 13px; line-height: 15px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .qd-n { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; animation: qd-pop 300ms cubic-bezier(.2,.9,.3,1.4); }
+  .qd-sq .qd-n { font-size: 20px; }
+  .qd-chip .qd-n { font-size: 14px; }
+  /* Odpočet 2 s do pridania – prúžok sa zmenšuje (transform, bez prekresľovania) */
+  .qd-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--success-solid, var(--accent)); transform-origin: left; animation: qd-bar 2s linear forwards; }
+
+  /* ------------------------------------------------------------- pole na písanie */
+  .ls-composer2 { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+  .ls-composer2 .ls-field { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); border-radius: 16px; min-height: 52px; }
+  .ls-composer2 .ls-field.on, .ls-composer2 .ls-field:focus-within { box-shadow: inset 0 0 0 2px var(--ink); }
+  .ls-composer2 .qc-plus { color: var(--ink); margin-right: 8px; flex: none; }
+  .qc-top { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+  .qc-done { height: 32px; padding: 0 14px; border-radius: 99px; background: var(--ink); color: var(--on-ink); font-size: 13.5px; font-weight: 650; }
+  .qc-chips { padding: 0; grid-template-rows: repeat(2, 44px); }
+  .qc-empty { height: 44px; border-radius: 13px; box-shadow: inset 0 0 0 1.5px var(--line); }
+  .qc-qty { flex: none; height: 32px; padding: 0 10px; margin-right: 6px; border-radius: 10px; display: grid; place-items: center; font-size: 14px; font-weight: 700;
+    background: var(--accent-soft); color: var(--accent-text); animation: qd-pop 260ms cubic-bezier(.2,.9,.3,1.4); }
+  .qc-add { flex: none; height: 52px; min-width: 52px; padding: 0; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--sunken); color: var(--text-3); font-size: 15px; font-weight: 700; transition: background-color 180ms, color 180ms, padding 180ms; }
+  .qc-add.go { background: var(--ink); color: var(--on-ink); padding: 0 16px; }
+
+  /* ------------------------------------------------------------- nákup: kategórie sa postupne vynoria */
+  .ls-sec-in { animation: qd-up 380ms cubic-bezier(.2,.8,.2,1) backwards; }
+
+  @keyframes qd-in { 0% { opacity: 0; transform: scale(.6); } 70% { opacity: 1; transform: scale(1.05); } 100% { opacity: 1; transform: none; } }
+  @keyframes qd-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes qd-pop { 0% { transform: scale(.5); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+  @keyframes qd-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+  @media (prefers-reduced-motion: reduce) {
+    .qd-tile, .qd-chip, .qd-body, .qd-drop, .ls-sec-in, .qd-n, .qc-qty { animation: none; }
+  }
 }

@@ -813,6 +813,9 @@ begin
   get diagnostics n = row_count;
   if n = 0 then report := report || E'ok: cudzí nezmení cudzí recept\n';
   else report := report || E'FAIL: cudzí zmenil recept\n'; fails := fails + 1; end if;
+  select count(*) into n from public.staple_items(h, 20);
+  if n = 0 then report := report || E'ok: cudzí nevidí istý nákup inej domácnosti\n';
+  else report := report || E'FAIL: cudzí vidí staple_items\n'; fails := fails + 1; end if;
 
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';

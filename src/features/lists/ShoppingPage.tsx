@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
-import { Camera, Check, ChevronDown, PackageX, ChevronLeft, ChevronUp, Ellipsis, Lock, Plus, Receipt, ShoppingCart } from "lucide-react";
+import { Camera, Check, ChevronDown, PackageX, ChevronLeft, ChevronUp, Ellipsis, Plus, Receipt, ShoppingCart } from "lucide-react";
 import { ErrorState, Spinner, cx } from "@/components/ui";
-import { Avatars, BottomSheet, Empty, SheetHeader, StoreBadge, type Person } from "@/components/kit";
+import { BottomSheet, Empty, SheetHeader, StoreBadge, type Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
@@ -28,12 +28,12 @@ import {
   type ShoppingList,
 } from "./api";
 import type { FeedEntry } from "./useSmartAdd";
-import { Composer } from "./Composer";
+import { Composer, useKeyboardInset } from "./Composer";
 import { EditItemSheet } from "./EditItemSheet";
 import { ListActionsSheet } from "./ListActionsSheet";
 import { dayLabel, listDay } from "./dates";
 import { PlanList } from "./PlanList";
-import { QuickTiles } from "./QuickTiles";
+import { QuickDock } from "./QuickDock";
 import { MyRequests, PendingRequests } from "./Requests";
 import { ShoppingMode } from "./ShoppingMode";
 import { sameProduct } from "./qty";
@@ -88,6 +88,23 @@ export function ShoppingPage() {
   const [switching, setSwitching] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [showPurchased, setShowPurchased] = useState(false);
+  // Písanie: pole sa prilepí ku klávesnici, dok s dlaždicami aj spodná lišta sa schovajú.
+  const [typing, setTyping] = useState(false);
+  const kb = useKeyboardInset(typing);
+  useEffect(() => {
+    document.body.classList.toggle("kb-typing", typing);
+    return () => document.body.classList.remove("kb-typing");
+  }, [typing]);
+  // Dok je pevne dole – pod zoznamom necháme toľko miesta, koľko zaberá.
+  const dockRef = useRef<HTMLDivElement>(null);
+  const [dockH, setDockH] = useState(260);
+  useEffect(() => {
+    const el = dockRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setDockH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
   const swipeX = useRef<number | null>(null);
   const [search, setSearch] = useSearchParams();
   const watching = search.get("sledovat") === "1";
@@ -268,33 +285,38 @@ export function ShoppingPage() {
               </span>
               <ChevronDown size={16} className="t-3" style={{ flex: "none" }} />
             </span>
-            <span className="sub">
+            <span className="sub ellipsis" style={{ display: "block" }}>
               {openLists.length > 1 && idx >= 0 ? t("ls.listOf", { n: idx + 1, total: openLists.length }) : tn("shop.itemCount", open.length)}
               {recipeNames.length > 0 ? t("ls.forRecipes", { names: recipeNames.join(", ") }) : ""}
             </span>
           </button>
-          {list.is_private ? (
-            <span className="badge b-gray">
-              <Lock size={11} />
-              {t("trip.onlyMe")}
-            </span>
+          {someoneElse ? (
+            <button type="button" className="hdr-go live" onClick={() => setSearch({ sledovat: "1" })} aria-label={t("ls.watchShopper", { name: shortName(shopperName ?? "") })}>
+              <span className="live" />
+              {t("ls.watchShort")}
+            </button>
+          ) : !iAmShopping && mySessionElsewhere ? (
+            <button type="button" className="hdr-go soft" onClick={() => navigate(`/lists/${mySessionElsewhere.list_id}`)} aria-label={t("ls.finishFirst", { name: elsewhereList?.name ?? "" })}>
+              <ShoppingCart size={16} />
+              {t("ls.otherTrip")}
+            </button>
           ) : (
-            <Avatars people={people} max={3} />
+            <button
+              type="button"
+              className="hdr-go"
+              disabled={start.isPending || (!iAmShopping && !open.length)}
+              onClick={startShopping}
+              aria-label={iAmShopping ? t("shop.continue") : t("ls.startWith", { count: tn("shop.itemCount", open.length) })}
+            >
+              <ShoppingCart size={16} />
+              {iAmShopping ? t("ls.continueShort") : t("ls.shopShort")}
+              {!iAmShopping && open.length > 0 && <span className="num">{open.length}</span>}
+            </button>
           )}
           <button type="button" className="ibtn" aria-label={t("trip.edit")} onClick={() => setActionsOpen(true)}>
             <Ellipsis size={20} />
           </button>
         </header>
-        <Composer
-          key={list.id}
-          householdId={household.id}
-          requestMode={someoneElse}
-          onAdd={smartAdd}
-          onRemove={(name) => {
-            const it = open.find((i) => sameProduct(i.name, name) || normalizeName(i.name).startsWith(normalizeName(name)));
-            if (it) remove.mutate(it.id, { onSuccess: () => toast.show(t("item.removed", { name: it.name })), onError: (err) => toast.show(errorMessage(err), "error") });
-          }}
-        />
       </div>
 
       <div className="stack g-20 px" style={{ paddingTop: 14 }}>
@@ -325,13 +347,6 @@ export function ShoppingPage() {
           </div>
         )}
         {iAmShopping && interrupted && <PendingRequests requests={pendingForMe} names={names} listId={listId} />}
-
-        <QuickTiles
-          householdId={household.id}
-          items={all}
-          onFeed={feedPush}
-          onAdd={(name, count) => void smartAdd({ name, quantity: count, unit: null, note: null })}
-        />
 
         {someoneElse && <MyRequests requests={myRequests} shopperName={shopperName ?? ""} />}
 
@@ -396,24 +411,27 @@ export function ShoppingPage() {
           </div>
         )}
       </div>
-      <div style={{ height: 180 }} />
+      <div style={{ height: dockH + 24 }} />
 
-      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}>
-          {someoneElse ? (
-            <button type="button" className="btn btn-lg btn-block" style={{ background: "var(--violet-soft)", color: "var(--violet)" }} onClick={() => setSearch({ sledovat: "1" })}>
-              <span className="live" />
-              {t("ls.watchShopper", { name: shortName(shopperName ?? "") })}
-            </button>
-          ) : !iAmShopping && mySessionElsewhere ? (
-            <button type="button" className="btn btn-soft btn-lg btn-block" onClick={() => navigate(`/lists/${mySessionElsewhere.list_id}`)}>
-              {t("ls.finishFirst", { name: elsewhereList?.name ?? "" })}
-            </button>
-          ) : (
-            <button type="button" className="btn btn-ink btn-lg btn-block" disabled={start.isPending || (!iAmShopping && !open.length)} onClick={startShopping}>
-              <ShoppingCart size={19} />
-              {iAmShopping ? t("shop.continue") : t("ls.startWith", { count: tn("shop.itemCount", open.length) })}
-            </button>
-          )}
+      <div
+        ref={dockRef}
+        className={cx("ls-dock fixed inset-x-0 mx-auto max-w-2xl", typing && "typing")}
+        style={typing ? { bottom: kb } : undefined}
+      >
+        {!typing && <QuickDock householdId={household.id} items={all} onAdd={(name, count) => smartAdd({ name, quantity: count, unit: null, note: null })} />}
+        <Composer
+          key={list.id}
+          householdId={household.id}
+          items={all}
+          requestMode={someoneElse}
+          typing={typing}
+          onTyping={setTyping}
+          onAdd={smartAdd}
+          onRemove={(name) => {
+            const it = open.find((i) => sameProduct(i.name, name) || normalizeName(i.name).startsWith(normalizeName(name)));
+            if (it) remove.mutate(it.id, { onSuccess: () => toast.show(t("item.removed", { name: it.name })), onError: (err) => toast.show(errorMessage(err), "error") });
+          }}
+        />
       </div>
 
       <EditItemSheet

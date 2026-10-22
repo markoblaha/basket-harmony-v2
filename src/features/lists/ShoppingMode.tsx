@@ -5,7 +5,7 @@ import { Avatars, BottomSheet, CatIcon, Cell, ScreenHeader, SheetHeader, Stepper
 import { useToast } from "@/components/toast";
 import { animateOut, useFlip } from "@/components/motion";
 import { cx } from "@/components/ui";
-import { category, categoryOrder, guessCategory, normalizeName } from "@/lib/categories";
+import { category, guessCategory, normalizeName, storeRouteOrder } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
 import { formatCalendarDate, formatDateTime, formatEuro, formatNumber, t, tn } from "@/i18n";
@@ -75,6 +75,7 @@ export function ShoppingMode({
   const [dismissed, setDismissed] = useState(false);
   const [showDone, setShowDone] = useState(true);
   const [menu, setMenu] = useState<Item | null>(null);
+  const [typingReq, setTypingReq] = useState(false);
 
   const since = new Date(session.started_at).getTime();
   const open = useMemo(() => items.filter((i) => i.status === "OPEN"), [items]);
@@ -110,7 +111,7 @@ export function ShoppingMode({
   const groups = useMemo(() => {
     const byCat = new Map<string, Item[]>();
     for (const i of open) byCat.set(i.category_id, [...(byCat.get(i.category_id) ?? []), i]);
-    return [...byCat.entries()].sort(([a], [b]) => categoryOrder(a) - categoryOrder(b));
+    return [...byCat.entries()].sort(([a], [b]) => storeRouteOrder(a) - storeRouteOrder(b));
   }, [open]);
 
   const bought = done.filter((i) => i.status === "PURCHASED");
@@ -140,7 +141,7 @@ export function ShoppingMode({
           </div>
         </div>
       )}
-      {!shopper && <Composer householdId={householdId} requestMode onAdd={onAdd} />}
+      {!shopper && <Composer householdId={householdId} items={items} requestMode typing={typingReq} onTyping={setTypingReq} onAdd={onAdd} />}
 
       <div className="scroll">
         <div ref={flipBox} className="stack g-16 px" style={{ paddingTop: 8 }}>
@@ -153,8 +154,9 @@ export function ShoppingMode({
               <span className="t-sm t-2">{shopper ? t("ls.allDoneShopper") : t("ls.allDoneWatcher", { name: shopperName })}</span>
             </div>
           ) : (
-            groups.map(([cat, group]) => (
-              <section key={cat} className="stack g-6" data-flip={`cat:${cat}`}>
+            groups.map(([cat, group], gi) => (
+              // Pri štarte nákupu sa kategórie vynárajú postupne v poradí trasy obchodom.
+              <section key={cat} className="stack g-6 ls-sec-in" data-flip={`cat:${cat}`} style={{ animationDelay: `${Math.min(gi * 55, 440)}ms` }}>
                 <div className="ls-cat-head">
                   <CatIcon id={cat} size="sm" />
                   {category(cat).name}

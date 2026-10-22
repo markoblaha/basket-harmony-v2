@@ -451,6 +451,10 @@ export type Database = {
         Args: { p_household_id: string; p_limit?: number };
         Returns: { category_id: string; name: string; times: number }[];
       };
+      staple_items: {
+        Args: { p_household_id: string; p_limit?: number };
+        Returns: { name: string; category_id: string; score: number; share: number; due: number }[];
+      };
       remove_member: { Args: { p_household_id: string; p_user_id: string }; Returns: undefined };
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };
       start_shopping: { Args: { p_list_id: string }; Returns: SessionRow };

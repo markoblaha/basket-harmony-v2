@@ -1,49 +1,82 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/toast";
 import { Keyboard, Mic, Plus } from "lucide-react";
-import { CatIcon, Stepper, haptic } from "@/components/kit";
-import { guessCategory, normalizeName } from "@/lib/categories";
-import { parseItemInput } from "@/lib/parseItem";
+import { haptic } from "@/components/kit";
+import { cx } from "@/components/ui";
+import { normalizeName } from "@/lib/categories";
+import { formatQuantity, parseItemInput } from "@/lib/parseItem";
 import { t } from "@/i18n";
 import { parseLocal } from "@/features/voice/parse";
 import { useSpeech } from "@/features/voice/useSpeech";
-import { useFrequentItems } from "./api";
+import type { Item } from "./api";
+import { Bubble, starters, useQuickPool, useSlots } from "./QuickDock";
+import { candidates, keyOf } from "./quickSlots";
+import { popOut, useTapCounter } from "./useTapCounter";
 import type { AddOutcome } from "./useSmartAdd";
 
 export const UNITS = ["ks", "g", "kg", "ml", "l"] as const;
-/** Krok tlačidiel +/− podľa jednotky: kusy po 1, gramy po 50, kilá a litre po 0,5. */
-const stepFor = (u: string) => (u === "g" || u === "ml" ? 50 : u === "kg" || u === "l" ? 0.5 : 1);
+const CHIPS = 6;
 
 export type AddInput = { name: string; quantity: number | null; unit: string | null; note: string | null; quiet?: boolean };
 
 /**
- * Pole na pridávanie (prototyp N3): názov s mikrofónom, počet (− 1 +), tlačidlo +,
- * pod tým upresnenie a jednotka. Pri písaní ponúkne produkty z histórie domácnosti.
- * Mikrofón diktuje celé vety („dve mlieka, maslo a štyri rožky“).
+ * Ako vysoko je klávesnica (iPhone ju kreslí cez stránku – pole by inak ostalo pod ňou).
+ * Na Androide sa stránka zmenší sama, vtedy vyjde 0.
+ */
+export function useKeyboardInset(active: boolean) {
+  const [inset, setInset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!active || !vv) {
+      setInset(0);
+      return;
+    }
+    const update = () => setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [active]);
+  return inset;
+}
+
+/**
+ * Pole na pridávanie v doku pri palci.
+ *  - Mimo písania: „Čo treba kúpiť?“ s mikrofónom (diktovanie celých viet).
+ *  - Pri písaní sa pole prilepí ku klávesnici: nad ním 6 rovnako veľkých bublín (najčastejšie produkty,
+ *    pri písaní zhody) – ťuk = +1, po 2 s sa pridá a bublinu nahradí ďalší. Počet sa dá napísať rovno
+ *    do textu („pivo6“, „pivo 6 ks“, „6x pivo“) – ukáže sa ako štítok v poli.
+ *  - Klávesnica sa zavrie ťukom do zoznamu alebo na Hotovo.
  */
 export function Composer({
   householdId,
+  items,
   requestMode,
+  typing,
+  onTyping,
   onAdd,
   onRemove,
 }: {
   householdId: string;
+  items: Item[];
   requestMode?: boolean;
+  typing: boolean;
+  onTyping: (on: boolean) => void;
   onAdd: (input: AddInput) => Promise<AddOutcome>;
   /** Diktovanie „zmaž maslo“. */
   onRemove?: (name: string) => void;
 }) {
   const [text, setText] = useState("");
-  const [detail, setDetail] = useState("");
-  const [qty, setQty] = useState(1);
-  const [unit, setUnit] = useState<string>("ks");
-  const [focus, setFocus] = useState(false);
   const [dict, setDict] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const frequent = useFrequentItems(householdId);
+  const root = useRef<HTMLDivElement>(null);
   const toast = useToast();
+  const pool = useQuickPool(householdId, items);
 
-  // Nadiktovaná veta: všetky položky naraz, potom jedna hláška „Pridané hlasom: …“ (prototyp).
+  // Nadiktovaná veta: všetky položky naraz, potom jedna hláška „Pridané hlasom: …“.
   const speech = useSpeech(async (said) => {
     const adds: Promise<AddOutcome>[] = [];
     const names: string[] = [];
@@ -59,57 +92,58 @@ export function Composer({
     if (ok.length) toast.show(t("ls.addedByVoice", { names: ok.join(", ") }), "success");
   });
 
-  const suggestions = useMemo(() => {
-    const k = normalizeName(text);
-    if (!k) return [];
-    const scored: [number, string, string][] = [];
-    for (const f of frequent.data ?? []) {
-      const n = normalizeName(f.name);
-      const score = n.startsWith(k) ? 2 : n.includes(k) ? 1 : 0;
-      if (score && n !== k) scored.push([score, f.name, f.category_id]);
-    }
-    return scored.sort((a, b) => b[0] - a[0]).slice(0, 5);
-  }, [text, frequent.data]);
+  // Ťuk mimo doku (do zoznamu) zavrie klávesnicu – iPhone to sám neurobí.
+  useEffect(() => {
+    if (!typing) return;
+    const away = (e: PointerEvent) => {
+      const dock = root.current?.closest(".ls-dock");
+      if (dock && !dock.contains(e.target as Node)) inputRef.current?.blur();
+    };
+    document.addEventListener("pointerdown", away, true);
+    return () => document.removeEventListener("pointerdown", away, true);
+  }, [typing]);
 
-  const reset = () => {
+  const parsed = text.trim() ? parseItemInput(text) : null;
+  const typed = parsed ? normalizeName(parsed.name) : "";
+
+  const textRef = useRef(text);
+  textRef.current = text;
+  const { counts, tap } = useTapCounter((key, n) => {
+    const name = key.slice(2);
+    const typedAtTap = typedRef.current.get(key);
+    popOut(root.current?.querySelector(`[data-q="${CSS.escape(key)}"]`) ?? null, () => {
+      pool.mark(name, true);
+      // Bublina zo zhody s napísaným textom: text už netreba.
+      if (typedAtTap && textRef.current === typedAtTap) setText("");
+      void onAdd({ name, quantity: n, unit: null, note: null }).then((o) => o === "FAILED" && pool.mark(name, false));
+    });
+  });
+  const typedRef = useRef(new Map<string, string>());
+
+  const hold = useMemo(() => new Set(Object.keys(counts).map((k) => keyOf(k.slice(2)))), [counts]);
+  const basePool = useMemo(() => candidates([pool.freq, starters()], pool.exclude), [pool.freq, pool.exclude]);
+  const slots = useSlots(basePool, CHIPS, hold, pool.ready);
+  const matches = useMemo(() => {
+    if (!typed) return [];
+    const all = candidates([pool.freq, starters()], pool.exclude);
+    const starts = all.filter((n) => keyOf(n).startsWith(typed) && keyOf(n) !== typed);
+    const inside = all.filter((n) => !keyOf(n).startsWith(typed) && keyOf(n).includes(typed));
+    return [...starts, ...inside].slice(0, CHIPS);
+  }, [typed, pool.freq, pool.exclude]);
+  const chips = typed ? matches : slots;
+
+  async function add() {
+    if (!parsed?.name) return;
+    const before = text;
     setText("");
-    setDetail("");
-    setQty(1);
-    setUnit("ks");
-  };
-
-  async function add(picked?: string) {
-    const untouched = qty === 1 && unit === "ks";
-    let input: AddInput;
-    if (picked) {
-      input = { name: picked, quantity: qty, unit: unit === "ks" ? null : unit, note: detail.trim() || null };
-    } else {
-      const p = parseItemInput(text);
-      if (!p.name) return;
-      const fromText = p.quantity != null;
-      input = {
-        name: p.name,
-        quantity: fromText && untouched ? p.quantity : qty,
-        unit: fromText && untouched ? p.unit : unit === "ks" ? null : unit,
-        note: detail.trim() || null,
-      };
-    }
-    const before = { text, detail, qty, unit };
-    reset();
     inputRef.current?.focus();
-    const outcome = await onAdd(input);
-    if (outcome === "FAILED") {
-      // nič sa nestratí – text vrátime do polí
-      setText(before.text);
-      setDetail(before.detail);
-      setQty(before.qty);
-      setUnit(before.unit);
-    }
+    const outcome = await onAdd({ name: parsed.name, quantity: parsed.quantity, unit: parsed.unit, note: null });
+    if (outcome === "FAILED") setText(before); // nič sa nestratí
   }
 
   if (dict) {
     return (
-      <div className="ls-composer">
+      <div className="ls-composer2" ref={root}>
         <div className="ls-dict">
           <div className="row g-10">
             <span className="ls-mic-live" aria-hidden>
@@ -121,10 +155,7 @@ export function Composer({
               ) : speech.error ? (
                 <span className="t-2">{t("ls.micBlocked")}</span>
               ) : (
-                <>
-                  <Wave height={18} />
-                  <span className="t-2">{t("ls.listening")}</span>
-                </>
+                <span className="t-2">{t("ls.listening")}</span>
               )}
             </div>
           </div>
@@ -146,26 +177,70 @@ export function Composer({
     );
   }
 
+  const keep = { onMouseDown: (e: React.MouseEvent) => e.preventDefault() };
   return (
-    <div className="ls-composer">
+    <div className={cx("ls-composer2", typing && "typing")} ref={root}>
+      {typing && (
+        <>
+          <div className="qc-top">
+            <span className="t-xs fw-6 t-2">{typed ? t("qd.matches") : t("qd.suggest")}</span>
+            <button type="button" className="qc-done" {...keep} onClick={() => inputRef.current?.blur()}>
+              {t("qd.done")}
+            </button>
+          </div>
+          <div className="qd-grid qc-chips">
+            {chips.map((name) => {
+              const key = `c:${name}`;
+              return (
+                <Bubble
+                  key={key}
+                  id={key}
+                  name={name}
+                  n={counts[key] ?? 0}
+                  onTap={() => {
+                    if (typed) typedRef.current.set(key, text);
+                    else typedRef.current.delete(key);
+                    tap(key);
+                    inputRef.current?.focus();
+                  }}
+                />
+              );
+            })}
+            {Array.from({ length: Math.max(0, CHIPS - chips.length) }, (_, i) => (
+              <span key={`e${i}`} className="qc-empty" aria-hidden />
+            ))}
+          </div>
+        </>
+      )}
       <div className="row g-8">
-        <label className="ls-field grow">
+        <label className={cx("ls-field grow", typing && "on")}>
           <span className="sr-only">{t("composer.label")}</span>
+          {!typing && <Plus size={20} className="qc-plus" aria-hidden />}
           <input
             ref={inputRef}
             value={text}
-            placeholder={requestMode ? t("ls.placeholderRequest") : t("composer.placeholder")}
+            placeholder={requestMode ? t("ls.placeholderRequest") : typing ? t("qd.placeholderTyping") : t("composer.placeholder")}
             onChange={(e) => setText(e.target.value)}
-            onFocus={() => setFocus(true)}
-            onBlur={() => setTimeout(() => setFocus(false), 150)}
+            onFocus={() => onTyping(true)}
+            onBlur={() =>
+              setTimeout(() => {
+                if (document.activeElement !== inputRef.current) onTyping(false);
+              }, 120)
+            }
             onKeyDown={(e) => {
               if (e.key === "Enter" && text.trim()) void add();
             }}
             autoComplete="off"
-            enterKeyHint="done"
+            autoCorrect="off"
+            enterKeyHint="send"
             maxLength={120}
           />
-          {speech.supported && (
+          {parsed && parsed.quantity != null && (
+            <span key={`${parsed.quantity}${parsed.unit}`} className="qc-qty">
+              {formatQuantity(parsed.quantity, parsed.unit ?? "ks")}
+            </span>
+          )}
+          {!typing && speech.supported && (
             <button
               type="button"
               className="mic"
@@ -181,67 +256,20 @@ export function Composer({
             </button>
           )}
         </label>
-        <Stepper value={qty} onChange={setQty} min={unit === "ks" ? 1 : stepFor(unit)} step={stepFor(unit)} unit={unit} small />
-        <button
-          type="button"
-          className="ibtn ink"
-          aria-label={requestMode ? t("composer.submitRequest") : t("composer.submit")}
-          disabled={!text.trim()}
-          style={{ opacity: text.trim() ? 1 : 0.35 }}
-          onClick={() => void add()}
-        >
-          <Plus size={22} strokeWidth={2.4} />
-        </button>
+        {typing && (
+          <button
+            type="button"
+            className={cx("qc-add", parsed && "go")}
+            {...keep}
+            aria-label={requestMode ? t("composer.submitRequest") : t("composer.submit")}
+            disabled={!parsed}
+            onClick={() => void add()}
+          >
+            <Plus size={20} strokeWidth={2.6} />
+            {parsed && <span>{t("qd.add")}</span>}
+          </button>
+        )}
       </div>
-      <div className="ls-detail">
-        <input
-          placeholder={t("ls.detailPlaceholder")}
-          value={detail}
-          maxLength={300}
-          onChange={(e) => setDetail(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && text.trim() && void add()}
-        />
-        <select
-          className="ls-unit"
-          aria-label={t("edit.unit")}
-          value={unit}
-          onChange={(e) => {
-            setUnit(e.target.value);
-            setQty(e.target.value === "g" || e.target.value === "ml" ? 250 : 1);
-          }}
-        >
-          {UNITS.map((u) => (
-            <option key={u} value={u}>
-              {u}
-            </option>
-          ))}
-        </select>
-      </div>
-      {focus && suggestions.length > 0 && (
-        <div className="ls-suggest">
-          {suggestions.map(([, name, cat]) => (
-            <button key={name} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => void add(name)}>
-              <CatIcon id={cat || guessCategory(name)} size="sm" />
-              <span className="grow t-body fw-5 ellipsis">{name}</span>
-              <Plus size={16} className="t-3" />
-            </button>
-          ))}
-        </div>
-      )}
     </div>
-  );
-}
-
-/** Zvlnená animácia počúvania (prototyp Wave). */
-function Wave({ height = 22, bars = 7 }: { height?: number; bars?: number }) {
-  return (
-    <span className="row g-4" style={{ height, color: "var(--red)", flex: "none" }} aria-hidden>
-      {Array.from({ length: bars }).map((_, i) => (
-        <span
-          key={i}
-          style={{ width: 4, height: "100%", borderRadius: 99, background: "currentColor", transformOrigin: "center", animation: `wave 1s ease-in-out ${i * 0.12}s infinite` }}
-        />
-      ))}
-    </span>
   );
 }
