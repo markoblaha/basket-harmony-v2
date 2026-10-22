@@ -23,6 +23,8 @@ export const skRecipes = {
   "rc.bought": "Suroviny nakúpené",
   "rc.removeWaiting": "Odobrať {name} z čakajúcich",
   "rc.removedWaiting": "{name} · odobraté z čakajúcich",
+  "rc.discardDraft": "Zahodiť rozpracovaný nákup",
+  "rc.discardedDraft": "Rozpracovaný nákup zahodený",
   "rc.forYou": "Pre teba",
   "rc.forYouSub": "Podľa toho, čo ste nedávno kúpili",
   "rc.often": "Často varíte",

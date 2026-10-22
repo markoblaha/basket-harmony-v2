@@ -23,6 +23,8 @@ export const enRecipes: Record<keyof typeof skRecipes, string> = {
   "rc.bought": "Ingredients bought",
   "rc.removeWaiting": "Remove {name} from waiting",
   "rc.removedWaiting": "{name} · removed from waiting",
+  "rc.discardDraft": "Discard shopping in progress",
+  "rc.discardedDraft": "Shopping in progress discarded",
   "rc.forYou": "For you",
   "rc.forYouSub": "Based on what you bought recently",
   "rc.often": "You cook often",

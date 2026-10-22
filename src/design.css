@@ -682,6 +682,17 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
 .rc-wait { display: flex; align-items: center; gap: 10px; min-height: 68px; padding: 10px 10px 10px 12px; border-radius: 18px; background: var(--surface); box-shadow: var(--sh-2); text-align: left; }
 .rc-wait.draft { border: 1.5px solid var(--accent); }
 .rc-wait .bk { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--accent-soft); color: var(--accent-text); }
+/* Čakajúci recept: obsah (ťuk = otvoriť) + vpravo stĺpec – X na zrušenie hore v rohu, hlavná akcia dole.
+   X je malé a tiché (aby nesúperilo s „Variť“), no ťukacia plocha má 44 px. */
+.rc-wait { align-items: stretch; padding: 10px 10px 10px 12px; }
+.rc-wait-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; text-align: left; }
+.rc-wait-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 6px; }
+.rc-wait-side > :only-child { margin: auto 0; }
+.rc-x { position: relative; width: 28px; height: 28px; margin: -2px -2px 0 0; border-radius: 999px; display: grid; place-items: center; flex: none;
+  background: var(--sunken); color: var(--text-2); transition: background-color 140ms, color 140ms, transform 120ms; }
+.rc-x::before { content: ""; position: absolute; inset: -8px; border-radius: 999px; }
+.rc-x:hover { color: var(--text); }
+.rc-x:active { transform: scale(0.88); background: var(--red-soft); color: var(--red); }
 .rc-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 

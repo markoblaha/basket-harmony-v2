@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Camera, ChefHat, Heart, Link2, Mic, Repeat, Search, ShoppingBasket, Sparkles, X } from "lucide-react";
-import { ScreenHeader } from "@/components/kit";
+import { ScreenHeader, haptic } from "@/components/kit";
+import { animateOut, collapseOut } from "@/components/motion";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
@@ -11,7 +12,7 @@ import { listDay } from "@/features/lists/dates";
 import { errorMessage } from "@/lib/errors";
 import { formatDateTime, t, tn } from "@/i18n";
 import { useRecipePlans, useRecipes, useSetPlanStatus, type RecipePlan } from "./api";
-import { useCart } from "./cart";
+import { cart, useCart } from "./cart";
 import { RECIPE_CATEGORIES } from "./catalog";
 import { Cover, RIcon, RecipeRow, VoiceSearch } from "./common";
 import { ImportSheet } from "./ImportSheet";
@@ -123,40 +124,86 @@ function Waiting() {
   const lists = useLists(household.id);
   const setStatus = useSetPlanStatus(household.id);
   const cartItems = c.items.filter((x) => recipes.find(x.recipeId));
-  const pending = (plans.data ?? []).filter((p) => p.status === "PENDING");
-  if (!cartItems.length && !pending.length) return null;
+  // Zrušené ťukom na X zmiznú hneď – server to potvrdí v pozadí (pri chybe sa vrátia).
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
+  const hide = (id: string, on: boolean) =>
+    setHidden((h) => {
+      const n = new Set(h);
+      if (on) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+  const pending = (plans.data ?? []).filter((p) => p.status === "PENDING" && !hidden.has(p.id));
+  const showDraft = cartItems.length > 0 && !hidden.has("draft");
+  if (!showDraft && !pending.length) return null;
   const nIng = cartItems.length ? mergeIngredients(cartItems, recipes.find).length : 0;
 
-  const remove = (p: RecipePlan) => {
-    const fail = (e: unknown) => toast.show(errorMessage(e), "error");
+  const fail = (e: unknown) => toast.show(errorMessage(e), "error");
+  /** Karta odíde doprava, medzera sa zavrie (pri poslednej karte celá sekcia aj s nadpisom), až potom ju skryjeme. */
+  const leave = (el: HTMLElement | null, id: string) => {
+    haptic(12);
+    const box = el?.parentElement ?? null;
+    const last = !!box && box.querySelectorAll(".rc-wait").length === 1;
+    animateOut(el, 1, () => collapseOut(last ? box : el, () => hide(id, true)));
+  };
+  const remove = (p: RecipePlan, el: HTMLElement | null) => {
+    leave(el, p.id);
     setStatus.mutate(
       { id: p.id, status: "DISMISSED" },
       {
-        onSuccess: () => toast.show(t("rc.removedWaiting", { name: p.recipe_name }), "info", { undo: () => setStatus.mutate({ id: p.id, status: "PENDING" }, { onError: fail }) }),
-        onError: fail,
+        onSuccess: () =>
+          toast.show(t("rc.removedWaiting", { name: p.recipe_name }), "info", {
+            undo: () => {
+              hide(p.id, false);
+              setStatus.mutate({ id: p.id, status: "PENDING" }, { onError: fail });
+            },
+          }),
+        onError: (e) => {
+          // Až po dobehnutí odchodu (inak by ju koniec animácie znova skryl).
+          window.setTimeout(() => hide(p.id, false), 520);
+          fail(e);
+        },
       },
     );
+  };
+  const discardDraft = (el: HTMLElement | null) => {
+    const before = cart.get(household.id);
+    leave(el, "draft");
+    window.setTimeout(() => {
+      cart.clear(household.id);
+      hide("draft", false);
+    }, 480);
+    toast.show(t("rc.discardedDraft"), "info", { undo: () => cart.update(household.id, () => before) });
   };
 
   return (
     <section className="stack g-8">
       <div className="section-head">
         <span className="t-h">{t("rc.waiting")}</span>
-        <span className="t-sm t-2 num">{cartItems.length + pending.length}</span>
+        <span className="t-sm t-2 num">{(showDraft ? cartItems.length : 0) + pending.length}</span>
       </div>
-      {cartItems.length > 0 && (
-        <button type="button" className="rc-wait draft" onClick={() => navigate("/recipes/cart")}>
-          <span className="bk">
-            <ShoppingBasket size={20} />
-          </span>
-          <span className="grow stack g-2" style={{ minWidth: 0 }}>
-            <span className="t-xs t-2">
-              {t("rc.draft")} · {tn("rc.ingFor", cartItems.length)} · <span className="num">{nIng}</span>
+      {showDraft && (
+        <div className="rc-wait draft">
+          <button type="button" className="rc-wait-main" onClick={() => navigate("/recipes/cart")}>
+            <span className="bk">
+              <ShoppingBasket size={20} />
             </span>
-            <span className="t-h ellipsis">{cartItems.map((x) => recipes.find(x.recipeId)!.name).join(" + ")}</span>
-          </span>
-          <span className="btn btn-sm btn-ink">{t("rc.continue")}</span>
-        </button>
+            <span className="grow stack g-2" style={{ minWidth: 0 }}>
+              <span className="t-xs t-2">
+                {t("rc.draft")} · {tn("rc.ingFor", cartItems.length)} · <span className="num">{nIng}</span>
+              </span>
+              <span className="t-h rc-clamp">{cartItems.map((x) => recipes.find(x.recipeId)!.name).join(" + ")}</span>
+            </span>
+          </button>
+          <div className="rc-wait-side">
+            <button type="button" className="rc-x" aria-label={t("rc.discardDraft")} onClick={(e) => discardDraft(e.currentTarget.closest(".rc-wait"))}>
+              <X size={15} strokeWidth={2.4} />
+            </button>
+            <button type="button" className="btn btn-sm btn-ink" onClick={() => navigate("/recipes/cart")}>
+              {t("rc.continue")}
+            </button>
+          </div>
+        </div>
       )}
       {pending.map((p) => {
         const r = recipes.find(p.recipe_key);
@@ -168,7 +215,7 @@ function Waiting() {
           : t("rc.bought");
         return (
           <div key={p.id} className="rc-wait">
-            <button type="button" className="row g-12 grow" style={{ minWidth: 0, textAlign: "left" }} onClick={() => r && navigate(`/recipes/r/${r.id}`)}>
+            <button type="button" className="rc-wait-main" onClick={() => r && navigate(`/recipes/r/${r.id}`)}>
               {r ? <Cover recipe={r} size="sm" /> : <span className="rc-cover sm"><ChefHat size={24} /></span>}
               <span className="grow stack g-2" style={{ minWidth: 0 }}>
                 <span className="t-h">{r?.name ?? p.recipe_name}</span>
@@ -177,14 +224,16 @@ function Waiting() {
                 </span>
               </span>
             </button>
-            {r && (
-              <button type="button" className="btn btn-sm btn-soft" onClick={() => navigate(`/recipes/r/${r.id}/cook?p=${p.portions}`)}>
-                <ChefHat size={16} /> {t("rc.cook")}
+            <div className="rc-wait-side">
+              <button type="button" className="rc-x" aria-label={t("rc.removeWaiting", { name: p.recipe_name })} onClick={(e) => remove(p, e.currentTarget.closest(".rc-wait"))}>
+                <X size={15} strokeWidth={2.4} />
               </button>
-            )}
-            <button type="button" className="ibtn sm" aria-label={t("rc.removeWaiting", { name: p.recipe_name })} onClick={() => remove(p)}>
-              <X size={17} />
-            </button>
+              {r && (
+                <button type="button" className="btn btn-sm btn-soft" onClick={() => navigate(`/recipes/r/${r.id}/cook?p=${p.portions}`)}>
+                  <ChefHat size={16} /> {t("rc.cook")}
+                </button>
+              )}
+            </div>
           </div>
         );
       })}
