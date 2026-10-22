@@ -99,8 +99,25 @@ export function tn(base: PluralBase, n: number, params?: Record<string, string |
 /** Štandard čísel a dátumov: slovenčina "1 234,50 €", angličtina v európskej podobe "€1,234.50". */
 export const intlTag = () => (current === "sk" ? "sk-SK" : "en-GB");
 
+// Formátovače si pamätáme: toLocaleString(…) vytvára nový pri každom volaní a v zozname so stovkami
+// čísel a dátumov to na telefóne citeľne brzdí každé prekreslenie.
+const numberFormats = new Map<string, Intl.NumberFormat>();
+const dateFormats = new Map<string, Intl.DateTimeFormat>();
+function numberFormat(options?: Intl.NumberFormatOptions) {
+  const key = intlTag() + JSON.stringify(options ?? {});
+  let f = numberFormats.get(key);
+  if (!f) numberFormats.set(key, (f = new Intl.NumberFormat(intlTag(), options)));
+  return f;
+}
+function dateFormat(options: Intl.DateTimeFormatOptions) {
+  const key = intlTag() + JSON.stringify(options);
+  let f = dateFormats.get(key);
+  if (!f) dateFormats.set(key, (f = new Intl.DateTimeFormat(intlTag(), options)));
+  return f;
+}
+
 export function formatNumber(n: number, options?: Intl.NumberFormatOptions): string {
-  return n.toLocaleString(intlTag(), options);
+  return numberFormat(options).format(n);
 }
 
 const moneyFormats = new Map<string, Intl.NumberFormat>();
@@ -113,11 +130,11 @@ export function formatEuro(n: number): string {
 
 /** Dátum alebo čas z `Date`/ISO reťazca s plným časom (v časovom pásme zariadenia). */
 export function formatDateTime(value: Date | string | number, options: Intl.DateTimeFormatOptions): string {
-  return new Date(value).toLocaleString(intlTag(), options);
+  return dateFormat(options).format(new Date(value));
 }
 
 /** Čistý dátum "2026-09-13" bez posunu časového pásma. */
 export function formatCalendarDate(iso: string, options: Intl.DateTimeFormatOptions): string {
   const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(intlTag(), { ...options, timeZone: "UTC" });
+  return dateFormat({ ...options, timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
 }

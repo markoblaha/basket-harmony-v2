@@ -114,7 +114,7 @@ export function VoiceCard({
   const qty = cardQty(item);
 
   return (
-    <div className="v-card-wrap anim-drop">
+    <div className="v-card-wrap anim-drop" data-flip={item.id}>
       {under && (
         <div className={cx("v-under", under)} aria-hidden>
           <span style={{ opacity: dx > 0 ? Math.min(1, dx / 56) : 0 }}>+1</span>

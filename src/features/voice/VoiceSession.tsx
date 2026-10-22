@@ -3,6 +3,7 @@ import { Check, ChevronDown, History, Keyboard, ListPlus, Mic, MicOff, Pause, Se
 import { StoreBadge, haptic } from "@/components/kit";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
+import { useFlip } from "@/components/motion";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useLists, useListStats } from "@/features/lists/api";
 import { addDays, dayLabel, isoDay } from "@/features/lists/dates";
@@ -107,6 +108,9 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
   modalRef.current = modal;
   const seq = useRef(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // Nové karty „dopadnú“ samé (anim-drop); ostatné sa k novému miestu plynulo dokĺžu.
+  const cardsBox = useRef<HTMLDivElement>(null);
+  useFlip(cardsBox, { enter: false });
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const openLists = useMemo(() => lists.filter((l) => !l.completed_at), [lists]);
@@ -593,7 +597,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
                 <span className="t-sm t-2">{t("voice.emptyExample2")}</span>
               </div>
             ) : (
-              <div className="v-cards" aria-live="polite">
+              <div ref={cardsBox} className="v-cards" aria-live="polite">
                 {openCards.map((c) => (
                   <RecipeCardView
                     key={c.id}

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, Trash2, X } from "lucide-react";
 import { PersonAvatar, Stepper, haptic, type Person } from "@/components/kit";
 import { CategoryGlyph } from "@/components/CategoryIcon";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
+import { animateOut, useFlip } from "@/components/motion";
 import { category, categoryOrder } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
@@ -69,6 +70,16 @@ export function PlanList({
   else for (const i of items) if (!known.current.has(i.id)) fresh.add(i.id);
   queueMicrotask(() => items.forEach((i) => known.current?.add(i.id)));
 
+  // Stabilné odkazy, aby sa riadky (memo) neprekresľovali pri každej zmene rodiča.
+  const editRef = useRef(onEdit);
+  editRef.current = onEdit;
+  const seenRef = useRef(seen);
+  seenRef.current = seen;
+  const editItem = useCallback((it: Item) => editRef.current(it), []);
+  const swiped = useCallback(() => seenRef.current(), []);
+  const box = useRef<HTMLDivElement>(null);
+  useFlip(box);
+
   const groups = new Map<string, Item[]>();
   for (const i of items) groups.set(i.category_id, [...(groups.get(i.category_id) ?? []), i]);
   const ordered = [...groups.entries()].sort((a, b) => categoryOrder(a[0]) - categoryOrder(b[0]));
@@ -88,8 +99,9 @@ export function PlanList({
           </button>
         </div>
       )}
+      <div ref={box} className="stack g-20">
       {ordered.map(([cat, group]) => (
-        <section key={cat} className="stack g-6">
+        <section key={cat} className="stack g-6" data-flip={`cat:${cat}`}>
           <div className="ls-cat-head">
             <CategoryGlyph id={cat} className="size-[15px]" />
             {category(cat).name}
@@ -104,51 +116,52 @@ export function PlanList({
                 fresh={fresh.has(it.id)}
                 by={it.added_by && it.added_by !== me ? { id: it.added_by, name: names?.get(it.added_by) ?? t("household.fallbackName") } : undefined}
                 hint={prices ? hints?.get(it.id) : undefined}
-                onEdit={() => onEdit(it)}
-                onSwiped={seen}
+                onEdit={editItem}
+                onSwiped={swiped}
               />
             ))}
           </div>
         </section>
       ))}
+      </div>
     </>
   );
 }
 
-function ItemRow({
-  listId,
-  item,
-  fresh,
-  by,
-  hint,
-  onEdit,
-  onSwiped,
-}: {
+type RowProps = {
   listId: string;
   item: Item;
   fresh: boolean;
   by?: Person;
   hint?: PriceHint;
-  onEdit: () => void;
+  onEdit: (item: Item) => void;
   onSwiped: () => void;
-}) {
+};
+
+/** Pásmo pod kartou počas ťahu: čo sa stane po pustení. */
+type Zone = "none" | "right" | "plus" | "left" | "minus" | "del";
+
+/**
+ * Jeden riadok. Počas ťahania sa karta posúva priamo (style.transform v requestAnimationFrame),
+ * bez prekresľovania Reactu pri každom pohybe prsta – React sa ozve len pri prekročení hranice
+ * (+1 / −1 / odstrániť), aby sa zmenil popis pod kartou.
+ */
+const ItemRow = memo(function ItemRow({ listId, item, fresh, by, hint, onEdit, onSwiped }: RowProps) {
   const update = useUpdateItem(listId);
   const remove = useDeleteItem(listId);
   const restore = useRestoreItem();
   const toast = useToast();
-  const [dx, setDx] = useState(0);
-  const [gone, setGone] = useState(false);
+  const [zone, setZone] = useState<Zone>("none");
   const [edit, setEdit] = useState(false);
-  const st = useRef<{ x: number; y: number; moved: boolean; horiz: boolean | null; id: number } | null>(null);
-  const box = useRef<HTMLDivElement>(null);
+  const st = useRef<{ x: number; y: number; moved: boolean; horiz: boolean | null; id: number; dx: number; w: number; raf: number } | null>(null);
+  const front = useRef<HTMLDivElement>(null);
+  const row = useRef<HTMLDivElement>(null);
   const idle = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(idle.current), []);
 
   const qty = countOf(item.quantity);
   const step = stepOf(item.unit);
   const atMin = qty - step < step - 1e-9;
-  const width = box.current?.offsetWidth || 340;
-  const delZone = atMin && dx <= -width * 0.42;
 
   const setQty = (v: number) =>
     update.mutate({ id: item.id, patch: { quantity: round(Math.max(step, v)) } }, { onError: (err) => toast.show(errorMessage(err), "error") });
@@ -159,19 +172,16 @@ function ItemRow({
   };
   const del = () => {
     haptic(30);
-    setGone(true);
     onSwiped();
-    // Riadok sa po odstránení odpojí – hlášku preto viažeme na sľub, nie na callback mutate.
-    setTimeout(
-      () =>
-        remove
-          .mutateAsync(item.id)
-          .then(() => toast.show(t("item.removed", { name: item.name }), "info", { undo: () => restore(item) }))
-          .catch((err) => {
-            setGone(false);
-            toast.show(errorMessage(err), "error");
-          }),
-      420,
+    // Karta najprv odíde (grafickým čipom), až potom zmizne z dát – ostatné sa k sebe dokĺžu.
+    animateOut(front.current, -1, () =>
+      remove
+        .mutateAsync(item.id)
+        .then(() => toast.show(t("item.removed", { name: item.name }), "info", { undo: () => restore(item) }))
+        .catch((err) => {
+          front.current?.getAnimations().forEach((a) => a.cancel());
+          toast.show(errorMessage(err), "error");
+        }),
     );
   };
   const armIdle = () => {
@@ -179,9 +189,18 @@ function ItemRow({
     idle.current = setTimeout(() => setEdit(false), 4000);
   };
 
+  const zoneOf = (dx: number, w: number): Zone =>
+    dx >= 64 ? "plus" : dx > 10 ? "right" : atMin && dx <= -w * 0.42 ? "del" : dx <= -64 && !atMin ? "minus" : dx < -10 ? "left" : "none";
+  const place = (dx: number, animate: boolean) => {
+    const el = front.current;
+    if (!el) return;
+    el.style.transition = animate ? "transform 260ms cubic-bezier(.2,.8,.2,1)" : "none";
+    el.style.transform = dx ? `translate3d(${dx}px,0,0)` : "";
+  };
+
   const handlers = {
     onPointerDown(e: React.PointerEvent) {
-      st.current = { x: e.clientX, y: e.clientY, moved: false, horiz: null, id: e.pointerId };
+      st.current = { x: e.clientX, y: e.clientY, moved: false, horiz: null, id: e.pointerId, dx: 0, w: row.current?.offsetWidth || 340, raf: 0 };
     },
     onPointerMove(e: React.PointerEvent) {
       const c = st.current;
@@ -193,68 +212,79 @@ function ItemRow({
         c.moved = true;
         if (c.horiz) (e.currentTarget as HTMLElement).setPointerCapture?.(c.id);
       }
-      if (c.horiz) {
-        const max = atMin ? width * 0.7 : 120;
-        const next = Math.max(-max, Math.min(120, ddx));
-        if (atMin && next <= -width * 0.42 !== dx <= -width * 0.42) haptic(8);
-        setDx(next);
+      if (!c.horiz) return;
+      const max = atMin ? c.w * 0.7 : 120;
+      const next = Math.max(-max, Math.min(120, ddx));
+      const z = zoneOf(next, c.w);
+      if (z !== zoneOf(c.dx, c.w)) {
+        if (z === "plus" || z === "minus" || z === "del") haptic(8);
+        setZone(z);
       }
+      c.dx = next;
+      if (!c.raf) c.raf = requestAnimationFrame(() => {
+        c.raf = 0;
+        place(c.dx, false);
+      });
     },
     onPointerUp() {
       const c = st.current;
       st.current = null;
       if (!c) return;
+      cancelAnimationFrame(c.raf);
       if (!c.moved) {
-        setDx(0);
-        onEdit();
+        onEdit(item);
         return;
       }
-      if (c.horiz && dx >= 64) change(step);
-      else if (c.horiz && dx <= -64) {
+      setZone("none");
+      if (c.horiz && c.dx >= 64) change(step);
+      else if (c.horiz && c.dx <= -64) {
         if (!atMin) change(-step);
-        else if (dx <= -width * 0.42) {
+        else if (c.dx <= -c.w * 0.42) {
+          place(c.dx, false);
           del();
           return;
         }
       }
-      setDx(0);
+      place(0, true);
     },
     onPointerCancel() {
+      const c = st.current;
       st.current = null;
-      setDx(0);
+      if (c) cancelAnimationFrame(c.raf);
+      setZone("none");
+      place(0, true);
     },
     onKeyDown(e: React.KeyboardEvent) {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        onEdit();
+        onEdit(item);
       }
     },
   };
 
   const label = qtyLabel(item.quantity, item.unit);
   const stepLabel = item.unit && item.unit !== "ks" && item.unit !== "bal" ? qtyLabel(step, item.unit) : "1";
+  const right = zone === "right" || zone === "plus";
+  const left = zone === "left" || zone === "minus" || zone === "del";
   return (
-    <div className={cx("ls-swipe ls-item", gone && "gone")} ref={box}>
-      <div className="under ok" style={{ opacity: dx > 10 ? 1 : 0 }}>
-        <span className={cx("ls-step", dx >= 64 && "on")}>
+    <div className="ls-swipe ls-item" ref={row} data-flip={item.id}>
+      <div className="under ok" style={{ opacity: right ? 1 : 0 }}>
+        <span className={cx("ls-step", zone === "plus" && "on")}>
           <Plus size={16} strokeWidth={2.6} /> {stepLabel}
         </span>
       </div>
-      <div className={cx("under", atMin ? "del" : "minus", delZone && "armed")} style={{ opacity: dx < -10 ? 1 : 0 }}>
+      <div className={cx("under", atMin ? "del" : "minus", zone === "del" && "armed")} style={{ opacity: left ? 1 : 0 }}>
         {atMin ? (
           <span className="ls-step">
-            <Trash2 size={delZone ? 20 : 17} /> {delZone ? t("ls.releaseToDelete") : t("ls.pullToDelete")}
+            <Trash2 size={zone === "del" ? 20 : 17} /> {zone === "del" ? t("ls.releaseToDelete") : t("ls.pullToDelete")}
           </span>
         ) : (
-          <span className={cx("ls-step", dx <= -64 && "on")}>
+          <span className={cx("ls-step", zone === "minus" && "on")}>
             <Minus size={16} strokeWidth={2.6} /> {stepLabel}
           </span>
         )}
       </div>
-      <div
-        className={cx("front", fresh && "anim-flash")}
-        style={{ transform: gone ? "translateX(-110%)" : `translateX(${dx}px)`, transition: dx && !gone ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)" }}
-      >
+      <div ref={front} className={cx("front", fresh && "anim-flash")}>
         <div className="ls-row ls-row2">
           <div
             className="grow stack g-2"
@@ -324,7 +354,10 @@ function ItemRow({
       </div>
     </div>
   );
-}
+}, (a, b) =>
+  a.item === b.item && a.fresh === b.fresh && a.hint === b.hint && a.listId === b.listId && a.by?.id === b.by?.id && a.by?.name === b.by?.name &&
+  a.onEdit === b.onEdit && a.onSwiped === b.onSwiped,
+);
 
 /** „Vrátiť“ po odstránení: položka sa pridá znova s rovnakým množstvom, upresnením a kategóriou. */
 export function useRestoreItem() {

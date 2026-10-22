@@ -30,7 +30,7 @@
   .voice-btn:active { transform: scale(0.94); }
 
   [data-theme="dark"] .tab .dot { background: #a99bff; }
-  [data-theme="color"] .tabbar { background: rgb(250 248 255 / 0.9); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); }
+  [data-theme="color"] .tabbar { background: rgb(250 248 255 / 0.9); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); }
   [data-theme="color"] .tabbar::before { height: 34px; background: linear-gradient(to top, rgb(250 248 255 / 0.9), rgb(250 248 255 / 0)); }
   [data-theme="color"] .tab { color: #6a7099; }
   [data-theme="color"] .tab.on { color: #1c2a7a; }
@@ -38,8 +38,14 @@
   [data-theme="color"] .tab .dot { background: #8c7fc4; box-shadow: 0 0 0 2.5px rgb(250 248 255); }
   [data-theme="color"] .tab .cnt { background: #c0715f; color: #fff; box-shadow: 0 0 0 2.5px rgb(250 248 255); }
   [data-theme="color"] .voice-btn { background: #6a76ad; color: #fff; box-shadow: 0 14px 30px -10px rgb(60 75 140 / 0.55), 0 0 40px -6px rgb(220 170 190 / 0.35); }
+  /* Dýchajúca žiara: animuje sa len priehľadnosť hotovej vrstvy (nie tieň), inak by sa
+   * tlačidlo aj sklenená lišta pod ním prekresľovali 60× za sekundu, stále. */
+  [data-theme="color"] .voice-btn::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+    box-shadow: 0 16px 34px -10px rgb(60 75 140 / 0.6), 0 0 48px -4px rgb(235 215 165 / 0.45);
+  }
   @media (prefers-reduced-motion: no-preference) {
-    [data-theme="color"] .voice-btn { animation: sh-orb-glow 4.5s ease-in-out infinite; }
+    [data-theme="color"] .voice-btn::after { animation: sh-orb-glow 4.5s ease-in-out infinite; }
   }
 
   /* ------------------------------------------------------------- prechod obrazovky (prototyp .screen-in)
@@ -60,8 +66,6 @@
   .dialog-wrap.fixed { position: fixed; }
 }
 
-@keyframes sh-orb-glow {
-  50% { box-shadow: 0 16px 34px -10px rgb(60 75 140 / 0.6), 0 0 48px -4px rgb(235 215 165 / 0.45); }
-}
+@keyframes sh-orb-glow { 50% { opacity: 1; } }
 @keyframes sh-sheet-down { to { transform: translateY(100%); } }
 @keyframes sh-fade-out { to { opacity: 0; } }

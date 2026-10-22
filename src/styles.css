@@ -289,16 +289,21 @@
   --elev-overlay: inset 0 1px 0 rgb(255 255 255 / 0.95), 0 -18px 50px -18px rgb(30 40 130 / 0.45);
 }
 
-/* Farebná téma: prechod na plátne a sklo na kartách a paneloch. */
-:root[data-theme="color"] body,
+/* Farebná téma: prechod na plátne. Na celú appku je to jedna pevná vrstva pod obsahom
+ * (body::after) – nakreslí sa raz a pri posúvaní sa už neprekresľuje (background-attachment: fixed
+ * by sa prekresľoval pri každom pohybe). Karty majú poloprieľadné sklo bez rozmazávania:
+ * pod nimi je len jemný prechod, takže rozmazanie by nebolo vidieť, len by brzdilo. */
+:root[data-theme="color"] body { background: transparent; }
+:root[data-theme="color"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--mesh);
+  pointer-events: none;
+}
 [data-theme="color"] .bg-bg:not([data-theme-scope]) {
   background: var(--mesh);
-  background-attachment: fixed;
-}
-[data-theme="color"] .bg-surface,
-[data-theme="color"] .bg-elevated {
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  backdrop-filter: blur(16px) saturate(1.4);
 }
 /* Hlavné tlačidlá: tlmený indigový prechod (nie v náhľadoch iných tém). */
 [data-theme="color"] .bg-primary:not([data-theme-scope="light"] *, [data-theme-scope="dark"] *),

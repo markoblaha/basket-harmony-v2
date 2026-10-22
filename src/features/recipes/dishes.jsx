@@ -3,6 +3,8 @@
 // Prekrývanie predmetov rieši malý pomocník cut(): čiara „vzadu“ sa preruší tam,
 // kde ju zakrýva obrys predmetu „vpredu“ (bez masiek a id, funguje v ľubovoľnom počte kópií).
 
+import BAKED from "./dishes.cuts.json";
+
 const K = 0.5523;
 const n2 = (v) => Math.round(v * 100) / 100;
 const pt = (x, y) => `${n2(x)} ${n2(y)}`;
@@ -147,12 +149,51 @@ function inside(x, y, ps) {
 }
 const flat = (h) => (h ? [].concat(h).flat(Infinity).filter(Boolean) : []);
 
-const cutCache = new Map();
+// Zjednodušenie lomenej čiary (Ramer–Douglas–Peucker): body, ktoré ležia takmer na priamke,
+// sa vynechajú. Odchýlka 0,12 jednotky je na displeji neviditeľná, kresba je ~10× menšia.
+function simplify(P, eps = 0.12) {
+  if (P.length < 3) return P;
+  const keep = new Uint8Array(P.length);
+  keep[0] = keep[P.length - 1] = 1;
+  const stack = [[0, P.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop();
+    const [ax, ay] = P[a], [bx, by] = P[b];
+    const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy) || 1;
+    let far = -1, best = eps;
+    for (let i = a + 1; i < b; i++) {
+      const dist = Math.abs(dy * P[i][0] - dx * P[i][1] + bx * ay - by * ax) / len;
+      if (dist > best) { best = dist; far = i; }
+    }
+    if (far > 0) { keep[far] = 1; stack.push([a, far], [far, b]); }
+  }
+  return P.filter((_, i) => keep[i]);
+}
+
+// Hotové výsledky cut() pre všetky kresby sú v dishes.cuts.json (počíta ich test dishes.test.tsx),
+// takže appka pri zobrazení nič neprepočítava. Kľúč = krátky odtlačok vstupu.
+export function cutKey(key) {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+  return (h >>> 0).toString(36) + key.length.toString(36);
+}
+let baked = BAKED;
+/** Len pre test: vypnúť hotové výsledky a spočítať všetko nanovo. */
+export function setBakedCuts(on) {
+  baked = on ? BAKED : {};
+  cutCache.clear();
+}
+export const cutCache = new Map();
 // d bez častí vnútri `hide`; s `keep` ostanú len časti vnútri `keep`
 function cut(d, hide, keep) {
   const hs = flat(hide);
   const key = d + "|" + hs.join("|") + "|" + (keep || "");
   if (cutCache.has(key)) return cutCache.get(key);
+  const hk = cutKey(key);
+  if (hk in baked) {
+    cutCache.set(key, baked[hk]);
+    return baked[hk];
+  }
   const H = hs.map(polys);
   const Kp = keep ? polys(keep) : null;
   let out = "";
@@ -160,7 +201,7 @@ function cut(d, hide, keep) {
     const P = closed ? [...pts, pts[0]] : pts;
     let seg = [];
     const flush = () => {
-      if (seg.length > 1) out += "M" + seg.map((q) => pt(q[0], q[1])).join("L");
+      if (seg.length > 1) out += "M" + simplify(seg).map((q) => pt(q[0], q[1])).join("L");
       seg = [];
     };
     const test = (q) => {

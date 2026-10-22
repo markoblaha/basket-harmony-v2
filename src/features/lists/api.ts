@@ -140,6 +140,17 @@ export function useAddItem() {
   });
 }
 
+/** Spoločný kľúč úprav položiek jedného zoznamu (rýchle +1, +1, +1 sa navzájom nevidia ako zmena zvonka). */
+const itemMutationKey = (listId: string) => ["item-mutation", listId];
+
+/**
+ * Po úprave položky načítame zoznam zo servera, ale až po POSLEDNEJ z rýchlo za sebou idúcich úprav.
+ * Inak by odpoveď na prvú úpravu na chvíľu vrátila staré množstvo a číslo by „skákalo“.
+ */
+function settleItems(qc: ReturnType<typeof useQueryClient>, listId: string) {
+  if (qc.isMutating({ mutationKey: itemMutationKey(listId) }) <= 1) return qc.invalidateQueries({ queryKey: listKeys.items(listId) });
+}
+
 type ItemPatch = Partial<Pick<Item, "name" | "quantity" | "unit" | "note" | "category_id" | "status">>;
 
 /** Úprava položky – v aplikácii sa prejaví okamžite, server ju potvrdí v pozadí. */
@@ -147,6 +158,7 @@ export function useUpdateItem(listId: string) {
   const qc = useQueryClient();
   const key = listKeys.items(listId);
   return useMutation({
+    mutationKey: itemMutationKey(listId),
     mutationFn: async ({ id, patch }: { id: string; patch: ItemPatch }) => {
       const { error } = await supabase.from("shopping_list_items").update(patch).eq("id", id);
       if (error) throw error;
@@ -171,7 +183,7 @@ export function useUpdateItem(listId: string) {
     onError: (_e, _v, ctx) => {
       if (ctx?.previous) qc.setQueryData(key, ctx.previous);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+    onSettled: () => settleItems(qc, listId),
   });
 }
 
@@ -179,6 +191,7 @@ export function useDeleteItem(listId: string) {
   const qc = useQueryClient();
   const key = listKeys.items(listId);
   return useMutation({
+    mutationKey: itemMutationKey(listId),
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("shopping_list_items").delete().eq("id", id);
       if (error) throw error;
@@ -192,7 +205,7 @@ export function useDeleteItem(listId: string) {
     onError: (_e, _v, ctx) => {
       if (ctx?.previous) qc.setQueryData(key, ctx.previous);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+    onSettled: () => settleItems(qc, listId),
   });
 }
 

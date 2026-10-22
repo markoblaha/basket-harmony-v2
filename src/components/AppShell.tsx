@@ -97,7 +97,9 @@ export function AppShell() {
       <main className={showTabs ? "flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))]" : "flex-1"}>
         {/* Prechod obrazovky ako v prototype: nová obrazovka sa vynorí zdola (10 px) a zosvetlí (0,24 s). */}
         <div key={screenKey(pathname)} className="screen-in">
-          <Outlet />
+          <Suspense fallback={null}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
       {showTabs && (

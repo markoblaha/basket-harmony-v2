@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { lazy, useEffect, type ComponentType, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { AppShell } from "@/components/AppShell";
 import { Spinner } from "@/components/ui";
@@ -8,30 +8,56 @@ import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { HouseholdProvider } from "@/features/household/HouseholdProvider";
 import { JoinPage } from "@/features/household/JoinPage";
 import { OnboardingPage } from "@/features/household/OnboardingPage";
-import { HouseholdPage } from "@/features/more/HouseholdPage";
-import { MorePage } from "@/features/more/MorePage";
-import { NotificationsPage, StoresPage, TilesPage } from "@/features/more/SettingsPages";
 import { ShoppingPage } from "@/features/lists/ShoppingPage";
-import { HistoryPage } from "@/features/lists/HistoryPage";
 import { ShoppingHub } from "@/features/lists/ShoppingHub";
-import { AnalyticsLayout } from "@/features/analytics/AnalyticsLayout";
-import { CategoriesTab } from "@/features/analytics/CategoriesTab";
-import { CategoryPage } from "@/features/analytics/CategoryPage";
-import { OverviewTab } from "@/features/analytics/OverviewTab";
-import { ProductPage } from "@/features/analytics/ProductPage";
-import { ProductsTab } from "@/features/analytics/ProductsTab";
-import { StorePage } from "@/features/analytics/StorePage";
-import { StoresTab } from "@/features/analytics/StoresTab";
-import { ReceiptsPage } from "@/features/receipts/ReceiptsPage";
-import { MatchPage } from "@/features/receipts/MatchPage";
-import { ReceiptDetailPage } from "@/features/receipts/ReceiptDetailPage";
-import { StatementImportPage } from "@/features/receipts/StatementImportPage";
-import { RecipesPage } from "@/features/recipes/RecipesPage";
-import { SearchPage as RecipeSearchPage } from "@/features/recipes/SearchPage";
-import { CheckPage as RecipeCheckPage } from "@/features/recipes/CheckPage";
-import { RecipePage } from "@/features/recipes/RecipePage";
-import { CartPage as RecipeCartPage } from "@/features/recipes/CartPage";
-import { CookPage } from "@/features/recipes/CookPage";
+
+/*
+ * Zoznamy (úvodná obrazovka) sú v hlavnom balíku. Ostatné časti appky sa načítajú zvlášť,
+ * aby sa appka spustila rýchlejšie – a hneď potom, keď je telefón voľný, sa potichu stiahnu
+ * všetky, takže prepnutie záložky už na nič nečaká.
+ */
+const loaders: (() => Promise<unknown>)[] = [];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function page<M extends Record<string, any>>(load: () => Promise<M>, name: keyof M) {
+  loaders.push(load);
+  return lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
+}
+function usePreloadPages() {
+  useEffect(() => {
+    const run = () => loaders.forEach((l) => void l().catch(() => undefined));
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(run, { timeout: 2500 });
+    else setTimeout(run, 1200);
+  }, []);
+}
+
+const more = () => import("@/features/more/MorePage");
+const settings = () => import("@/features/more/SettingsPages");
+const analytics = () => import("@/features/analytics/AnalyticsLayout");
+const MorePage = page(more, "MorePage");
+const HouseholdPage = page(() => import("@/features/more/HouseholdPage"), "HouseholdPage");
+const NotificationsPage = page(settings, "NotificationsPage");
+const StoresPage = page(settings, "StoresPage");
+const TilesPage = page(settings, "TilesPage");
+const HistoryPage = page(() => import("@/features/lists/HistoryPage"), "HistoryPage");
+const AnalyticsLayout = page(analytics, "AnalyticsLayout");
+const CategoriesTab = page(() => import("@/features/analytics/CategoriesTab"), "CategoriesTab");
+const CategoryPage = page(() => import("@/features/analytics/CategoryPage"), "CategoryPage");
+const OverviewTab = page(() => import("@/features/analytics/OverviewTab"), "OverviewTab");
+const ProductPage = page(() => import("@/features/analytics/ProductPage"), "ProductPage");
+const ProductsTab = page(() => import("@/features/analytics/ProductsTab"), "ProductsTab");
+const StorePage = page(() => import("@/features/analytics/StorePage"), "StorePage");
+const StoresTab = page(() => import("@/features/analytics/StoresTab"), "StoresTab");
+const ReceiptsPage = page(() => import("@/features/receipts/ReceiptsPage"), "ReceiptsPage");
+const MatchPage = page(() => import("@/features/receipts/MatchPage"), "MatchPage");
+const ReceiptDetailPage = page(() => import("@/features/receipts/ReceiptDetailPage"), "ReceiptDetailPage");
+const StatementImportPage = page(() => import("@/features/receipts/StatementImportPage"), "StatementImportPage");
+const RecipesPage = page(() => import("@/features/recipes/RecipesPage"), "RecipesPage");
+const RecipeSearchPage = page(() => import("@/features/recipes/SearchPage"), "SearchPage");
+const RecipeCheckPage = page(() => import("@/features/recipes/CheckPage"), "CheckPage");
+const RecipePage = page(() => import("@/features/recipes/RecipePage"), "RecipePage");
+const RecipeCartPage = page(() => import("@/features/recipes/CartPage"), "CartPage");
+const CookPage = page(() => import("@/features/recipes/CookPage"), "CookPage");
 
 /** Stránky dostupné iba po prihlásení. Neprihláseného pošle na prihlásenie a potom späť. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -59,6 +85,7 @@ function PublicOnly({ children }: { children: ReactNode }) {
 }
 
 export function App() {
+  usePreloadPages();
   return (
     <BrowserRouter>
       <Routes>

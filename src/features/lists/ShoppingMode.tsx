@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { ArrowLeft, ArrowRightLeft, Camera, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Image, MoreHorizontal, PackageX, Plus, Repeat, RotateCcw, TriangleAlert, X } from "lucide-react";
 import { Avatars, BottomSheet, CatIcon, Cell, ScreenHeader, SheetHeader, Stepper, haptic, type Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
+import { animateOut, useFlip } from "@/components/motion";
 import { cx } from "@/components/ui";
 import { category, categoryOrder, guessCategory, normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
@@ -87,6 +88,8 @@ export function ShoppingMode({
   const total = open.length + done.length;
   // Položky, ktoré pribudli počas nákupu (schválená žiadosť, pridanie z iného zariadenia), krátko zablikajú.
   const seen = useRef<Set<string> | null>(null);
+  const flipBox = useRef<HTMLDivElement>(null);
+  useFlip(flipBox);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (!seen.current) {
@@ -140,7 +143,7 @@ export function ShoppingMode({
       {!shopper && <Composer householdId={householdId} requestMode onAdd={onAdd} />}
 
       <div className="scroll">
-        <div className="stack g-16 px" style={{ paddingTop: 8 }}>
+        <div ref={flipBox} className="stack g-16 px" style={{ paddingTop: 8 }}>
           {shopper && <PendingRequests requests={pending} names={names} listId={list.id} />}
           {!shopper && <MyRequests requests={myRequests} shopperName={shopperName} />}
 
@@ -151,7 +154,7 @@ export function ShoppingMode({
             </div>
           ) : (
             groups.map(([cat, group]) => (
-              <section key={cat} className="stack g-6">
+              <section key={cat} className="stack g-6" data-flip={`cat:${cat}`}>
                 <div className="ls-cat-head">
                   <CatIcon id={cat} size="sm" />
                   {category(cat).name}
@@ -182,7 +185,7 @@ export function ShoppingMode({
           )}
 
           {done.length > 0 && (
-            <section className="stack g-6">
+            <section className="stack g-6" data-flip="done">
               <button type="button" className="section-head" style={{ minHeight: 40 }} onClick={() => setShowDone(!showDone)} aria-expanded={showDone}>
                 <span className="section-title">
                   {t("ls.inCart", { n: bought.length })}
@@ -308,28 +311,34 @@ function ShopRow({
   const update = useUpdateItem(listId);
   const toast = useToast();
   const [leaving, setLeaving] = useState(false);
+  const front = useRef<HTMLDivElement>(null);
   const buy = () => {
     if (leaving || !shopper) return;
     haptic(12);
     setLeaving(true);
+    // Najprv sa otočí žetón a prečiarkne názov, potom riadok klesne do košíka (len transform/opacity)
+    // a až potom sa položka presunie v dátach – ostatné riadky sa plynulo dokĺžu nahor.
     setTimeout(
       () =>
-        update.mutate(
-          { id: item.id, patch: { status: "PURCHASED" } },
-          {
-            onError: (err) => {
-              setLeaving(false);
-              toast.show(errorMessage(err), "error");
+        animateOut(front.current, 0, () =>
+          update.mutate(
+            { id: item.id, patch: { status: "PURCHASED" } },
+            {
+              onError: (err) => {
+                front.current?.getAnimations().forEach((a) => a.cancel());
+                setLeaving(false);
+                toast.show(errorMessage(err), "error");
+              },
             },
-          },
+          ),
         ),
-      900,
+      420,
     );
   };
   const qty = qtyLabel(item.quantity, item.unit);
   return (
-    <div className={cx("ls-swipe ls-shop", leaving && "leaving")}>
-      <div className={cx("front", fresh && "anim-flash")}>
+    <div className={cx("ls-swipe ls-shop", leaving && "leaving")} data-flip={item.id}>
+      <div ref={front} className={cx("front", fresh && "anim-flash")}>
         <div className="ls-shop-row">
           <div
             className="row g-12 grow"
@@ -390,7 +399,7 @@ function DoneRow({ listId, item, shopper, who, onMenu }: { listId: string; item:
   );
   if (!shopper)
     return (
-      <div className="ls-shop-row" style={{ minHeight: 56 }}>
+      <div className="ls-shop-row" style={{ minHeight: 56 }} data-flip={`done:${item.id}`}>
         {body}
       </div>
     );
@@ -399,6 +408,7 @@ function DoneRow({ listId, item, shopper, who, onMenu }: { listId: string; item:
       type="button"
       className="ls-shop-row"
       style={{ minHeight: 56 }}
+      data-flip={`done:${item.id}`}
       onClick={() =>
         na ? onMenu() : update.mutate({ id: item.id, patch: { status: "OPEN" } }, { onError: (err) => toast.show(errorMessage(err), "error") })
       }

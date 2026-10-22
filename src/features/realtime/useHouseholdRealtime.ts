@@ -43,13 +43,32 @@ export function useHouseholdRealtime(householdId: string): RealtimeStatus {
 
   useEffect(() => {
     let wasLive = false;
+    // Zmeny chodia v dávkach (jedno +1 = viac správ, aj naša vlastná ozvena). Zbierame ich 250 ms
+    // a obnovíme každé údaje raz; kým sa ukladá naša vlastná úprava, počkáme – inak by obrazovka
+    // na chvíľu ukázala stav spred úpravy a „skákala“.
+    const due = new Map<string, readonly unknown[]>();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const flush = () => {
+      timer = undefined;
+      if (qc.isMutating() > 0) {
+        timer = setTimeout(flush, 300);
+        return;
+      }
+      const keys = [...due.values()];
+      due.clear();
+      for (const queryKey of keys) qc.invalidateQueries({ queryKey });
+    };
+    const refresh = (keys: string[][]) => {
+      for (const k of keys) due.set(k.join("|"), k);
+      timer ??= setTimeout(flush, 250);
+    };
     const channel = supabase.channel(`household:${householdId}`);
     for (const table of Object.keys(TABLE_KEYS)) {
       channel.on(
         "postgres_changes",
         { event: "*", schema: "public", table, filter: `household_id=eq.${householdId}` },
         (payload) => {
-          for (const queryKey of TABLE_KEYS[table]!) qc.invalidateQueries({ queryKey });
+          refresh(TABLE_KEYS[table]!);
           const change: RowChange = {
             table,
             event: payload.eventType,
@@ -63,9 +82,7 @@ export function useHouseholdRealtime(householdId: string): RealtimeStatus {
     // Mazanie sa podľa domácnosti filtrovať nedá (zmazaný riadok už nemá obsah,
     // príde len jeho ID). Počúvame preto mazanie bez filtra a len obnovíme zoznam.
     for (const table of ["shopping_list_items", "shopping_lists", "receipts", "favorite_tiles", "recipes"]) {
-      channel.on("postgres_changes", { event: "DELETE", schema: "public", table }, () => {
-        for (const queryKey of TABLE_KEYS[table]!) qc.invalidateQueries({ queryKey });
-      });
+      channel.on("postgres_changes", { event: "DELETE", schema: "public", table }, () => refresh(TABLE_KEYS[table]!));
     }
     channel.subscribe((state) => {
       if (state === "SUBSCRIBED") {
@@ -77,6 +94,7 @@ export function useHouseholdRealtime(householdId: string): RealtimeStatus {
       }
     });
     return () => {
+      clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [householdId, qc]);

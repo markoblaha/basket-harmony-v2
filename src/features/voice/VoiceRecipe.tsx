@@ -260,7 +260,7 @@ export function RecipeCardView({
   const skeletons = card.status === "loading" ? Math.max(0, MAX - card.options.length) : 0;
 
   return (
-    <div className={cx("v-rc anim-pop", active && "active")} role="group" aria-label={t("voice.rc.aria", { name: card.query })}>
+    <div className={cx("v-rc anim-pop", active && "active")} data-flip={`rc:${card.id}`} role="group" aria-label={t("voice.rc.aria", { name: card.query })}>
       <div className="row g-10">
         <span className="cat-ic v-rc-ic">
           <ChefHat size={18} />
@@ -377,7 +377,7 @@ const detailOf = (r: IngredientRow) => r.buy.detail.split(" · ").filter((x) => 
 /** Pridaný recept – skrátene, s možnosťou zmeniť výber. */
 export function PlanRow({ plan, count, onEdit, onRemove }: { plan: VoicePlan; count: number; onEdit?: () => void; onRemove: () => void }) {
   return (
-    <div className="v-rc done row g-10">
+    <div className="v-rc done row g-10" data-flip={`plan:${plan.card}`}>
       <span className="cat-ic v-rc-ic on">
         <Check size={18} strokeWidth={2.6} />
       </span>
