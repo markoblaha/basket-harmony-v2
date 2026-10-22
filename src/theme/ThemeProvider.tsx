@@ -13,7 +13,20 @@ export type ResolvedTheme = "light" | "dark" | "color";
 
 const STORAGE_KEY = "bh.theme";
 /** Farba lišty prehliadača (zhodná s --bg v styles.css). */
-export const THEME_BG: Record<ResolvedTheme, string> = { light: "#f3f3f0", dark: "#0b0c0d", color: "#e9ecf5" };
+export const THEME_BG: Record<ResolvedTheme, string> = { light: "#f3f3f0", dark: "#0b0c0d", color: "#e4e6f4" };
+
+/**
+ * Farba systémovej lišty iPhonu (hodiny, batéria) = farba témy. iPhone ju berie z <meta name="theme-color">
+ * a k nej sám zvolí tmavý alebo svetlý text. Zmenu atribútu Safari niekedy prehliadne,
+ * preto starý meta nahradíme novým – vtedy sa lišta prefarbí hneď, bez reštartu appky.
+ */
+function setStatusBarColor(color: string) {
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
+  const meta = document.createElement("meta");
+  meta.name = "theme-color";
+  meta.content = color;
+  document.head.appendChild(meta);
+}
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
@@ -68,11 +81,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     firstRender.current = false;
     root.dataset.theme = resolved;
     root.style.colorScheme = resolved === "dark" ? "dark" : "light";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_BG[resolved]);
-    // iPhone číta túto voľbu pri spustení appky z plochy – prejaví sa po jej ďalšom otvorení (pozri index.html).
-    document
-      .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
-      ?.setAttribute("content", resolved === "dark" ? "black-translucent" : "default");
+    setStatusBarColor(THEME_BG[resolved]);
   }, [resolved]);
 
   const setPreference = useCallback((next: ThemePreference) => {
