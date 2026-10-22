@@ -26,13 +26,12 @@
     transition: bottom 180ms cubic-bezier(.2,.8,.2,1);
   }
   .ls-dock.typing { z-index: 45; border-radius: 22px 22px 0 0; padding-bottom: 8px; transition: none; }
-  /* Pod panelom až po klávesnicu je jeho farba – v zaoblených rohoch klávesnice nič nepresvitá. */
-  .ls-dock.typing::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 120px; background: var(--elevated); }
-  /* iPhone (iOS 26) kreslí nad klávesnicu plávajúci pásik ˄ ˅ ✓, ktorý web nevie skryť.
-     Necháme mu miesto vo farbe panelu, aby neprekrýval pole a vyzeral ako súčasť klávesnice. */
-  @supports (-webkit-touch-callout: none) and (anchor-name: --a) {
-    @media (max-width: 600px) { .ls-dock.typing { padding-bottom: 66px; } }
-  }
+  /* Pod panelom až po klávesnicu je jeho farba: systémový pásik iPhonu ˄ ˅ ✓ (web ho nevie skryť) tak leží
+     na paneli ako súčasť klávesnice a v medzerách ani v zaoblených rohoch klávesnice nepresvitá zoznam.
+     Pole samotné je hneď nad pásikom – iPhone do viditeľnej výšky pásik nezapočítava. */
+  .ls-dock.typing::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% - 1px); height: 320px; background: inherit; }
+  /* Farebná téma má panel mierne priesvitný – pri písaní musí byť plný, inak cez neho presvitá zoznam. */
+  [data-theme="color"] .ls-dock.typing { background: rgb(250 248 255); }
   /* Kým sa píše, spodná lišta úplne zmizne – pole je prilepené ku klávesnici. */
   .tabbar { transition: transform 220ms cubic-bezier(.2,.8,.2,1), visibility 0s; }
   body.kb-typing .tabbar { transform: translateY(110%); visibility: hidden; transition: transform 220ms cubic-bezier(.2,.8,.2,1), visibility 0s 220ms; }
