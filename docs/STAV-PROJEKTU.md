@@ -45,6 +45,8 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   Diktovanie v poli zoznamu: `features/voice/useDictation.ts`. Úseky reči idú na server súbežne (výsledky v poradí),
   kým sa spracúvajú, v zozname je karta „Spracúvam vetu…“. Rozpoznanie reči (`useRecorder`) počíta s tichým
   mikrofónom bez automatickej hlasitosti aj so stálym hlukom; pri dlhom diktovaní odošle úsek už po krátkej pauze.
+  Ak iPhone zvuk appky nepustí (prišlo 0 nahrávok od 926f665), do 1,5 s sa ukáže „Ťukni kamkoľvek“ a ťuk ho rozbehne
+  (`stalled`/`wake` v `useRecorder`). Overiť na skutočnom iPhone: v záznamoch parse-voice musia pribúdať „audio“.
 - **Viac:** hlavné prepínače + „Rozšírené“, rozpočet cez list z Analytiky, poradie obchodov ťahaním,
   vibrácie na iPhone cez systémový prepínač (`haptic()` v `components/kit.tsx`).
 - Systémová lišta iPhonu vo farbe témy, plynulejšie animácie (`components/motion.ts`: FLIP, animateOut, collapseOut).
