@@ -1,0 +1,70 @@
+# Stav projektu (odovzdanie pre ďalšiu reláciu)
+
+Aktualizované 23. 10. 2026. Pred prácou si prečítaj celé – je to krátke.
+
+## Kde čo beží
+
+| Čo | Kde |
+|---|---|
+| Ostrá appka | vetva `main` → Cloudflare Worker `basket-harmony-v2`, DB `kjadeylctafnmgembgev` |
+| Testovacia appka | vetva `design/v2-mobile-redesign` → https://design-v2-mobile-redesign-basket-harmony-v2.markoblaha.workers.dev, DB `esftqxrdrlldvpmwirrx` (režim „staging“, `.env.staging`) |
+| Nasadenie | každý `push` – Cloudflare postaví vetvu sám (1–3 min). Overenie: zmení sa `assets/index-*.js` v HTML testovacej adresy. |
+| Starý repozitár | `markoblaha/basket-harmony` (pôvodná appka z Lovable) – s v2 nesúvisí |
+
+Majiteľ nechce: push do `main` ani Pull Request bez výslovného pokynu. Do ostrej DB len pri zlúčení.
+
+## Pred zlúčením testovacej vetvy do `main` (nedokončené)
+
+1. **`main` má 1 zmenu navyše** (`9aba9fb` – doklady sa čítajú na pozadí, migrácie
+   `20261020000024_receipt_queue`, `20261020000025_worker_secret`, funkcia `ai-eval`).
+   Najprv ju zlúč do testovacej vetvy a nasaď tie migrácie do testovacej DB.
+2. Do ostrej DB chýbajú migrácie testovacej vetvy: `20261021000024_item_unavailable`,
+   `…025_shopping_time_finish`, `…026_receipt_match`, `…027_recipes`, `20261022000028_staple_items`.
+   Históriu migrácií oboch DB porovnaj (`list_migrations`) – ostrá má niektoré pod inými menami.
+3. Edge funkcie len v testovacej DB: `recipe-ai` (recepty), `parse-voice` v4 (zvuk cez
+   gemini-3.6-flash + slovník domácnosti). Pri zlúčení nasadiť aj do ostrej.
+4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` → treba súhlas majiteľa).
+
+## Čo je hotové v testovacej vetve (oproti `main`)
+
+- **Zoznam – plánovanie:** jednoduchý zoznam bez kategórií, najnovšie hore. Po pridaní dorolovanie
+  a rozsvietenie riadku. Potiahnutie celej karty: doprava +1, doľava −1, pri poslednom kuse dlhý ťah = zmazať
+  (karta odletí, riadok sa zbalí).
+- **Dok pri palci** (`features/lists/QuickDock.tsx`, `Composer.tsx`): 5 dlaždíc „istý nákup“
+  (SQL `staple_items`), Všetky 3×3, Obľúbené (max 11) s editorom, ťuk = +1 a po 2 s sa pridá,
+  dlaždicu nahradí ďalšia. Písanie: 6 bublín, pole prilepené ku klávesnici (`useKeyboardEdge`),
+  počet v texte („pivo6“, „6x pivo“ – `lib/parseItem.ts`).
+- **Nákup:** kategórie s animáciou v poradí trasy obchodu (`storeRouteOrder`), žiadosti, koniec nákupu.
+- **Prehľad zoznamov:** karta živého nákupu pulzuje, recepty v odznaku sa posúvajú (`Marquee`).
+- **Recepty:** X na okamžité zrušenie čakajúceho receptu (aj „Rozpracovaný nákup“).
+- **Hlas:** len tiché nahrávanie (`useRecorder`) bez spracovania reči telefónu – inak iPhone
+  pípa. Zvuk appky (AudioContext) sa po nahrávaní zatvorí, inak pípa pri minimalizovaní.
+  Diktovanie v poli zoznamu: `features/voice/useDictation.ts`.
+- **Viac:** hlavné prepínače + „Rozšírené“, rozpočet cez list z Analytiky, poradie obchodov ťahaním,
+  vibrácie na iPhone cez systémový prepínač (`haptic()` v `components/kit.tsx`).
+- Systémová lišta iPhonu vo farbe témy, plynulejšie animácie (`components/motion.ts`: FLIP, animateOut, collapseOut).
+
+## Rozhodnutia majiteľa (nemeniť bez opýtania)
+
+- Plánovanie bez kategórií; kategórie až v nákupe. Kategória sa priraďuje pri pridaní. Poradie trasy je všeobecné, nie podľa obchodu.
+- Ťuk = +1, pridanie po 2 s, položka v doku sa nahradí ďalšou. V režime písania presne 6 bublín (3×2), bez posúvania.
+- Hlas nesmie vydávať žiadne zvuky. Pásik ˄ ˅ ✓ nad klávesnicou iPhonu z webu skryť nejde (len natívna appka).
+- Texty po slovensky, jednoduché, bez skloňovania mien („Nakupuje: Lucia“).
+
+## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
+
+- Audit celej appky s plánom vo 4 fázach a návrhom tém Biela / Čierna / Farebná:
+  https://claude.ai/artifact/6A4vJaWWJ7jEJrDTxqiztq
+- Revízia zoznamov a nákupu (17 zistení): https://claude.ai/artifact/WgLwB1rLdQ8orYdv9Kv8Hv
+- Návrhy dizajnu doku (plátno s mockupmi): https://claude.ai/code/artifact/6c26f3fa-644e-4fff-9edb-c171a81fb037
+- Push upozornenia (iOS 16.4+ v appke z plochy) – majiteľ sa ešte nevyjadril.
+- Známe nezrovnalosti: Obľúbené dlaždice „z 12“ vo Viac vs. max 11 v doku; nepoužité grafy
+  `CumulativeChart`, `BarChart` (`features/analytics/charts.tsx`).
+
+## Ako overovať
+
+- `npm run check` (typy, testy, build) musí prejsť; `tsconfig.tsbuildinfo` po ňom vráť (`git checkout`).
+- UI: postav `npx vite build --mode staging`, spusti `vite preview` a fotografuj Playwrightom
+  (Chromium je v `/opt/pw-browsers`). Prihlásenie a odpovede Supabase sa dajú podvrhnúť cez
+  `page.route` – nič sa vtedy nezapisuje do DB.
+- Na skutočný iPhone (klávesnica, zvuky, vibrácie) treba majiteľa – tvrď len to, čo si overil.
