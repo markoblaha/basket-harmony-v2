@@ -379,6 +379,41 @@ export function Cell({
   );
 }
 
+/**
+ * Text v jednom riadku, ktorý sa nezmestí: plynulo sa posúva sprava doľava (na začiatku chvíľu postojí),
+ * dokola bez skoku – druhá kópia nadväzuje na prvú. Keď sa zmestí, stojí. Pohyb len cez transform.
+ */
+export function Marquee({ text, gap = 28, speed = 30 }: { text: string; gap?: number; speed?: number }) {
+  const box = useRef<HTMLSpanElement>(null);
+  const first = useRef<HTMLSpanElement>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const b = box.current;
+    const f = first.current;
+    if (!b || !f) return;
+    const measure = () => setWidth(f.offsetWidth > b.clientWidth + 1 ? f.offsetWidth : 0);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(b);
+    return () => ro.disconnect();
+  }, [text]);
+  const d = width + gap;
+  const style = width ? ({ "--mq-d": `${d}px`, "--mq-t": `${(d / speed) * 1.25}s` } as CSSProperties) : undefined;
+  return (
+    <span ref={box} className={cx("mq", width > 0 && "on")} style={style} title={text}>
+      <span className="mq-track">
+        <span ref={first}>{text}</span>
+        {width > 0 && (
+          <span aria-hidden style={{ paddingLeft: gap }}>
+            {text}
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
 export function ProgressBar({ value, color }: { value: number; color?: string }) {
   const v = Math.max(0, Math.min(1, value));
   return (

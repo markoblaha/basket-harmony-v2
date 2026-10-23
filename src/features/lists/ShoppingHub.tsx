@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ChefHat, ChevronRight, History, Lock, Plus, ReceiptText, ShoppingBasket, ShoppingCart } from "lucide-react";
 import { ErrorState, Spinner, cx } from "@/components/ui";
-import { Avatars, Cell, Empty, ProgressBar, ScreenHeader, StoreBadge, useLongPress, type Person } from "@/components/kit";
+import { Avatars, Cell, Empty, Marquee, ProgressBar, ScreenHeader, StoreBadge, useLongPress, type Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
@@ -287,9 +287,9 @@ function ListCard({
             </span>
           )}
           {recipes.length > 0 && (
-            <span className="badge b-gray">
-              <ChefHat size={12} />
-              {t("ls.fromRecipe", { names: recipes.join(" + ") })}
+            <span className="badge b-gray fit">
+              <ChefHat size={12} className="shrink-0" />
+              <Marquee text={t("ls.fromRecipe", { names: recipes.join(" + ") })} />
             </span>
           )}
           {list.note && recipes.length === 0 && <span className="t-xs t-3 ellipsis">{list.note}</span>}
