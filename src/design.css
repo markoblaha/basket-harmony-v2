@@ -462,8 +462,8 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
 .ls-go { flex: none; height: 40px; padding: 0 14px 0 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 650;
   background: var(--accent-soft); color: var(--accent-text); transition: transform 120ms; }
 .ls-go:active { transform: scale(0.95); }
-.ls-go.live { background: var(--violet-soft); color: var(--violet); box-shadow: none; }
-[data-theme="color"] .ls-go:not(.live) { background: linear-gradient(120deg, #dfe4f2, #e7e2f1); color: #3a4a8c; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9); }
+.ls-go.on { background: var(--violet-soft); color: var(--violet); box-shadow: none; }
+[data-theme="color"] .ls-go:not(.on) { background: linear-gradient(120deg, #dfe4f2, #e7e2f1); color: #3a4a8c; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9); }
 
 /* Odškrtnutie počas nákupu: fajka sa nakreslí, karta jemne zosvetlie (vrstva s priehľadnosťou),
  * potom klesne do košíka a ostatné sa dokĺžu (components/motion.ts – len transform a opacity). */
@@ -726,3 +726,13 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
 .rc-bubble.off { background: var(--orange-soft); }
 
 }
+
+/* Zoznam, na ktorom sa práve nakupuje: fialový rámik a žiara pomaly „dýchajú“ (len priehľadnosť vrstvy –
+   žiadne prekresľovanie tieňa), jemný fialový nádych zľava. Je jasné, že tu niekto nakupuje. */
+.ls-listcard.ls-active { position: relative; isolation: isolate;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--violet-soft) 70%, var(--surface)) 0%, var(--surface) 62%); }
+.ls-active-glow { position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--violet) 55%, transparent), 0 0 0 4px color-mix(in srgb, var(--violet) 14%, transparent), 0 10px 28px -10px color-mix(in srgb, var(--violet) 60%, transparent);
+  animation: ls-breathe 2.4s ease-in-out infinite; }
+@keyframes ls-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ls-active-glow { animation: none; opacity: 0.8; } }

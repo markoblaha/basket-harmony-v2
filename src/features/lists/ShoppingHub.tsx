@@ -235,13 +235,14 @@ function ListCard({
 
   return (
     <div
-      className={cx("ls-listcard anim-rise", fresh && "ls-fresh")}
+      className={cx("ls-listcard anim-rise", fresh && "ls-fresh", session && "ls-active")}
       data-new={t("ls.newTag")}
       role="button"
       tabIndex={0}
       {...lp}
       aria-label={`${list.name}, ${listDay(list)}, ${tn("shop.itemCount", open)}`}
     >
+      {session && <span className="ls-active-glow" aria-hidden />}
       <span className="row g-12">
         <StoreBadge name={list.name} />
         <span className="grow stack g-2">
@@ -263,7 +264,7 @@ function ListCard({
         {(session || open > 0) && (
           <button
             type="button"
-            className={cx("ls-go", session && "live")}
+            className={cx("ls-go", session && "on")}
             disabled={start.isPending}
             onPointerDown={(e) => e.stopPropagation()}
             onPointerUp={(e) => e.stopPropagation()}
@@ -273,7 +274,7 @@ function ListCard({
             }}
             aria-label={session ? t("ls.openShopAria", { name: list.name }) : t("ls.startShopAria", { name: list.name })}
           >
-            <ShoppingCart size={16} />
+            {session ? <span className="live" style={{ width: 7, height: 7 }} /> : <ShoppingCart size={16} />}
             <span>{session ? t("ls.open") : t("ls.start")}</span>
           </button>
         )}
