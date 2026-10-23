@@ -28,6 +28,19 @@ function audioContext(): Ctx | null {
  * Zavolaj priamo v ťuknutí na tlačidlo hlasu: iPhone pustí zvuk len z ťuknutia,
  * neskôr (po otvorení obrazovky) by AudioContext ostal „uspatý“.
  */
+/**
+ * Zvuk appky úplne vypneme, keď sa nenahráva: inak ho iPhone pri každom minimalizovaní a návrate appky
+ * uspí a zobudí – a to je počuť (aj v tichom režime). Pri ďalšom ťuknutí na hlas sa vytvorí znova.
+ */
+let recording = 0;
+function releaseAudio() {
+  if (recording > 0 || !shared) return;
+  const c = shared;
+  shared = null;
+  void c.close().catch(() => undefined);
+}
+if (typeof document !== "undefined") document.addEventListener("visibilitychange", () => document.hidden && releaseAudio());
+
 export function primeAudio() {
   try {
     void audioContext()?.resume();
@@ -107,6 +120,7 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     stopRef.current = null;
     setListening(false);
     setHearing(false);
+    releaseAudio();
   }, []);
 
   const start = useCallback(async () => {
@@ -141,6 +155,7 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
       return;
     }
     await ctx.resume().catch(() => undefined);
+    recording++;
     const src = ctx.createMediaStreamSource(stream);
     // ScriptProcessor je zastaraný, ale jediný funguje všade (aj starší iPhone) bez ďalšieho súboru.
     const proc = ctx.createScriptProcessor(2048, 1, 1);
@@ -211,10 +226,18 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
         /* už odpojené */
       }
       stream.getTracks().forEach((t) => t.stop());
+      recording--;
+      releaseAudio();
     };
   }, [supported]);
 
-  useEffect(() => () => stopRef.current?.(), []);
+  useEffect(
+    () => () => {
+      stopRef.current?.();
+      releaseAudio();
+    },
+    [],
+  );
 
   return { supported, listening, hearing, error, start: () => void start(), stop };
 }
