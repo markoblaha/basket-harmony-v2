@@ -7,7 +7,7 @@ import { normalizeName } from "@/lib/categories";
 import { formatQuantity, parseItemInput } from "@/lib/parseItem";
 import { t } from "@/i18n";
 import { parseLocal } from "@/features/voice/parse";
-import { useSpeech } from "@/features/voice/useSpeech";
+import { useDictation } from "@/features/voice/useDictation";
 import type { Item } from "./api";
 import { Bubble, starters, useQuickPool, useSlots } from "./QuickDock";
 import { candidates, keyOf } from "./quickSlots";
@@ -78,7 +78,7 @@ export function Composer({
   const pool = useQuickPool(householdId, items);
 
   // Nadiktovaná veta: všetky položky naraz, potom jedna hláška „Pridané hlasom: …“.
-  const speech = useSpeech(async (said) => {
+  const speech = useDictation(async (said) => {
     const adds: Promise<AddOutcome>[] = [];
     const names: string[] = [];
     for (const op of parseLocal(said)) {

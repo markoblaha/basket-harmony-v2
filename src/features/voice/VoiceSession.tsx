@@ -53,7 +53,8 @@ const hasSpeech = () => {
  * reč nerozpozná alebo sa pýta pri každej vete).
  */
 type Engine = "speech" | "rec" | "none";
-const firstEngine = (): Engine => (!isIOS() && hasSpeech() ? "speech" : recorderSupported() ? "rec" : hasSpeech() ? "speech" : "none");
+// Prednostne nahrávanie – rozpoznávanie reči v prehliadači pri každom spustení a zastavení pípne.
+const firstEngine = (): Engine => (recorderSupported() ? "rec" : hasSpeech() ? "speech" : "none");
 
 type Modal = "where" | "store" | "unsure" | "recipes" | null;
 
