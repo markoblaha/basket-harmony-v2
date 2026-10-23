@@ -1,35 +1,40 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import {
-  Bell, Check, ChevronRight, CircleHelp, Download, Globe, LogOut, Plus, Repeat, Star, Store, Trash2, Users, Wallet, type LucideIcon,
+  Bell, Check, ChevronDown, ChevronRight, CircleHelp, Download, Globe, LogOut, Plus, Repeat, Star, Store, Trash2, Users, Wallet, type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
 import { useSettings, setSetting, type Settings } from "@/lib/settings";
 import { shortName } from "@/lib/shortName";
-import { BottomSheet, Cell, ConfirmDialog, PersonAvatar, ScreenHeader, Seg, SheetHeader, Stepper, Switch } from "@/components/kit";
+import { BottomSheet, Cell, ConfirmDialog, PersonAvatar, ScreenHeader, Seg, SheetHeader, Switch, hapticsSupported } from "@/components/kit";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useAuth, useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import {
-  useCreateHousehold, useMembers, useMonthlyBudget, useProfiles, useSaveMonthlyBudget, useUpdateDisplayName,
-} from "@/features/household/api";
+import { useCreateHousehold, useMembers, useMonthlyBudget, useProfiles, useUpdateDisplayName } from "@/features/household/api";
+import { useOverview } from "@/features/analytics/api";
+import { BudgetSheet } from "@/features/analytics/BudgetSheet";
+import { computePeriod, thisMonth } from "@/features/analytics/period";
 import { useFavoriteTiles } from "@/features/lists/api";
 import { useReceipts, type Receipt } from "@/features/receipts/api";
 import { formatDateTime, formatEuro, formatNumber, t, tn, type Key } from "@/i18n";
 import { LanguagePicker, ThemePicker } from "./AppearancePicker";
 
-/** Prepínače zobrazovania (uložené v zariadení, src/lib/settings.ts). */
-const TOGGLES: [keyof Settings & string, Key, Key][] = [
+/** Prepínače zobrazovania (uložené v zariadení, src/lib/settings.ts). Hlavné sú vždy vidno, ostatné pod „Rozšírené“. */
+type Toggle = [keyof Settings & string, Key, Key];
+const MAIN_TOGGLES: Toggle[] = [
   ["prices", "more.set.prices", "more.set.pricesSub"],
   ["estimate", "more.set.estimate", "more.set.estimateSub"],
+  ["micAutostart", "more.set.micAutostart", "more.set.micAutostartSub"],
+  // Vibrácie len tam, kde ich telefón vie (inak by prepínač nič nerobil).
+  ...(hapticsSupported() ? ([["haptics", "more.set.haptics", "more.set.hapticsSub"]] as Toggle[]) : []),
+];
+const MORE_TOGGLES: Toggle[] = [
   ["homeSection", "more.set.homeSection", "more.set.homeSectionSub"],
+  ["recipeSuggestions", "more.set.recipeSuggestions", "more.set.recipeSuggestionsSub"],
   ["nutrition", "more.set.nutrition", "more.set.nutritionSub"],
   ["basketMix", "more.set.basketMix", "more.set.basketMixSub"],
-  ["recipeSuggestions", "more.set.recipeSuggestions", "more.set.recipeSuggestionsSub"],
-  ["haptics", "more.set.haptics", "more.set.hapticsSub"],
-  ["micAutostart", "more.set.micAutostart", "more.set.micAutostartSub"],
 ];
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -68,6 +73,7 @@ export function MorePage() {
   const settings = useSettings();
   const [sheet, setSheet] = useState<SheetName>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
   const close = () => setSheet(null);
 
   const myName = profiles.data?.get(me) ?? "";
@@ -115,8 +121,8 @@ export function MorePage() {
         </Section>
 
         <Section title={t("more.section.display")}>
-          {TOGGLES.map(([k, title, sub]) => (
-            <div key={k} className="cell">
+          {[...MAIN_TOGGLES, ...(advanced ? MORE_TOGGLES : [])].map(([k, title, sub]) => (
+            <div key={k} className={cx("cell", MORE_TOGGLES.some((x) => x[0] === k) && "anim-pop")}>
               <span className="grow stack g-2">
                 <span className="t-body fw-5">{t(title)}</span>
                 <span className="t-sm t-2">{t(sub)}</span>
@@ -124,6 +130,13 @@ export function MorePage() {
               <Switch on={!!settings[k]} label={t(title)} onChange={(v) => setSetting(k, v as never)} />
             </div>
           ))}
+          <button type="button" className="cell" aria-expanded={advanced} onClick={() => setAdvanced(!advanced)}>
+            <span className="grow stack g-2">
+              <span className="t-body fw-5">{advanced ? t("more.set.less") : t("more.set.advanced")}</span>
+              {!advanced && <span className="t-sm t-2">{t("more.set.advancedSub")}</span>}
+            </span>
+            <ChevronDown size={18} className="chev" style={{ transform: advanced ? "rotate(180deg)" : undefined, transition: "transform 200ms" }} />
+          </button>
         </Section>
 
         <Section title={t("more.section.notifications")}>
@@ -223,40 +236,39 @@ export function MorePage() {
   );
 }
 
-/** Mesačný rozpočet (spoločný pre domácnosť, ten istý ako v Analytike). Ukladá sa chvíľu po poslednom ťuknutí. */
+/**
+ * Mesačný rozpočet (spoločný pre domácnosť). Ťuk otvorí ten istý list ako v Analytike:
+ * suma na mesiac a voliteľne na kategórie, s tým, koľko sa už minulo.
+ */
 function BudgetRow({ householdId }: { householdId: string }) {
   const budget = useMonthlyBudget(householdId);
-  const save = useSaveMonthlyBudget(householdId);
-  const toast = useToast();
-  const [draft, setDraft] = useState<number | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const value = draft ?? budget.data ?? 0;
-
-  const change = (v: number) => {
-    setDraft(v);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      save.mutate(v > 0 ? v : null, {
-        onSuccess: () => toast.show(t("more.budgetSaved"), "success"),
-        onError: (err) => toast.show(errorMessage(err), "error"),
-        onSettled: () => setDraft(null),
-      });
-    }, 700);
-  };
-
+  const [open, setOpen] = useState(false);
+  const value = budget.data ?? 0;
   return (
-    <div className="cell">
-      <Ic I={Wallet} />
-      <span className="grow stack g-2">
-        <span className="t-body fw-5">{t("more.budget")}</span>
-        <span className="t-sm t-2 num">
-          {value > 0 ? t("more.budgetSub", { amount: formatEuro(value).replace(/[,.]00(?=\D*$)/, "") }) : t("more.budgetNone")}
-        </span>
-      </span>
-      <Stepper small value={value} min={0} step={50} onChange={change} />
-    </div>
+    <>
+      <Cell
+        icon={<Ic I={Wallet} />}
+        title={t("more.budget")}
+        sub={value > 0 ? t("more.budgetSub", { amount: formatEuro(value).replace(/[,.]00(?=\D*$)/, "") }) : t("more.budgetNone")}
+        onClick={() => setOpen(true)}
+      />
+      {open && <BudgetEditor householdId={householdId} onClose={() => setOpen(false)} />}
+    </>
   );
+}
+
+/** Načíta prehľad tohto mesiaca (minuté sumy) a otvorí formulár rozpočtu. */
+function BudgetEditor({ householdId, onClose }: { householdId: string; onClose: () => void }) {
+  const period = useMemo(() => computePeriod("month", thisMonth(), "all", "month"), []);
+  const overview = useOverview(householdId, period);
+  const toast = useToast();
+  useEffect(() => {
+    if (overview.isError) {
+      toast.show(errorMessage(overview.error), "error");
+      onClose();
+    }
+  }, [overview.isError, overview.error, toast, onClose]);
+  return overview.data ? <BudgetSheet open onClose={onClose} overview={overview.data} /> : null;
 }
 
 /** V1P – úprava mena a priezviska (v databáze je jedno meno, skladá sa z oboch polí). */

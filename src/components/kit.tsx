@@ -423,10 +423,36 @@ export function ProgressBar({ value, color }: { value: number; color?: string })
   );
 }
 
+/**
+ * iPhone nemá vo webe vibrovanie (navigator.vibrate), ale od iOS 18 jemne „ťukne“, keď sa prepne
+ * systémový prepínač (<input type="checkbox" switch>). Takýto neviditeľný prepínač na chvíľu vložíme
+ * a ťukneme naň – funguje len počas ťuknutia používateľa, čo pri odškrtnutí a pridaní platí.
+ */
+const iosSwitch =
+  typeof document !== "undefined" && typeof navigator !== "undefined" && !("vibrate" in navigator) &&
+  typeof (document.createElement("input") as HTMLInputElement & { switch?: unknown }).switch === "boolean";
+
+/** Vie tento telefón vibrovať? (Inak prepínač Vibrácie vo Viac nemá zmysel.) */
+export const hapticsSupported = () => typeof navigator !== "undefined" && ("vibrate" in navigator || iosSwitch);
+
 /** Krátka vibrácia (ak ju telefón podporuje a používateľ ju vo Viac nevypol). */
-export function haptic(ms = 12) {
+export function haptic(ms: number | number[] = 12) {
   try {
-    if (getSetting("haptics")) navigator.vibrate?.(ms);
+    if (!getSetting("haptics")) return;
+    if (!iosSwitch) {
+      navigator.vibrate?.(ms);
+      return;
+    }
+    const label = document.createElement("label");
+    label.ariaHidden = "true";
+    label.style.display = "none";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.setAttribute("switch", "");
+    label.appendChild(input);
+    document.head.appendChild(label);
+    label.click();
+    label.remove();
   } catch {
     /* nepodporované */
   }

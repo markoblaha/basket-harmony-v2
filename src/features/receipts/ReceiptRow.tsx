@@ -1,7 +1,7 @@
 import { useRef, type PointerEvent } from "react";
 import { Link } from "react-router";
 import { AlertTriangle, ChevronRight, FileText, Landmark, Link2, Loader2, PenLine, Unlink } from "lucide-react";
-import { CatIcon, StoreBadge } from "@/components/kit";
+import { CatIcon, StoreBadge, haptic } from "@/components/kit";
 import { category } from "@/lib/categories";
 import { dayLabel } from "@/features/lists/dates";
 import { cx } from "@/components/ui";
@@ -58,7 +58,7 @@ function useLongPress(onLongPress: (() => void) | undefined) {
         fired.current = false;
         timer.current = window.setTimeout(() => {
           fired.current = true;
-          navigator.vibrate?.(12);
+          haptic(12);
           onLongPress();
         }, 500);
       },

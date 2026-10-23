@@ -323,7 +323,10 @@ export function useSetBudget(householdId: string) {
         if (error) throw error;
       }
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: analyticsKeys.all }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: analyticsKeys.all });
+      qc.invalidateQueries({ queryKey: ["budget", householdId] }); // suma vo Viac
+    },
   });
 }
 

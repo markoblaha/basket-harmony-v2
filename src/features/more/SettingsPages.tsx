@@ -2,13 +2,14 @@
  * Podstránky Viac: V3 Upozornenia, V4 Moje obchody, V5 Obľúbené dlaždice.
  * Upozornenia a obchody sú voľby tohto telefónu (src/lib/settings.ts), dlaždice sú v databáze.
  */
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowDown, ArrowUp, BellRing, Star, Trash2 } from "lucide-react";
+import { BellRing, GripVertical, Star, Trash2 } from "lucide-react";
 import { errorMessage } from "@/lib/errors";
 import { setSetting, useSettings, type NotifKind } from "@/lib/settings";
 import { normalizeName } from "@/lib/categories";
-import { Empty, ScreenHeader, StoreBadge, Switch } from "@/components/kit";
+import { Empty, ScreenHeader, StoreBadge, Switch, haptic } from "@/components/kit";
+import { useFlip } from "@/components/motion";
 import { ErrorState, Spinner } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
@@ -102,6 +103,46 @@ export function StoresPage() {
     setSetting("storeOrder", o);
   };
 
+  // Ťahanie za úchyt: riadok ide za prstom, ostatné sa plynulo uhýbajú (FLIP), uloží sa po pustení.
+  const box = useRef<HTMLDivElement>(null);
+  useFlip(box, { enter: false });
+  const [live, setLive] = useState<string[] | null>(null);
+  const [drag, setDrag] = useState<{ name: string; dy: number } | null>(null);
+  const st = useRef<{ name: string; y0: number; h: number; list: string[] } | null>(null);
+  const shown = live ?? order;
+  const grab = (e: React.PointerEvent, name: string) => {
+    const row = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-flip]");
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    st.current = { name, y0: e.clientY, h: row?.offsetHeight || 56, list: [...order] };
+    setLive([...order]);
+    setDrag({ name, dy: 0 });
+    haptic(8);
+  };
+  const pull = (e: React.PointerEvent) => {
+    const c = st.current;
+    if (!c) return;
+    let dy = e.clientY - c.y0;
+    const i = c.list.indexOf(c.name);
+    const steps = Math.trunc(dy / c.h + Math.sign(dy) * 0.5);
+    const j = Math.max(0, Math.min(c.list.length - 1, i + steps));
+    if (j !== i) {
+      c.list.splice(i, 1);
+      c.list.splice(j, 0, c.name);
+      c.y0 += (j - i) * c.h;
+      dy = e.clientY - c.y0;
+      setLive([...c.list]);
+      haptic(6);
+    }
+    setDrag({ name: c.name, dy });
+  };
+  const drop = () => {
+    const c = st.current;
+    st.current = null;
+    if (c) setSetting("storeOrder", c.list);
+    setDrag(null);
+    setLive(null);
+  };
+
   return (
     <div className="stack">
       <ScreenHeader title={t("more.stores")} onBack={() => navigate("/more")} />
@@ -109,11 +150,22 @@ export function StoresPage() {
         <span className="t-sm t-2" style={{ padding: "0 4px" }}>
           {t("more.stores.help")}
         </span>
-        <div className="cells">
-          {order.map((n, i) => {
+        <div className="cells" ref={box}>
+          {shown.map((n, i) => {
             const on = isFav(n);
+            const dragging = drag?.name === n;
             return (
-              <div key={n} className="cell">
+              <div
+                key={n}
+                className="cell"
+                // Ťahaný riadok riadi prst, plynulé uhýbanie (FLIP) len ostatné.
+                data-flip={dragging ? undefined : n}
+                style={
+                  dragging
+                    ? { transform: `translateY(${drag.dy}px) scale(1.02)`, zIndex: 2, position: "relative", background: "var(--elevated)", boxShadow: "var(--sh-3)", borderRadius: 14 }
+                    : undefined
+                }
+              >
                 <StoreBadge name={n} />
                 <span className="grow stack g-2">
                   <span className="t-body fw-5">{n}</span>
@@ -122,18 +174,23 @@ export function StoresPage() {
                 <button type="button" className="ibtn sm" onClick={() => toggleFav(n)} aria-label={on ? t("more.stores.unfav") : t("more.stores.fav")} aria-pressed={on}>
                   <Star size={18} fill={on ? "currentColor" : "none"} style={{ color: on ? "var(--yellow)" : "var(--text-3)" }} />
                 </button>
-                <button type="button" className="ibtn sm" onClick={() => move(i, -1)} disabled={i === 0} aria-label={t("more.stores.up")} style={{ opacity: i === 0 ? 0.3 : 1 }}>
-                  <ArrowUp size={18} />
-                </button>
                 <button
                   type="button"
                   className="ibtn sm"
-                  onClick={() => move(i, 1)}
-                  disabled={i === order.length - 1}
-                  aria-label={t("more.stores.down")}
-                  style={{ opacity: i === order.length - 1 ? 0.3 : 1 }}
+                  style={{ touchAction: "none", cursor: dragging ? "grabbing" : "grab" }}
+                  aria-label={t("more.stores.drag", { name: n })}
+                  onPointerDown={(e) => grab(e, n)}
+                  onPointerMove={pull}
+                  onPointerUp={drop}
+                  onPointerCancel={drop}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                      e.preventDefault();
+                      move(i, e.key === "ArrowUp" ? -1 : 1);
+                    }
+                  }}
                 >
-                  <ArrowDown size={18} />
+                  <GripVertical size={18} />
                 </button>
               </div>
             );
