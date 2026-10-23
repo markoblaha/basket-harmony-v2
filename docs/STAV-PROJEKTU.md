@@ -13,6 +13,9 @@ Aktualizované 23. 10. 2026. Pred prácou si prečítaj celé – je to krátke.
 
 Majiteľ nechce: push do `main` ani Pull Request bez výslovného pokynu. Do ostrej DB len pri zlúčení.
 
+Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026: 66 dokladov, 523 položiek,
+416 produktov + aliasy; všetky doklady pripísané Markovi). Fotky dokladov ani `receipt_pages` sa nekopírovali.
+
 ## Pred zlúčením testovacej vetvy do `main` (nedokončené)
 
 1. **`main` má 1 zmenu navyše** (`9aba9fb` – doklady sa čítajú na pozadí, migrácie
