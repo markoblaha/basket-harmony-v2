@@ -16,10 +16,14 @@ export function useDictation(onText: (text: string) => void, vocab: string[] = [
   const vocabRef = useRef(vocab);
   vocabRef.current = vocab;
   const [failed, setFailed] = useState(false);
+  /** Počet viet, ktoré server ešte spracúva. */
+  const [pending, setPending] = useState(0);
 
   const rec = useRecorder(
     useCallback((wav: string) => {
+      setPending((p) => p + 1);
       void interpretAudio({ mime: "audio/wav", data: wav }, [], null, vocabRef.current).then((res) => {
+        setPending((p) => p - 1);
         if (!res) return setFailed(true);
         if (res.transcript) {
           setInterim(res.transcript);
@@ -39,6 +43,6 @@ export function useDictation(onText: (text: string) => void, vocab: string[] = [
   const stop = useCallback(() => (silent ? rec.stop() : speech.stop()), [silent, rec, speech]);
 
   return silent
-    ? { supported: true, interim, hearing: rec.hearing, error: rec.error ?? (failed ? "failed" : null), start, stop }
-    : { supported: speech.supported, interim: speech.interim, hearing: speech.hearing, error: speech.error, start, stop };
+    ? { supported: true, interim, hearing: rec.hearing, busy: pending > 0, error: rec.error ?? (failed ? "failed" : null), start, stop }
+    : { supported: speech.supported, interim: speech.interim, hearing: speech.hearing, busy: false, error: speech.error, start, stop };
 }

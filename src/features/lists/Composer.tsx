@@ -151,7 +151,9 @@ export function Composer({
               <Mic size={20} />
             </span>
             <div className="transcript grow">
-              {speech.interim ? (
+              {speech.busy && !speech.hearing ? (
+                <span className="t-2">{t("ls.processing")}</span>
+              ) : speech.interim ? (
                 <span className="fw-5">{speech.interim}</span>
               ) : speech.error ? (
                 <span className="t-2">{t("ls.micBlocked")}</span>

@@ -3,15 +3,19 @@
  * reč nerozpozná (Web Speech je tam zakázaný alebo sa pýta pri každej vete).
  *
  * Mikrofón beží stále; podľa hlasitosti poznáme, kedy človek hovorí. Keď spraví
- * pauzu (~0,8 s), úsek reči sa zabalí do krátkeho WAV (16 kHz, mono) a ide na server,
- * kde ho Gemini prepíše a rozoberie naraz (parse-voice). Nič sa neukladá.
+ * pauzu (~0,65 s), úsek reči sa zabalí do krátkeho WAV (16 kHz, mono) a ide na server,
+ * kde ho Gemini prepíše a rozoberie naraz (parse-voice). Pri dlhom diktovaní bez pauzy sa
+ * úsek odošle už pri krátkom nadýchnutí, aby položky pribúdali priebežne. Nič sa neukladá.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const RATE = 16_000;
 const SILENCE_MS = 650;
+/** Po LONG_MS reči stačí na odoslanie aj kratšia pauza (nádych medzi položkami). */
+const LONG_MS = 3_000;
+const SHORT_SILENCE_MS = 250;
 const MIN_SPEECH_MS = 350;
-const MAX_SEGMENT_MS = 14_000;
+const MAX_SEGMENT_MS = 9_000;
 const PRE_ROLL_MS = 300;
 
 type Ctx = AudioContext;
@@ -55,6 +59,10 @@ export const recorderSupported = () =>
 /** Úsek reči → WAV (PCM 16 bit) v base64. */
 function toWav(chunks: Float32Array[], fromRate: number): string {
   const total = chunks.reduce((a, c) => a + c.length, 0);
+  // Mikrofón ide bez automatickej hlasitosti (inak iPhone pípa) – tichú reč zosilníme, AI ju lepšie počuje.
+  let peak = 0;
+  for (const c of chunks) for (let i = 0; i < c.length; i++) peak = Math.max(peak, Math.abs(c[i]!));
+  const gain = peak > 0 ? Math.min(8, 0.9 / peak) : 1;
   const ratio = fromRate / RATE;
   const n = Math.floor(total / ratio);
   const pcm = new Int16Array(n);
@@ -75,7 +83,7 @@ function toWav(chunks: Float32Array[], fromRate: number): string {
         off = 0;
       }
     }
-    const v = Math.max(-1, Math.min(1, cnt ? sum / cnt : 0));
+    const v = Math.max(-1, Math.min(1, cnt ? (sum / cnt) * gain : 0));
     pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
   }
   const buf = new ArrayBuffer(44 + pcm.byteLength);
@@ -190,9 +198,12 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
       let sum = 0;
       for (let i = 0; i < data.length; i++) sum += data[i]! * data[i]!;
       const rms = Math.sqrt(sum / data.length);
-      // Prah reči sa prispôsobí hluku v miestnosti.
-      const loud = rms > Math.max(0.012, floor * 3);
-      if (!loud) floor = floor * 0.95 + rms * 0.05;
+      // Prah reči sa prispôsobí hluku v miestnosti. Začiatok reči chce hlasnejší zvuk ako jej pokračovanie,
+      // aby sa slovo neprerušilo pri tichšej slabike.
+      const loud = rms > (speaking ? Math.max(0.006, floor * 2) : Math.max(0.009, floor * 3));
+      // Hluk pozadia: pri tichu sa prispôsobí rýchlo, inak pomaly. Bez toho by stály hluk (televízor, obchod)
+      // vyzeral ako nekonečná reč a nič by sa neodoslalo.
+      floor = rms < floor ? floor * 0.8 + rms * 0.2 : loud ? floor * 0.99 + rms * 0.01 : floor * 0.95 + rms * 0.05;
       if (!speaking) {
         pre.push(data);
         while (pre.length * msPer > PRE_ROLL_MS) pre.shift();
@@ -212,7 +223,7 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
         speechMs += msPer;
         silenceMs = 0;
       } else silenceMs += msPer;
-      if (silenceMs >= SILENCE_MS || segMs >= MAX_SEGMENT_MS) flush();
+      if (silenceMs >= SILENCE_MS || (segMs >= LONG_MS && silenceMs >= SHORT_SILENCE_MS) || segMs >= MAX_SEGMENT_MS) flush();
     };
 
     stopRef.current = () => {

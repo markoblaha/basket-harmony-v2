@@ -61,6 +61,7 @@ export const skLs = {
   "ls.noReceiptSaved": "Nákup ostane bez dokladu",
   "ls.micBlocked": "Mikrofón nie je povolený. Povoľ ho v nastaveniach prehliadača.",
   "ls.listening": "Počúvam… povedz, čo treba kúpiť",
+  "ls.processing": "Spracúvam, čo zaznelo… môžeš hovoriť ďalej",
   "ls.dictHint": "Povedz napr. „dve mlieka, maslo a štyri rožky“ alebo „zmaž maslo“.",
   "ls.type": "Písať",
   "ls.placeholderRequest": "Čo ešte treba?",

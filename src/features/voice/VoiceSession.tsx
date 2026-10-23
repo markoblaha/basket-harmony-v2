@@ -100,6 +100,8 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
   const [listening, setListening] = useState(() => getSetting("micAutostart"));
   const [said, setSaid] = useState("");
   const [refining, setRefining] = useState(0);
+  /** Nahrávky na serveri, ktoré ešte nemajú výsledok – v zozname ich ukazuje karta „Spracúvam…“. */
+  const [pendingAudio, setPendingAudio] = useState(0);
   const [busy, setBusy] = useState(false);
   const [engine, setEngine] = useState<Engine>(firstEngine);
 
@@ -413,18 +415,22 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
     [stores, targetListId, runCommand, cards, present, showRemoved, toast],
   );
 
-  // Úseky nahrávky idú na server po jednom, v poradí, ako zazneli.
+  // Úseky nahrávky idú na server hneď (súbežne), výsledky sa však použijú v poradí, ako zazneli.
+  // Po jednom by každá ďalšia veta čakala aj na všetky predchádzajúce.
   const chain = useRef<Promise<void>>(Promise.resolve());
   const audioRef = useRef(applyAudio);
   audioRef.current = applyAudio;
   const onSegment = useCallback(
     (wav: string) => {
       setRefining((r) => r + 1);
+      setPendingAudio((p) => p + 1);
+      const before = itemsRef.current;
+      const sel = selRef.current ? (before.find((c) => c.id === selRef.current)?.name ?? null) : null;
+      const answer = interpretAudio({ mime: "audio/wav", data: wav }, before, sel, vocabRef.current);
       chain.current = chain.current.then(async () => {
-        const before = itemsRef.current;
-        const sel = selRef.current ? (before.find((c) => c.id === selRef.current)?.name ?? null) : null;
-        const res = await interpretAudio({ mime: "audio/wav", data: wav }, before, sel, vocabRef.current);
+        const res = await answer;
         setRefining((r) => r - 1);
+        setPendingAudio((p) => p - 1);
         if (!res) return toast.show(t("voice.audioFailed"));
         if (!res.transcript && !res.ops.length && !res.cook.length) return;
         audioRef.current(res, sel);
@@ -531,7 +537,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
   const active = activeCard();
   const openCards = cards.cards.filter((c) => c.status !== "added");
   const orphanPlans = plans.filter((p) => !cards.cards.some((c) => c.id === p.card && c.status !== "added"));
-  const empty = n === 0 && !openCards.length && !plans.length;
+  const empty = n === 0 && !openCards.length && !plans.length && !pendingAudio;
   const pendingRecipes = cards.cards.filter((c) => c.status !== "added" && c.sel != null);
 
   const hearing = engine === "rec" ? rec.hearing : !!speech.interim;
@@ -603,6 +609,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
               </div>
             ) : (
               <div ref={cardsBox} className="v-cards" aria-live="polite">
+                {pendingAudio > 0 && <PendingCard count={pendingAudio} />}
                 {openCards.map((c) => (
                   <RecipeCardView
                     key={c.id}
@@ -831,6 +838,26 @@ function Transcript({ text, speaking, placeholder }: { text: string; speaking: b
       ))}
       {speaking ? "…" : "“"}
     </p>
+  );
+}
+
+/** Kým server spracúva nadiktovanú vetu: jasné „pracujem“ na mieste, kam položky dopadnú. */
+function PendingCard({ count }: { count: number }) {
+  return (
+    <div className="v-card v-pending anim-drop" role="status">
+      <div className="row g-12">
+        <span className="cat-ic v-dots" aria-hidden>
+          <i />
+          <i />
+          <i />
+        </span>
+        <div className="grow stack g-2">
+          <span className="t-h">{tn("voice.pending", count)}</span>
+          <span className="t-xs t-2">{t("voice.pendingSub")}</span>
+        </div>
+      </div>
+      <span className="skel v-pending-bar" aria-hidden />
+    </div>
   );
 }
 

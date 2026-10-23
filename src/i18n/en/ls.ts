@@ -63,6 +63,7 @@ export const enLs: Record<keyof typeof skLs, string> = {
   "ls.noReceiptSaved": "The trip stays without a receipt",
   "ls.micBlocked": "The microphone is blocked. Allow it in your browser settings.",
   "ls.listening": "Listening… say what to buy",
+  "ls.processing": "Processing… keep talking",
   "ls.dictHint": "Say e.g. “two milks, butter and four rolls” or “delete butter”.",
   "ls.type": "Type",
   "ls.placeholderRequest": "What else is needed?",

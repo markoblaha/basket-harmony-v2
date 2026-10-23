@@ -91,4 +91,15 @@
   .v-rc-opt.sk { background: var(--sunken); gap: 8px; }
   .v-rc-opt.sk .skel { background: var(--surface); }
   @keyframes skel { to { transform: translateX(100%); } }
+
+  /* Veta sa spracúva: tri bodky „premýšľajú“ a pod textom beží lesk – appka žije, len sa čaká na výsledok. */
+  .v-pending { background: var(--accent-soft); box-shadow: none; gap: 10px; }
+  .v-pending .t-h { color: var(--accent-text); }
+  .v-dots { background: var(--surface); color: var(--accent-text); display: flex; gap: 4px; justify-content: center; align-items: center; }
+  .v-dots i { width: 6px; height: 6px; border-radius: 99px; background: currentColor; animation: v-dot 1s ease-in-out infinite; }
+  .v-dots i:nth-child(2) { animation-delay: 150ms; }
+  .v-dots i:nth-child(3) { animation-delay: 300ms; }
+  .v-pending-bar { height: 4px; border-radius: 99px; background: color-mix(in srgb, var(--accent-text) 18%, transparent); }
+  @keyframes v-dot { 0%, 80%, 100% { transform: scale(.6); opacity: .45; } 40% { transform: none; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .v-dots i, .v-pending-bar::after { animation: none; } }
 }
