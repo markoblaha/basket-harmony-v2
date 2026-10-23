@@ -123,6 +123,8 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
   const [error, setError] = useState<RecorderError>(null);
   /** Mikrofón je zapnutý, ale zvuk netečie (iPhone čaká na ťuknutie) – obrazovka požiada o ťuknutie, potom `wake`. */
   const [stalled, setStalled] = useState(false);
+  /** Stav mikrofónu pre kontrolný riadok v testovacej appke (mení sa často – preto ref, nie stav). */
+  const diag = useRef("");
   const cb = useRef(onSegment);
   cb.current = onSegment;
   const stopRef = useRef<(() => void) | null>(null);
@@ -148,9 +150,9 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     starting.current = true;
     opening++;
     try {
-      // Obyčajné nahrávanie, NIE režim hovoru: potlačenie ozveny/šumu a automatická hlasitosť prepnú iPhone do „hovoru“,
-      // čo pri zapnutí a vypnutí mikrofónu počuť (aj v tichom režime). AI si so surovým zvukom poradí.
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+      // Predvolené spracovanie zvuku telefónom (potlačenie ozveny, automatická hlasitosť) MUSÍ ostať zapnuté:
+      // bez neho iPhone do appky posiela takmer tichý zvuk a reč sa nikdy nerozpozná (23. 10. – 0 nahrávok).
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
     } catch (e) {
       starting.current = false;
       opening--;
@@ -197,8 +199,14 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     let segMs = 0;
     let floor = 0.002;
 
+    let sent = 0;
+    let peak = 0;
+    let peakAt = 0;
     const flush = () => {
-      if (speaking && speechMs >= MIN_SPEECH_MS) cb.current(toWav(seg, rate));
+      if (speaking && speechMs >= MIN_SPEECH_MS) {
+        sent++;
+        cb.current(toWav(seg, rate));
+      }
       seg = [];
       speaking = false;
       speechMs = 0;
@@ -218,6 +226,11 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
       let sum = 0;
       for (let i = 0; i < data.length; i++) sum += data[i]! * data[i]!;
       const rms = Math.sqrt(sum / data.length);
+      if (rms > peak || frames - peakAt > 12) {
+        peak = rms;
+        peakAt = frames;
+      }
+      diag.current = `${ctx.state} · ${Math.round(rate / 1000)} kHz · ▲${peak.toFixed(4)} / ${Math.max(0.004, floor * 3).toFixed(4)} · ↑${sent}`;
       // Prah reči sa prispôsobí hluku v miestnosti. Začiatok reči chce hlasnejší zvuk ako jej pokračovanie,
       // aby sa slovo neprerušilo pri tichšej slabike.
       const loud = rms > (speaking ? Math.max(0.0025, floor * 2) : Math.max(0.004, floor * 3));
@@ -280,5 +293,5 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     void start();
   }, [start]);
 
-  return { supported, listening, hearing, stalled, error, start: () => void start(), stop, wake };
+  return { supported, listening, hearing, stalled, error, diag, start: () => void start(), stop, wake };
 }

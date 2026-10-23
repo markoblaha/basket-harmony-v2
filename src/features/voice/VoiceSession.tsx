@@ -668,6 +668,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
           </div>
         </div>
 
+        {engine === "rec" && import.meta.env.MODE === "staging" && <MicDiag diag={rec.diag} />}
         <AssistantPanel
           blocked={blocked}
           unsupported={unsupported}
@@ -850,6 +851,16 @@ function Transcript({ text, speaking, placeholder }: { text: string; speaking: b
       {speaking ? "…" : "“"}
     </p>
   );
+}
+
+/** Len v testovacej appke: čo mikrofón naozaj dáva (hlasitosť vs. prah reči) – na odhalenie tichého mikrofónu. */
+function MicDiag({ diag }: { diag: { current: string } }) {
+  const [text, setText] = useState("");
+  useEffect(() => {
+    const id = setInterval(() => setText(diag.current), 400);
+    return () => clearInterval(id);
+  }, [diag]);
+  return <div className="v-diag t-xs t-3 num">{text || "…"}</div>;
 }
 
 /** Kým server spracúva nadiktovanú vetu: jasné „pracujem“ na mieste, kam položky dopadnú. */

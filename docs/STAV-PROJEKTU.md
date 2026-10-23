@@ -41,7 +41,9 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
 - **Prehľad zoznamov:** karta živého nákupu pulzuje, recepty v odznaku sa posúvajú (`Marquee`).
 - **Recepty:** X na okamžité zrušenie čakajúceho receptu (aj „Rozpracovaný nákup“).
 - **Hlas:** len tiché nahrávanie (`useRecorder`) bez spracovania reči telefónu – inak iPhone
-  pípa. Zvuk appky (AudioContext) sa po nahrávaní zatvorí, inak pípa pri minimalizovaní.
+  pípa. Zvuk appky (AudioContext) sa po nahrávaní zatvorí, inak pípa pri minimalizovaní. Spracovanie zvuku telefónom
+  (echoCancellation, autoGainControl) NEVYPÍNAŤ – bez neho iPhone dáva tichý zvuk a hlas nefunguje vôbec. V testovacej
+  appke je nad panelom hlasu kontrolný riadok: stav zvuku · ▲hlasitosť / prah reči · ↑odoslané vety.
   Diktovanie v poli zoznamu: `features/voice/useDictation.ts`. Úseky reči idú na server súbežne (výsledky v poradí),
   kým sa spracúvajú, v zozname je karta „Spracúvam vetu…“. Rozpoznanie reči (`useRecorder`) počíta s tichým
   mikrofónom bez automatickej hlasitosti aj so stálym hlukom; pri dlhom diktovaní odošle úsek už po krátkej pauze.

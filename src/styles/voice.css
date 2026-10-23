@@ -91,6 +91,7 @@
   .v-rc-opt.sk { background: var(--sunken); gap: 8px; }
   .v-rc-opt.sk .skel { background: var(--surface); }
   @keyframes skel { to { transform: translateX(100%); } }
+  .v-diag { padding: 2px 16px 4px; text-align: center; font-family: ui-monospace, monospace; }
 
   /* Veta sa spracúva: tri bodky „premýšľajú“ a pod textom beží lesk – appka žije, len sa čaká na výsledok. */
   .v-pending { background: var(--accent-soft); box-shadow: none; gap: 10px; }
