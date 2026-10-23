@@ -145,13 +145,15 @@ export function Composer({
   if (dict) {
     return (
       <div className="ls-composer2" ref={root}>
-        <div className="ls-dict">
+        <div className="ls-dict" onClickCapture={() => speech.stalled && speech.wake()}>
           <div className="row g-10">
             <span className="ls-mic-live" aria-hidden>
               <Mic size={20} />
             </span>
             <div className="transcript grow">
-              {speech.busy && !speech.hearing ? (
+              {speech.stalled ? (
+                <span className="fw-5">{t("voice.tapToStart")}</span>
+              ) : speech.busy && !speech.hearing ? (
                 <span className="t-2">{t("ls.processing")}</span>
               ) : speech.interim ? (
                 <span className="fw-5">{speech.interim}</span>

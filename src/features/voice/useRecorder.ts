@@ -17,6 +17,8 @@ const SHORT_SILENCE_MS = 250;
 const MIN_SPEECH_MS = 350;
 const MAX_SEGMENT_MS = 9_000;
 const PRE_ROLL_MS = 300;
+/** Ak zo zapnutého mikrofónu do tohto času nepríde ani kúsok zvuku, iPhone ho nepustil – treba ťuknúť. */
+const STALL_MS = 1_500;
 
 type Ctx = AudioContext;
 let shared: Ctx | null = null;
@@ -29,22 +31,25 @@ function audioContext(): Ctx | null {
 }
 
 /**
- * Zavolaj priamo v ťuknutí na tlačidlo hlasu: iPhone pustí zvuk len z ťuknutia,
- * neskôr (po otvorení obrazovky) by AudioContext ostal „uspatý“.
- */
-/**
  * Zvuk appky úplne vypneme, keď sa nenahráva: inak ho iPhone pri každom minimalizovaní a návrate appky
  * uspí a zobudí – a to je počuť (aj v tichom režime). Pri ďalšom ťuknutí na hlas sa vytvorí znova.
+ * Nie však, kým sa mikrofón zapína: iPhone sa vtedy pýta na povolenie (appka na chvíľu „odíde“)
+ * a zvuk pripravený pri ťuknutí by sa zavrel – nový by sa už bez ťuknutia nerozbehol.
  */
 let recording = 0;
+let opening = 0;
 function releaseAudio() {
-  if (recording > 0 || !shared) return;
+  if (recording > 0 || opening > 0 || !shared) return;
   const c = shared;
   shared = null;
   void c.close().catch(() => undefined);
 }
 if (typeof document !== "undefined") document.addEventListener("visibilitychange", () => document.hidden && releaseAudio());
 
+/**
+ * Zavolaj priamo v ťuknutí na tlačidlo hlasu: iPhone pustí zvuk len z ťuknutia,
+ * neskôr (po otvorení obrazovky) by AudioContext ostal „uspatý“.
+ */
 export function primeAudio() {
   try {
     void audioContext()?.resume();
@@ -116,6 +121,8 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
   const [listening, setListening] = useState(false);
   const [hearing, setHearing] = useState(false);
   const [error, setError] = useState<RecorderError>(null);
+  /** Mikrofón je zapnutý, ale zvuk netečie (iPhone čaká na ťuknutie) – obrazovka požiada o ťuknutie, potom `wake`. */
+  const [stalled, setStalled] = useState(false);
   const cb = useRef(onSegment);
   cb.current = onSegment;
   const stopRef = useRef<(() => void) | null>(null);
@@ -128,6 +135,7 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     stopRef.current = null;
     setListening(false);
     setHearing(false);
+    setStalled(false);
     releaseAudio();
   }, []);
 
@@ -138,21 +146,25 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     setListening(true);
     let stream: MediaStream;
     starting.current = true;
+    opening++;
     try {
       // Obyčajné nahrávanie, NIE režim hovoru: potlačenie ozveny/šumu a automatická hlasitosť prepnú iPhone do „hovoru“,
       // čo pri zapnutí a vypnutí mikrofónu počuť (aj v tichom režime). AI si so surovým zvukom poradí.
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
     } catch (e) {
       starting.current = false;
+      opening--;
       want.current = false;
       setListening(false);
       setError((e as { name?: string })?.name === "NotAllowedError" || (e as { name?: string })?.name === "SecurityError" ? "denied" : "unavailable");
       return;
     }
     starting.current = false;
+    opening--;
     // Medzitým zatvorené alebo pozastavené – mikrofón hneď vypneme.
     if (!want.current) {
       stream.getTracks().forEach((t) => t.stop());
+      releaseAudio();
       return;
     }
     const ctx = audioContext();
@@ -162,7 +174,9 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
       setError("unavailable");
       return;
     }
-    await ctx.resume().catch(() => undefined);
+    // Bez čakania: iPhone bez ťuknutia sľub nesplní ani nezamietne – nahrávanie by navždy stálo.
+    // Či zvuk naozaj tečie, overí strážca nižšie.
+    void ctx.resume().catch(() => undefined);
     recording++;
     const src = ctx.createMediaStreamSource(stream);
     // ScriptProcessor je zastaraný, ale jediný funguje všade (aj starší iPhone) bez ďalšieho súboru.
@@ -181,7 +195,7 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     let speechMs = 0;
     let silenceMs = 0;
     let segMs = 0;
-    let floor = 0.004;
+    let floor = 0.002;
 
     const flush = () => {
       if (speaking && speechMs >= MIN_SPEECH_MS) cb.current(toWav(seg, rate));
@@ -193,14 +207,20 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
       setHearing(false);
     };
 
+    let frames = 0;
+    const watchdog = setTimeout(() => {
+      if (!frames) setStalled(true);
+    }, STALL_MS);
+
     proc.onaudioprocess = (e) => {
+      if (!frames++) setStalled(false);
       const data = new Float32Array(e.inputBuffer.getChannelData(0));
       let sum = 0;
       for (let i = 0; i < data.length; i++) sum += data[i]! * data[i]!;
       const rms = Math.sqrt(sum / data.length);
       // Prah reči sa prispôsobí hluku v miestnosti. Začiatok reči chce hlasnejší zvuk ako jej pokračovanie,
       // aby sa slovo neprerušilo pri tichšej slabike.
-      const loud = rms > (speaking ? Math.max(0.006, floor * 2) : Math.max(0.009, floor * 3));
+      const loud = rms > (speaking ? Math.max(0.0025, floor * 2) : Math.max(0.004, floor * 3));
       // Hluk pozadia: pri tichu sa prispôsobí rýchlo, inak pomaly. Bez toho by stály hluk (televízor, obchod)
       // vyzeral ako nekonečná reč a nič by sa neodoslalo.
       floor = rms < floor ? floor * 0.8 + rms * 0.2 : loud ? floor * 0.99 + rms * 0.01 : floor * 0.95 + rms * 0.05;
@@ -227,6 +247,7 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     };
 
     stopRef.current = () => {
+      clearTimeout(watchdog);
       proc.onaudioprocess = null;
       flush();
       try {
@@ -250,5 +271,14 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     [],
   );
 
-  return { supported, listening, hearing, error, start: () => void start(), stop };
+  /** Volaj z ťuknutia: zvuk appky sa zapne nanovo (iPhone to dovolí len pri ťuknutí) a nahrávanie sa obnoví. */
+  const wake = useCallback(() => {
+    stopRef.current?.();
+    stopRef.current = null;
+    setStalled(false);
+    primeAudio();
+    void start();
+  }, [start]);
+
+  return { supported, listening, hearing, stalled, error, start: () => void start(), stop, wake };
 }

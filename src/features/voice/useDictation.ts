@@ -43,6 +43,6 @@ export function useDictation(onText: (text: string) => void, vocab: string[] = [
   const stop = useCallback(() => (silent ? rec.stop() : speech.stop()), [silent, rec, speech]);
 
   return silent
-    ? { supported: true, interim, hearing: rec.hearing, busy: pending > 0, error: rec.error ?? (failed ? "failed" : null), start, stop }
-    : { supported: speech.supported, interim: speech.interim, hearing: speech.hearing, busy: false, error: speech.error, start, stop };
+    ? { supported: true, interim, hearing: rec.hearing, busy: pending > 0, stalled: rec.stalled, wake: rec.wake, error: rec.error ?? (failed ? "failed" : null), start, stop }
+    : { supported: speech.supported, interim: speech.interim, hearing: speech.hearing, busy: false, stalled: false, wake: start, error: speech.error, start, stop };
 }

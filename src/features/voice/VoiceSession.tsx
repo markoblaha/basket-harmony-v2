@@ -542,9 +542,19 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
 
   const hearing = engine === "rec" ? rec.hearing : !!speech.interim;
   const live = engine === "speech" ? speech.interim : "";
+  // iPhone mikrofón zapol, ale zvuk appky pustí až po ťuknutí – ťuk kamkoľvek ho rozbehne.
+  const stalled = engine === "rec" && listening && rec.stalled;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={t("voice.open")} className="v-root fixed inset-0 z-50 bg-bg pt-safe">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("voice.open")}
+      className="v-root fixed inset-0 z-50 bg-bg pt-safe"
+      onClickCapture={() => {
+        if (stalled) rec.wake();
+      }}
+    >
       <div className="relative mx-auto flex h-full w-full max-w-2xl flex-col">
         <div className="stack v-screen min-h-0 flex-1">
           <div className="v-top">
@@ -664,13 +674,14 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
           ios={isIOS()}
           listening={listening}
           hearing={hearing}
+          stalled={stalled}
           live={live}
           typing={typing}
           said={said}
           thinking={refining > 0 && !live}
           placeholder={selected ? t("voice.ph.edit") : active ? t("voice.ph.recipe") : t("voice.ph.dictate")}
           onMic={() => {
-            if (blocked) return;
+            if (blocked || stalled) return;
             haptic(8);
             setListening((l) => !l);
             setTyping(false);
@@ -868,6 +879,7 @@ function AssistantPanel({
   ios,
   listening,
   hearing,
+  stalled,
   live,
   typing,
   said,
@@ -883,6 +895,7 @@ function AssistantPanel({
   ios: boolean;
   listening: boolean;
   hearing: boolean;
+  stalled: boolean;
   live: string;
   typing: boolean;
   said: string;
@@ -900,7 +913,9 @@ function AssistantPanel({
     ? unsupported
       ? t("voice.st.unsupported")
       : t("voice.st.blocked")
-    : hearing
+    : stalled
+      ? t("voice.st.tap")
+      : hearing
       ? t("voice.st.listening")
       : thinking
         ? t("voice.st.understanding")
@@ -933,7 +948,7 @@ function AssistantPanel({
           )}
         </div>
       ) : (
-        <Transcript text={live || (hearing ? "" : said)} speaking={hearing} placeholder={placeholder} />
+        <Transcript text={stalled ? "" : live || (hearing ? "" : said)} speaking={hearing} placeholder={stalled ? t("voice.tapToStart") : placeholder} />
       )}
       {typing && (
         <form className="row g-6 anim-pop" onSubmit={send}>
