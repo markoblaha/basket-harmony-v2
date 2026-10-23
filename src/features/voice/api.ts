@@ -121,16 +121,17 @@ async function callParse(body: Record<string, unknown>, ms: number): Promise<Int
  * Veta → operácie od AI (rozumie skloňovaniu, delí vety bez čiarok, pozná tovar na váhu).
  * Vráti null, ak neodpovie do 6 s alebo zlyhá – vtedy ostane okamžitý lokálny rozbor.
  */
-export function interpretAI(text: string, items: DraftItem[], target: string | null) {
-  return callParse({ text, target, items: draftItems(items) }, 6000);
+export function interpretAI(text: string, items: DraftItem[], target: string | null, vocab: string[] = []) {
+  return callParse({ text, target, items: draftItems(items), vocab: vocab.slice(0, 120) }, 6000);
 }
 
 /**
  * Nahrávka → prepis aj operácie naraz (iPhone a appka z plochy, kde prehliadač reč nerozpozná).
  * null = nepodarilo sa (bez internetu, chyba) – obrazovka to ukáže.
  */
-export function interpretAudio(audio: { mime: string; data: string }, items: DraftItem[], target: string | null) {
-  return callParse({ audio, target, items: draftItems(items) }, 15000);
+export function interpretAudio(audio: { mime: string; data: string }, items: DraftItem[], target: string | null, vocab: string[] = []) {
+  // vocab = čo domácnosť často kupuje – podľa toho AI rozhodne nejasne vyslovené slovo.
+  return callParse({ audio, target, items: draftItems(items), vocab: vocab.slice(0, 120) }, 15000);
 }
 
 export type SaveResult = { listId: string; added: number; merged: number; requests: number; created: boolean };

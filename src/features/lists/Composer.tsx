@@ -91,7 +91,7 @@ export function Composer({
     const done = await Promise.all(adds);
     const ok = names.filter((_, i) => done[i] !== "FAILED");
     if (ok.length) toast.show(t("ls.addedByVoice", { names: ok.join(", ") }), "success");
-  });
+  }, pool.freq);
 
   // Ťuk mimo doku (do zoznamu) zavrie klávesnicu – iPhone to sám neurobí.
   useEffect(() => {

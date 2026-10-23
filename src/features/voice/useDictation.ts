@@ -8,16 +8,18 @@ import { useSpeech } from "./useSpeech";
  * Rozpoznávanie reči v prehliadači (pri spustení a zastavení pípne – iPhone aj Android) sa použije
  * len tam, kde nahrávanie nejde.
  */
-export function useDictation(onText: (text: string) => void) {
+export function useDictation(onText: (text: string) => void, vocab: string[] = []) {
   const silent = recorderSupported();
   const textRef = useRef(onText);
   textRef.current = onText;
   const [interim, setInterim] = useState("");
+  const vocabRef = useRef(vocab);
+  vocabRef.current = vocab;
   const [failed, setFailed] = useState(false);
 
   const rec = useRecorder(
     useCallback((wav: string) => {
-      void interpretAudio({ mime: "audio/wav", data: wav }, [], null).then((res) => {
+      void interpretAudio({ mime: "audio/wav", data: wav }, [], null, vocabRef.current).then((res) => {
         if (!res) return setFailed(true);
         if (res.transcript) {
           setInterim(res.transcript);

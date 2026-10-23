@@ -54,7 +54,7 @@ const SCHEMA = {
   required: ["transcript", "ops", "cook"],
 };
 
-const rules = (items: string, target: string | null) => `Rozdeľ reč na jednotlivé položky a vráť operácie (ops) v poradí, ako zazneli.
+const rules = (items: string, target: string | null, vocab: string) => `Rozdeľ reč na jednotlivé položky a vráť operácie (ops) v poradí, ako zazneli.
 
 Delenie: každý produkt je samostatná položka. Množstvo patrí k produktu, pri ktorom zaznelo:
 "banány 3 rožky maslo šunka" -> Banány | Rožok 3 ks | Maslo | Šunka
@@ -74,21 +74,23 @@ Delenie: každý produkt je samostatná položka. Množstvo patrí k produktu, p
   "upečiem bábovku") -> názov jedla v 1. páde ("Hovädzí guláš", "Hovädzí burger"). Suroviny takého jedla NEPRIDÁVAJ do ops – appka ponúkne recepty.
   Ak nič také nezaznelo, cook [].
 - store: obchod, ak ho povedal ("idem do Lidla" -> "Lidl", "v Kauflande" -> "Kaufland"), inak null. Obchod nie je položka.
-${target ? `Upravuje sa položka "${target}": vráť jednu operáciu change s target "${target}" (množstvo, jednotka alebo nový name).\n` : ""}
+${vocab ? `Produkty, ktoré táto domácnosť často kupuje: ${vocab}\n  Keď vyslovené slovo znie podobne ako niektorý z nich, je to on – použi presne tento názov. Iné produkty zapíš normálne.\n` : ""}${target ? `Upravuje sa položka "${target}": vráť jednu operáciu change s target "${target}" (množstvo, jednotka alebo nový name).\n` : ""}
 Zoznam (názov | množstvo):
 ${items || "(prázdny)"}`;
 
-const textPrompt = (text: string, items: string, target: string | null) =>
+const textPrompt = (text: string, items: string, target: string | null, vocab: string) =>
   `Hlasom nadiktovaný nákupný zoznam (slovenčina). Prepis z rozpoznávania reči NEMÁ čiarky a môže mať chyby.
-${rules(items, target)}
+${rules(items, target, vocab)}
 
 transcript = veta bez zmeny.
 Veta: "${text}"`;
 
-const audioPrompt = (items: string, target: string | null) =>
+const audioPrompt = (items: string, target: string | null, vocab: string) =>
   `Priložený zvuk je krátky úsek, v ktorom človek po slovensky diktuje nákupný zoznam (môže byť šum z obchodu).
-transcript = presný prepis toho, čo povedal (s diakritikou, bez úvodzoviek). Ak je ticho alebo nič zrozumiteľné, transcript "" a ops [].
-${rules(items, target)}`;
+transcript = presný prepis toho, čo povedal (s diakritikou, bez úvodzoviek). Počúvaj pozorne každé slovo – často zaznie viac produktov
+za sebou ("mlieko chlieb a dve masla"): prepíš všetky, nič nevynechaj a nespájaj dva produkty do jedného slova.
+Nevymýšľaj: čo nie je zrozumiteľné, nedopĺňaj; ak je ticho alebo nič zrozumiteľné, transcript "" a ops [].
+${rules(items, target, vocab)}`;
 
 type Cfg = { model: string; thinking: Record<string, unknown> | null };
 
@@ -100,8 +102,18 @@ const CANDIDATES: Cfg[] = [
   { model: "gemini-3.6-flash", thinking: { thinkingLevel: "minimal" } },
   { model: "gemini-3.8-flash", thinking: { thinkingLevel: "low" } },
 ];
+/**
+ * Zvuk: prepis slovenčiny je pri flash-lite slabý (zle počuje názvy, spája dve položky do nezmyslu),
+ * preto ide najprv na 3.6-flash; lite je už len záloha. Dá sa zmeniť v GEMINI_VOICE_AUDIO_MODEL.
+ */
+const AUDIO_CANDIDATES: Cfg[] = [
+  ...(Deno.env.get("GEMINI_VOICE_AUDIO_MODEL") ? [{ model: Deno.env.get("GEMINI_VOICE_AUDIO_MODEL")!, thinking: { thinkingLevel: "minimal" } }] : []),
+  { model: "gemini-3.6-flash", thinking: { thinkingLevel: "minimal" } },
+  { model: "gemini-3.5-flash-lite", thinking: { thinkingLevel: "minimal" } },
+  { model: "gemini-3.8-flash", thinking: { thinkingLevel: "low" } },
+];
 /** Teplá inštancia si pamätá, ktorý model naposledy odpovedal (ďalšie volanie neskúša nedostupné). */
-let preferred: Cfg | null = null;
+const preferredFor: { text: Cfg | null; audio: Cfg | null } = { text: null, audio: null };
 
 type Part = Record<string, unknown>;
 type Result = { transcript?: string; ops: Record<string, unknown>[]; cook?: unknown[]; store?: unknown };
@@ -134,14 +146,16 @@ async function call(cfg: Cfg, parts: Part[], timeoutMs: number): Promise<Result>
 async function askGemini(parts: Part[], audio: boolean): Promise<Result & { model: string }> {
   // Zvuk trvá dlhšie (prepis + rozbor), text má byť do pár sekúnd.
   const deadline = Date.now() + (audio ? 14_000 : 7_000);
-  const list = preferred ? [preferred, ...CANDIDATES.filter((c) => c !== preferred)] : CANDIDATES;
+  const base = audio ? AUDIO_CANDIDATES : CANDIDATES;
+  const preferred = preferredFor[audio ? "audio" : "text"];
+  const list = preferred ? [preferred, ...base.filter((c) => c !== preferred)] : base;
   let lastError = "GEMINI_UNKNOWN";
   for (const cfg of list) {
     const left = deadline - Date.now();
     if (left < 800) break;
     try {
       const r = await call(cfg, parts, Math.min(audio ? 9_000 : 3_500, left));
-      preferred = cfg;
+      preferredFor[audio ? "audio" : "text"] = cfg;
       return { ...r, model: cfg.model + (cfg.thinking ? "+min" : "") };
     } catch (e) {
       lastError = e instanceof Error ? e.message : String(e);
@@ -159,7 +173,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "METHOD" }, 405);
 
-  let body: { text?: unknown; audio?: unknown; items?: unknown; target?: unknown } = {};
+  let body: { text?: unknown; audio?: unknown; items?: unknown; target?: unknown; vocab?: unknown } = {};
   try {
     body = await req.json();
   } catch { /* prázdne telo */ }
@@ -185,9 +199,15 @@ Deno.serve(async (req) => {
     .filter((l) => !l.startsWith(" |"))
     .join("\n");
 
+  const vocab = (Array.isArray(body.vocab) ? body.vocab : [])
+    .slice(0, 120)
+    .map((v) => str(v, 40)?.replace(/[|\n"]/g, " "))
+    .filter(Boolean)
+    .join(", ");
+
   const parts: Part[] = audioData
-    ? [{ text: audioPrompt(items, target) }, { inline_data: { mime_type: audioMime, data: audioData } }]
-    : [{ text: textPrompt(text!.replace(/"/g, "'"), items, target) }];
+    ? [{ text: audioPrompt(items, target, vocab) }, { inline_data: { mime_type: audioMime, data: audioData } }]
+    : [{ text: textPrompt(text!.replace(/"/g, "'"), items, target, vocab) }];
 
   const t0 = Date.now();
   try {

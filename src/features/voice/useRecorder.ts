@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const RATE = 16_000;
-const SILENCE_MS = 800;
+const SILENCE_MS = 650;
 const MIN_SPEECH_MS = 350;
 const MAX_SEGMENT_MS = 14_000;
 const PRE_ROLL_MS = 300;
@@ -117,8 +117,8 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     let stream: MediaStream;
     starting.current = true;
     try {
-      // Bez automatickej hlasitosti a potlačenia šumu: tie „vylepšenia“ skresľujú krátke slová („dva“) a AI ich potom nepočuje.
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+      // Spracovanie reči telefónu (ako pri hovore/Siri): vyrovná hlasitosť a potlačí šum obchodu – AI potom rozumie lepšie.
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
     } catch (e) {
       starting.current = false;
       want.current = false;

@@ -5,7 +5,7 @@ import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useFlip } from "@/components/motion";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { useLists, useListStats } from "@/features/lists/api";
+import { useFrequentItems, useLists, useListStats } from "@/features/lists/api";
 import { addDays, dayLabel, isoDay } from "@/features/lists/dates";
 import { usePlanRecipes, useSaveRecipe } from "@/features/recipes/api";
 import { guessCategory, normalizeName } from "@/lib/categories";
@@ -70,6 +70,10 @@ type Modal = "where" | "store" | "unsure" | "recipes" | null;
 export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSaved: (store: string, r: SaveResult) => void }) {
   const { household } = useHousehold();
   const stores = useKnownStores(household.id).data ?? [];
+  // Čo domácnosť často kupuje – AI podľa toho rozhodne nejasne vyslovené slovo.
+  const frequent = useFrequentItems(household.id).data;
+  const vocabRef = useRef<string[]>([]);
+  vocabRef.current = (frequent ?? []).map((f) => f.name);
   const lists = useLists(household.id).data ?? [];
   const stats = useListStats(household.id).data;
   const save = useSaveVoiceList(household.id);
@@ -362,7 +366,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
       if (!rest && cook.cook.length) return;
 
       setRefining((r) => r + 1);
-      void interpretAI(sp.rest, before, target).then((ai) => {
+      void interpretAI(sp.rest, before, target, vocabRef.current).then((ai) => {
         setRefining((r) => r - 1);
         if (!ai) {
           if (!local.understood && !cook.cook.length && seq.current === mine) toast.show(t("voice.notUnderstood"));
@@ -419,7 +423,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
       chain.current = chain.current.then(async () => {
         const before = itemsRef.current;
         const sel = selRef.current ? (before.find((c) => c.id === selRef.current)?.name ?? null) : null;
-        const res = await interpretAudio({ mime: "audio/wav", data: wav }, before, sel);
+        const res = await interpretAudio({ mime: "audio/wav", data: wav }, before, sel, vocabRef.current);
         setRefining((r) => r - 1);
         if (!res) return toast.show(t("voice.audioFailed"));
         if (!res.transcript && !res.ops.length && !res.cook.length) return;
