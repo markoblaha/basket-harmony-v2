@@ -117,8 +117,9 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     let stream: MediaStream;
     starting.current = true;
     try {
-      // Spracovanie reči telefónu (ako pri hovore/Siri): vyrovná hlasitosť a potlačí šum obchodu – AI potom rozumie lepšie.
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      // Obyčajné nahrávanie, NIE režim hovoru: potlačenie ozveny/šumu a automatická hlasitosť prepnú iPhone do „hovoru“,
+      // čo pri zapnutí a vypnutí mikrofónu počuť (aj v tichom režime). AI si so surovým zvukom poradí.
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
     } catch (e) {
       starting.current = false;
       want.current = false;
