@@ -62,6 +62,14 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
+- **Basket Harmony 2.0 (26. 10. 2026):** vzhľad podľa mockupu z ChatGPT („Spíž“) na našom motore, 13 náhľadov
+  obrazoviek, nová logika cien (medián posledných 3 × množstvo, základný názov produktu, ceny z dokladu späť k položkám),
+  hlas, recepty zo 4 zdrojov, zoznam chýb, náklady AI, plán a 9 rozhodnutí: https://claude.ai/artifact/BegfzERBxhK4uRe1f3ubW9
+  Po schválení: interaktívny mockup celej appky, potom fázy 0–4. Zistené chyby (nič z toho ešte nie je opravené):
+  odhad ceny ignoruje množstvo, `list_price_hints` páruje „Mlieko“ na telové mlieko, `recipe-ai`/`parse-voice` bez
+  kontroly domácnosti a limitu, `_auto_match_receipt`/`_receipt_list_score` volateľné prihláseným, testovacia DB má
+  `store_key` prázdny pri všetkých dokladoch.
+
 - Audit celej appky s plánom vo 4 fázach a návrhom tém Biela / Čierna / Farebná:
   https://claude.ai/artifact/6A4vJaWWJ7jEJrDTxqiztq
 - Revízia zoznamov a nákupu (17 zistení): https://claude.ai/artifact/WgLwB1rLdQ8orYdv9Kv8Hv
