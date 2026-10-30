@@ -90,6 +90,7 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   Hlasový asistent ako sklenené tlačidlo v strede spodnej lišty. Písanie položiek: produkt sa vyberie len vtedy,
   keď k nemu patrí každé napísané slovo (inak nová položka presne podľa textu, doplní sa len diakritika);
   náhľad nad poľom ukazuje, čo pridá Enter. Pravidlo treba preniesť aj do skutočnej appky.
+  Domov bez úvodnej hlavičky (fotka jedla, dátum, pozdrav); začína nadpisom Domov a rýchlymi akciami.
 - Audit celej appky s plánom vo 4 fázach a návrhom tém Biela / Čierna / Farebná:
   https://claude.ai/artifact/6A4vJaWWJ7jEJrDTxqiztq
 - Revízia zoznamov a nákupu (17 zistení): https://claude.ai/artifact/WgLwB1rLdQ8orYdv9Kv8Hv
