@@ -70,6 +70,12 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   kontroly domácnosti a limitu, `_auto_match_receipt`/`_receipt_list_score` volateľné prihláseným, testovacia DB má
   `store_key` prázdny pri všetkých dokladoch.
 
+- **Nový vzhľad (29.–30. 10. 2026):** majiteľ si z viacerých návrhov vybral témy **Teplá kuchyňa** a **Fotky a sklo**
+  (porovnanie tém: https://claude.ai/artifact/XV1Un8LGjhdSXRFasBDpVk). Interaktívny prototyp celej appky v oboch
+  témach (svetlý/tmavý, prepínanie v časti Viac): https://claude.ai/artifact/RWbKSpqYnYPv2R2PQ2qfYT – zoznamy s odhadom
+  ceny (medián posledných 3 nákupov × množstvo, značka obchodu), nákup so žiadosťou od Lucie, bloček → skutočné ceny
+  späť k položkám, hlas a recepty cez Claude (bez neho miestne rozpoznávanie), výdavky z testovacej DB.
+  Prototyp je samostatný súbor mimo repozitára, s appkou ani DB nesúvisí. Čaká sa na výber témy a pripomienky.
 - Audit celej appky s plánom vo 4 fázach a návrhom tém Biela / Čierna / Farebná:
   https://claude.ai/artifact/6A4vJaWWJ7jEJrDTxqiztq
 - Revízia zoznamov a nákupu (17 zistení): https://claude.ai/artifact/WgLwB1rLdQ8orYdv9Kv8Hv
