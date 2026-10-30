@@ -76,10 +76,13 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   ceny (medián posledných 3 nákupov × množstvo, značka obchodu), nákup so žiadosťou od Lucie, bloček → skutočné ceny
   späť k položkám, hlas a recepty cez Claude (bez neho miestne rozpoznávanie), výdavky z testovacej DB.
   Prototyp je samostatný súbor mimo repozitára, s appkou ani DB nesúvisí. Čaká sa na výber témy a pripomienky.
-  31. 10.: prerobené rozloženie podľa pripomienok – 4 záložky s popisom (Domov, Nákupy, Recepty, Výdavky), bez
+  30. 10.: prerobené rozloženie podľa pripomienok – 4 záložky s popisom (Domov, Nákupy, Recepty, Výdavky), bez
   záhadného akčného tlačidla; každá akcia má jedno miesto (hlas = mikrofón v poli zoznamu, bloček = Výdavky/Domov).
   Recepty ako kniha: Kniha receptov (kategórie, rýchly výber, zdroje) / Moje (obľúbené, pridané) / Plán týždňa,
   detail s listovaním Predchádzajúci/Ďalší. 38 receptov v 7 kategóriách.
+  Do prototypu prenesené skutočné bločky z testovacej DB (snímka k 30. 10.): 66 bločkov aug–okt, 523 položiek,
+  334 produktov; október 34 bločkov za 880,99 €. Výdavky, kategórie, obchody, história cien, ceny v zoznamoch,
+  časté položky a „Oplatí sa vedieť“ sa počítajú z nich. Zoznamy a recepty ostávajú ukážkové.
 - Audit celej appky s plánom vo 4 fázach a návrhom tém Biela / Čierna / Farebná:
   https://claude.ai/artifact/6A4vJaWWJ7jEJrDTxqiztq
 - Revízia zoznamov a nákupu (17 zistení): https://claude.ai/artifact/WgLwB1rLdQ8orYdv9Kv8Hv
