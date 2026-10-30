@@ -22,13 +22,21 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
    `20261020000024_receipt_queue`, `20261020000025_worker_secret`, funkcia `ai-eval`).
    Najprv ju zlúč do testovacej vetvy a nasaď tie migrácie do testovacej DB.
 2. Do ostrej DB chýbajú migrácie testovacej vetvy: `20261021000024_item_unavailable`,
-   `…025_shopping_time_finish`, `…026_receipt_match`, `…027_recipes`, `20261022000028_staple_items`.
+   `…025_shopping_time_finish`, `…026_receipt_match`, `…027_recipes`, `20261022000028_staple_items`,
+   `20261030000029_product_kinds` (v testovacej DB nasadená ako 3 kroky: product_kinds, product_kinds_units,
+   product_kinds_by_name – súbor v repozitári je ich súčet). Funkciu `normalize-products` v3 (druh) nasadiť aj do ostrej.
    Históriu migrácií oboch DB porovnaj (`list_migrations`) – ostrá má niektoré pod inými menami.
 3. Edge funkcie len v testovacej DB: `recipe-ai` (recepty), `parse-voice` v4 (zvuk cez
    gemini-3.6-flash + slovník domácnosti). Pri zlúčení nasadiť aj do ostrej.
 4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` → treba súhlas majiteľa).
 
 ## Čo je hotové v testovacej vetve (oproti `main`)
+
+- **Analytika – druh produktu (30. 10.):** Kategória → Druh (Pivo, Kuracie prsia) → výrobok (značka + balenie).
+  `products.kind` (+ `kind_manual`), detail druhu `analytics_kind` (množstvo, priemer €/kg·l·ks, výrobky, obchody od
+  najlacnejšieho, nákupy), druhy v `analytics_category`, úprava druhu pri produkte (`set_product_kind`). AI dopĺňa druh pri
+  zjednotení; v testovacej DB sú druhy pre 360 produktov doplnené ručne. Obrazovka `features/analytics/KindPage.tsx`.
+  V prehliadači s prihlásením zatiaľ neoverené (funkcie overené SQL na dátach domácnosti).
 
 - **Zoznam – plánovanie:** jednoduchý zoznam bez kategórií, najnovšie hore. Po pridaní dorolovanie
   a rozsvietenie riadku. Potiahnutie celej karty: doprava +1, doľava −1, pri poslednom kuse dlhý ťah = zmazať
@@ -92,6 +100,8 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   náhľad nad poľom ukazuje, čo pridá Enter. Pravidlo treba preniesť aj do skutočnej appky.
   Domov bez úvodnej hlavičky (fotka jedla, dátum, pozdrav); začína nadpisom Domov a rýchlymi akciami.
   Karty zoznamov: avatary skupiny pri názve, súkromný zoznam len so zámkom, bez nápisu „Spoločný“.
+  Recept: v surovinách len „mám doma“; Pridať → predvolene nový zoznam s menom receptu, potom plynulo do Nákupov
+  s rozsvietenou kartou; karta zoznamu ukazuje recepty. Výdavky: Kategória → Druh → Značka/výrobok → bloček so zvýrazneným riadkom.
   Množstvá (rozhodnutie majiteľa): číslo bez jednotky = počet kusov (kus, balík, strapec), nikdy sa neprepočítava;
   g/dkg/kg/ml/dl/l sa uložia presne, len keď ich niekto napíše („500g“, „pol kila“, „2 deci“). Kusy a presné množstvo
   sa nespájajú. Vážené veci v kusoch: pri položke cena za kg, do súčtu bežný nákup z bločkov (pri 3+ kusoch váha kusa).
