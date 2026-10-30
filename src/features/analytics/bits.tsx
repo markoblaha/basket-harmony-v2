@@ -5,7 +5,7 @@ import { ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { cx } from "@/components/ui";
 import { CategoryGlyph } from "@/components/CategoryIcon";
 import { category } from "@/lib/categories";
-import { formatNumber, t } from "@/i18n";
+import { formatEuro, formatNumber, t } from "@/i18n";
 import { unitLabel as pieceUnit } from "@/lib/parseItem";
 import { formatMoney, storeHue } from "@/features/receipts/format";
 import type { Basis } from "./api";
@@ -52,6 +52,17 @@ export function sizeLabel(value: number | null, unit: "g" | "ml" | "ks" | null):
   if (unit === "ml") return value >= 1000 ? `${fmt(value / 1000)} l` : `${fmt(value)} ml`;
   return `${fmt(value)} ${pieceUnit("ks")}`;
 }
+
+/** Nakúpené množstvo v jednotke druhu: „4,45 kg“, „8 l“, „27 ks“. */
+export function qtyLabel(units: number | null, basis: Basis | null): string | null {
+  if (!units || !basis) return null;
+  if (basis === "ks") return `${formatNumber(units, { maximumFractionDigits: 0 })} ${pieceUnit("ks")}`;
+  return `${formatNumber(units, { maximumFractionDigits: units < 10 ? 2 : 1 })} ${basis}`;
+}
+
+/** Cena za jednotku: „7,25 € / kg“. */
+export const perUnit = (price: number | null, basis: Basis | null) =>
+  price === null || !basis ? null : `${formatEuro(price)} ${unitLabel(basis)}`;
 
 export const percent = (ratio: number) =>
   t("fmt.percent", { value: `${ratio > 0 ? "+" : ratio < 0 ? "−" : ""}${formatNumber(Math.abs(Math.round(ratio * 100)))}` });

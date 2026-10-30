@@ -12,7 +12,7 @@ import { CATEGORIES, normalizeName } from "@/lib/categories";
 import { formatShortDate, parseAmount, readErrorMessage } from "@/features/receipts/format";
 import { formatEuro, formatNumber, t, tn, type Key } from "@/i18n";
 import { unitLabel as pieceUnit } from "@/lib/parseItem";
-import { useMergeProducts, useProduct, useProducts, useUpdateProduct, type Basis, type ProductDetail } from "./api";
+import { useMergeProducts, useProduct, useProducts, useSetProductKind, useUpdateProduct, type Basis, type ProductDetail } from "./api";
 import { categoryInfo, sizeLabel, storeLabel, unitLabel } from "./bits";
 import { usePeriod } from "./period";
 
@@ -120,6 +120,7 @@ export function ProductPage() {
   const [editing, setEditing] = useState(false);
   const [merging, setMerging] = useState(false);
   const [pick, setPick] = useState(false);
+  const { search } = usePeriod();
 
   if (query.isPending || query.isError)
     return (
@@ -178,6 +179,20 @@ export function ProductPage() {
           <p className="an-sentence" style={{ margin: 0 }}>
             {sentence}
           </p>
+          {/* Druh spája značky a balenia (Pivo, Kuracie prsia) – detail ukáže všetky výrobky spolu. */}
+          <button
+            type="button"
+            className="cell"
+            style={{ padding: "10px 12px", borderRadius: 12, background: "var(--sunken)" }}
+            onClick={() => navigate(`/analytics/kind/${encodeURIComponent(p.kind ?? p.name)}${search}`)}
+          >
+            <span className="grow stack g-2" style={{ minWidth: 0 }}>
+              <span className="t-xs t-3">{t("kd.kind")}</span>
+              <span className="t-body fw-6 ellipsis">{p.kind ?? p.name}</span>
+            </span>
+            <span className="t-sm t-2">{t("kd.allVariants")}</span>
+            <ChevronRight size={18} className="chev" />
+          </button>
           <div className="row g-8 wrap">
             <span className="badge b-gray">{tn("an.purchases", d.purchases.length)}</span>
             <span className="badge b-gray num">{t("an.totalSpent", { amount: formatEuro(total) })}</span>
@@ -289,8 +304,10 @@ export function ProductPage() {
 function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => void }) {
   const p = d.product;
   const update = useUpdateProduct(p.id);
+  const setKind = useSetProductKind(p.id);
   const toast = useToast();
   const [name, setName] = useState(p.name);
+  const [kind, setKindText] = useState(p.kind ?? "");
   const [brand, setBrand] = useState(p.brand ?? "");
   // Veľkosť zobrazujeme v bežných jednotkách: 1000 ml = 1 l.
   const initialUnit = p.size_unit === "g" && (p.size_value ?? 0) >= 1000 ? "kg" : p.size_unit === "ml" && (p.size_value ?? 0) >= 1000 ? "l" : (p.size_unit ?? "");
@@ -315,6 +332,7 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
     setError(null);
     try {
       await update.mutateAsync({ name: name.trim(), brand: brand.trim() || null, sizeValue, sizeUnit, categoryId });
+      if (kind.trim() !== (p.kind ?? "")) await setKind.mutateAsync(kind.trim() || null);
       toast.show(t("pp.saved"), "success");
       onClose();
     } catch (err) {
@@ -330,6 +348,11 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
         <label className="stack g-4">
           <span className="field-label">{t("edit.name")}</span>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
+        </label>
+        <label className="stack g-4">
+          <span className="field-label">{t("kd.kind")}</span>
+          <input className="input" value={kind} onChange={(e) => setKindText(e.target.value)} maxLength={60} placeholder={name} />
+          <span className="t-xs t-3" style={{ padding: "0 4px" }}>{t("kd.kindHint")}</span>
         </label>
         <label className="stack g-4">
           <span className="field-label">{t("pp.brand")}</span>
@@ -368,7 +391,7 @@ function EditProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => voi
             {error}
           </p>
         )}
-        <button type="submit" className="btn btn-ink btn-lg btn-block" style={{ marginTop: 4 }} disabled={update.isPending}>
+        <button type="submit" className="btn btn-ink btn-lg btn-block" style={{ marginTop: 4 }} disabled={update.isPending || setKind.isPending}>
           {t("common.save")}
         </button>
       </form>

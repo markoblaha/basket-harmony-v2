@@ -58,6 +58,7 @@ const SCHEMA = {
           product_id: { type: "STRING" },
           name: { type: "STRING" },
           brand: { type: "STRING", nullable: true },
+          kind: { type: "STRING" },
           size_value: { type: "NUMBER", nullable: true },
           size_unit: { type: "STRING", nullable: true, enum: ["g", "ml", "ks"] },
           category_id: { type: "STRING", enum: Object.keys(CATEGORIES) },
@@ -75,19 +76,40 @@ Pre každý riadok vráť:
 - name: čistý všeobecný slovenský názov produktu s dôležitými vlastnosťami, BEZ značky a BEZ veľkosti balenia. Prvé písmeno veľké, bez skratiek bločku (napr. "RAJO MLIEKO POL.1,5% 1L" -> "Mlieko polotučné 1,5 %", "*SK BRAV.BOK B.KOSTI" -> "Bravčový bok bez kosti", "babylove vlh.ut.99%vody" -> "Vlhčené utierky 99 % vody"). Pri nepotravinách krátky zrozumiteľný názov ("Pánska mikina s kapucňou").
 - brand: značka, ak je zrejmá (Rajo, Babylove, Milka); inak null. Privátne značky obchodov (Pilos, Clever, K-Classic) sú tiež značky.
 - size_value + size_unit: obsah balenia prepočítaný na g, ml alebo ks (1 kg = 1000 g, 1 l = 1000 ml, 0,5l = 500 ml, 42 PC = 42 ks, 4x80 ks = 320 ks, 6x0,5 l = 3000 ml). Ak veľkosť nie je v názve, daj null. Vážený tovar (banány, mäso na váhu) má null.
+- kind: DRUH produktu – krátky všeobecný názov, ako ho človek napíše do nákupného zoznamu, bez značky, príchute a balenia. Spája rôzne značky a varianty toho istého tovaru (napr. "Svetlé pivo 12°" od Radegast aj Pilsner -> "Pivo"; "Kuracie prsné rezne" -> "Kuracie prsia"; "Jogurt jahoda", "Skyr vanilka" -> "Jogurt"; "Strúhaný syr Eidam" -> "Syr Eidam"; "Plienky Premium Care 5" -> "Plienky"; "Dezodorant Black" -> "Dezodorant"). Ak už známe produkty nižšie majú vhodný druh, použi PRESNE ten istý zápis.
 - category_id: podľa druhu tovaru:
 ${Object.entries(CATEGORIES).map(([id, d]) => `  ${id} = ${d}`).join("\n")}
 
 Dôležité: ten istý produkt musí dostať PRESNE rovnaký name, brand a veľkosť, aj keď je na bločkoch zapísaný inak alebo je z iného obchodu. Ak riadok zodpovedá niektorému z už známych produktov nižšie, použi presne ten istý názov a značku.
 Nevymýšľaj: čo nevieš určiť, daj null.
 
-Už známe produkty domácnosti (názov | značka | balenie):
+Už známe produkty domácnosti (názov | značka | balenie | druh):
 ${known.length > 0 ? known.join("\n") : "(zatiaľ žiadne)"}
 
 Riadky na zjednotenie (product_id | zápis na bločku | ďalšie zápisy | obchod | súčasná kategória):
 ${rows}`;
 
-async function askGemini(text: string, deadline: number): Promise<{ products: Record<string, unknown>[] }> {
+// Len druh pre už zjednotené produkty bez druhu (po pridaní druhov do databázy).
+const KIND_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    products: {
+      type: "ARRAY",
+      items: { type: "OBJECT", properties: { product_id: { type: "STRING" }, kind: { type: "STRING" } }, required: ["product_id", "kind"] },
+    },
+  },
+  required: ["products"],
+};
+
+const kindPrompt = (known: string[], rows: string) => `Produktom jednej slovenskej domácnosti priraď DRUH: krátky všeobecný názov, ako ho človek napíše do nákupného zoznamu, bez značky, príchute a balenia. Druh spája rôzne značky a varianty toho istého tovaru (napr. "Svetlé pivo 12°" od Radegast aj Pilsner -> "Pivo"; "Kuracie prsné rezne" -> "Kuracie prsia"; "Jogurt jahoda", "Skyr vanilka" -> "Jogurt"; "Plienky Premium Care 5" -> "Plienky"). Pri nepotravinách krátky všeobecný názov ("Detské oblečenie", "Batérie"). Ak sa hodí niektorý už použitý druh, použi PRESNE ten istý zápis.
+
+Už použité druhy:
+${known.length > 0 ? known.join("\n") : "(zatiaľ žiadne)"}
+
+Produkty (product_id | názov | značka | kategória):
+${rows}`;
+
+async function askGemini(text: string, deadline: number, schema: unknown = SCHEMA): Promise<{ products: Record<string, unknown>[] }> {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
   const models = [...new Set([Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash", "gemini-3.6-flash"])];
@@ -104,7 +126,7 @@ async function askGemini(text: string, deadline: number): Promise<{ products: Re
           headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text }] }],
-            generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: SCHEMA },
+            generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: schema },
           }),
           signal: AbortSignal.timeout(Math.min(60_000, remaining - 5_000)),
         });
@@ -165,14 +187,41 @@ Deno.serve(async (req) => {
       .eq("household_id", householdId).is("merged_into", null).eq("normalized", false)
       .order("created_at").limit(BATCH);
     if (todo.error) throw new Error("LOAD_FAILED: " + todo.error.message);
-    if (!todo.data || todo.data.length === 0) return json({ processed: 0, remaining: 0 });
+    if (!todo.data || todo.data.length === 0) {
+      // Všetko je zjednotené: doplníme druh produktom, ktoré ho ešte nemajú.
+      const kindless = await asUser
+        .from("products").select("id, name, brand, category_id")
+        .eq("household_id", householdId).is("merged_into", null).is("kind", null)
+        .order("created_at").limit(BATCH * 3);
+      if (kindless.error) throw new Error("LOAD_FAILED: " + kindless.error.message);
+      if (!kindless.data || kindless.data.length === 0) return json({ processed: 0, remaining: 0 });
+      const used = await asUser
+        .from("products").select("kind").eq("household_id", householdId).is("merged_into", null).not("kind", "is", null).limit(400);
+      const knownKinds = [...new Set((used.data ?? []).map((k) => String(k.kind)))].slice(0, 200);
+      const cleanK = (v: string) => v.replace(/[|\n]/g, " ").trim();
+      const rowsK = kindless.data.map((p) => `${p.id} | ${cleanK(p.name)} | ${p.brand ? cleanK(p.brand) : "-"} | ${p.category_id}`).join("\n");
+      const resK = await askGemini(kindPrompt(knownKinds, rowsK), deadline, KIND_SCHEMA);
+      const allowedK = new Set(kindless.data.map((p) => p.id));
+      const payloadK = resK.products
+        .filter((x) => typeof x.product_id === "string" && allowedK.has(x.product_id))
+        .map((x) => ({ product_id: x.product_id, kind: typeof x.kind === "string" ? x.kind.trim().slice(0, 60) : null }));
+      // Vynechané dostanú druh podľa názvu, aby sa dávka neopakovala.
+      const gotK = new Set(payloadK.map((x) => x.product_id));
+      for (const p of kindless.data) if (!gotK.has(p.id)) payloadK.push({ product_id: p.id, kind: null });
+      const appliedK = await admin.rpc("apply_product_kinds", { p_household_id: householdId, p_items: payloadK });
+      if (appliedK.error) throw new Error("SAVE_FAILED: " + appliedK.error.message);
+      const leftK = await asUser
+        .from("products").select("id", { count: "exact", head: true })
+        .eq("household_id", householdId).is("merged_into", null).is("kind", null);
+      return json({ processed: appliedK.data ?? 0, remaining: leftK.count ?? 0 });
+    }
 
     const ids = todo.data.map((p) => p.id);
     const items = await asUser
       .from("receipt_items").select("product_id, raw_name, receipts(store_name)")
       .in("product_id", ids).limit(BATCH * 6);
     const known = await asUser
-      .from("products").select("name, brand, size_value, size_unit")
+      .from("products").select("name, brand, size_value, size_unit, kind")
       .eq("household_id", householdId).is("merged_into", null).eq("normalized", true)
       .order("updated_at", { ascending: false }).limit(250);
 
@@ -191,7 +240,7 @@ Deno.serve(async (req) => {
       return `${p.id} | ${clean(p.name)} | ${others || "-"} | ${stores || "-"} | ${p.category_id}`;
     }).join("\n");
     const knownLines = (known.data ?? []).map((k) =>
-      `${clean(k.name)} | ${k.brand ?? "-"} | ${k.size_value ? `${Number(k.size_value)} ${k.size_unit}` : "-"}`
+      `${clean(k.name)} | ${k.brand ?? "-"} | ${k.size_value ? `${Number(k.size_value)} ${k.size_unit}` : "-"} | ${k.kind ?? "-"}`
     );
 
     const result = await askGemini(prompt(knownLines, rows), deadline);
@@ -205,12 +254,13 @@ Deno.serve(async (req) => {
         size_value: typeof x.size_value === "number" && Number.isFinite(x.size_value) && x.size_value > 0 ? x.size_value : null,
         size_unit: ["g", "ml", "ks"].includes(String(x.size_unit)) ? x.size_unit : null,
         category_id: typeof x.category_id === "string" ? x.category_id : null,
+        kind: typeof x.kind === "string" && x.kind.trim() ? x.kind.trim().slice(0, 60) : null,
       }));
     // Produkty, ktoré model vynechal, označíme ako spracované s pôvodným názvom –
     // inak by sa dávka opakovala donekonečna.
     const returned = new Set(payload.map((p) => p.product_id));
     for (const p of todo.data) {
-      if (!returned.has(p.id)) payload.push({ product_id: p.id, name: p.name, brand: null, size_value: null, size_unit: null, category_id: p.category_id });
+      if (!returned.has(p.id)) payload.push({ product_id: p.id, name: p.name, brand: null, size_value: null, size_unit: null, category_id: p.category_id, kind: null });
     }
 
     const applied = await admin.rpc("apply_product_normalization", { p_household_id: householdId, p_items: payload });
@@ -218,7 +268,7 @@ Deno.serve(async (req) => {
 
     const left = await asUser
       .from("products").select("id", { count: "exact", head: true })
-      .eq("household_id", householdId).is("merged_into", null).eq("normalized", false);
+      .eq("household_id", householdId).is("merged_into", null).or("normalized.eq.false,kind.is.null");
     return json({ processed: applied.data ?? 0, remaining: left.count ?? 0 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

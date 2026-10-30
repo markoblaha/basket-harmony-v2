@@ -220,6 +220,8 @@ export type Database = {
           created_at: string;
           household_id: string;
           id: string;
+          kind: string | null;
+          kind_manual: boolean;
           merged_into: string | null;
           name: string;
           normalized: boolean;
@@ -384,6 +386,11 @@ export type Database = {
         Args: { p_from: string; p_household_id: string; p_prev_from: string; p_prev_to: string; p_store_key: string; p_to: string };
         Returns: Json;
       };
+      analytics_kind: {
+        Args: { p_from: string; p_household_id: string; p_kind_key: string; p_prev_from: string; p_prev_to: string; p_to: string };
+        Returns: Json;
+      };
+      set_product_kind: { Args: { p_kind: string; p_product_id: string }; Returns: Database["public"]["Tables"]["products"]["Row"] };
       analytics_products: { Args: { p_household_id: string }; Returns: Json };
       analytics_product: { Args: { p_product_id: string }; Returns: Json };
       list_price_hints: { Args: { p_list_id: string }; Returns: Json };

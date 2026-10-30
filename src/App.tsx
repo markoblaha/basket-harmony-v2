@@ -45,6 +45,7 @@ const CategoriesTab = page(() => import("@/features/analytics/CategoriesTab"), "
 const CategoryPage = page(() => import("@/features/analytics/CategoryPage"), "CategoryPage");
 const OverviewTab = page(() => import("@/features/analytics/OverviewTab"), "OverviewTab");
 const ProductPage = page(() => import("@/features/analytics/ProductPage"), "ProductPage");
+const KindPage = page(() => import("@/features/analytics/KindPage"), "KindPage");
 const ProductsTab = page(() => import("@/features/analytics/ProductsTab"), "ProductsTab");
 const StorePage = page(() => import("@/features/analytics/StorePage"), "StorePage");
 const StoresTab = page(() => import("@/features/analytics/StoresTab"), "StoresTab");
@@ -124,6 +125,7 @@ export function App() {
           <Route path="analytics/category/:id" element={<CategoryPage />} />
           <Route path="analytics/store/:key" element={<StorePage />} />
           <Route path="analytics/product/:id" element={<ProductPage />} />
+          <Route path="analytics/kind/:key" element={<KindPage />} />
           <Route path="more" element={<MorePage />} />
           <Route path="more/household" element={<HouseholdPage />} />
           <Route path="more/notifications" element={<NotificationsPage />} />

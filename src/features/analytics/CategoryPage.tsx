@@ -7,8 +7,8 @@ import { useHousehold } from "@/features/household/HouseholdProvider";
 import { formatShortDate, readErrorMessage } from "@/features/receipts/format";
 import { formatEuro, formatNumber, t, tn } from "@/i18n";
 import { useCategoryDetail } from "./api";
-import { ChangeBadge, MonthBars, PeriodChips, ShareRow, euro0, pct, toMonthBars } from "./akit";
-import { categoryInfo, storeLabel } from "./bits";
+import { ChangeBadge, MonthBars, PeriodChips, ShareRow, euro0, toMonthBars } from "./akit";
+import { categoryInfo, perUnit, qtyLabel, storeLabel } from "./bits";
 import { usePeriod } from "./period";
 
 /**
@@ -26,6 +26,8 @@ export function CategoryPage() {
   const [sort, setSort] = useState<"total" | "count">("total");
   const d = detail.data;
   const products = d ? [...d.products].sort((a, b) => (sort === "count" ? b.count - a.count : b.amount - a.amount)) : [];
+  // Druhy (Pivo, Kuracie prsia) – rôzne značky a balenia spolu; detail ukáže výrobky.
+  const kinds = d?.kinds ? [...d.kinds].sort((a, b) => (sort === "count" ? b.count - a.count : b.amount - a.amount)) : [];
 
   return (
     <div className="stack">
@@ -51,7 +53,9 @@ export function CategoryPage() {
               <p className="an-sentence" style={{ margin: 0 }}>
                 {d.amount > 0
                   ? t("an.catDetailSentence", { name: info.name, amount: formatEuro(d.amount) }) +
-                    (products[0]?.name ? t("an.catDetailTop", { name: products[0].name, amount: euro0(products[0].amount) }) : ".")
+                    (kinds[0]?.name ?? products[0]?.name
+                      ? t("an.catDetailTop", { name: kinds[0]?.name ?? products[0]?.name ?? "", amount: euro0(kinds[0]?.amount ?? products[0]?.amount ?? 0) })
+                      : ".")
                   : t("an.catNothing")}
               </p>
               {info.hint && <span className="t-sm t-2">{info.hint}</span>}
@@ -81,10 +85,10 @@ export function CategoryPage() {
               />
             </section>
 
-            {!pseudo && products.length > 0 && (
+            {!pseudo && kinds.length > 0 && (
               <section className="stack g-8">
                 <div className="row between g-8">
-                  <span className="section-title">{tn("an.productsCount", products.length)}</span>
+                  <span className="section-title">{tn("kd.kindsCount", kinds.length)}</span>
                   <Seg
                     value={sort}
                     onChange={setSort}
@@ -96,14 +100,22 @@ export function CategoryPage() {
                   />
                 </div>
                 <div className="cells">
-                  {products.map((p) => (
+                  {kinds.map((k) => (
                     <ShareRow
-                      key={p.product_id ?? p.name}
-                      title={p.name ?? t("cp.untitled")}
-                      value={formatEuro(p.amount)}
-                      share={d.amount ? p.amount / d.amount : 0}
-                      sub={`${pct(d.amount ? p.amount / d.amount : 0)} · ${t("cp.countInPeriod", { n: p.count })}`}
-                      onClick={p.product_id ? () => navigate(`/analytics/product/${p.product_id}${search}`) : undefined}
+                      key={k.key}
+                      title={k.name}
+                      value={formatEuro(k.amount)}
+                      share={d.amount ? k.amount / d.amount : 0}
+                      sub={[
+                        `${k.count}×`,
+                        qtyLabel(k.units, k.basis),
+                        perUnit(k.avg_unit, k.basis),
+                        k.products > 1 ? tn("kd.variants", k.products) : null,
+                        k.brands.length > 0 ? k.brands.join(", ") : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      onClick={() => navigate(`/analytics/kind/${encodeURIComponent(k.key)}${search}`)}
                     />
                   ))}
                 </div>

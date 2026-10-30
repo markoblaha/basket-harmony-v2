@@ -64,6 +64,8 @@ export type CategoryDetail = {
   prev_amount: number;
   months: { month: string; amount: number }[];
   products: { product_id: string | null; name: string | null; amount: number; count: number }[];
+  /** Druhy (Pivo, Kuracie prsia…) – rôzne značky a balenia spolu. */
+  kinds: KindRow[];
   stores: { key: string; name: string; amount: number; count: number }[];
   items: {
     item_id: string;
@@ -80,6 +82,67 @@ export type CategoryDetail = {
   /** Natankované litre a priemerná cena za liter (palivo). */
   liters: number | null;
   per_liter: number | null;
+};
+
+export type KindRow = {
+  key: string;
+  name: string;
+  amount: number;
+  count: number;
+  /** Počet rôznych výrobkov (značka + balenie). */
+  products: number;
+  brands: string[];
+  /** Najčastejšia jednotka druhu; množstvo a priemer sú v nej. */
+  basis: Basis | null;
+  units: number | null;
+  avg_unit: number | null;
+};
+
+export type KindDetail = {
+  name: string;
+  category_id: string;
+  basis: Basis;
+  amount: number;
+  count: number;
+  prev_amount: number;
+  prev_cut: string;
+  units: number | null;
+  avg_unit: number | null;
+  min_unit: { price: number; store: string; date: string } | null;
+  max_unit: { price: number; store: string; date: string } | null;
+  months: { month: string; amount: number }[];
+  products: {
+    product_id: string;
+    name: string;
+    brand: string | null;
+    size_value: number | null;
+    size_unit: "g" | "ml" | "ks" | null;
+    count: number;
+    amount: number;
+    basis: Basis;
+    units: number | null;
+    avg_unit: number | null;
+    pieces: number | null;
+    last_store: string;
+    last_date: string;
+  }[];
+  stores: { key: string; name: string; count: number; amount: number; avg_unit: number | null }[];
+  purchases: {
+    item_id: string;
+    receipt_id: string;
+    product_id: string;
+    date: string;
+    store: string;
+    name: string;
+    brand: string | null;
+    size_value: number | null;
+    size_unit: "g" | "ml" | "ks" | null;
+    quantity: number;
+    line_total: number;
+    discount: number;
+    paid_unit: number | null;
+    basis: Basis;
+  }[];
 };
 
 export type StoreDetail = {
@@ -167,6 +230,7 @@ export const analyticsKeys = {
   overview: (hid: string, p: Period) => ["analytics", "overview", hid, p.from, p.to, p.scope] as const,
   category: (hid: string, id: string, p: Period) => ["analytics", "category", hid, id, p.from, p.to] as const,
   store: (hid: string, key: string, p: Period) => ["analytics", "store", hid, key, p.from, p.to] as const,
+  kind: (hid: string, key: string, p: Period) => ["analytics", "kind", hid, key, p.from, p.to] as const,
   products: (hid: string) => ["analytics", "products", hid] as const,
   product: (id: string) => ["analytics", "product", id] as const,
   hints: (listId: string) => ["analytics", "hints", listId] as const,
@@ -206,6 +270,26 @@ export function useCategoryDetail(householdId: string, categoryId: string, p: Pe
       });
       if (error) throw error;
       return numbers<CategoryDetail>(data);
+    },
+  });
+}
+
+/** Detail druhu; kľúč môže byť aj názov druhu (databáza ho porovná bez diakritiky). */
+export function useKindDetail(householdId: string, kindKey: string, p: Period) {
+  return useQuery({
+    queryKey: analyticsKeys.kind(householdId, kindKey, p),
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("analytics_kind", {
+        p_household_id: householdId,
+        p_kind_key: kindKey,
+        p_from: p.from,
+        p_to: p.to,
+        p_prev_from: p.prevFrom,
+        p_prev_to: p.prevTo,
+      });
+      if (error) throw error;
+      return numbers<KindDetail>(data);
     },
   });
 }
@@ -292,6 +376,18 @@ export function useUpdateProduct(productId: string) {
         p_size_unit: patch.sizeUnit,
         p_category_id: patch.categoryId,
       });
+      if (error) throw error;
+    },
+    onSettled: () => invalidateAll(qc),
+  });
+}
+
+/** Človek zmení druh produktu (prázdny = podľa názvu). */
+export function useSetProductKind(productId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (kind: string | null) => {
+      const { error } = await supabase.rpc("set_product_kind", { p_product_id: productId, p_kind: kind ?? "" });
       if (error) throw error;
     },
     onSettled: () => invalidateAll(qc),
