@@ -86,6 +86,7 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   Návrat späť aj potiahnutím z ľavého okraja doprava (obrazovka ide za prstom, pod ňou predchádzajúca).
   Nový zoznam: obchod nie je predvolený, názov je presne ten napísaný; dlaždice obchodov (sklenené, podľa počtu nákupov),
   „Vybrať dátum“ a voľba Blahovci (predvolené) / Iba ja. Karty zoznamov bez ikon potravín a štvorcov s písmenom.
+  Téma Fotky a sklo: všetky obrazovky majú rovnaké pozadie ako Nákupy (rozmazaná fotka trhu so závojom).
 - Audit celej appky s plánom vo 4 fázach a návrhom tém Biela / Čierna / Farebná:
   https://claude.ai/artifact/6A4vJaWWJ7jEJrDTxqiztq
 - Revízia zoznamov a nákupu (17 zistení): https://claude.ai/artifact/WgLwB1rLdQ8orYdv9Kv8Hv
