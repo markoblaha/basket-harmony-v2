@@ -81,6 +81,11 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   v rámci predplatného + kontrolný program + schválenie majiteľom; import receptu z odkazu (schema.org, Varecha ho má)
   súkromne pre domácnosť; skutočné fotky cez licenciu/vlastné/od rodín, bez AI fotiek; ~40 kariet „ako na to“ a režim
   „varím“ namiesto AI videí; Mapa knihy (čo chýba, „hľadali a nenašli“).
+  Verzia 4 (podľa majiteľa): žiadni blogeri ani licencie. Recepty píše Claude po várkach (predplatné Pro, prípadne
+  dočasne Max), 3 AI fotky na recept v jednotnom „domácom“ štýle cez existujúci Gemini kľúč (~180–360 $ za 1 000),
+  označené „ilustračná fotka“. Varechu nesťahujeme: ich AI Content Policy (máj 2026) výslovne zakazuje hromadné
+  sťahovanie a budovanie konkurenčnej appky či databázy; ponúkajú licenciu (redakcia@varecha.sk). Import z odkazu
+  vypadol (ich pravidlá zakazujú appku ako zdroj obsahu). V dokumente je ukážka segedína podľa štandardu.
   https://claude.ai/artifact/XUqh2Un6H1ZgSbk9Q7m6xj – čaká na 5 rozhodnutí v kapitole 12.
 
 - **Basket Harmony 2.0 (26. 10. 2026):** vzhľad podľa mockupu z ChatGPT („Spíž“) na našom motore, 13 náhľadov
