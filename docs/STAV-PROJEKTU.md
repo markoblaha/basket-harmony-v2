@@ -102,7 +102,11 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   Karty zoznamov: avatary skupiny pri názve, súkromný zoznam len so zámkom, bez nápisu „Spoločný“.
   Recept: v surovinách len „mám doma“; Pridať → predvolene nový zoznam s menom receptu, potom plynulo do Nákupov
   s rozsvietenou kartou (pulzuje ~5 s); karta zoznamu ukazuje recepty. Nový zoznam z receptu sa volá „Nákup k receptu“
-  (názov sa dá zmeniť), názov receptu je v bubline na karte. Karty zoznamov sú užšie a kompaktnejšie. Výdavky: Kategória → Druh → Značka/výrobok → bloček so zvýrazneným riadkom.
+  (názov sa dá zmeniť), názov receptu je v bubline na karte. Karty zoznamov sú užšie a kompaktnejšie.
+  Recepty: každý má skutočnú fotku (aj nové z AI/importu – vyberie sa podľa názvu jedla, 33 nových fotiek z Openverse,
+  licencie CC0/CC BY, autori v prototype v Nastaveniach → Zdroje fotiek). AI hľadanie receptov má animáciu čakania
+  (krok sa mení, časovač, kostry kariet s plávajúcimi surovinami) a výsledky naskakujú postupne. Pri prenose do skutočnej
+  appky treba vyriešiť zdroj fotiek (licencie) – v prototype sú vložené priamo. Výdavky: Kategória → Druh → Značka/výrobok → bloček so zvýrazneným riadkom.
   Množstvá (rozhodnutie majiteľa): číslo bez jednotky = počet kusov (kus, balík, strapec), nikdy sa neprepočítava;
   g/dkg/kg/ml/dl/l sa uložia presne, len keď ich niekto napíše („500g“, „pol kila“, „2 deci“). Kusy a presné množstvo
   sa nespájajú. Vážené veci v kusoch: pri položke cena za kg, do súčtu bežný nákup z bločkov (pri 3+ kusoch váha kusa).
