@@ -1,0 +1,434 @@
+<title>Recepty 2.0 – plán</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: jeden stĺpec na čítanie (~68 znakov), široké bloky len pre tabuľky a náčrty obrazoviek */
+:root {
+  --bg: #f6f7f4; --surface: #ffffff; --sunken: #eceee8; --fg: #1d221c; --muted: #5b6458; --line: #d9ddd3;
+  --paprika: #c2412d; --paprika-soft: #f7e3dd; --herb: #2f6b4a; --herb-soft: #e0efe5; --amber: #9a6a12; --amber-soft: #f6ecd5;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141713; --surface: #1c201b; --sunken: #232822; --fg: #e8ebe4; --muted: #a2ab9e; --line: #333a31;
+  --paprika: #ff8a73; --paprika-soft: #3a211b; --herb: #7fcf9f; --herb-soft: #1d3326; --amber: #e6b65c; --amber-soft: #352a14; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #141713; --surface: #1c201b; --sunken: #232822; --fg: #e8ebe4; --muted: #a2ab9e; --line: #333a31;
+  --paprika: #ff8a73; --paprika-soft: #3a211b; --herb: #7fcf9f; --herb-soft: #1d3326; --amber: #e6b65c; --amber-soft: #352a14; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 16px/1.62 var(--body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+header.top { padding-block: 40px 8px; display: flex; flex-direction: column; gap: 10px; }
+.eyebrow { font: 600 12px/1 var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--paprika); }
+h1 { font: 800 clamp(34px, 7vw, 52px)/1.02 var(--display); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.lede { font-size: 18px; color: var(--muted); margin: 0; max-width: 62ch; }
+h2 { font: 700 26px/1.15 var(--display); letter-spacing: -.01em; margin: 26px 0 0; text-wrap: balance; display: flex; gap: 12px; align-items: baseline; }
+h2 .n { font: 500 13px/1 var(--mono); color: var(--paprika); }
+h3 { font: 700 18px/1.25 var(--display); margin: 10px 0 0; }
+p, li { max-width: 68ch; } p { margin: 0; }
+ul, ol { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+a { color: var(--herb); }
+strong { font-weight: 700; }
+code, .k { font: 500 .88em var(--mono); background: var(--sunken); padding: 1px 6px; border-radius: 6px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.box.warn { background: var(--paprika-soft); border-color: transparent; }
+.box.good { background: var(--herb-soft); border-color: transparent; }
+.box.note { background: var(--amber-soft); border-color: transparent; }
+.box h3 { margin: 0; }
+.verdict { font-weight: 700; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th { font: 600 12px/1.3 var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--sunken); }
+tr:last-child td { border-bottom: 0; }
+.pill { display: inline-block; font: 600 12px/1 var(--body); padding: 5px 9px; border-radius: 99px; white-space: nowrap; }
+.pill.yes { background: var(--herb-soft); color: var(--herb); } .pill.no { background: var(--paprika-soft); color: var(--paprika); } .pill.mid { background: var(--amber-soft); color: var(--amber); }
+.flow { display: grid; gap: 8px; }
+.step { display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.step b.i { font: 700 14px/30px var(--mono); text-align: center; width: 30px; height: 30px; border-radius: 99px; background: var(--paprika-soft); color: var(--paprika); }
+.step div { min-width: 0; }
+.ex { font: 500 13.5px/1.5 var(--mono); color: var(--muted); }
+.ex em { font-style: normal; color: var(--herb); }
+/* náčrty obrazoviek */
+.phones { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; padding-block: 6px; }
+.phone { width: 214px; flex: none; border-radius: 30px; padding: 9px; background: #121512; box-shadow: 0 16px 38px -18px rgb(0 0 0 / .45); }
+.scr { position: relative; height: 420px; border-radius: 22px; overflow: hidden; background: #2a2f29; color: #fff; font-size: 11.5px; line-height: 1.35; }
+.cap { text-align: center; font-size: 13px; color: var(--muted); margin-top: 8px; max-width: 214px; }
+.ph-photo { position: absolute; inset: 0; background: radial-gradient(circle at 50% 38%, #e6863c 0 18%, #b84a1e 19% 28%, #3b2a20 29% 40%, #2b302a 41%); }
+.ph-photo.b { background: radial-gradient(circle at 48% 40%, #f0d27a 0 14%, #d4a63b 15% 24%, #6b4b2a 25% 34%, #262b25 35%); }
+.ph-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(0 0 0 / .35), transparent 30%, transparent 48%, rgb(0 0 0 / .82)); }
+.ph-top { position: absolute; left: 12px; right: 12px; top: 12px; display: flex; justify-content: space-between; }
+.chipx { background: rgb(255 255 255 / .18); border-radius: 99px; padding: 4px 8px; font-weight: 600; backdrop-filter: blur(6px); }
+.dots { position: absolute; left: 0; right: 0; top: 44px; display: flex; justify-content: center; gap: 4px; }
+.dots i { width: 18px; height: 3px; border-radius: 3px; background: rgb(255 255 255 / .4); } .dots i:first-child { background: #fff; }
+.ph-info { position: absolute; left: 12px; right: 56px; bottom: 14px; display: flex; flex-direction: column; gap: 4px; }
+.ph-info b { font: 800 17px/1.1 var(--display); }
+.ph-side { position: absolute; right: 10px; bottom: 16px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.ph-side span { width: 36px; height: 36px; border-radius: 99px; background: rgb(255 255 255 / .18); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+.ph-side small { font-size: 9.5px; margin-top: -6px; opacity: .85; }
+.tag { align-self: flex-start; background: #ffd25e; color: #3a2a00; border-radius: 99px; padding: 3px 8px; font-weight: 700; font-size: 10.5px; }
+.arrow { position: absolute; font: 700 11px/1.2 var(--body); color: #fff; background: rgb(194 65 45 / .9); padding: 4px 7px; border-radius: 8px; }
+.pick { position: absolute; inset: 0; background: #20251f; padding: 16px 12px; display: flex; flex-direction: column; gap: 10px; }
+.pick h4 { margin: 4px 0 0; font: 800 16px/1.15 var(--display); color: #fff; }
+.pick .g { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.pick .g span { background: #2f362e; border-radius: 12px; padding: 12px 8px; font-weight: 600; text-align: center; }
+.pick .g span.on { background: #c2412d; }
+.pick .bar { display: flex; gap: 4px; } .pick .bar i { flex: 1; height: 3px; border-radius: 3px; background: #444c42; } .pick .bar i.on { background: #fff; }
+.pick .go { margin-top: auto; background: #fff; color: #1d221c; border-radius: 99px; text-align: center; padding: 10px; font-weight: 700; }
+.det { position: absolute; inset: 0; background: #f6f7f4; color: #1d221c; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.det .hero { height: 110px; border-radius: 14px; background: radial-gradient(circle at 50% 50%, #e6863c 0 22%, #b84a1e 23% 34%, #3b2a20 35%); }
+.det .st { background: #fff; border: 1px solid #d9ddd3; border-radius: 12px; padding: 8px 9px; display: flex; flex-direction: column; gap: 3px; }
+.det .st b { font-size: 11.5px; } .det .st em { font-style: normal; color: #2f6b4a; font-weight: 700; font-size: 10.5px; }
+.det .st .t { color: #9a6a12; font-weight: 700; font-size: 10.5px; }
+.src { font-size: 13.5px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.src a { word-break: break-word; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
+.toc a { text-decoration: none; } .toc a:hover { text-decoration: underline; }
+.qs { counter-reset: q; list-style: none; padding: 0; gap: 10px; }
+.qs li { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 12px 50px; position: relative; max-width: none; }
+.qs li::before { counter-increment: q; content: counter(q); position: absolute; left: 14px; top: 12px; width: 24px; height: 24px; border-radius: 99px; background: var(--herb-soft); color: var(--herb); font: 700 13px/24px var(--mono); text-align: center; }
+@media (prefers-reduced-motion: no-preference) { .phone { transition: transform .3s; } .phone:hover { transform: translateY(-4px); } }
+</style>
+
+<style>
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+.kpi b { font: 800 24px/1.05 var(--display); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.kpi span { font-size: 13.5px; color: var(--muted); line-height: 1.35; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.sum td { font-weight: 700; background: var(--sunken); }
+.v2 { font: 600 11px/1.3 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--herb); background: var(--herb-soft); padding: 5px 8px; border-radius: 99px; align-self: flex-start; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.two .box ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.lane { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.lane div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
+.lane div b { font-family: var(--display); }
+.lane div small { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+/* ukážka receptu */
+.rc { max-width: 430px; margin: 0 auto; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; font-size: 14.5px; }
+.rc-hero { height: 150px; background: linear-gradient(135deg, #c9473a 0%, #e9a15b 55%, #f6d9a8 100%); position: relative; }
+.rc-hero span { position: absolute; left: 12px; bottom: 10px; font: 600 11px/1 var(--body); background: rgb(0 0 0 / .45); color: #fff; padding: 5px 8px; border-radius: 99px; }
+.rc-in { padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.rc h4 { font: 800 21px/1.15 var(--display); margin: 0; }
+.rc-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.rc-meta i { font-style: normal; font-size: 12.5px; background: var(--sunken); border-radius: 99px; padding: 5px 9px; }
+.rc-g { display: flex; flex-direction: column; gap: 2px; }
+.rc-g b { font: 700 13px/1.2 var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--paprika); margin: 6px 0 4px; }
+.rc-g div { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+.rc-g div em { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.rc-s { display: grid; grid-template-columns: 26px 1fr; gap: 10px; }
+.rc-s > b { font: 700 13px/26px var(--mono); text-align: center; height: 26px; border-radius: 99px; background: var(--paprika-soft); color: var(--paprika); }
+.rc-s p { margin: 0; }
+.rc-s .t { display: inline-block; margin-top: 6px; font-size: 12.5px; background: var(--sunken); border-radius: 99px; padding: 4px 9px; margin-right: 4px; }
+.rc-s .ok, .rc-s .pz, .rc-s .tip { margin-top: 6px; font-size: 13px; border-radius: 10px; padding: 7px 10px; line-height: 1.4; }
+.rc-s .ok { background: var(--herb-soft); } .rc-s .pz { background: var(--paprika-soft); } .rc-s .tip { background: var(--amber-soft); }
+.rc-btn { display: flex; gap: 8px; }
+.rc-btn span { flex: 1; text-align: center; font-weight: 700; font-size: 13.5px; border-radius: 12px; padding: 10px; background: var(--fg); color: var(--bg); }
+.rc-btn span.s { background: var(--sunken); color: var(--fg); }
+.legend { font-size: 13px; color: var(--muted); text-align: center; }
+.cov { display: grid; grid-template-columns: 150px 1fr 70px; gap: 10px; align-items: center; font-size: 14px; }
+.cov .tr { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--sunken); }
+.cov .tr i { display: block; height: 100%; }
+.cov .a { background: var(--herb); } .cov .b { background: var(--amber); } .cov .c { background: var(--paprika); opacity: .55; }
+.cov em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+@media (max-width: 520px) { .cov { grid-template-columns: 96px 1fr 74px; gap: 8px; font-size: 13px; } }
+.keys { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--muted); }
+.keys span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--k); }
+</style>
+<style>
+.ph3 { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; height: 230px; }
+.ph3 div { border-radius: 14px; position: relative; overflow: hidden; }
+.ph3 div:first-child { grid-row: span 2; background: radial-gradient(circle at 40% 45%, #f2c27a 0 18%, #c9622e 19% 38%, #e9dcc6 39% 60%, #8a6a4a 61%); }
+.ph3 div:nth-child(2) { background: radial-gradient(circle at 50% 60%, #d4733a 0 30%, #efe3cf 31% 55%, #7d5d40 56%); }
+.ph3 div:nth-child(3) { background: linear-gradient(160deg, #a0522d, #e09a52 60%, #f0d7a8); }
+.ph3 span { position: absolute; left: 8px; bottom: 8px; font: 600 11px/1.2 var(--body); background: rgb(0 0 0 / .5); color: #fff; padding: 4px 7px; border-radius: 99px; }
+.quote { border-left: 3px solid var(--paprika); padding: 4px 0 4px 12px; color: var(--fg); font-style: italic; }
+.rc-in .note { font-size: 12.5px; color: var(--muted); }
+</style>
+<style>
+@media (max-width: 640px) { table { min-width: 0; font-size: 13.5px; } th, td { padding: 9px 10px; } }
+.tree { display: flex; flex-direction: column; gap: 8px; }
+.tree .dish { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.tree .dish > b { font: 700 16px/1.2 var(--display); }
+.tree .dish > small { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips span { font-size: 12.5px; border-radius: 99px; padding: 5px 9px; background: var(--sunken); }
+.chips span.v { background: var(--herb-soft); color: var(--herb); font-weight: 600; }
+.chips span.s { background: var(--amber-soft); color: var(--amber); font-weight: 600; }
+.chips span.x { background: var(--paprika-soft); color: var(--paprika); text-decoration: line-through; }
+details.more { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+details.more summary { cursor: pointer; font-weight: 700; font-family: var(--display); }
+details.more[open] summary { margin-bottom: 12px; }
+.batch { display: flex; flex-direction: column; gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.batch div { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--line); font-size: 14px; align-items: center; }
+.batch div:last-child { border-bottom: 0; }
+.batch div em { font-style: normal; font-size: 12px; color: var(--muted); text-align: right; }
+.batch .hd { background: var(--sunken); font-weight: 700; }
+.tl { display: grid; grid-template-columns: 110px 1fr; gap: 0; }
+.tl > div { padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.tl > div:nth-child(odd) { font-weight: 700; font-family: var(--display); color: var(--paprika); }
+.tl b { font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .tl { grid-template-columns: 86px 1fr; } }
+</style>
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Basket Harmony · návrh na schválenie</span>
+  <span class="v2">Verzia 5 · systém knihy receptov na celý rok</span>
+  <h1>Recepty 2.0: kniha s hlavou a pätou</h1>
+  <p class="lede">Ako pridávať recepty postupne celý rok bez chaosu: vždy vieme, čo máme, čo chýba a čo pridať ďalej. Žiadnych 20 bravčových gulášov ani 100 palaciniek. Ľudia svojím hľadaním sami určujú, čo pribudne. Na konci sú moje kritické pripomienky.</p>
+  <nav class="toc" aria-label="Obsah"><a href="#zhrnutie">Zhrnutie</a><a href="#varecha">1. Otázka Varechy</a><a href="#jedlo">2. Jedlo a obmena</a><a href="#kategorie">3. Kategórie a značky</a><a href="#plan-knihy">4. Plán knihy</a><a href="#co-dalej">5. Čo pridať ďalej</a><a href="#hladanie">6. Z hľadania recept</a><a href="#duplicity">7. Stráž proti duplicitám</a><a href="#varka">8. Jedna várka</a><a href="#mapa">9. Mapa knihy</a><a href="#rok">10. Plán na rok</a><a href="#kritika">11. Moje kritické názory</a><a href="#rozhodnutia">12. Rozhodnutia</a></nav>
+</header>
+
+<h2 id="zhrnutie"><span class="n">00</span>Zhrnutie</h2>
+<div class="kpis">
+  <div class="kpi"><b>1 plán</b><span>v databáze: každé jedlo, ktoré chceme mať, s presným stavom. Jediný zdroj pravdy</span></div>
+  <div class="kpi"><b>~750 + 250</b><span>samostatných jedál a obmien namiesto tisícov podobných receptov</span></div>
+  <div class="kpi"><b>max 5</b><span>obmien na jedno jedlo. Viac len vtedy, keď to ľudia naozaj hľadajú</span></div>
+  <div class="kpi"><b>20 / týždeň</b><span>bežná várka v rámci limitov Pro, vybraná automaticky podľa priority</span></div>
+</div>
+<div class="box good">
+  <h3>Ako to funguje v jednej vete</h3>
+  <p><strong>Plán knihy → priorita → várka → kontrola → schválenie → zverejnenie → hľadanie ľudí dopĺňa plán.</strong> Každý recept má číslo, stav a várku, v ktorej pribudol. Mapa knihy kedykoľvek ukáže, koľko čoho máme a čo chýba.</p>
+</div>
+
+<h2 id="varecha"><span class="n">01</span>Otázka Varechy: ako by to zistili a čo by mohli urobiť</h2>
+<p>Odpovedám otvorene, lebo je to dobrá otázka.</p>
+<div class="two">
+  <div class="box">
+    <h3>Ako by to mohli zistiť</h3>
+    <ul>
+      <li><strong>Suroviny s množstvami sú odtlačok prsta.</strong> Text sa dá prepísať, ale kombinácia „200 g múky, 2 PL rumu, 120 g masla“ pri stovkách receptov sa zhoduje štatisticky jednoznačne. Porovnanie urobí program za minútu.</li>
+      <li>Weby sledujú, kto ich prechádza. Agent, ktorý „ručne“ otvorí tisíce receptov, je pre ne stále robot. Varecha AI prehliadače výslovne sleduje.</li>
+      <li>Appka je verejná: stačí, aby si to všimol ich čitateľ, autor receptu alebo konkurencia.</li>
+    </ul>
+  </div>
+  <div class="box warn">
+    <h3>Čo by mohli urobiť</h3>
+    <ul>
+      <li>Výzva na odstránenie a súdom nariadené zastavenie (predbežné opatrenie), aj počas behu predplatného.</li>
+      <li>Náhrada škody a vydanie zisku.</li>
+      <li>Žiadosť do App Store a Google Play o stiahnutie appky.</li>
+      <li>Verejné pomenovanie, ako to uvádzajú vo svojich pravidlách.</li>
+    </ul>
+  </div>
+</div>
+<p><strong>„Ručné“ prechádzanie agentmi a prepisovanie nič nemení.</strong> Zákon zakazuje už samotné systematické preberanie obsahu databázy, aj po kúskoch. Nezáleží na tom, akým nástrojom a či text potom prepíšeme. Preto s tým nepomôžem. Hlavne to však <strong>nepotrebujete</strong>: segedín z verzie 4, ktorý sa vám páčil, vznikol bez Varechy. Ich recepty sú dobré, lebo ide o klasické jedlá, ktoré Claude pozná. Navyše by ste celú knihu postavili na obsahu, ktorý vám môžu kedykoľvek prikázať zmazať, a s ním aj hlavnú časť appky.</p>
+<details class="more"><summary>Ukážka receptu (segedínsky guláš z verzie 4)</summary>
+<div class="rc" aria-label="Ukážka receptu Segedínsky guláš">
+  <div class="ph3" style="padding:6px 6px 0"><div><span>Hlavná fotka</span></div><div><span>Porcia</span></div><div><span>Detail</span></div></div>
+  <div class="rc-in">
+    <h4>Segedínsky guláš</h4>
+    <div class="rc-meta"><i>4–5 porcií</i><i>30 min práce</i><i>1 h 45 min spolu</i><i>Ľahké</i><i>Bravčové</i><i>Česko · varí sa aj u nás</i></div>
+    <div class="rc-g">
+      <b>Mäso a základ</b>
+      <div><span>Bravčové pliecko (alebo krkovička)</span><em>800 g</em></div>
+      <div><span>Cibuľa</span><em>2 ks (250 g)</em></div>
+      <div><span>Bravčová masť alebo olej</span><em>3 PL (40 g)</em></div>
+      <div><span>Sladká mletá paprika</span><em>2 PL (15 g)</em></div>
+      <div><span>Cesnak</span><em>2 strúčiky</em></div>
+      <div><span>Rasca celá</span><em>1 ČL</em></div>
+      <div><span>Bobkový list</span><em>2 ks</em></div>
+      <div><span>Soľ</span><em>1½ ČL</em></div>
+      <div><span>Čierne korenie mleté</span><em>½ ČL</em></div>
+      <div><span>Voda</span><em>približne 600 ml</em></div>
+      <b>Kapusta</b>
+      <div><span>Kyslá kapusta</span><em>500 g</em></div>
+      <b>Zahustenie</b>
+      <div><span>Kyslá smotana 16 %</span><em>250 ml</em></div>
+      <div><span>Hladká múka</span><em>2 PL (20 g)</em></div>
+      <b>Na podávanie</b>
+      <div><span>Knedľa (kysnutá alebo žemľová)</span><em>8–10 plátkov</em></div>
+    </div>
+    <div class="rc-s"><b>1</b><div><p>Mäso nakrájaj na kocky 2–3 cm, cibuľu nadrobno, cesnak pretlač. Kapustu ochutnaj: ak je veľmi kyslá, krátko ju prepláchni v sitku studenou vodou a vytlač. Dlhé vlákna nakrájaj kratšie.</p><span class="t">⏱ 10 min</span>
+      <div class="pz"><strong>Pozor:</strong> kapustu neplákaj dlho, stratí chuť. Stačí pár sekúnd.</div></div></div>
+    <div class="rc-s"><b>2</b><div><p>V hrnci s hrubým dnom rozpusti masť a na strednom ohni opekaj cibuľu.</p><span class="t">⏱ 8–10 min</span><span class="t">🔥 stredný oheň</span>
+      <div class="ok"><strong>Hotové je, keď:</strong> cibuľa je mäkká a zlatá, nie tmavohnedá.</div></div></div>
+    <div class="rc-s"><b>3</b><div><p>Hrniec stiahni z ohňa, vmiešaj papriku a hneď podlej 100 ml vody.</p><span class="t">⏱ 30 s</span>
+      <div class="pz"><strong>Pozor:</strong> paprika na horúcom tuku za pár sekúnd zhorkne a celé jedlo bude horké. Preto mimo ohňa a hneď podliať.</div></div></div>
+    <div class="rc-s"><b>4</b><div><p>Pridaj mäso, cesnak, rascu, soľ a korenie. Vráť na oheň a za stáleho miešania opekaj, kým mäso zo všetkých strán nezbelie.</p><span class="t">⏱ 5 min</span></div></div>
+    <div class="rc-s"><b>5</b><div><p>Podlej vodou, aby bolo mäso takmer zakryté (asi 400 ml), pridaj bobkový list, prikry a duste na miernom ohni. Občas premiešaj a podlej, ak sa voda vyvarí.</p><span class="t">⏱ 40 min</span><span class="t">🔥 mierny oheň</span></div></div>
+    <div class="rc-s"><b>6</b><div><p>Pridaj kapustu, premiešaj a dolej vodu tak, aby bola zakrytá. Duste ďalej pod pokrievkou.</p><span class="t">⏱ 30–40 min</span>
+      <div class="ok"><strong>Hotové je, keď:</strong> kúsok mäsa sa ľahko roztlačí vidličkou.</div></div></div>
+    <div class="rc-s"><b>7</b><div><p>Smotanu vymiešaj s múkou metličkou dohladka. Primiešaj do nej 3 lyžice horúcej šťavy z hrnca a až potom ju vlej do guláša za stáleho miešania. Povar 5 minút a vyber bobkové listy.</p><span class="t">⏱ 5 min</span>
+      <div class="pz"><strong>Pozor:</strong> studená smotana vliata rovno do vriaceho guláša sa zrazí na hrudky.</div></div></div>
+    <div class="rc-s"><b>8</b><div><p>Dochuť soľou. Ak je guláš príliš kyslý, pridaj štipku cukru. Podávaj s knedľou.</p>
+      <div class="tip"><strong>Tip:</strong> na druhý deň je segedín ešte lepší. V chladničke vydrží 3 dni, dá sa aj zamraziť.</div></div></div>
+    <div class="rc-btn"><span class="s">Pridať do nákupu</span><span>Začať variť</span></div>
+    <p class="note">Fotky v appke: ilustračné, vytvorené AI. Recept: Basket Harmony, overené ✓</p>
+  </div>
+</div>
+</details>
+
+<h2 id="jedlo"><span class="n">02</span>Základný princíp: jedlo a obmena</h2>
+<p>Rovnaký princíp už appka používa pri nákupoch (kategória → druh → výrobok). Pri receptoch: <strong>kategória → jedlo → obmena</strong>.</p>
+<div class="tree">
+  <div class="dish"><b>Palacinky</b><small>Jedno jadro: cesto a pečenie. Obmeny menia len plnku, preto sú krátke a majú vlastnú fotku.</small>
+    <div class="chips"><span class="v">s tvarohom</span><span class="v">s džemom</span><span class="v">s nutellou a banánom</span><span class="v">slané so špenátom</span><span class="v">Gundel</span></div>
+    <small>Samostatné jedlá, nie obmeny, lebo majú iné cesto: <strong>lievance</strong>, <strong>americké pancakes</strong>, <strong>krupičné palacinky</strong>.</small></div>
+  <div class="dish"><b>Bravčový guláš</b><small>Jadro: mäso, cibuľa, paprika, dusenie.</small>
+    <div class="chips"><span class="v">s fazuľou</span><span class="v">s hríbmi</span><span class="v">pikantný</span><span class="x">bravčový guláš 2, 3, 4…</span></div>
+    <small>Samostatné jedlá, lebo majú vlastný zaužívaný názov alebo inú hlavnú surovinu: <strong>segedínsky guláš</strong>, <strong>bravčový perkelt</strong>, <strong>gulášová polievka</strong>.</small></div>
+</div>
+<div class="tbl"><table>
+  <thead><tr><th>Pravidlo</th><th>Kedy</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill yes">samostatné jedlo</span></td><td>Má vlastný zaužívaný názov, alebo inú hlavnú surovinu, cesto či spôsob prípravy.</td></tr>
+    <tr><td><span class="pill mid">obmena</span></td><td>Rovnaký základ, mení sa jedna skupina surovín (plnka, poleva, korenie) alebo 1 až 3 suroviny. Max 5 obmien na jedlo, viac len pri dopyte.</td></tr>
+    <tr><td><span class="pill no">duplicita</span></td><td>To isté jedlo pod iným názvom („segedín“, „szegedin“). Nový recept nevznikne, pridá sa len ďalší názov na vyhľadanie.</td></tr>
+  </tbody>
+</table></div>
+<p><strong>V appke:</strong> jedna karta „Palacinky“ a pod ňou rad obmien so svojimi fotkami. Pri obmene sa zobrazí celý recept vrátane cesta, aby nikto nemusel preklikávať. Do zásoby sa však píše len rozdiel, takže obmena je lacná na výrobu aj na limity. Výsledok: 1 000 receptov = zhruba 750 samostatných jedál a 250 obmien.</p>
+
+<h2 id="kategorie"><span class="n">03</span>Kategórie a značky</h2>
+<p>Každé jedlo má <strong>jednu kategóriu</strong> (kde ho nájdem pri prezeraní) a <strong>niekoľko značiek</strong> (filtre). Značky sú z pevného zoznamu, nikto si nevymýšľa nové, inak by vznikol chaos.</p>
+<div class="tbl"><table>
+  <thead><tr><th>Kategória</th><th class="num">Cieľ jedál</th></tr></thead>
+  <tbody>
+    <tr><td>Polievky</td><td class="num">65</td></tr>
+    <tr><td>Cestoviny, rizotá, ryža</td><td class="num">70</td></tr>
+    <tr><td>Kuracie a hydina</td><td class="num">80</td></tr>
+    <tr><td>Zemiakové jedlá, halušky</td><td class="num">35</td></tr>
+    <tr><td>Bravčové</td><td class="num">65</td></tr>
+    <tr><td>Sladké hlavné jedlá</td><td class="num">30</td></tr>
+    <tr><td>Hovädzie a teľacie</td><td class="num">40</td></tr>
+    <tr><td>Šaláty</td><td class="num">45</td></tr>
+    <tr><td>Mleté mäso</td><td class="num">35</td></tr>
+    <tr><td>Raňajky a vajcia</td><td class="num">45</td></tr>
+    <tr><td>Ryby a morské plody</td><td class="num">45</td></tr>
+    <tr><td>Nátierky a predjedlá</td><td class="num">40</td></tr>
+    <tr><td>Zverina, kačka, králik</td><td class="num">20</td></tr>
+    <tr><td>Koláče, zákusky, torty</td><td class="num">85</td></tr>
+    <tr><td>Bezmäsité a strukoviny</td><td class="num">70</td></tr>
+    <tr><td>Dezerty bez pečenia</td><td class="num">25</td></tr>
+    <tr><td>Prílohy</td><td class="num">35</td></tr>
+    <tr><td>Chlieb a pečivo</td><td class="num">25</td></tr>
+    <tr><td>Omáčky, dresingy, zaváranie</td><td class="num">30</td></tr>
+    <tr><td>Vianočné a sviatočné</td><td class="num">40</td></tr>
+    <tr><td>Nápoje, smoothie</td><td class="num">15</td></tr>
+    <tr class="sum"><td>Spolu jedál (+ ~250 obmien)</td><td class="num">940</td></tr>
+  </tbody>
+</table></div>
+<div class="chips" aria-label="Skupiny značiek">
+  <span class="s">Kuchyňa: slovenská, česká, maďarská, rakúska, talianska…</span><span class="s">Čas: do 20 min, do 45 min, víkend</span><span class="s">Obtiažnosť: ľahké, stredné, náročné</span><span class="s">Strava: bezmäsité, vegánske, bez lepku, bez laktózy</span><span class="s">Príležitosť: Vianoce, Veľká noc, grilovanie, návšteva, do krabičky</span><span class="s">Sezóna: jar, leto, jeseň, zima</span>
+</div>
+<p><strong>Minimum kategórie:</strong> kategória sa zákazníkom zobrazí, až keď má aspoň 12 jedál. Dovtedy je skrytá, aby appka nikdy nepôsobila prázdne.</p>
+
+<h2 id="plan-knihy"><span class="n">04</span>Plán knihy: jediný zdroj pravdy</h2>
+<p>V databáze bude tabuľka <strong>Plán knihy</strong>. Je v nej každé jedlo, ktoré máme alebo chceme mať, aj to, ktoré ešte nie je napísané. Pri každom: názov, ďalšie názvy na hľadanie, kategória, značky, nadradené jedlo (pri obmene), priorita a stav:</p>
+<div class="chips"><span>💡 návrh</span><span>📋 v pláne</span><span>✍️ napísané</span><span>📷 s fotkami</span><span>⏳ čaká na vás</span><span class="v">✅ zverejnené</span><span class="x">↩︎ vrátené na opravu</span></div>
+<p>Pri každom recepte sa zapisuje aj <strong>číslo várky a dátum</strong>, takže sa dá kedykoľvek zistiť, čo pribudlo v ktorý týždeň. Na začiatku Claude vytvorí plán ~1 000 jedál zoradených podľa toho, ako často sa na Slovensku varia, a vy ho prejdete a upravíte.</p>
+
+<h2 id="co-dalej"><span class="n">05</span>Čo pridať ďalej: priorita sa počíta sama</h2>
+<p>Každé jedlo v pláne má body. Várka vezme jedlá s najviac bodmi:</p>
+<div class="tbl"><table>
+  <thead><tr><th>Čo pridáva body</th><th class="num">Body</th></tr></thead>
+  <tbody>
+    <tr><td>Hľadala ho domácnosť a nenašla (za posledných 30 dní, každá domácnosť raz)</td><td class="num">+3 za domácnosť</td></tr>
+    <tr><td>Jeho kategória ešte nemá minimum 12 jedál</td><td class="num">+10</td></tr>
+    <tr><td>Blíži sa jeho sezóna (do 6 týždňov: Vianoce, Veľká noc, grilovanie, zaváranie)</td><td class="num">+6</td></tr>
+    <tr><td>Patrí medzi 200 najčastejšie varených jedál</td><td class="num">+8</td></tr>
+    <tr><td>Je to obmena a jej jedlo ešte nie je zverejnené</td><td class="num">nedá sa vybrať</td></tr>
+  </tbody>
+</table></div>
+<p>Pravidlá várky: <strong>najviac 4 recepty z jednej kategórie</strong>, aspoň 2 z hľadania (ak nejaké sú) a obmeny až po svojom jedle. Váhy bodov sa dajú neskôr ľahko zmeniť.</p>
+<div class="batch" aria-label="Príklad návrhu várky">
+  <div class="hd"><span>Návrh várky č. 7 (20 receptov)</span><em>body</em></div>
+  <div><span>Kulajda</span><em>hľadané 9× · polievky · 27 + 8</em></div>
+  <div><span>Vanilkové rožky</span><em>sezóna Vianoce · 6 + 8</em></div>
+  <div><span>Kuracie stehná na paprike</span><em>top 200 · 8</em></div>
+  <div><span>Šošovicový prívarok</span><em>bezmäsité pod minimom · 10 + 8</em></div>
+  <div><span>Palacinky · obmena slané so špenátom</span><em>hľadané 4× · 12</em></div>
+  <div><span>… ďalších 15</span><em></em></div>
+</div>
+
+<h2 id="hladanie"><span class="n">06</span>Z hľadania ľudí vzniká nový recept</h2>
+<div class="flow">
+  <div class="step"><b class="i">1</b><div>Zákazník hľadá „kulajda“ a recept nemáme.</div></div>
+  <div class="step"><b class="i">2</b><div>Lacný model len <strong>rozpozná, aké jedlo hľadá</strong> (aj s preklepmi: „kulajdu“, „kulajda polievka“). Nič nevymýšľa. Appka ukáže: <em>„Kulajdu zatiaľ nemáme, pridali sme ju do plánu. Dáme vám vedieť.“</em> Pod tým ponúkne podobné jedlá (hríbová polievka).</div></div>
+  <div class="step"><b class="i">3</b><div>V pláne sa jedlu pripočítajú body. Ak v pláne ešte nie je, vznikne <strong>návrh</strong>. Zaradí sa automaticky, keď ho hľadajú aspoň 3 domácnosti, alebo skôr, ak ho schválite vy. Nezmysly a vtipy sa tak do knihy nedostanú.</div></div>
+  <div class="step"><b class="i">4</b><div>Najbližšia várka ho napíše, vy schválite a <strong>domácnosti, ktoré ho hľadali, dostanú v appke správu</strong>: „Kulajda je tu.“ Ľudia sa vracajú a vidia, že appka rastie podľa nich.</div></div>
+</div>
+<div class="box note"><h3>Čo nikdy</h3><p>Recept sa nikdy nevymyslí naživo počas hľadania. Tak vzniklo „paprikas“. Každý recept prejde várkou, kontrolou a vaším schválením.</p></div>
+
+<h2 id="duplicity"><span class="n">07</span>Stráž proti duplicitám</h2>
+<div class="flow">
+  <div class="step"><b class="i">1</b><div><strong>Názov:</strong> porovnanie s názvami a ďalšími názvami v pláne, bez diakritiky a prípon („segedin“ = „segedínsky guláš“).</div></div>
+  <div class="step"><b class="i">2</b><div><strong>Suroviny:</strong> ak má nový recept v rovnakej kategórii 70 % a viac rovnakých surovín ako existujúci, je to podozrenie na duplicitu alebo obmenu.</div></div>
+  <div class="step"><b class="i">3</b><div><strong>Pri podozrení rozhodnete vy</strong> jedným ťuknutím: „je to obmena“, „je to duplicita, pridať len názov“ alebo „je to iné jedlo“.</div></div>
+  <div class="step"><b class="i">4</b><div><strong>Limit obmien:</strong> pri piatej obmene sa ďalšia pridá len vtedy, keď ju ľudia hľadajú.</div></div>
+</div>
+
+<h2 id="varka"><span class="n">08</span>Jedna várka krok za krokom</h2>
+<div class="lane">
+  <div><b>1. Výber</b><small>Príkaz v Claude Code „várka 20“ načíta z plánu 20 jedál s najvyššou prioritou.</small></div>
+  <div><b>2. Písanie</b><small>Recepty podľa štandardu (skupiny surovín, kroky s časom, „Hotové je, keď“, „Pozor“, „Tip“), slovensky aj anglicky.</small></div>
+  <div><b>3. Kontrola</b><small>Program skontroluje suroviny, časy, teploty, duplicity a párovanie na produkty v obchode. Kritik prečíta recept očami začiatočníka.</small></div>
+  <div><b>4. Fotky</b><small>3 návrhy na fotku v štýle appky cez Google, automatická kontrola, ~0,10–0,35 $ na recept.</small></div>
+  <div><b>5. Schválenie</b><small>Vy v testovacej appke: ✓, vrátiť s poznámkou, vybrať fotky. 1 až 2 minúty na recept.</small></div>
+  <div><b>6. Zverejnenie</b><small>Recept dostane číslo várky, prejde do ostrej appky a ľudia, ktorí ho hľadali, dostanú správu.</small></div>
+</div>
+
+<h2 id="mapa"><span class="n">09</span>Mapa knihy: vždy viete, kde ste</h2>
+<p>Obrazovka len pre vás. Odpovedá na otázky „koľko máme kategórií, koľko je v nich receptov a čo chýba“:</p>
+<div class="keys"><span style="--k: var(--herb)">zverejnené</span><span style="--k: var(--amber)">napísané, čaká</span><span style="--k: color-mix(in srgb, var(--paprika) 55%, transparent)">v pláne</span></div>
+<div class="flow" aria-label="Príklad Mapy knihy">
+  <div class="cov"><span>Polievky</span><span class="tr"><i class="a" style="width:60%"></i><i class="b" style="width:15%"></i><i class="c" style="width:25%"></i></span><em>39 / 65</em></div>
+  <div class="cov"><span>Bravčové</span><span class="tr"><i class="a" style="width:45%"></i><i class="b" style="width:20%"></i><i class="c" style="width:35%"></i></span><em>29 / 65</em></div>
+  <div class="cov"><span>Koláče</span><span class="tr"><i class="a" style="width:13%"></i><i class="b" style="width:12%"></i><i class="c" style="width:75%"></i></span><em>11 / 85</em></div>
+  <div class="cov"><span>Bezmäsité</span><span class="tr"><i class="a" style="width:10%"></i><i class="c" style="width:90%"></i></span><em>7 / 70</em></div>
+</div>
+<ul>
+  <li><strong>Prehľad čísel:</strong> zverejnené, čaká na vás, v pláne, návrhy z hľadania. Všetko po kategóriách a krajinách.</li>
+  <li><strong>Najhľadanejšie, čo chýba:</strong> top 20 jedál, ktoré ľudia hľadali a nenašli.</li>
+  <li><strong>História várok:</strong> „Várka 7, 12. 11., 20 receptov“ s rozbalením zoznamu.</li>
+  <li><strong>Nahlásené chyby</strong> a <strong>najslabšie recepty</strong> (málo „uvarené“, veľa odchodov) na opravu.</li>
+</ul>
+
+<h2 id="rok"><span class="n">10</span>Plán na rok</h2>
+<p>Odhady pri predplatnom Pro (50 až 150 receptov týždenne podľa toho, koľko limitu zostane po programovaní appky):</p>
+<div class="tl">
+  <div>Týždeň 1–2</div><div>Základ: tabuľky, štandard, kontrolný program, príkaz várky, Mapa knihy. Plán ~1 000 jedál na úpravu. Prvá várka 20 receptov.</div>
+  <div>Mesiac 1</div><div><b>200</b> najčastejšie varených jedál (jadro kuchyne). Varenie top 50 doma na overenie.</div>
+  <div>Mesiac 2–3</div><div>Do <b>~500</b>. Každá kategória nad minimom 12. <strong>Recepty sa otvoria zákazníkom</strong> a začne fungovať hľadanie → plán.</div>
+  <div>Mesiac 4–6</div><div>Do <b>~1 000</b>, prvé obmeny. Sezóna vždy 6 týždňov dopredu (Vianoce v októbri, Veľká noc vo februári, grilovanie v apríli).</div>
+  <div>Mesiac 7–12</div><div>Podľa hľadania <b>20 až 40 týždenne</b>, opravy a prvé ďalšie krajiny (Rakúsko, Taliansko). Na konci roka <b>~1 500 až 2 000</b> receptov.</div>
+</div>
+
+<h2 id="kritika"><span class="n">11</span>Moje kritické názory a odporúčania</h2>
+<div class="flow">
+  <div class="step"><b class="i">1</b><div><strong>Netlačte na počet.</strong> Domácnosť varí 30 až 50 jedál dookola. 300 výborných receptov pokryje väčšinu bežného varenia. Kvalita a to, že recept vyjde, robí dôveru. Jeden zlý recept (zrazená omáčka, nedopečené mäso) urobí viac škody ako 50 chýbajúcich.</div></div>
+  <div class="step"><b class="i">2</b><div><strong>Limity Pro zdieľate s vývojom appky.</strong> Každá várka uberá z limitu, ktorý potrebujeme na programovanie. Várky preto púšťajte večer a cez víkend. Na prvé 1 až 2 mesiace zvážte Max, potom späť na Pro.</div></div>
+  <div class="step"><b class="i">3</b><div><strong>Najužšie miesto ste vy.</strong> 1 000 receptov po 1 až 2 minútach je 17 až 33 hodín. Po prvých 200, keď uvidíte, že kvalita drží, odporúčam schvaľovať obmeny a jednoduché jedlá hromadne a podrobne čítať len náročné recepty.</div></div>
+  <div class="step"><b class="i">4</b><div><strong>Top 50 naozaj uvarte.</strong> Odznak „uvarené a overené“ je silný argument a odhalí chyby štandardu skôr, než ich uvidia zákazníci.</div></div>
+  <div class="step"><b class="i">5</b><div><strong>Alergény a výživa nesmú byť odhad AI.</strong> Vypočítajú sa zo surovín cez tabuľku (14 alergénov EÚ, výživové hodnoty potravín). Pri chybe v alergéne ide o zdravie.</div></div>
+  <div class="step"><b class="i">6</b><div><strong>AI fotky sa občas nepodaria</strong> (divná lyžica, nesprávna farba). Preto 3 návrhy, automatická kontrola, váš výber a nápis „ilustračná fotka“. Neskôr môžu rodiny pridávať skutočné fotky „uvarené u nás“.</div></div>
+  <div class="step"><b class="i">7</b><div><strong>Merajte, čo recepty prinášajú.</strong> Hlavná hodnota appky je nákup. Najdôležitejšie číslo je, koľko receptov sa pridá do nákupného zoznamu, nie koľko ich máme.</div></div>
+  <div class="step"><b class="i">8</b><div><strong>Žiadny veľký redakčný systém.</strong> Stačí plán v databáze, príkaz várky a dve obrazovky pre vás (Na schválenie, Mapa knihy). Všetko ostatné by bola zbytočná zložitosť.</div></div>
+</div>
+
+<h2 id="plati"><span class="n">··</span>Čo platí z minulých verzií</h2>
+<ul>
+  <li>Texty píše Claude v rámci predplatného (0 € navyše). 3 AI fotky na recept v jednotnom „domácom“ štýle, ~180 až 360 $ za 1 000 receptov.</li>
+  <li>Jedna kniha bez hraníc, krajina je značka. AI za behu recepty nevymýšľa, ~0,20 až 0,40 $ na domácnosť mesačne. Z 3 € zostane zhruba 1,5 až 1,7 €.</li>
+  <li>Ochutnávač ako TikTok s rodinnou zhodou. Režim „varím“ s časovačmi a hlasom.</li>
+</ul>
+
+<h2 id="rozhodnutia"><span class="n">12</span>Rozhodnutia pre vás</h2>
+<div class="flow">
+  <div class="step"><b class="i">1</b><div><strong>Súhlasíte s princípom jedlo → obmena</strong> (max 5 obmien) a s minimom 12 jedál na kategóriu?</div></div>
+  <div class="step"><b class="i">2</b><div><strong>Kategórie a ciele</strong> v kapitole 3: niečo pridať, zlúčiť alebo vynechať?</div></div>
+  <div class="step"><b class="i">3</b><div><strong>Návrh z hľadania</strong> sa zaradí sám pri 3 domácnostiach, alebo chcete schvaľovať každý?</div></div>
+  <div class="step"><b class="i">4</b><div><strong>Môžem začať týždňom 1–2</strong>: tabuľky, štandard, kontrolný program, príkaz várky, Mapa knihy, plán ~1 000 jedál a prvých 20 receptov s fotkami v testovacej appke?</div></div>
+</div>
+
+<h2 id="zdroje"><span class="n">··</span>Zdroje</h2>
+<section class="src">
+  <a href="https://varecha.pravda.sk/info/ai-content-policy/">Varecha.sk – pravidlá pre AI (zákaz hromadného sťahovania, sledovanie, postihy)</a>
+  <a href="https://www.lewik.org/term/3811/osobitne-pravo-zhotovitela-databazy-autorsky-zakon/">Autorský zákon 185/2015 – osobitné právo zhotoviteľa databázy (aj opakované preberanie po častiach)</a>
+  <a href="https://ai.google.dev/gemini-api/docs/pricing">Gemini API – cenník obrázkových modelov</a>
+  <a href="https://alexcloudstar.com/blog/claude-code-usage-limits-2026/">Limity Claude Code: 5-hodinové okno a týždenný limit</a>
+  <p>Tempo, ceny a body priority sú odhady a východiskové hodnoty. Upravíme ich po prvých várkach. Toto nie je právna rada.</p>
+</section>
+</div>

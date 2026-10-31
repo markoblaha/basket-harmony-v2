@@ -90,8 +90,16 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   značky, minimum 12 jedál na zobrazenie kategórie, priorita z bodov (hľadané bez výsledku +3/domácnosť, kategória
   pod minimom +10, sezóna +6, top 200 +8), várka 20 (max 4 z kategórie), z hľadania vzniká návrh (automaticky pri
   3 domácnostiach) a správa „recept je tu“, stráž proti duplicitám (názov + 70 % rovnakých surovín), Mapa knihy,
-  ročný plán (200 → 500 a otvorenie → 1 000 → 1 500–2 000). Majiteľ schválil ukážku segedína; čaká na 4 rozhodnutia.
-  https://claude.ai/artifact/XUqh2Un6H1ZgSbk9Q7m6xj – čaká na 5 rozhodnutí v kapitole 12.
+  ročný plán (200 → 500 a otvorenie → 1 000 → 1 500–2 000). Ukážka segedína sa majiteľovi páčila.
+  https://claude.ai/artifact/XUqh2Un6H1ZgSbk9Q7m6xj (kópia: `prototyp/recepty-plan.html`) – čaká na 4 rozhodnutia v kap. 12.
+  Skúšobná várka v prototype (31. 10.): 5 receptov podľa štandardu (segedín, kurací paprikáš s haluškami, medovník,
+  kulajda, lasagne bolognese), každý s 3 AI fotkami (hlavná, porcia, detail) z `gemini-3.1-flash-image` cez kľúč
+  testovacieho projektu – jednotný „domáci“ štýl (denné svetlo zľava, dubový stôl, biela keramika, šalvijová utierka).
+  Fotky boli vytvorené dočasnou funkciou `proto-images` (chránená heslom, po použití vypnutá – vracia 410; dá sa zmazať
+  v Supabase → Edge Functions). Recepty sú v `prototyp/src/book.js`, fotky v `prototyp/fotky-recepty/`. V prototype sú
+  označené „AI recept · test“ a dajú sa ohodnotiť (Dobrý / Opraviť / Chyba). Ochutnávač (TikTok): zvislé listovanie,
+  fotky do strany, dvojité ťuknutie = chcem, rodinná zhoda s Luciou, koniec po 15 receptoch. Hľadanie už recepty
+  nevymýšľa – čo v knihe nie je, ide do plánu („hľadali a nenašli“). Mapa knihy: Viac → Mapa knihy receptov.
 
 - **Basket Harmony 2.0 (26. 10. 2026):** vzhľad podľa mockupu z ChatGPT („Spíž“) na našom motore, 13 náhľadov
   obrazoviek, nová logika cien (medián posledných 3 × množstvo, základný názov produktu, ceny z dokladu späť k položkám),
@@ -106,7 +114,9 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   témach (svetlý/tmavý, prepínanie v časti Viac): https://claude.ai/artifact/RWbKSpqYnYPv2R2PQ2qfYT – zoznamy s odhadom
   ceny (medián posledných 3 nákupov × množstvo, značka obchodu), nákup so žiadosťou od Lucie, bloček → skutočné ceny
   späť k položkám, hlas a recepty cez Claude (bez neho miestne rozpoznávanie), výdavky z testovacej DB.
-  Prototyp je samostatný súbor mimo repozitára, s appkou ani DB nesúvisí. Čaká sa na výber témy a pripomienky.
+  Prototyp s appkou ani DB nesúvisí. Zdroj je v `prototyp/` (React bez balíčkovača; `python3 prototyp/build.py` zostaví
+  `prototyp/dist/basket-harmony-prototyp.html`, ten sa publikuje na adresu vyššie). Ikony a obrázky sú už vložené
+  v `prototyp/gen/`; nové ikony/emoji vie pridať `build_full.py` (potrebuje zdrojové obrázky a balík @phosphor-icons/core).
   30. 10.: prerobené rozloženie podľa pripomienok – 4 záložky s popisom (Domov, Nákupy, Recepty, Výdavky), bez
   záhadného akčného tlačidla; každá akcia má jedno miesto (hlas = mikrofón v poli zoznamu, bloček = Výdavky/Domov).
   Recepty ako kniha: Kniha receptov (kategórie, rýchly výber, zdroje) / Moje (obľúbené, pridané) / Plán týždňa,
