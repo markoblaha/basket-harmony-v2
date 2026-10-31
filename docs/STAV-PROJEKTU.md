@@ -86,6 +86,11 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   označené „ilustračná fotka“. Varechu nesťahujeme: ich AI Content Policy (máj 2026) výslovne zakazuje hromadné
   sťahovanie a budovanie konkurenčnej appky či databázy; ponúkajú licenciu (redakcia@varecha.sk). Import z odkazu
   vypadol (ich pravidlá zakazujú appku ako zdroj obsahu). V dokumente je ukážka segedína podľa štandardu.
+  Verzia 5 (systém knihy): Plán knihy v DB (jedlo → obmena, max 5 obmien, stavy, číslo várky), kategória + pevné
+  značky, minimum 12 jedál na zobrazenie kategórie, priorita z bodov (hľadané bez výsledku +3/domácnosť, kategória
+  pod minimom +10, sezóna +6, top 200 +8), várka 20 (max 4 z kategórie), z hľadania vzniká návrh (automaticky pri
+  3 domácnostiach) a správa „recept je tu“, stráž proti duplicitám (názov + 70 % rovnakých surovín), Mapa knihy,
+  ročný plán (200 → 500 a otvorenie → 1 000 → 1 500–2 000). Majiteľ schválil ukážku segedína; čaká na 4 rozhodnutia.
   https://claude.ai/artifact/XUqh2Un6H1ZgSbk9Q7m6xj – čaká na 5 rozhodnutí v kapitole 12.
 
 - **Basket Harmony 2.0 (26. 10. 2026):** vzhľad podľa mockupu z ChatGPT („Spíž“) na našom motore, 13 náhľadov
