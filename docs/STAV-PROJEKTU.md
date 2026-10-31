@@ -106,7 +106,9 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   Recepty: každý má skutočnú fotku (aj nové z AI/importu – vyberie sa podľa názvu jedla, 33 nových fotiek z Openverse,
   licencie CC0/CC BY, autori v prototype v Nastaveniach → Zdroje fotiek). AI hľadanie receptov má animáciu čakania
   (krok sa mení, časovač, kostry kariet s plávajúcimi surovinami) a výsledky naskakujú postupne. Pri prenose do skutočnej
-  appky treba vyriešiť zdroj fotiek (licencie) – v prototype sú vložené priamo. Výdavky: Kategória → Druh → Značka/výrobok → bloček so zvýrazneným riadkom.
+  appky treba vyriešiť zdroj fotiek (licencie) – v prototype sú vložené priamo.
+  Posúvanie: zvislý ťah, ktorý začne na spodnej lište alebo v doku (karta „Kúpiť…“, pole zoznamu), posúva obsah pod nimi
+  aj so zotrvačnosťou; vodorovný ťah po dlaždiciach a ťuk na tlačidlá fungujú ako predtým. Treba preniesť aj do appky. Výdavky: Kategória → Druh → Značka/výrobok → bloček so zvýrazneným riadkom.
   Množstvá (rozhodnutie majiteľa): číslo bez jednotky = počet kusov (kus, balík, strapec), nikdy sa neprepočítava;
   g/dkg/kg/ml/dl/l sa uložia presne, len keď ich niekto napíše („500g“, „pol kila“, „2 deci“). Kusy a presné množstvo
   sa nespájajú. Vážené veci v kusoch: pri položke cena za kg, do súčtu bežný nákup z bločkov (pri 3+ kusoch váha kusa).
