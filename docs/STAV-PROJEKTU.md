@@ -76,7 +76,12 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   s kontrolou a označením „ilustračná“, jednorazovo do ~380 $. Cudzie API (Spoonacular, Edamam) neodporúčam –
   drahé pri tisícoch domácností a nesmie sa z neho stavať vlastná kniha. AI za behu len chápe dopyt:
   ~0,20–0,40 $ na domácnosť mesačne, z 3 € ostane ~1,7 € po DPH a poplatku obchodu. Ochutnávač len ako TikTok
-  (rodinná zhoda). https://claude.ai/artifact/XUqh2Un6H1ZgSbk9Q7m6xj – čaká na 5 rozhodnutí v kapitole 12.
+  (rodinná zhoda). Verzia 3 (obsah): Varechu ani iné weby nekopírujeme (autorský zákon § 135–140, ochrana databázy);
+  preberáme len štruktúru (skupiny surovín, kroky s „Hotové je, keď / Pozor / Tip“). Texty píšeme po várkach v Claude Code
+  v rámci predplatného + kontrolný program + schválenie majiteľom; import receptu z odkazu (schema.org, Varecha ho má)
+  súkromne pre domácnosť; skutočné fotky cez licenciu/vlastné/od rodín, bez AI fotiek; ~40 kariet „ako na to“ a režim
+  „varím“ namiesto AI videí; Mapa knihy (čo chýba, „hľadali a nenašli“).
+  https://claude.ai/artifact/XUqh2Un6H1ZgSbk9Q7m6xj – čaká na 5 rozhodnutí v kapitole 12.
 
 - **Basket Harmony 2.0 (26. 10. 2026):** vzhľad podľa mockupu z ChatGPT („Spíž“) na našom motore, 13 náhľadov
   obrazoviek, nová logika cien (medián posledných 3 × množstvo, základný názov produktu, ceny z dokladu späť k položkám),
