@@ -71,10 +71,12 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
-  preto zlé výsledky („paprikas“). Návrh: vlastná overená kniha (150 receptov do prototypu) + import, hľadanie
-  s opravou textu, slovníkom jedál a zoskupením, AI len chápe dopyt; „Ochutnávač“ (hore/dole recepty, do strán fotky),
-  kuchyne sveta, postupy pre začiatočníkov, výživa z databázy potravín: https://claude.ai/artifact/XUqh2Un6H1ZgSbk9Q7m6xj
-  Čaká na 6 rozhodnutí v kapitole 11.
+  preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
+  vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
+  s kontrolou a označením „ilustračná“, jednorazovo do ~380 $. Cudzie API (Spoonacular, Edamam) neodporúčam –
+  drahé pri tisícoch domácností a nesmie sa z neho stavať vlastná kniha. AI za behu len chápe dopyt:
+  ~0,20–0,40 $ na domácnosť mesačne, z 3 € ostane ~1,7 € po DPH a poplatku obchodu. Ochutnávač len ako TikTok
+  (rodinná zhoda). https://claude.ai/artifact/XUqh2Un6H1ZgSbk9Q7m6xj – čaká na 5 rozhodnutí v kapitole 12.
 
 - **Basket Harmony 2.0 (26. 10. 2026):** vzhľad podľa mockupu z ChatGPT („Spíž“) na našom motore, 13 náhľadov
   obrazoviek, nová logika cien (medián posledných 3 × množstvo, základný názov produktu, ceny z dokladu späť k položkám),
