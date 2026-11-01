@@ -103,7 +103,6 @@ export function Shop({ p }) {
                       {!g && <span className="th"><E k={pe(it.pid)} /></span>}
                       <div className="tx"><b><span className="stk">{itemName(it)}</span></b><span className="sub">{fmtQty(it.q, unitOf(it))} · <PriceLine it={it} S={S} store={list.store} /></span></div>
                       {g ? <span className="th"><E k={pe(it.pid)} /></span> : <CkBox on={!!pend[it.id]} />}
-                      {pend[it.id] && <span className="ckf"><I n="check" w="bold" />V košíku</span>}
                       <button type="button" className="more" aria-label="Viac možností" onClick={(e) => { e.stopPropagation(); setMenu(menu === it.id ? null : it.id); }}><I n="dots-three-vertical" w="bold" /></button>
                       {menu === it.id && <div className="rmenu" onClick={(e) => e.stopPropagation()}><button type="button" onClick={() => { act('patchItem', list.id, it.id, { na: true }); setMenu(null); toast(`${itemName(it)} – nemali, ostane na budúce`, { icon: 'prohibit' }); }}><I n="prohibit" />Nemali</button><button type="button" onClick={() => setMenu(null)}><I n="x" w="bold" />Zrušiť</button></div>}
                     </div>
