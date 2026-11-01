@@ -30,7 +30,8 @@ const withStoreName = (l) => (l.store && storeName(l.store) !== l.name ? `${l.na
 export function Scan({ p }) {
   const { S, act, closeModal, theme, toast, jump, ai } = useApp();
   const g = theme === 'g';
-  const list = S.lists.find((l) => l.id === p.listId) || nextOpenList(S);
+  const hist = (S.history || []).find((h) => h.id === p.listId);
+  const list = S.lists.find((l) => l.id === p.listId) || (hist ? { ...hist, items: hist.items.map((i) => ({ ...i, done: true })) } : null) || nextOpenList(S);
   const [phase, setPhase] = useState('capture');
   const [step, setStep] = useState(0);
   const [rec, setRec] = useState(null);
@@ -61,9 +62,10 @@ export function Scan({ p }) {
   };
   const save = () => {
     const hit = (p.missing && (S.missingReceipts || []).find((m) => m.id === p.missing)) || pairMissing(S, rec, list && list.id);
-    act((s) => { const s2 = A.saveReceipt(s, rec, list, write).S; return hit ? { ...s2, missingReceipts: (s2.missingReceipts || []).filter((m) => m.id !== hit.id) } : s2; });
+    act((s) => { const r2 = A.saveReceipt(s, rec, list, write); const s2 = r2.S; const hid = hit ? hit.listId : hist && hist.id;
+      return { ...s2, missingReceipts: hit ? (s2.missingReceipts || []).filter((m) => m.id !== hit.id) : s2.missingReceipts, history: (s2.history || []).map((h) => (h.id === hid ? { ...h, receipt: r2.id, total: rec.total || h.total } : h)) }; });
     closeModal();
-    setTimeout(() => { if (list) jump('lists', 'list', { id: list.id }); toast(hit ? `Bloček priradený k nákupu ${hit.name}` : write ? 'Bloček uložený – skutočné ceny sú pri položkách' : 'Bloček uložený do výdavkov', { e: 'receipt' }); }, 60);
+    setTimeout(() => { if (list && S.lists.some((l) => l.id === list.id)) jump('lists', 'list', { id: list.id }); else jump('home'); toast(hit ? `Bloček priradený k nákupu ${hit.name}` : write ? 'Bloček uložený – skutočné ceny sú pri položkách' : 'Bloček uložený do výdavkov', { e: 'receipt' }); }, 60);
   };
   const inputs = <><input ref={cam} type="file" accept="image/*" capture="environment" hidden onChange={(e) => fromFile(e.target.files && e.target.files[0])} /><input ref={gal} type="file" accept="image/*" hidden onChange={(e) => fromFile(e.target.files && e.target.files[0])} /></>;
 

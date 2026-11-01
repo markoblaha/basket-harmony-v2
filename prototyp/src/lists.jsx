@@ -1,5 +1,6 @@
 import { useApp, Back, MeBtn, useState, useEffect, useRef, useMemo, Fragment, I, E, IB, Btn, StoreTile, Avatars, Av, pe, Sheet, Stepper, SwipeRow, Empty, Check, Seg } from './ui.jsx';
 import { PRODUCTS, STAPLES, STORES, SHOP_STORES, CATS, MEMBERS } from './data.js';
+import { HelpBtn } from './coach.jsx';
 import { typoProduct, weightOf, listTotals, estimate, unitPrice, eur, eur0, rangeText, fmtQty, bump, minQty, storeName, withStore, itemUnit, frequentStores, relDay, qtyOptions, norm, parseOne, splitChunks, parseChunk, history, shortDate, recipeById, dayLower, addDays, dkey, ago } from './logic.js';
 import { when } from './home.jsx';
 
@@ -33,7 +34,7 @@ export function Lists() {
     <>
       
       <div className="sc">
-        <header className="nb"><MeBtn /><span className="nbt">Nákupy</span><IB n="plus" label="Nový zoznam" onClick={() => sheet('newList')} /></header>
+        <header className="nb"><MeBtn /><span className="nbt">Nákupy</span><div className="nbr"><HelpBtn screen="lists" /><IB n="plus" cls="addb" label="Nový zoznam" onClick={() => sheet('newList')} /></div></header>
         <div className="body">
           <h1 className="lt">Nákupy</h1>
           {live && lt.done < lt.n && (
@@ -62,6 +63,7 @@ export function Lists() {
             );
           })}
           <button type="button" className={'card addcard tapc' + (g ? ' glass2' : '')} onClick={() => sheet('newList')}><span className="pl"><I n="plus" w="bold" /></span>Nový zoznam</button>
+          {(S.history || []).length > 0 && <button type="button" className={'card row-card tapc histrow' + (g ? ' glass2' : '')} onClick={() => push('history')}><span className="th ic"><I n="clock-counter-clockwise" /></span><div className="grow"><div className="t1">História nákupov</div><div className="meta">{S.history.length} {S.history.length === 1 ? 'ukončený nákup' : S.history.length < 5 ? 'ukončené nákupy' : 'ukončených nákupov'}{(S.missingReceipts || []).length ? ` · ${(S.missingReceipts || []).length} bez bločku` : ''}</div></div><I n="caret-right" w="bold" cls="chev" /></button>}
         </div>
       </div>
     </>
@@ -195,7 +197,7 @@ export function ListScreen({ p }) {
     <>
       
       <div className="sc list-sc" ref={sc} onClick={() => sel && setSel(null)}>
-        <header className="nb"><Back /><span className="nbt">{list.name}</span><div className="nbr"><Avatars ids={list.shared} sm /><IB n="dots-three" label="Možnosti zoznamu" onClick={() => sheet('listMenu', { id: list.id })} /></div></header>
+        <header className="nb"><Back /><span className="nbt">{list.name}</span><div className="nbr"><Avatars ids={list.shared} sm /><HelpBtn screen="list" /><IB n="dots-three" label="Možnosti zoznamu" onClick={() => sheet('listMenu', { id: list.id })} /></div></header>
         <div className="body">
           <div className="lhead"><div className="grow"><h1 className="lt">{list.name}</h1><div className="meta">{withStore(list, when(list))}{list.shared.length > 1 ? '' : ' · iba ja'}</div></div></div>
           <div className={'card est' + (g ? ' glass2' : '')}>
@@ -347,5 +349,64 @@ export function ListMenuSheet({ open, close, id }) {
           </div>}
       </div>
     </Sheet>
+  );
+}
+
+// ---------- história ukončených nákupov ----------
+const whenTxt = (t) => { const d = new Date(t); const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(t).setHours(0, 0, 0, 0)) / 864e5); return (days === 0 ? 'dnes' : days === 1 ? 'včera' : d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'numeric' })) + ` ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+function RcptPill({ h, S }) {
+  const missing = (S.missingReceipts || []).some((m) => m.listId === h.id);
+  return h.receipt ? <span className="stat ok"><I n="check" w="bold" />bloček</span> : missing ? <span className="stat warnp">chýba bloček</span> : <span className="stat">bez bločku</span>;
+}
+export function History() {
+  const { S, push, theme } = useApp();
+  const g = theme === 'g';
+  const hs = S.history || [];
+  return (
+    <div className="sc">
+      <header className="nb"><Back /><span className="nbt">História nákupov</span><span className="ibs" /></header>
+      <div className="body">
+        <div><h1 className="lt">História nákupov</h1><p className="meta">Ukončené nákupy. Ťuknutím pozriete, čo ste kúpili, alebo nakúpite znova.</p></div>
+        {!hs.length ? <Empty e="bags" t="Zatiaľ žiadny ukončený nákup" d="Keď nákup dokončíte, nájdete ho tu." /> : (
+          <div className={'lst' + (g ? ' glass2' : '')}>{hs.map((h) => (
+            <button type="button" key={h.id} className="row tap" onClick={() => push('histlist', { id: h.id })}>
+              {h.store ? <StoreTile k={h.store} s={44} /> : <span className="th ic"><I n="basket" /></span>}
+              <div className="tx"><b>{h.name}</b><span className="sub">{whenTxt(h.closedAt)} · {h.n} {h.n === 1 ? 'položka' : h.n < 5 ? 'položky' : 'položiek'} · ~{eur(h.total)}</span></div>
+              <RcptPill h={h} S={S} /><I n="caret-right" w="bold" cls="chev" />
+            </button>
+          ))}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+export function HistList({ p }) {
+  const { S, act, modal, theme, jump, toast } = useApp();
+  const g = theme === 'g';
+  const h = (S.history || []).find((x) => x.id === p.id);
+  if (!h) return <div className="sc"><header className="nb"><Back /></header><Empty e="bags" t="Nákup sa nenašiel" /></div>;
+  const miss = (S.missingReceipts || []).find((m) => m.listId === h.id);
+  const again = () => {
+    const id = Math.random().toString(36).slice(2, 9); const when = new Date(); when.setDate(when.getDate() + 1); when.setHours(17, 0, 0, 0);
+    act((s) => ({ ...s, lists: [...s.lists.filter((x) => !x.live), { id, name: h.name, store: h.store, when: when.toISOString(), shared: h.shared || ['m', 'l'], items: [], hl: Date.now() }, ...s.lists.filter((x) => x.live)] }));
+    act('addItems', id, h.items.map((i) => (i.pid ? { pid: i.pid, q: i.q, u: i.u || 'ks' } : { n: i.n, q: i.q, u: i.u || 'ks' })));
+    jump('lists', 'list', { id }); toast(`Nový zoznam „${h.name}“ · ${h.items.length} položiek`, { icon: 'check-circle' });
+  };
+  return (
+    <div className="sc">
+      <header className="nb"><Back /><span className="nbt">{h.name}</span><span className="ibs" /></header>
+      <div className="body">
+        <div className="lhead"><div className="grow"><h1 className="lt">{h.name}</h1><div className="meta">{withStore(h, 'ukončený ' + whenTxt(h.closedAt))}</div></div></div>
+        <div className={'card hsum' + (g ? ' glass2' : '')}>
+          <div className="rowc"><div className="grow"><div className="k">Spolu</div><div className="price nw">~{eur(h.total)}</div><div className="meta sm">{h.n} {h.n === 1 ? 'položka' : h.n < 5 ? 'položky' : 'položiek'}</div></div><RcptPill h={h} S={S} /></div>
+          {miss && <Btn cls={'pri full' + (g ? ' a' : '')} onClick={() => modal('scan', { listId: h.id, missing: miss.id })}><I n="camera" />Odfotiť bloček</Btn>}
+        </div>
+        <div className="h2 sm">Kúpené</div>
+        <div className={'lst' + (g ? ' glass2' : '')}>{h.items.map((it) => (
+          <div key={it.id} className="row"><span className="th ckth on"><E k={pe(it.pid)} /><span className="ckov" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" /></svg></span></span><div className="tx"><b>{itemName(it)}</b><span className="sub">{fmtQty(it.q, itemUnit(it))}{it.paid ? ` · ${eur(it.paid)}` : ''}</span></div></div>
+        ))}</div>
+        <Btn cls="soft full" onClick={again}><I n="arrow-counter-clockwise" w="bold" />Nakúpiť znova</Btn>
+      </div>
+    </div>
   );
 }

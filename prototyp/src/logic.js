@@ -301,6 +301,11 @@ export function recipeCost(r, S, store) {
   for (const [pid, use] of r.ing) { const u = unitPrice(pid, S, store); if (u) c += u.up * use; }
   return c / r.por;
 }
+// „Mám doma“ pre surovinu v recepte: predvolene podľa Nastavení (Čo mám doma) alebo bežnej zásoby,
+// ale v recepte sa dá jedným ťuknutím zmeniť (napr. olej je v nastaveniach, ale práve došiel) – nastavenia sa nemenia.
+export function hasHome(S, rid, pid, home) { const o = S.recipeHave && S.recipeHave[rid] && S.recipeHave[rid][pid]; return o !== undefined ? o : !!home || (!!pid && S.have.includes(pid)); }
+export function homeDefault(S, pid, home) { return !!home || (!!pid && S.have.includes(pid)); }
+export const toggleRecipeHave = (rid, pid, now) => (s) => ({ ...s, recipeHave: { ...(s.recipeHave || {}), [rid]: { ...((s.recipeHave || {})[rid] || {}), [pid]: !now } } });
 export function haveCount(r, S) {
   const have = new Set(S.have);
   const inList = new Set(S.lists.flatMap((l) => l.items.filter((i) => !i.done).map((i) => i.pid)));

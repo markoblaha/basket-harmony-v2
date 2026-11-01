@@ -3,23 +3,23 @@ import { load, save, clearSaved, initialState, A } from './store.js';
 import { aiAvailable } from './ai.js';
 import { RCATS, RCOLS } from './data.js';
 import { Home, NotifSheet } from './home.jsx';
-import { Lists, ListScreen, ItemSheet, NewListSheet, ListMenuSheet } from './lists.jsx';
+import { Lists, ListScreen, ItemSheet, NewListSheet, ListMenuSheet, History, HistList } from './lists.jsx';
 import { Shop, Follow, FinishSheet } from './shop.jsx';
 import { Voice } from './voice.jsx';
 import { Cook, PlanSheet, ImportSheet, AddRecipeSheet } from './recipes.jsx';
 import { Taste, BookMap } from './book.jsx';
-import { Coach } from './coach.jsx';
+import { Coach, CoachWelcome, coachScreens } from './coach.jsx';
 import { Recipes, RecipeScreen, RecipeCollection } from './cookbook.jsx';
 import { Scan, Receipts, ReceiptDetail } from './receipt.jsx';
 import { Money, CategoryScreen, KindScreen, VariantScreen, ProductScreen, StoreScreen, BudgetSheet } from './money.jsx';
 import { More, ThemePicker } from './more.jsx';
 
 /* icons: house basket plus cooking-pot chart-pie sun fork-knife wallet microphone */
-const SCREENS = { home: Home, lists: Lists, list: ListScreen, recipes: Recipes, recipe: RecipeScreen, rcol: RecipeCollection, money: Money, category: CategoryScreen, kind: KindScreen, variant: VariantScreen, product: ProductScreen, store: StoreScreen, receipts: Receipts, receipt: ReceiptDetail, more: More, bookmap: BookMap };
+const SCREENS = { home: Home, lists: Lists, list: ListScreen, recipes: Recipes, recipe: RecipeScreen, rcol: RecipeCollection, money: Money, category: CategoryScreen, kind: KindScreen, variant: VariantScreen, product: ProductScreen, store: StoreScreen, receipts: Receipts, receipt: ReceiptDetail, more: More, bookmap: BookMap, history: History, histlist: HistList };
 const MODALS = { shop: Shop, follow: Follow, cook: Cook, scan: Scan, voice: Voice, taste: Taste };
 const SHEETS = { item: ItemSheet, newList: NewListSheet, listMenu: ListMenuSheet, finish: FinishSheet, plan: PlanSheet, import: ImportSheet, addRecipe: AddRecipeSheet, budget: BudgetSheet, notif: NotifSheet };
 const TABS = ['home', 'lists', 'recipes', 'money'];
-const LABEL = { home: 'Domov', lists: 'Nákupy', recipes: 'Recepty', money: 'Výdavky', list: 'Zoznam', recipe: 'Recept', category: 'Kategória', product: 'Produkt', store: 'Obchod', receipts: 'Bločky', receipt: 'Bloček', more: 'Nastavenia', bookmap: 'Mapa knihy' };
+const LABEL = { home: 'Domov', lists: 'Nákupy', recipes: 'Recepty', money: 'Výdavky', list: 'Zoznam', recipe: 'Recept', category: 'Kategória', product: 'Produkt', store: 'Obchod', receipts: 'Bločky', receipt: 'Bloček', more: 'Nastavenia', bookmap: 'Mapa knihy', history: 'História', histlist: 'Nákup' };
 const backLabel = (e) => { if (!e) return 'Späť'; if (e.s === 'kind') return e.p.kind; if (e.s === 'variant') return 'Výrobok'; if (e.s === 'rcol') { const c = e.p && (RCATS.find((x) => x.id === e.p.cat) || RCOLS.find((x) => x.id === e.p.col)); return c ? c.n.split(',')[0] : 'Recepty'; } return LABEL[e.s] || 'Späť'; };
 const ROOT = { home: 'home', lists: 'lists', recipes: 'recipes', money: 'money' };
 
@@ -240,7 +240,7 @@ export function App() {
         return <section key={tab + e.k} className={'scr s-' + e.s + (top ? ' top' + anim : ' off')} data-prev={prev ? '' : undefined} aria-hidden={!top} onScrollCapture={onSc}>{theme === 'g' && <div className="bgl"><div className="bgb pic-trh_p" /><div className="veil" /></div>}<ScreenCtx.Provider value={{ back: backLabel(st[i - 1]) }}><Sc p={e.p || {}} top={top} /></ScreenCtx.Provider></section>;
       }))}
       {stack.length > 1 && !nav.modal && !(sheet && sheet.open) && <EdgeBack appRef={appRef} done={popNow} />}
-      <Coach appRef={appRef} screen={stack[stack.length - 1].s} blocked={!!(nav.modal && !nav.modal.out) || !!(sheet && sheet.open)} />
+      {(() => { const mOpen = nav.modal && !nav.modal.out; const scr = mOpen ? 'm-' + nav.modal.s : stack[stack.length - 1].s; const blk = !!(sheet && sheet.open) || (mOpen && !coachScreens.has(scr)); return <><Coach appRef={appRef} screen={scr} blocked={blk} /><CoachWelcome blocked={blk || mOpen} /></>; })()}
       {!hideTabs && <div className="tabfade" aria-hidden="true" />}
       {!hideTabs && <TabBar tab={nav.tab} go={go} voice={voice} vOn={!!(nav.modal && nav.modal.s === 'voice' && !nav.modal.out)} badge={(S.missingReceipts || []).length} />}
       {M && <section key={nav.modal.k} className={'mdl m-' + nav.modal.s + (nav.modal.out ? ' out' : '')} onScrollCapture={onSc}><M p={nav.modal.p} /></section>}

@@ -130,25 +130,36 @@ export function Shop({ p }) {
 }
 
 export function FinishSheet({ open, close, listId }) {
-  const { S, act, closeModal, modal, toast, theme } = useApp();
+  const { S, act, closeModal, modal, toast, theme, jump } = useApp();
   const list = S.lists.find((l) => l.id === listId);
   const [keep, setKeep] = useState(true);
   if (!list) return <Sheet open={false} onClose={close} />;
   const t = listTotals({ ...list, items: list.items.filter((i) => !i.na) }, S);
   const left = list.items.filter((i) => !i.done && !i.na).length;
-  // nákup sa zapíše ako „bez bločku“; keď sa bloček odfotí a uloží, záznam sa sám odstráni (spárovanie)
-  const end = () => { const miss = t.done ? { id: Math.random().toString(36).slice(2, 9), listId, name: list.name, store: list.store || null, at: Date.now(), total: t.doneV, n: t.done } : null;
-    act((s) => ({ ...s, shopping: null, requests: s.requests.filter((r) => r.listId !== listId), missingReceipts: miss ? [miss, ...(s.missingReceipts || []).filter((m) => m.listId !== listId)] : s.missingReceipts, lists: keep ? s.lists : s.lists.map((l) => l.id === listId ? { ...l, items: l.items.filter((i) => i.done) } : l) })); };
+  // Ukončenie nákupu: kúpené položky idú do histórie nákupov a zoznam sa zavrie (ostane len s nekúpenými,
+  // ak si ich človek nechá). Nákup sa zapíše ako „bez bločku“; uložený bloček ho spáruje a záznam zmizne.
+  const end = () => {
+    const now = Date.now(); const hid = 'h' + now.toString(36);
+    const bought = list.items.filter((i) => i.done && !i.na);
+    const rest = list.items.filter((i) => !i.done);
+    const hist = { id: hid, srcId: list.id, name: list.name, store: list.store || null, shared: list.shared, started: S.shopping && S.shopping.listId === list.id ? S.shopping.started : now, closedAt: now, items: bought, total: t.doneV, n: bought.length, receipt: null };
+    const miss = bought.length ? { id: 'm' + now.toString(36), listId: hid, name: list.name, store: list.store || null, at: now, total: t.doneV, n: bought.length } : null;
+    act((s) => ({ ...s, shopping: null, requests: s.requests.filter((r) => r.listId !== listId),
+      history: bought.length ? [hist, ...(s.history || [])] : s.history || [],
+      missingReceipts: miss ? [miss, ...(s.missingReceipts || [])] : s.missingReceipts,
+      lists: keep && rest.length ? s.lists.map((l) => (l.id === listId ? { ...l, items: rest } : l)) : s.lists.filter((l) => l.id !== listId) }));
+    return { hid, miss };
+  };
   return (
     <Sheet open={open} onClose={close} label="Dokončiť nákup">
       <div className="finish">
         <E k="bags" s={72} />
         <h2>Nákup dokončený?</h2>
         <p className="meta">{t.done} z {t.n} položiek · odhad ~{eur(t.doneV)}</p>
-        {left > 0 && <div className="tgrow"><span>Nekúpené ({left}) nechať v zozname</span><Toggle on={keep} onChange={setKeep} label="Nechať nekúpené" /></div>}
+        {left > 0 && <div className="tgrow"><span>Nekúpené ({left}) nechať v zozname na budúce</span><Toggle on={keep} onChange={setKeep} label="Nechať nekúpené" /></div>}
         <div className="callout"><I n="lightbulb" /><span>Odfoťte bloček – skutočné ceny sa zapíšu k položkám a nabudúce bude odhad presnejší.</span></div>
-        <Btn cls={'pri full big' + (theme === 'g' ? ' a' : '')} onClick={() => { end(); close(); closeModal(); setTimeout(() => modal('scan', { listId }), 320); }}><I n="camera" />Odfotiť bloček</Btn>
-        <Btn cls="soft full" onClick={() => { end(); close(); closeModal(); toast('Nákup uložený – bloček pridáte neskôr vo Výdavkoch', { icon: 'receipt' }); }}>Teraz nie</Btn>
+        <Btn cls={'pri full big' + (theme === 'g' ? ' a' : '')} onClick={() => { const { hid, miss } = end(); close(); closeModal(); setTimeout(() => modal('scan', { listId: hid, missing: miss && miss.id }), 320); }}><I n="camera" />Odfotiť bloček</Btn>
+        <Btn cls="soft full" onClick={() => { end(); close(); closeModal(); setTimeout(() => jump('home'), 280); toast('Nákup je v histórii · bloček pridáte neskôr', { icon: 'receipt', action: { label: 'História', fn: () => jump('lists', 'history') } }); }}>Teraz nie</Btn>
         <button type="button" className="lnk c fin-back" onClick={close}><I n="arrow-counter-clockwise" w="bold" />Vrátiť sa k nákupu</button>
       </div>
     </Sheet>

@@ -134,6 +134,14 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   nákup bez bločku (`missingReceipts`): červené číslo pri Výdavkoch na lište, karta „Chýba bloček“ vo Výdavkoch
   (Odfotiť / Bloček nemám) a na Domove. Uložený bloček sa spáruje sám: rovnaký zoznam, alebo rovnaký obchod do 3 dní.
   Lokalizácia (jazyk a krajina pri prvom spustení, pravopis podľa nej) – majiteľ ešte doriesi.
+  Nápovedy 2.0 (`coach.jsx`): uvítanie pri prvom spustení (Ukážte mi to / Zvládnem to sám), nápovedy po obrazovkách
+  s „1 z 3“, Ďalej, Preskočiť, nič nezmizne samo; „?“ vpravo hore na Domove, Nákupoch, zozname, Receptoch a Výdavkoch
+  ich prehrá znova; Viac → Nápovedy (zap./vyp.) a Ukázať všetky znova; aj v nákupe a hlasovom nákupe. Oprava: na
+  počítači je telefón zmenšený (scale) – poloha sa delí mierkou, čaká sa na dobehnutie animácie, sleduje sa pohyb.
+  Ukončenie nákupu: kúpené idú do Histórie nákupov (`history`), zoznam sa zavrie (ostane len s nekúpenými, ak sa
+  nechajú), appka skočí na Domov; Nákupy → História nákupov → detail (bloček/chýba, Odfotiť, Nakúpiť znova).
+  „Mám doma“ v recepte: každá surovina sa dá prepnúť (aj bežne doma / z Nastavení) len pre daný recept
+  (`recipeHave`), Nastavenia sa nemenia. „Čo mám doma“ v Nastaveniach: mriežka 2 stĺpce s vysvetlením.
   30. 10.: prerobené rozloženie podľa pripomienok – 4 záložky s popisom (Domov, Nákupy, Recepty, Výdavky), bez
   záhadného akčného tlačidla; každá akcia má jedno miesto (hlas = mikrofón v poli zoznamu, bloček = Výdavky/Domov).
   Recepty ako kniha: Kniha receptov (kategórie, rýchly výber, zdroje) / Moje (obľúbené, pridané) / Plán týždňa,

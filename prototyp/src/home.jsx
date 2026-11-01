@@ -1,4 +1,5 @@
 import { MissingReceipts } from './receipt.jsx';
+import { HelpBtn } from './coach.jsx';
 import { useApp, I, E, IB, Btn, StoreTile, Avatars, Av, pe, useMemo, Sheet } from './ui.jsx';
 import { RECIPES } from './data.js';
 import { longDate, greeting, listTotals, eur, eur0, rangeText, relDay, dkey, addDays, dayShort, dayName, storeName, recipeById, haveCount, ago } from './logic.js';
@@ -115,7 +116,7 @@ export function Home() {
   const today = days[0];
   return (
     <div className="sc">
-      <header className="nb"><button type="button" className="avbtn" onClick={() => push('more')} aria-label="Domácnosť a nastavenia"><Avatars /></button><span className="nbt" /><IB n="gear-six" w="fill" label="Nastavenia" onClick={() => push('more')} /></header>
+      <header className="nb"><button type="button" className="avbtn" onClick={() => push('more')} aria-label="Domácnosť a nastavenia"><Avatars /></button><span className="nbt" /><div className="nbr"><HelpBtn screen="home" /><IB n="gear-six" w="fill" label="Nastavenia" onClick={() => push('more')} /></div></header>
       <div className="body">
         <h1 className="lt">Domov</h1>
         <QuickActions next={next} g={g} />

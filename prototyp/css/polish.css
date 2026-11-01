@@ -361,3 +361,57 @@
 .mrc-r .sub { font-variant-numeric: tabular-nums; }
 .fin-back { min-height: 44px; gap: 6px; font-size: 15px; margin-top: -2px; }
 .fin-back .ico { width: 15px; height: 15px; }
+
+/* ===================== Nápovedy 2.0 ===================== */
+.coach { position: absolute; inset: 0; z-index: 95; animation: fadein .25s; cursor: default; }
+.co-hole { position: absolute; box-shadow: 0 0 0 9999px rgb(8 8 10 / .62); transition: left .35s cubic-bezier(.2,.9,.25,1), top .35s cubic-bezier(.2,.9,.25,1), width .35s, height .35s; pointer-events: none; animation: none; outline: 2px solid rgb(255 255 255 / .85); outline-offset: 0; }
+.co-hole::after { content: ""; position: absolute; inset: -2px; border-radius: inherit; animation: coring 1.8s ease-out .3s infinite; }
+@keyframes coring { from { box-shadow: 0 0 0 0 rgb(255 255 255 / .55); } to { box-shadow: 0 0 0 14px rgb(255 255 255 / 0); } }
+.co-bub { position: absolute; z-index: 2; padding: 14px 16px 12px; border-radius: 22px; display: flex; flex-direction: column; gap: 6px; color: var(--fg);
+  background: var(--mat-spec), var(--mat-thick); -webkit-backdrop-filter: blur(36px) saturate(1.8); backdrop-filter: blur(36px) saturate(1.8);
+  box-shadow: var(--mat-edge), 0 24px 50px -18px rgb(0 0 0 / .65); transition: top .3s cubic-bezier(.2,.9,.25,1), left .3s cubic-bezier(.2,.9,.25,1); animation: coin .4s cubic-bezier(.2,1.2,.35,1); overflow: visible; }
+.co-bub.a { animation-name: coinup; }
+.co-arr { position: absolute; width: 16px; height: 16px; transform: rotate(45deg); background: var(--mat-thick); border-radius: 3px; }
+.co-bub.b .co-arr { top: -7px; box-shadow: -1px -1px 0 0 rgb(255 255 255 / .12); } .co-bub.a .co-arr { bottom: -7px; box-shadow: 1px 1px 0 0 rgb(255 255 255 / .06); }
+.co-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.co-k { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--acc); }
+.co-k .ico { width: 15px; height: 15px; }
+.co-dots { display: inline-flex; gap: 4px; } .co-dots i { width: 6px; height: 6px; border-radius: 99px; background: color-mix(in srgb, var(--fg) 20%, transparent); transition: width .25s, background-color .25s; }
+.co-dots i.on { width: 16px; background: var(--acc); } .co-dots i.d { background: color-mix(in srgb, var(--acc) 50%, transparent); }
+.co-bub b { font-size: 18px; font-weight: 750; letter-spacing: -.3px; line-height: 1.25; } .w .co-bub b { font-family: var(--serif); font-weight: 560; font-size: 19px; }
+.co-bub p { font-size: 16px; line-height: 1.45; color: var(--sec); }
+.co-act { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; }
+.co-skip { min-height: 44px; padding: 0 6px; font-size: 15px; font-weight: 650; color: var(--sec); }
+.co-ok { min-height: 46px; padding: 0 20px; border-radius: 99px; display: inline-flex; align-items: center; gap: 6px; background: var(--pri); color: var(--onpri); font-size: 16px; font-weight: 750; box-shadow: var(--prish); }
+.co-ok .ico { width: 16px; height: 16px; }
+.co-hand { position: absolute; z-index: 3; width: 40px; height: 40px; color: #fff; pointer-events: none; filter: drop-shadow(0 4px 10px rgb(0 0 0 / .55)); animation: cotap2 1.6s ease-in-out infinite; }
+.co-hand .ico { width: 40px; height: 40px; }
+@keyframes cotap2 { 0%, 100% { transform: translate(8px, 16px) scale(1); opacity: .95; } 45%, 55% { transform: translate(0, 2px) scale(.9); opacity: 1; } }
+/* otáznik v hlavičke */
+.helpb .ico { width: 21px; height: 21px; }
+.nbr { display: flex; gap: 10px; align-items: center; }
+/* uvítanie */
+.co-wel { position: absolute; inset: 0; z-index: 96; display: grid; place-items: center; padding: 24px; background: rgb(8 8 10 / .55); animation: fadein .3s; }
+.co-wcard { width: 100%; max-width: 360px; border-radius: 28px; padding: 24px 22px 14px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; color: var(--fg);
+  background: var(--mat-spec), var(--mat-thick); -webkit-backdrop-filter: blur(40px) saturate(1.8); backdrop-filter: blur(40px) saturate(1.8); box-shadow: var(--mat-edge), 0 30px 60px -20px rgb(0 0 0 / .7); animation: rinup .45s cubic-bezier(.2,.9,.25,1); }
+.co-wi { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: var(--accs); color: var(--acc); } .co-wi .ico { width: 28px; height: 28px; }
+.co-wcard h2 { font-size: 24px; font-weight: 800; letter-spacing: -.5px; } .w .co-wcard h2 { font-family: var(--serif); font-weight: 520; font-size: 27px; }
+.co-wcard p { font-size: 16px; line-height: 1.45; color: var(--sec); }
+.co-wq { display: flex; gap: 12px; align-items: center; text-align: left; font-size: 15px; line-height: 1.4; padding: 12px; border-radius: 16px; background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.helpdemo { width: 40px; height: 40px; border-radius: 99px; flex: none; display: grid; place-items: center; background: var(--ibg); box-shadow: var(--mat-edge), var(--ish); } .helpdemo .ico { width: 20px; height: 20px; }
+.co-ok.big { width: 100%; min-height: 52px; justify-content: center; font-size: 17px; margin-top: 4px; }
+.co-skip.c { align-self: center; }
+@media (prefers-reduced-motion: reduce) { .co-hole::after, .co-hand, .co-bub, .co-wcard { animation: none !important; } .co-hole, .co-bub { transition: none; } }
+/* história nákupov */
+.histrow .th.ic { width: 42px; height: 42px; }
+.stat .ico { width: 12px; height: 12px; margin-right: 3px; vertical-align: -1px; }
+.stat.warnp { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.hsum .price { font-size: 30px; }
+/* „Čo mám doma“: úhľadná mriežka v dvoch stĺpcoch, vnútri karty s okrajmi */
+.chips.wrap.pantry { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 2px 14px 16px; margin: 0; }
+.pantry .chip { width: 100%; min-width: 0; height: auto; min-height: 44px; padding: 6px 12px 6px 8px; justify-content: flex-start; font-size: 14.5px; white-space: normal; text-align: left; line-height: 1.2; }
+.pantry .chip .em { width: 26px; height: 26px; flex: none; }
+.pantry-h { padding: 0 16px 4px; margin-top: -4px; }
+/* surovina predvolene „doma“, ale v recepte prepnutá na „nemám“ */
+.ing.nohome { background: color-mix(in srgb, var(--honey) 12%, transparent); }
+.ing.nohome .sub { color: var(--honey); font-weight: 600; }

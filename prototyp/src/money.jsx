@@ -1,4 +1,5 @@
 import { MissingReceipts } from './receipt.jsx';
+import { HelpBtn } from './coach.jsx';
 import { useApp, Back, MeBtn, useState, useMemo, Fragment, I, E, IB, Btn, StoreTile, Sheet, Seg, Empty } from './ui.jsx';
 import { PRODUCTS, CATS, STORES } from './data.js';
 import { eur, eur0, monthCats, monthTotal, octReceipts, monthReceipts, allReceipts, catsOf, productsOf, insights, weeks, history, unitPrice, storeName, shortDate, catName, num, dkey, addDays, plural, lineEmoji, kindsOf, kindDetail, variantDetail, qtyTxt, perTxt, sizeTxt, variantName } from './logic.js';
@@ -94,7 +95,7 @@ export function Money() {
   if (g) return (
     <>
       <div className="sc">
-        <header className="nb"><MeBtn /><span className="nbt">Výdavky · {P.title}</span><span className="ibs" /></header>
+        <header className="nb"><MeBtn /><span className="nbt">Výdavky · {P.title}</span><HelpBtn screen="money" /></header>
         <div className="body">
           <div className="wx">
             <span className="place">{P.title}</span>
@@ -121,7 +122,7 @@ export function Money() {
   );
   return (
     <div className="sc">
-      <header className="nb"><MeBtn /><span className="nbt">Výdavky</span><span className="ibs" /></header>
+      <header className="nb"><MeBtn /><span className="nbt">Výdavky</span><HelpBtn screen="money" /></header>
       <div className="body">
         <h1 className="lt">Výdavky</h1>
         <MissingReceipts />

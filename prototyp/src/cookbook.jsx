@@ -2,8 +2,10 @@ import { useApp, Back, MeBtn, useState, useEffect, useRef, Fragment, I, E, IB, B
 import { PRODUCTS, RECIPES, RCATS, RCOLS, RSOURCES } from './data.js';
 import { plural, allRecipes, recipeById, recipeCost, haveCount, eur, unitPrice, buyQty, fmtQty, dkey, addDays, dayName, dayShort, relDay, norm, matchProduct } from './logic.js';
 import { nextOpenList } from './store.js';
+import { hasHome, homeDefault, toggleRecipeHave } from './logic.js';
 import { AiBadge, Gallery, BookIngredients, BookSteps, BookInfo, TasteEntry, wishName } from './book.jsx';
 import { BOOK } from './book.js';
+import { HelpBtn } from './coach.jsx';
 
 /* icons: globe magnifying-glass microphone x heart camera link play calendar-blank basket clock flame caret-left caret-right export sparkle check-circle plus info cooking-pot books timer */
 
@@ -84,7 +86,7 @@ export function Recipes() {
 
   return (
     <div className="sc">
-      <header className="nb"><MeBtn /><span className="nbt">Recepty</span><span className="ibs" /></header>
+      <header className="nb"><MeBtn /><span className="nbt">Recepty</span><HelpBtn screen="recipes" /></header>
       <div className="body">
         <h1 className="lt">Recepty</h1>
         <Seg items={[['discover', 'Kniha receptov'], ['mine', 'Moje'], ['plan', 'Plán týždňa']]} value={sec} onChange={(v) => { setSec(v); }} />
@@ -195,9 +197,9 @@ export function RecipeScreen({ p }) {
   const target = nextOpenList(S);
   const inList = new Set(S.lists.flatMap((l) => l.items.filter((i) => !i.done).map((i) => i.pid)));
   const rows = r.ing.map(([pid, use, label, home, nm]) => {
-    const pp = PRODUCTS[pid]; const have = home || S.have.includes(pid); const listed = inList.has(pid);
+    const pp = PRODUCTS[pid]; const have = hasHome(S, r.id, pid, home); const def = homeDefault(S, pid, home); const listed = inList.has(pid);
     const u = unitPrice(pid, S, target && target.store);
-    return { pid, pp, label: k === 1 ? label : pp ? fmtQty(Math.round(use * k * 1000) / 1000, pp.u) : label, have, listed, home, cost: u ? u.up * buyQty(pid, use * k) : 0, nm };
+    return { def, pid, pp, label: k === 1 ? label : pp ? fmtQty(Math.round(use * k * 1000) / 1000, pp.u) : label, have, listed, home, cost: u ? u.up * buyQty(pid, use * k) : 0, nm };
   });
   const missing = rows.filter((x) => !x.have && x.pp);
   const mcost = missing.reduce((a, x) => a + x.cost, 0);
@@ -227,19 +229,19 @@ export function RecipeScreen({ p }) {
           {r.groups ? (tab === 'ing' ? <>
             <div className="portion"><span className="meta">{r.unit ? 'Koľko kúskov' : 'Pre koľko ľudí'}</span><Stepper q={por} u="por" onChange={(v) => setPor(Math.max(1, Math.min(r.unit ? 48 : 12, v)))} label={r.unit ? `${por} ${r.unit}` : plural(por, 'porcia', 'porcie', 'porcií')} /></div>
             <BookIngredients r={r} k={k} />
-            <p className="hint">Ťuknutím označíte, čo máte doma – do nákupu sa to nepridá.</p>
+            <p className="hint">Ťuknutím prepnete „mám doma“ / „nemám“. Kúpi sa len to, čo nemáte. Nastavenia sa tým nemenia.</p>
           </> : <BookSteps r={r} />) : tab === 'ing' ? <>
             <div className="portion"><span className="meta">Pre koľko ľudí</span><Stepper q={por} u="por" onChange={(v) => setPor(Math.max(1, Math.min(12, v)))} label={plural(por, 'porcia', 'porcie', 'porcií')} /></div>
             <div className="ings">
               {rows.map((x, i) => (
-                <div key={i} className={'ing' + (x.have ? ' home' : '')} onClick={() => !x.home && x.pid && act('toggleHave', x.pid)} role={x.home ? undefined : 'button'}>
+                <div key={i} className={'ing' + (x.have ? ' home' : '') + (x.def && !x.have ? ' nohome' : '')} onClick={() => x.pid && act(toggleRecipeHave(r.id, x.pid, x.have))} role={x.pid ? 'button' : undefined} aria-pressed={x.pid ? !!x.have : undefined}>
                   <span className="th"><E k={pe(x.pid)} /></span>
-                  <div className="tx"><b>{x.pp ? x.pp.n.replace(/ ·.*$/, '') : x.nm}</b><span className="sub">{x.label}{x.have ? ' · mám doma' : x.cost ? ' · ~' + eur(x.cost) : ''}</span></div>
+                  <div className="tx"><b>{x.pp ? x.pp.n.replace(/ ·.*$/, '') : x.nm}</b><span className="sub">{x.label}{x.have ? ' · mám doma' : x.def ? ' · nemám, kúpi sa' : x.cost ? ' · ~' + eur(x.cost) : ''}</span></div>
                   <Check on={x.have} label={x.have ? 'Mám doma' : 'Nemám'} />
                 </div>
               ))}
             </div>
-            <p className="hint">Ťuknutím označíte, čo máte doma – do nákupu sa to nepridá.</p>
+            <p className="hint">Ťuknutím prepnete „mám doma“ / „nemám“. Kúpi sa len to, čo nemáte. Nastavenia sa tým nemenia.</p>
           </> : <ol className="steps">{r.steps.map(([t, m], i) => <li key={i}><span className="n">{i + 1}</span><p>{t}{m ? <em> · {m} min</em> : null}</p></li>)}</ol>}
           {r.groups && <BookInfo r={r} />}
           {ids.length > 1 && <div className="pager">

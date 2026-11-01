@@ -1,7 +1,7 @@
 import { useApp, Back, useState, useEffect, useRef, I, E, IB, Btn, Check, Av } from './ui.jsx';
 import { PRODUCTS, RECIPES, RCATS, MEMBERS } from './data.js';
 import { BOOK, PLAN } from './book.js';
-import { plural, recipeById, recipeCost, haveCount, eur, norm } from './logic.js';
+import { plural, recipeById, recipeCost, haveCount, eur, norm, hasHome, homeDefault, toggleRecipeHave } from './logic.js';
 import { nextOpenList } from './store.js';
 /* icons: heart x thumbs-up thumbs-down flag images sparkle timer flame fire check-circle warning lightbulb info caret-right caret-up hand-swipe-left hand-tap shopping-cart book-open-text map-trifold magnifying-glass knife arrow-right play users-three chef-hat */
 
@@ -55,11 +55,11 @@ export function BookIngredients({ r, k }) {
           <div className="bgh">{g.n}</div>
           <div className="ings">
             {g.items.map(([pid, use, label, home, nm], i) => {
-              const pp = PRODUCTS[pid]; const have = home || (pid && S.have.includes(pid));
+              const pp = PRODUCTS[pid]; const have = pid ? hasHome(S, r.id, pid, home) : true; const def = pid && homeDefault(S, pid, home);
               return (
-                <div key={i} className={'ing' + (have ? ' home' : '')} onClick={() => pid && !home && act('toggleHave', pid)} role={pid && !home ? 'button' : undefined}>
+                <div key={i} className={'ing' + (have && pid ? ' home' : '') + (def && !have ? ' nohome' : '')} onClick={() => pid && act(toggleRecipeHave(r.id, pid, have))} role={pid ? 'button' : undefined} aria-pressed={pid ? !!have : undefined}>
                   <span className="th"><E k={pp ? pp.e : 'water'} /></span>
-                  <div className="tx"><b>{nm || (pp ? pp.n.replace(/ ·.*$/, '') : '')}</b><span className="sub">{scaleLabel(label, k)}{home && pid ? ' · bežne doma' : have ? ' · mám doma' : ''}</span></div>
+                  <div className="tx"><b>{nm || (pp ? pp.n.replace(/ ·.*$/, '') : '')}</b><span className="sub">{scaleLabel(label, k)}{!pid ? '' : have ? (home && !S.have.includes(pid) ? ' · bežne doma' : ' · mám doma') : def ? ' · nemám, kúpi sa' : ''}</span></div>
                   {pid ? <Check on={!!have} label={have ? 'Mám doma' : 'Nemám'} /> : <span className="bfree">netreba kupovať</span>}
                 </div>
               );

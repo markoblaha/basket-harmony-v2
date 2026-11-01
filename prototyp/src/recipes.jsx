@@ -3,6 +3,7 @@ import { PRODUCTS, RECIPES } from './data.js';
 import { plural, allRecipes, recipeById, recipeCost, haveCount, eur, unitPrice, buyQty, fmtQty, storeName, dkey, addDays, dayName, dayShort, relDay, norm, matchProduct } from './logic.js';
 import { aiRecipes, aiRecipeFromImage, aiErrorText } from './ai.js';
 import { nextOpenList } from './store.js';
+import { hasHome } from './logic.js';
 import { StepBoxes, scaleLabel } from './book.jsx';
 /* icons: x list timer pause check caret-left caret-right play plus camera link microphone warning-circle check-circle */
 
@@ -103,7 +104,7 @@ export function AddRecipeSheet({ open, close, rid, por }) {
   const [day, setDay] = useState(null);
   const L = lists.find((l) => l.id === lid);
   const k = (por || r.por) / r.por;
-  const cand = r.ing.filter((x) => !x[3] && PRODUCTS[x[0]] && !S.have.includes(x[0])).map(([pid, use]) => ({ pid, q: buyQty(pid, use * k) }));
+  const cand = r.ing.filter((x) => PRODUCTS[x[0]] && !hasHome(S, rid, x[0], x[3])).map(([pid, use]) => ({ pid, q: buyQty(pid, use * k) }));
   const today = new Date();
   const total = cand.reduce((a, x) => { const u = unitPrice(x.pid, S, L && L.store); return a + (u ? u.up * x.q : 0); }, 0);
   const title = name.trim() || RECIPE_LIST;
