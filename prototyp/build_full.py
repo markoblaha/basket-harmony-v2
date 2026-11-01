@@ -76,7 +76,7 @@ if r.returncode: print(r.stderr); sys.exit(1)
 print(r.stderr.strip())
 
 # ---------- HTML ----------
-cssall = '\n'.join(open(P + '/css/' + f).read() for f in ('shell.css', 'base.css', 'w.css', 'g.css')) + '\n' + open(P + '/gen/assets.css').read()
+cssall = '\n'.join(open(P + '/css/' + f).read() for f in ('shell.css', 'base.css', 'w.css', 'g.css', 'polish.css')) + '\n' + open(P + '/gen/assets.css').read()
 js = open(P + '/gen/app.js').read().replace('</script', '<\\/script')
 html = f'''<title>Basket Harmony prototyp</title>
 <meta name="description" content="Interaktívny prototyp aplikácie Basket Harmony v dvoch témach">

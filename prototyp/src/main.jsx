@@ -238,6 +238,7 @@ export function App() {
         return <section key={tab + e.k} className={'scr s-' + e.s + (top ? ' top' + anim : ' off')} data-prev={prev ? '' : undefined} aria-hidden={!top} onScrollCapture={onSc}>{theme === 'g' && <div className="bgl"><div className="bgb pic-trh_p" /><div className="veil" /></div>}<ScreenCtx.Provider value={{ back: backLabel(st[i - 1]) }}><Sc p={e.p || {}} top={top} /></ScreenCtx.Provider></section>;
       }))}
       {stack.length > 1 && !nav.modal && !(sheet && sheet.open) && <EdgeBack appRef={appRef} done={popNow} />}
+      {!hideTabs && <div className="tabfade" aria-hidden="true" />}
       {!hideTabs && <TabBar tab={nav.tab} go={go} voice={voice} vOn={!!(nav.modal && nav.modal.s === 'voice' && !nav.modal.out)} />}
       {M && <section key={nav.modal.k} className={'mdl m-' + nav.modal.s + (nav.modal.out ? ' out' : '')} onScrollCapture={onSc}><M p={nav.modal.p} /></section>}
       <div className="ovl" ref={setOvl} />

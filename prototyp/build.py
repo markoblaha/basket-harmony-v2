@@ -8,7 +8,7 @@ os.makedirs(P + '/dist', exist_ok=True)
 r = subprocess.run([ESB, P + '/src/main.jsx', '--bundle', '--format=iife', '--jsx=transform', '--tsconfig-raw={}', '--jsx-factory=React.createElement', '--jsx-fragment=React.Fragment',
                     '--loader:.js=jsx', '--target=es2020', '--minify', '--legal-comments=none', '--outfile=' + P + '/gen/app.js'], capture_output=True, text=True)
 if r.returncode: print(r.stderr); sys.exit(1)
-css = '\n'.join(open(P + '/css/' + f).read() for f in ('shell.css', 'base.css', 'w.css', 'g.css')) + '\n' + open(P + '/gen/assets.css').read()
+css = '\n'.join(open(P + '/css/' + f).read() for f in ('shell.css', 'base.css', 'w.css', 'g.css', 'polish.css')) + '\n' + open(P + '/gen/assets.css').read()
 js = open(P + '/gen/app.js').read().replace('</script', '<\\/script')
 os.remove(P + '/gen/app.js')
 html = f'''<title>Basket Harmony prototyp</title>

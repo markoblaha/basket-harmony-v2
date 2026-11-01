@@ -1,0 +1,121 @@
+/* ================= Zosúladenie dizajnu: sklo, veľkosti písma, ikon a dotykových plôch =================
+   Pravidlá podľa Apple Human Interface Guidelines (iPhone):
+   – písmo: nadpis 34, titulok 28/22/20, tučný riadok 17, text 17, menší text 16/15, poznámka 13, popis min. 12 (lišta 11);
+   – dotyková plocha min. 44 × 44 bodov (aj keď je tlačidlo opticky menšie);
+   – ikony: na lište 26, v tlačidlách navigácie 22, v tlačidlách s textom 20, pri texte 16–18;
+   – sklo („materiál“): rozmazanie 30–40 px so sýtosťou, tenký svetlý okraj a jemný odlesk zhora. */
+
+/* ---------- materiály skla (tokeny pre obe témy) ---------- */
+.g { --mat: rgb(255 255 255 / .56); --mat-thick: rgb(248 247 245 / .8); --mat-blur: blur(36px) saturate(1.9);
+  --mat-edge: inset 0 0 0 .5px rgb(255 255 255 / .75), inset 0 1px 0 rgb(255 255 255 / .95);
+  --mat-spec: linear-gradient(180deg, rgb(255 255 255 / .38), rgb(255 255 255 / .08) 42%, rgb(255 255 255 / 0) 70%);
+  --mat-out: 0 0 0 .5px rgb(0 0 0 / .06), 0 14px 34px -18px rgb(40 25 10 / .45);
+  --fade: rgb(243 242 240 / .78);
+  --toastbg: rgb(24 24 27 / .84); --toastfg: #fff; --toastacc: #ff9a63; }
+.g.t-d { --mat: rgb(34 34 38 / .5); --mat-thick: rgb(26 26 30 / .78);
+  --mat-edge: inset 0 0 0 .5px rgb(255 255 255 / .14), inset 0 1px 0 rgb(255 255 255 / .2);
+  --mat-spec: linear-gradient(180deg, rgb(255 255 255 / .11), rgb(255 255 255 / .02) 42%, rgb(255 255 255 / 0) 70%);
+  --mat-out: 0 0 0 .5px rgb(0 0 0 / .4), 0 16px 36px -16px rgb(0 0 0 / .85);
+  --fade: rgb(5 5 6 / .7);
+  --toastbg: rgb(44 44 48 / .86); --toastfg: #fff; --toastacc: #ff9a63; }
+.w { --mat: rgb(255 252 246 / .62); --mat-thick: rgb(250 246 239 / .84); --mat-blur: blur(30px) saturate(1.6);
+  --mat-edge: inset 0 0 0 .5px rgb(255 255 255 / .85), inset 0 1px 0 rgb(255 255 255 / 1);
+  --mat-spec: linear-gradient(180deg, rgb(255 255 255 / .45), rgb(255 255 255 / .1) 42%, rgb(255 255 255 / 0) 70%);
+  --mat-out: 0 0 0 .5px rgb(70 55 30 / .1), 0 16px 34px -18px rgb(70 55 30 / .42);
+  --fade: rgb(247 243 236 / .8);
+  --toastbg: rgb(31 45 36 / .9); --toastfg: #f7f3ec; --toastacc: #9be3b3; }
+.w.t-d { --mat: rgb(32 36 29 / .56); --mat-thick: rgb(24 27 21 / .82);
+  --mat-edge: inset 0 0 0 .5px rgb(255 255 255 / .1), inset 0 1px 0 rgb(255 255 255 / .14);
+  --mat-spec: linear-gradient(180deg, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 50%);
+  --mat-out: 0 0 0 .5px rgb(0 0 0 / .5), 0 16px 34px -16px rgb(0 0 0 / .9);
+  --fade: rgb(17 19 15 / .72);
+  --toastbg: rgb(40 46 36 / .88); --toastfg: #eef0e8; --toastacc: #9be3b3; }
+
+/* spoločný „materiál“: sklo s odleskom a tenkým okrajom */
+.tabbar, .app .sc.scrolled > .nb, .dock .dockc, .seg, .toast, .tst-top .ib, .w .ib:not(.flat):not(.wg), .w .back:not(.wg), .g .back:not(.wg) {
+  -webkit-backdrop-filter: var(--mat-blur); backdrop-filter: var(--mat-blur); }
+.tabbar { background: var(--mat-spec), var(--mat) !important; box-shadow: var(--mat-edge), var(--mat-out) !important; }
+.app .sc.scrolled > .nb { background: var(--mat-thick); box-shadow: 0 .5px 0 var(--line2); }
+.dock .dockc { background: var(--mat-spec), var(--mat-thick); box-shadow: var(--mat-edge), var(--mat-out); }
+.w .ib:not(.flat):not(.wg), .w .back:not(.wg), .g .back:not(.wg) { background: var(--mat-spec), var(--mat); box-shadow: var(--mat-edge), var(--mat-out); }
+.seg { background: color-mix(in srgb, var(--fg) 7%, transparent); box-shadow: inset 0 0 0 .5px var(--line); }
+.seg > button.on { background: var(--mat-spec), var(--segon); box-shadow: var(--mat-edge), 0 3px 10px -4px rgb(0 0 0 / .25); }
+/* fotky a sklo: karty a zoznamy dostanú rovnaký odlesk ako lišta */
+.g .card, .g .lst, .g .glass2, .g .qab, .g .acts2 > button, .g .pager > button, .g .chip:not(.on), .g .search, .g .field { background-image: var(--mat-spec); box-shadow: var(--mat-edge), var(--shade); }
+/* panel zdola (sheet) ako hrubé sklo */
+.sheet { background: var(--mat-spec), var(--mat-thick); -webkit-backdrop-filter: blur(44px) saturate(1.8); backdrop-filter: blur(44px) saturate(1.8); box-shadow: var(--mat-edge), 0 -10px 40px -10px rgb(0 0 0 / .35); }
+.w .vsheet { background: var(--mat-spec), var(--mat-thick); -webkit-backdrop-filter: blur(44px) saturate(1.6); backdrop-filter: blur(44px) saturate(1.6); box-shadow: var(--mat-edge); }
+
+/* obsah pod spodnou lištou a dokom sa plynulo stráca do skla (namiesto ostrého prekrytia) */
+.tabfade { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--sab) + 108px); z-index: 29; pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--fade) 72%);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 55%); mask-image: linear-gradient(180deg, transparent, #000 55%); }
+.dock { background: none !important; }
+.dock::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--fade) 60%);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 40%); mask-image: linear-gradient(180deg, transparent, #000 40%); }
+
+/* ---------- správy (toast): tmavšie sklo, dobre čitateľné v oboch vzhľadoch ---------- */
+.toast { background: var(--mat-spec), var(--toastbg); color: var(--toastfg); box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .14), inset 0 1px 0 rgb(255 255 255 / .16), 0 20px 44px -16px rgb(0 0 0 / .6);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); font-size: 15px; min-height: 56px; }
+.toast > .ico { width: 22px; height: 22px; color: var(--toastacc); }
+.toast button { height: 36px; background: rgb(255 255 255 / .16); color: #fff; }
+/* tip a výzvy v zozname: o niečo tmavší a pokojnejší podklad */
+.tip { background: color-mix(in srgb, var(--acc) 14%, var(--card)); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--acc) 30%, transparent); }
+.g .tip { background: var(--mat-spec), color-mix(in srgb, var(--acc) 16%, var(--mat-thick)); -webkit-backdrop-filter: var(--mat-blur); backdrop-filter: var(--mat-blur); }
+.w .tip { background: color-mix(in srgb, var(--acc) 12%, var(--card)); }
+
+/* ---------- písmo: jednotná stupnica ---------- */
+.t1 { font-size: 17px; }
+.t2, .meta { font-size: 15px; }
+.meta.sm, .hint, .src-note, .aimeta { font-size: 13px; }
+.tx > b { font-size: 17px; }
+.sub { font-size: 14px; }
+.seg > button { font-size: 15px; }
+.chip { font-size: 15px; }
+.facts > span { font-size: 14px; }
+.h2 .a, .lnk, .tipx, .kbt { font-size: 15px; }
+.steps p, .bsteps p { font-size: 17px; }
+.sbx { font-size: 15px; }
+.binfo.grid p { font-size: 15px; }
+/* drobné popisy nikdy pod 12 bodov (okrem spodnej lišty, tam 11 ako v iOS) */
+.mk, .bub small, .ing .lbl, .rok, .ar3 small, .pager small, .okb, .raib, .aib.sm, .gal-l, .bfree, .vchip small, .tst-tags .tg, .tr-b, .bm-min, .g .ring > span > small, .w .rc .badge, .rpos, .diff { font-size: 12px; }
+.pchart .axl { font-size: 11px; }
+.g .tabbar > button, .w .tabbar > button { font-size: 11px; font-weight: 650; }
+.g .tabs > button { font-size: 11px; }
+
+/* ---------- ikony ---------- */
+.g .tabbar > button .ico, .w .tabbar > button .ico { width: 26px; height: 26px; }
+.ib .ico { width: 22px; height: 22px; }
+.btn .ico, .g .pb .ico { width: 20px; height: 20px; }
+.lnk .ico { width: 15px; height: 15px; }
+.sub .ico { width: 15px; height: 15px; }
+.chev { width: 14px !important; height: 14px !important; }
+.toast .tt { font-weight: 600; }
+
+/* ---------- dotykové plochy min. 44 bodov ---------- */
+.btn.sm { height: 44px; }
+.g .pb.sm { height: 40px; position: relative; } .g .pb.sm::after { content: ""; position: absolute; inset: -2px 0; }
+.seg { padding: 3px; } .seg > button { min-height: 38px; padding: 9px 0; position: relative; }
+.seg > button::after { content: ""; position: absolute; inset: -3px 0; }
+.ib.sm { position: relative; } .ib.sm::after { content: ""; position: absolute; inset: -4px; }
+.search .m { position: relative; } .search .m::after { content: ""; position: absolute; inset: -4px; }
+.h2 .a, .tipx, .kbt { position: relative; min-height: 44px; display: inline-flex; align-items: center; }
+.gal-d { gap: 4px; }
+.gal-d button { position: relative; } .gal-d button::after { content: ""; position: absolute; inset: -18px -7px; }
+.aiv button, .tr-b { min-height: 44px; }
+.toast button::after { content: ""; position: absolute; inset: -4px; } .toast button { position: relative; }
+.step > button { position: relative; } .step > button::after { content: ""; position: absolute; inset: -6px -3px; }
+
+/* ---------- obrázky: jednotné zaoblenie a pomer strán ---------- */
+.rimg { border-radius: 20px; }
+.th[class*="pic-"] { background-size: cover; }
+.tst-liked .th { border-radius: 12px; }
+.sub .pk { font-size: 13px; }
+.lcard .tw .avs > i { font-size: 11.5px; }
+.target { font-size: 13px; min-height: 44px; justify-content: center; }
+.target b { font-size: 15px; }
+/* malé náhľady jedál: priblížiť na stred taniera (inak je vidno len okraj taniera) */
+.tile.tph, .th[class*="pic-"] { background-size: 165%; background-position: center 55%; }
