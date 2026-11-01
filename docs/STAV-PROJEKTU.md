@@ -153,6 +153,9 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   Interaktívny náhľad sprievodcu je samostatná kópia prototypu (`prototyp/sprievodca-nahlad/`, hlavný prototyp nezmenený):
   Vitajte, 8 kapitol s krokmi a „Ukáž mi to“, prestávka, pokračovanie po zavretí, koniec → prázdna appka (bez Lucie
   a bez reálnych bločkov) s Prvými krokmi, „?“ ponuka, Viac → Pomoc a ukážka, pozvánka. Po schválení spojiť s `prototyp/src`.
+  Návrh jednej témy „Teplé sklo“ (`prototyp/tema-teple-sklo-navrh.html`) – spojenie Teplej kuchyne a Fotiek a skla:
+  sklo nad fotkou trhu s teplým závojom, Fraunces + DM Sans, paprika = akcia, bazalka = hotovo, med = pozor, 3 hrúbky skla,
+  overený kontrast. Čaká na súhlas; nič nie je implementované.
   30. 10.: prerobené rozloženie podľa pripomienok – 4 záložky s popisom (Domov, Nákupy, Recepty, Výdavky), bez
   záhadného akčného tlačidla; každá akcia má jedno miesto (hlas = mikrofón v poli zoznamu, bloček = Výdavky/Domov).
   Recepty ako kniha: Kniha receptov (kategórie, rýchly výber, zdroje) / Moje (obľúbené, pridané) / Plán týždňa,
