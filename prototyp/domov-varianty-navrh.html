@@ -1,0 +1,309 @@
+<title>Domov s nadpismi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400..750&display=swap">
+<style>
+/* Rozloženie: úzky textový stĺpec, pri každej téme pás telefónov (mockupy appky v téme Fotky a sklo, tmavý režim) */
+:root {
+  --bg: #f4f3f0; --surface: #ffffff; --sunken: #ebe9e4; --fg: #1c1b19; --muted: #5f5c55; --line: #dcd8d0;
+  --acc: #e8571c; --acc-soft: #fbe3d6; --ok: #1f9d5c; --ok-soft: #dcf1e5; --warn: #a96a06; --warn-soft: #f6ead0;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif; --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121210; --surface: #1c1b19; --sunken: #262421; --fg: #ecebe7; --muted: #a9a59c; --line: #34322e;
+  --acc: #ff8a52; --acc-soft: #3a2418; --ok: #4fd38c; --ok-soft: #15301f; --warn: #e8b85c; --warn-soft: #33290f; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121210; --surface: #1c1b19; --sunken: #262421; --fg: #ecebe7; --muted: #a9a59c; --line: #34322e;
+  --acc: #ff8a52; --acc-soft: #3a2418; --ok: #4fd38c; --ok-soft: #15301f; --warn: #e8b85c; --warn-soft: #33290f; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 400 16.5px/1.55 var(--body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 22px; }
+.col { max-width: 680px; display: flex; flex-direction: column; gap: 12px; }
+h1 { font: 800 clamp(34px, 6vw, 52px)/1.02 var(--display); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+h2 { font: 750 clamp(24px, 3.6vw, 31px)/1.12 var(--display); letter-spacing: -.01em; margin: 28px 0 0; text-wrap: balance; }
+h3 { font: 700 18px/1.25 var(--display); margin: 6px 0 0; }
+p, ul, ol { margin: 0; } ul, ol { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font: 700 12px/1 var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--acc); }
+.lede { font-size: 18.5px; color: var(--muted); }
+.verdict { display: inline-flex; align-self: flex-start; gap: 8px; align-items: center; font: 700 13px/1 var(--body); padding: 8px 12px; border-radius: 99px; background: var(--ok-soft); color: var(--ok); }
+.verdict.mid { background: var(--warn-soft); color: var(--warn); }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.box b { font-family: var(--display); }
+.strip { display: flex; gap: 18px; overflow-x: auto; padding: 6px 2px 14px; scroll-snap-type: x mandatory; }
+.strip::-webkit-scrollbar { height: 6px; } .strip::-webkit-scrollbar-thumb { background: var(--line); border-radius: 9px; }
+figure { margin: 0; flex: none; width: 270px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 10px; }
+figcaption { font-size: 14px; color: var(--muted); line-height: 1.45; }
+figcaption b { color: var(--fg); font-family: var(--display); font-size: 15px; display: block; margin-bottom: 2px; }
+.tag { display: inline-block; font: 700 11px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 5px 8px; border-radius: 99px; background: var(--sunken); color: var(--muted); margin-bottom: 4px; }
+.tag.new { background: var(--acc-soft); color: var(--acc); }
+.hint { font-size: 13.5px; color: var(--muted); margin-bottom: -10px; }
+.decide { display: flex; flex-direction: column; gap: 10px; counter-reset: q; }
+.decide > div { display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+.decide > div::before { counter-increment: q; content: counter(q); font: 750 14px/30px var(--display); text-align: center; height: 30px; border-radius: 99px; background: var(--acc-soft); color: var(--acc); }
+
+/* ---------- telefón (appka: Fotky a sklo, tmavý režim – pevné farby zámerne) ---------- */
+.ph { position: relative; width: 270px; height: 560px; border-radius: 40px; overflow: hidden; color: #fff; font: 500 13px/1.3 -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
+  background: radial-gradient(120% 70% at 20% 0%, #5b4a1c 0%, transparent 60%), radial-gradient(90% 60% at 100% 60%, #5a2a14 0%, transparent 65%), #141210;
+  box-shadow: 0 0 0 8px #0b0b0b, 0 0 0 9px #2a2a2a, 0 30px 60px -30px rgb(0 0 0 / .6); }
+.ph * { box-sizing: border-box; }
+.sb { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-weight: 650; font-size: 12px; }
+.gl { background: linear-gradient(180deg, rgb(255 255 255 / .1), rgb(255 255 255 / .02) 45%, transparent 70%), rgb(40 38 36 / .62); box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .16), inset 0 1px 0 rgb(255 255 255 / .2), 0 12px 26px -14px rgb(0 0 0 / .8); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+.pad { padding: 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.ttl { font-size: 24px; font-weight: 800; letter-spacing: -.6px; padding: 2px 4px 4px; }
+.card { border-radius: 20px; padding: 12px 13px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.row { display: flex; align-items: center; gap: 9px; }
+.grow { flex: 1; min-width: 0; }
+.t1 { font-size: 14.5px; font-weight: 750; letter-spacing: -.2px; } .s { font-size: 11.5px; color: rgb(255 255 255 / .62); }
+.price { font-size: 19px; font-weight: 800; letter-spacing: -.4px; text-align: right; white-space: nowrap; }
+.av { display: inline-flex; } .av i { width: 20px; height: 20px; border-radius: 99px; font: 750 9px/20px system-ui; text-align: center; font-style: normal; color: #fff; box-shadow: 0 0 0 2px #2a2724; }
+.av i + i { margin-left: -6px; } .m { background: #c96f5c; } .l { background: #5f8bb8; }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 99px; background: rgb(255 255 255 / .1); font-size: 11px; font-weight: 650; }
+.btnc { width: 44px; height: 44px; border-radius: 99px; flex: none; display: grid; place-items: center; background: linear-gradient(160deg, #ff9a5e, #f2601f); box-shadow: 0 10px 20px -10px #f2601f, inset 0 1px 0 rgb(255 255 255 / .35); }
+.btnc svg, .ic svg { width: 21px; height: 21px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.pill { height: 40px; border-radius: 99px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 750; font-size: 13.5px; padding: 0 16px; }
+.pri { background: linear-gradient(160deg, #ff9a5e, #f2601f); box-shadow: 0 10px 20px -12px #f2601f; }
+.ghost { background: rgb(255 255 255 / .12); }
+.tab { position: absolute; left: 10px; right: 10px; bottom: 12px; height: 52px; border-radius: 99px; display: flex; align-items: center; justify-content: space-around; font-size: 9.5px; font-weight: 650; color: rgb(255 255 255 / .8); }
+.tab span { display: flex; flex-direction: column; align-items: center; gap: 3px; } .tab span i { width: 18px; height: 18px; border-radius: 5px; background: rgb(255 255 255 / .75); }
+.tab .on { color: #ff8a52; } .tab .on i { background: #ff8a52; }
+.tab .mic { width: 44px; height: 44px; border-radius: 99px; background: rgb(255 120 70 / .3); box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .2); }
+.lst { border-radius: 18px; overflow: hidden; }
+.it { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-top: .5px solid rgb(255 255 255 / .08); position: relative; }
+.it:first-child { border-top: 0; }
+.em { width: 30px; height: 30px; border-radius: 9px; background: rgb(255 255 255 / .08); display: grid; place-items: center; font-size: 16px; flex: none; }
+.q { min-width: 46px; height: 26px; border-radius: 9px; background: rgb(255 255 255 / .1); display: grid; place-items: center; font-weight: 750; font-size: 12px; padding: 0 8px; }
+.ck { width: 22px; height: 22px; border-radius: 99px; border: 2px solid rgb(255 255 255 / .4); flex: none; }
+.ck.on { background: #31c46f; border-color: #31c46f; display: grid; place-items: center; } .ck.on::after { content: ""; width: 8px; height: 4px; border-left: 2.4px solid #fff; border-bottom: 2.4px solid #fff; transform: rotate(-45deg) translate(1px, -1px); }
+.it.done .grow b { text-decoration: line-through; color: rgb(255 255 255 / .55); }
+.it.done { background: rgb(49 196 111 / .12); }
+/* hlavička nákupu */
+.hd { padding: 6px 14px 10px; display: flex; flex-direction: column; gap: 8px; border-radius: 0 0 22px 22px; }
+.seg { display: flex; gap: 3px; align-items: center; }
+.seg i { flex: 1; height: 6px; border-radius: 99px; background: rgb(255 255 255 / .16); }
+.seg i.d { background: linear-gradient(90deg, #3ed283, #22b268); }
+.seg i.n { background: linear-gradient(90deg, #3ed283, #22b268); animation: segin 2.4s ease-out infinite; transform-origin: left; }
+@keyframes segin { 0% { transform: scaleX(0); } 30%, 100% { transform: scaleX(1); } }
+.seg b { font-size: 13px; margin-left: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; } .seg b small { color: rgb(255 255 255 / .55); font-size: 13px; font-weight: 600; }
+.ring { width: 78px; height: 78px; border-radius: 99px; background: conic-gradient(#31c46f 0 36%, rgb(255 255 255 / .1) 0); display: grid; place-items: center; flex: none; }
+.ring span { width: 62px; height: 62px; border-radius: 99px; background: #1d1b19; display: grid; place-items: center; text-align: center; font-weight: 800; font-size: 18px; line-height: 1; }
+.ring small { display: block; font-size: 8.5px; font-weight: 600; color: rgb(255 255 255 / .6); margin-top: 2px; }
+/* hlas */
+.vtop { display: flex; align-items: center; gap: 8px; padding: 2px 12px 8px; }
+.ic { width: 34px; height: 34px; border-radius: 99px; display: grid; place-items: center; flex: none; background: rgb(255 255 255 / .12); }
+.ic svg { width: 17px; height: 17px; }
+.target { flex: 1; height: 34px; border-radius: 99px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 12.5px; background: rgb(255 255 255 / .1); }
+.target em { font-style: normal; color: rgb(255 255 255 / .55); font-weight: 600; }
+.vlist { padding: 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.vi { border-radius: 15px; display: flex; align-items: center; gap: 9px; padding: 8px 10px; }
+.vi .grow b { font-size: 13.5px; } .vi .grow small { display: block; font-size: 11px; color: rgb(255 255 255 / .55); margin-top: 1px; }
+.vi.drop { animation: drop 4.8s cubic-bezier(.2,1.25,.35,1) infinite; }
+.vi.drop.d2 { animation-delay: .9s; }
+@keyframes drop { 0% { transform: translateY(-46px) scale(.92); opacity: 0; } 9% { transform: none; opacity: 1; box-shadow: 0 0 0 1.5px #31c46f, 0 0 22px rgb(49 196 111 / .45); } 26% { box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .16); } 90% { opacity: 1; } 100% { opacity: 1; } }
+.fix { font-size: 10.5px; color: #8fe0b2; } .fix s { color: rgb(255 255 255 / .45); }
+.vi.sel { box-shadow: 0 0 0 2px #ff8a52, 0 0 24px rgb(255 138 82 / .45); }
+.vi.unsure { box-shadow: 0 0 0 1.5px #e8b85c; }
+.opts { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; } .opts span { height: 24px; padding: 0 9px; border-radius: 99px; background: rgb(255 255 255 / .12); display: inline-flex; align-items: center; font-size: 11px; font-weight: 650; }
+.opts span.a { background: #e8b85c; color: #2a1d00; }
+.vbot { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px 16px; display: flex; flex-direction: column; gap: 10px; align-items: center;
+  background: linear-gradient(180deg, transparent, rgb(20 18 16 / .92) 30%); }
+.heard { align-self: stretch; border-radius: 16px; padding: 9px 12px; font-size: 13px; line-height: 1.35; }
+.heard small { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: rgb(255 255 255 / .5); font-weight: 700; margin-bottom: 2px; }
+.heard i { font-style: normal; color: rgb(255 255 255 / .45); }
+.ctrl { display: flex; align-items: center; justify-content: space-between; align-self: stretch; }
+.orb { width: 66px; height: 66px; border-radius: 99px; background: radial-gradient(circle at 30% 28%, #fff3d6 0%, #ffb36b 22%, #ff6a5a 46%, #b44cff 76%, #5b6cff 100%); box-shadow: 0 0 0 8px rgb(255 120 90 / .14), 0 16px 34px -10px rgb(255 106 90 / .7); position: relative; }
+.orb::after { content: ""; position: absolute; inset: -14px; border-radius: 99px; border: 1.5px solid rgb(255 160 120 / .4); animation: ring 1.8s ease-out infinite; }
+@keyframes ring { from { transform: scale(.85); opacity: 1; } to { transform: scale(1.25); opacity: 0; } }
+.orb.edit { background: radial-gradient(circle at 30% 28%, #fff3d6 0%, #ffcf8a 30%, #ff8a52 70%); }
+.wave { display: flex; gap: 3px; align-items: center; height: 18px; } .wave i { width: 3px; border-radius: 3px; background: rgb(255 255 255 / .7); animation: wv 1s ease-in-out infinite; }
+.wave i:nth-child(1) { height: 6px; } .wave i:nth-child(2) { height: 14px; animation-delay: .15s; } .wave i:nth-child(3) { height: 18px; animation-delay: .3s; } .wave i:nth-child(4) { height: 10px; animation-delay: .45s; } .wave i:nth-child(5) { height: 7px; animation-delay: .6s; }
+@keyframes wv { 50% { transform: scaleY(.4); } }
+.side { width: 64px; text-align: center; font-size: 11.5px; font-weight: 700; color: rgb(255 255 255 / .75); }
+.done { height: 38px; padding: 0 16px; border-radius: 99px; background: #fff; color: #141210; font-weight: 800; font-size: 13px; display: grid; place-items: center; }
+.scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .45); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 28px 28px 0 0; padding: 8px 14px 18px; display: flex; flex-direction: column; gap: 9px;
+  background: linear-gradient(180deg, rgb(255 255 255 / .1), transparent 40%), rgb(34 32 30 / .9); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); box-shadow: inset 0 .5px 0 rgb(255 255 255 / .2); }
+.grab { width: 34px; height: 4px; border-radius: 99px; background: rgb(255 255 255 / .3); align-self: center; }
+.sh-t { font-size: 17px; font-weight: 800; letter-spacing: -.3px; } .k { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; font-weight: 750; color: rgb(255 255 255 / .55); }
+.opt { border-radius: 15px; padding: 9px 11px; display: flex; align-items: center; gap: 9px; background: rgb(255 255 255 / .07); }
+.opt.on { box-shadow: 0 0 0 1.5px #ff8a52; background: rgb(255 138 82 / .12); }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; } .tiles span { height: 30px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 11px; background: rgb(255 255 255 / .08); }
+.tiles span.on { background: rgb(255 138 82 / .22); box-shadow: inset 0 0 0 1px #ff8a52; }
+.toast { position: absolute; left: 10px; right: 10px; top: 42px; border-radius: 16px; padding: 10px 12px; display: flex; align-items: center; gap: 9px; font-weight: 650; font-size: 12.5px; background: rgb(24 24 27 / .9); box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .14); }
+.toast u { text-decoration: none; margin-left: auto; padding: 5px 10px; border-radius: 99px; background: rgb(255 255 255 / .16); font-weight: 750; }
+.pulse { box-shadow: 0 0 0 2px #31c46f, 0 0 26px rgb(49 196 111 / .5) !important; }
+@media (prefers-reduced-motion: reduce) { .vi.drop, .orb::after, .wave i, .seg i.n { animation: none; } }
+</style>
+
+<style>
+/* doplnky pre Domov: svetlá téma Teplá kuchyňa v telefóne a sekcie */
+.ph.w { color: #22261f; background: #f7f3ec; box-shadow: 0 0 0 8px #0b0b0b, 0 0 0 9px #2a2a2a, 0 30px 60px -30px rgb(0 0 0 / .45); }
+.ph.w .gl { background: #fffdf9; box-shadow: 0 1px 2px rgb(70 55 30 / .06), 0 10px 24px -16px rgb(70 55 30 / .35); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.ph.w .s { color: #6b6f65; } .ph.w .tab { color: #6b6f65; background: rgb(255 253 249 / .9); } .ph.w .tab .on { color: #3d7a59; } .ph.w .tab .on i { background: #3d7a59; } .ph.w .tab span i { background: #a3a59c; }
+.ph.w .tab .mic { background: #dbe9df; }
+.ph.w .ttl { font-family: Georgia, "Fraunces", serif; font-weight: 500; letter-spacing: -.4px; }
+.sec { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 4px 0; }
+.sec b { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 800; color: rgb(255 255 255 / .6); }
+.sec a { font-size: 11.5px; font-weight: 700; color: #ff8a52; text-decoration: none; }
+.ph.w .sec b { color: #6b6f65; } .ph.w .sec a { color: #3d7a59; }
+.sec2 { display: flex; align-items: center; gap: 6px; padding: 8px 4px 0; font-size: 15px; font-weight: 800; letter-spacing: -.3px; }
+.ph.w .sec2 { font-family: Georgia, "Fraunces", serif; font-weight: 600; }
+.sec2 i { font-style: normal; font-size: 14px; }
+.qa3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.qa3 { margin-bottom: 70px; } .qa3 span { border-radius: 16px; padding: 9px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; text-align: center; }
+.qa3 span em { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-style: normal; font-size: 15px; background: linear-gradient(160deg, #ff9a5e, #f2601f); }
+.ph.w .qa3 span em { background: #26392d; color: #fff; }
+.mini { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 15px; font-size: 12px; }
+.mini .ic2 { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; flex: none; font-size: 14px; font-weight: 800; color: #fff; }
+.mini .grow { min-width: 0; } .mini .grow b, .mini .grow small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mini .grow b { font-size: 13px; }
+.ph { height: 640px; } .pad { gap: 7px; } .mini .grow small { font-size: 11px; color: rgb(255 255 255 / .6); }
+.ph.w .mini .grow small { color: #6b6f65; }
+.btn2 { height: 28px; padding: 0 11px; border-radius: 99px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800; background: linear-gradient(160deg, #ff9a5e, #f2601f); color: #fff; flex: none; }
+.ph.w .btn2 { background: #26392d; }
+.btn2.gh { background: rgb(255 255 255 / .12); color: inherit; } .ph.w .btn2.gh { background: #ece6db; color: #22261f; }
+.warn { box-shadow: inset 0 0 0 1.2px #e8b85c !important; }
+.badge2 { min-width: 16px; height: 16px; border-radius: 99px; background: #e5484d; color: #fff; font-size: 9.5px; font-weight: 800; display: inline-grid; place-items: center; padding: 0 4px; }
+.hello { padding: 0 4px; } .hello small { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 800; color: #ff8a52; } .ph.w .hello small { color: #3d7a59; }
+.hello b { font-size: 20px; font-weight: 800; letter-spacing: -.5px; line-height: 1.15; } .ph.w .hello b { font-family: Georgia, serif; font-weight: 500; }
+.focus { border-radius: 20px; padding: 13px; display: flex; flex-direction: column; gap: 8px; }
+.focus .k2 { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; font-weight: 800; color: #ffb057; } .ph.w .focus .k2 { color: #a86a1f; }
+.grp { border-radius: 18px; overflow: hidden; }
+.grp .rr { display: flex; align-items: center; gap: 8px; padding: 9px 11px; font-size: 12px; border-top: .5px solid rgb(255 255 255 / .08); }
+.ph.w .grp .rr { border-top-color: #ece6db; }
+.grp .rr:first-child { border-top: 0; }
+.grp .rr .grow b { display: block; font-size: 12.5px; } .grp .rr .grow small { font-size: 10.5px; color: rgb(255 255 255 / .58); } .ph.w .grp .rr .grow small { color: #6b6f65; }
+.chev2 { color: rgb(255 255 255 / .4); font-weight: 800; } .ph.w .chev2 { color: #a3a59c; }
+.tiles2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.tl2 { border-radius: 20px; padding: 11px; display: flex; flex-direction: column; gap: 3px; min-height: 104px; position: relative; }
+.tl2.wide { grid-column: span 2; min-height: 0; flex-direction: row; align-items: center; gap: 10px; }
+.tl2 .ti { font-size: 18px; } .tl2 b { font-size: 13.5px; font-weight: 800; } .tl2 .big { font-size: 16px; font-weight: 800; letter-spacing: -.4px; margin-top: auto; }
+.tl2 small { font-size: 10.5px; color: rgb(255 255 255 / .6); } .ph.w .tl2 small { color: #6b6f65; }
+.tl2 .badge2 { position: absolute; top: 9px; right: 9px; }
+.vlab { align-self: flex-start; display: inline-block; font: 700 11px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 6px 10px; border-radius: 99px; background: var(--acc-soft); color: var(--acc); }
+.pro { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.pro div { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; font-size: 14.5px; display: flex; flex-direction: column; gap: 4px; }
+.pro b { font-family: var(--display); }
+.rec { background: var(--ok-soft); border: 0; }
+</style>
+
+<div class="wrap">
+  <header class="col">
+    <span class="eyebrow">Basket Harmony · návrh na schválenie</span>
+    <h1>Domov s nadpismi</h1>
+    <p class="lede">Dnes sú na Domove karty pod sebou bez nadpisov a nie je hneď jasné, čo ktorá znamená. Tri spôsoby, ako to usporiadať. Každý variant je nakreslený v oboch témach. Obsah je rovnaký ako dnes: rýchle akcie, chýbajúci bloček, Luciin nákup, najbližší nákup a dnešná večera.</p>
+  </header>
+
+  <!-- ===== A ===== -->
+  <section class="col">
+    <span class="vlab">Variant A · odporúčam</span>
+    <h2>Sekcie s nadpismi</h2>
+    <p>Rovnaké karty, ale v pevných skupinách s krátkym nadpisom. Najprv to, čo treba vybaviť, potom nákupy, potom varenie. Rýchle akcie sú dole ako malé tlačidlá, lebo sú aj na spodnej lište. Skupina, v ktorej nič nie je, sa neukáže.</p>
+    <div class="pro"><div><b>Výhody</b>Najmenšia zmena, každý hneď vidí, kam čo patrí. Dobré aj pre starších.</div><div><b>Nevýhody</b>Stránka je o niečo dlhšia (pribúdajú nadpisy).</div></div>
+  </section>
+  <div class="strip" aria-label="Variant A">
+    <figure><div class="ph"><div class="sb"><span>20:42</span><span>●●● 70 %</span></div>
+      <div class="pad"><div class="ttl">Domov</div>
+        <div class="sec"><b>Treba vybaviť</b></div>
+        <div class="mini gl warn"><span class="ic2" style="background:#3a4fb8">dm</span><div class="grow"><b>Bloček z Drogérie</b><small>dnes 20:32 · ~20,69 €</small></div><span class="btn2">Odfotiť</span></div>
+        <div class="sec"><b>Nákupy</b><a>Všetky</a></div>
+        <div class="mini gl"><span class="ic2" style="background:#1f63c9">L</span><div class="grow"><b>Lucia nakúpila</b><small>Lidl · 24,31 €</small></div><span class="btn2 gh">Pozrieť</span></div>
+        <div class="mini gl"><span class="ic2" style="background:#d63a2f">K</span><div class="grow"><b>Kaufland zajtra</b><small>10 položiek · ~29 €</small></div><span class="btn2">Nakupovať</span></div>
+        <div class="sec"><b>Dnes večer</b><a>Plán týždňa</a></div>
+        <div class="mini gl"><span class="ic2" style="background:#e9dcc6">🍚</span><div class="grow"><b>Kuracie rizoto</b><small>35 min · chýbajú 2 suroviny</small></div><span class="btn2">▶</span></div>
+        <div class="sec"><b>Rýchlo</b></div>
+        <div class="qa3"><span class="gl"><em>＋</em>Pridať do nákupu</span><span class="gl"><em>📷</em>Odfotiť bloček</span><span class="gl"><em>🍲</em>Čo uvariť</span></div>
+      </div>
+      <div class="tab gl"><span class="on"><i></i>Domov</span><span><i></i>Nákupy</span><span class="mic"></span><span><i></i>Recepty</span><span><i></i>Výdavky</span></div></div>
+      <figcaption><b>Fotky a sklo</b>Nadpisy sú malé a tlmené, karty jednoriadkové. Všetko sa zmestí na jednu obrazovku.</figcaption></figure>
+    <figure><div class="ph w"><div class="sb"><span>20:42</span><span>●●● 70 %</span></div>
+      <div class="pad"><div class="ttl">Domov</div>
+        <div class="sec"><b>Treba vybaviť</b></div>
+        <div class="mini gl warn"><span class="ic2" style="background:#3a4fb8">dm</span><div class="grow"><b>Bloček z Drogérie</b><small>dnes 20:32 · ~20,69 €</small></div><span class="btn2">Odfotiť</span></div>
+        <div class="sec"><b>Nákupy</b><a>Všetky</a></div>
+        <div class="mini gl"><span class="ic2" style="background:#1f63c9">L</span><div class="grow"><b>Lucia nakúpila</b><small>Lidl · 24,31 €</small></div><span class="btn2 gh">Pozrieť</span></div>
+        <div class="mini gl"><span class="ic2" style="background:#d63a2f">K</span><div class="grow"><b>Kaufland zajtra</b><small>10 položiek · ~29 €</small></div><span class="btn2">Nakupovať</span></div>
+        <div class="sec"><b>Dnes večer</b><a>Plán týždňa</a></div>
+        <div class="mini gl"><span class="ic2" style="background:#f4dcdc">🍚</span><div class="grow"><b>Kuracie rizoto</b><small>35 min · chýbajú 2 suroviny</small></div><span class="btn2">▶</span></div>
+        <div class="sec"><b>Rýchlo</b></div>
+        <div class="qa3"><span class="gl"><em>＋</em>Pridať do nákupu</span><span class="gl"><em>📷</em>Odfotiť bloček</span><span class="gl"><em>🍲</em>Čo uvariť</span></div>
+      </div>
+      <div class="tab gl"><span class="on"><i></i>Domov</span><span><i></i>Nákupy</span><span class="mic"></span><span><i></i>Recepty</span><span><i></i>Výdavky</span></div></div>
+      <figcaption><b>Teplá kuchyňa</b>Rovnaké poradie, zelené akcenty a pätkové písmo nadpisov.</figcaption></figure>
+  </div>
+
+  <!-- ===== B ===== -->
+  <section class="col">
+    <span class="vlab">Variant B</span>
+    <h2>Prehľad dňa</h2>
+    <p>Hore pozdrav s dátumom a jedna karta „Teraz“ s najdôležitejšou vecou (bloček, nákup alebo varenie podľa času dňa). Pod ňou zoznamy po oblastiach ako v Nastaveniach iPhonu: Nákupy, Varenie, Výdavky. Každý riadok má jednu vec a šípku.</p>
+    <div class="pro"><div><b>Výhody</b>Veľmi pokojné a čitateľné, jasné, čo je hlavné. Riadky sú ako v telefóne zvyknutí.</div><div><b>Nevýhody</b>Menej obrázkov, Domov pôsobí strohejšie. Väčšia zmena oproti dnešku.</div></div>
+  </section>
+  <div class="strip" aria-label="Variant B">
+    <figure><div class="ph"><div class="sb"><span>20:42</span><span>●●● 70 %</span></div>
+      <div class="pad">
+        <div class="hello" style="margin-top:6px"><small>Pondelok 2. novembra</small><b>Dobrý večer, Marek</b></div>
+        <div class="focus gl warn"><span class="k2">Teraz</span><div class="row"><span class="ic2" style="width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:#3a4fb8;font-weight:800">dm</span><div class="grow"><div class="t1">Odfoťte bloček z Drogérie</div><div class="s">ceny sa priradia k nákupu samé</div></div></div><span class="pill pri" style="height:34px;font-size:12.5px">📷 Odfotiť bloček</span></div>
+        <div class="sec2"><i>🛒</i>Nákupy</div>
+        <div class="grp gl"><div class="rr"><div class="grow"><b>Kaufland · zajtra</b><small>10 položiek · ~29 €</small></div><span class="btn2">Nakupovať</span></div><div class="rr"><div class="grow"><b>Lucia dokončila nákup</b><small>Lidl · 24,31 €</small></div><span class="chev2">›</span></div></div>
+        <div class="sec2"><i>🍳</i>Varenie</div>
+        <div class="grp gl"><div class="rr"><div class="grow"><b>Dnes: Kuracie rizoto</b><small>chýbajú 2 suroviny</small></div><span class="chev2">›</span></div></div>
+        <div class="sec2"><i>💶</i>Výdavky</div>
+        <div class="grp gl"><div class="rr"><div class="grow"><b>Október 881 €</b><small>zostáva 119 € z rozpočtu</small></div><span class="chev2">›</span></div></div>
+      </div>
+      <div class="tab gl"><span class="on"><i></i>Domov</span><span><i></i>Nákupy</span><span class="mic"></span><span><i></i>Recepty</span><span><i></i>Výdavky</span></div></div>
+      <figcaption><b>Fotky a sklo</b>Karta „Teraz“ sa mení: ráno nákup, večer varenie, po nákupe bloček.</figcaption></figure>
+    <figure><div class="ph w"><div class="sb"><span>20:42</span><span>●●● 70 %</span></div>
+      <div class="pad">
+        <div class="hello" style="margin-top:6px"><small>Pondelok 2. novembra</small><b>Dobrý večer, Marek</b></div>
+        <div class="focus gl warn"><span class="k2">Teraz</span><div class="row"><span class="ic2" style="width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:#3a4fb8;font-weight:800;color:#fff">dm</span><div class="grow"><div class="t1">Odfoťte bloček z Drogérie</div><div class="s">ceny sa priradia k nákupu samé</div></div></div><span class="pill" style="height:34px;font-size:12.5px;background:#26392d;color:#fff">📷 Odfotiť bloček</span></div>
+        <div class="sec2"><i>🛒</i>Nákupy</div>
+        <div class="grp gl"><div class="rr"><div class="grow"><b>Kaufland · zajtra</b><small>10 položiek · ~29 €</small></div><span class="btn2">Nakupovať</span></div><div class="rr"><div class="grow"><b>Lucia dokončila nákup</b><small>Lidl · 24,31 €</small></div><span class="chev2">›</span></div></div>
+        <div class="sec2"><i>🍳</i>Varenie</div>
+        <div class="grp gl"><div class="rr"><div class="grow"><b>Dnes: Kuracie rizoto</b><small>chýbajú 2 suroviny</small></div><span class="chev2">›</span></div></div>
+        <div class="sec2"><i>💶</i>Výdavky</div>
+        <div class="grp gl"><div class="rr"><div class="grow"><b>Október 881 €</b><small>zostáva 119 € z rozpočtu</small></div><span class="chev2">›</span></div></div>
+      </div>
+      <div class="tab gl"><span class="on"><i></i>Domov</span><span><i></i>Nákupy</span><span class="mic"></span><span><i></i>Recepty</span><span><i></i>Výdavky</span></div></div>
+      <figcaption><b>Teplá kuchyňa</b>Pripomína papierový diár: pozdrav, jedna hlavná vec, potom prehľad.</figcaption></figure>
+  </div>
+
+  <!-- ===== C ===== -->
+  <section class="col">
+    <span class="vlab">Variant C</span>
+    <h2>Dlaždice podľa oblastí</h2>
+    <p>Ako widgety na iPhone: hore pás „Treba vybaviť“, pod ním štyri veľké dlaždice Nákupy, Varenie, Výdavky a Hlas. Každá dlaždica ukazuje stav jedným číslom alebo vetou a ťuknutím vedie do svojej časti.</p>
+    <div class="pro"><div><b>Výhody</b>Najprehľadnejšie na prvý pohľad, veľké ciele na ťuknutie.</div><div><b>Nevýhody</b>Detail (napríklad tlačidlo Nakupovať) je o jedno ťuknutie ďalej. Dlaždice sa trochu prekrývajú so spodnou lištou.</div></div>
+  </section>
+  <div class="strip" aria-label="Variant C">
+    <figure><div class="ph"><div class="sb"><span>20:42</span><span>●●● 70 %</span></div>
+      <div class="pad"><div class="ttl">Domov</div>
+        <div class="sec"><b>Treba vybaviť · 1</b></div>
+        <div class="mini gl warn"><span class="ic2" style="background:#3a4fb8">dm</span><div class="grow"><b>Bloček z Drogérie</b><small>~20,69 €</small></div><span class="btn2">Odfotiť</span></div>
+        <div class="tiles2" style="margin-top:4px">
+          <div class="tl2 gl"><span class="ti">🛒</span><b>Nákupy</b><small>Lucia dokončila · Lidl</small><span class="big">2 zoznamy</span><small>najbližší zajtra · ~29 €</small></div>
+          <div class="tl2 gl"><span class="ti">🍳</span><b>Varenie</b><small>dnes večer</small><span class="big" style="font-size:15px">Kuracie rizoto</span><small>chýbajú 2 suroviny</small></div>
+          <div class="tl2 gl"><span class="ti">💶</span><b>Výdavky</b><span class="badge2">1</span><small>október</small><span class="big">881 €</span><small>zostáva 119 €</small></div>
+          <div class="tl2 gl"><span class="ti">🎙️</span><b>Nadiktovať</b><small>povedzte, čo kúpiť</small><span class="big" style="font-size:14px;color:#ff8a52">Hovoriť ›</span></div>
+        </div>
+      </div>
+      <div class="tab gl"><span class="on"><i></i>Domov</span><span><i></i>Nákupy</span><span class="mic"></span><span><i></i>Recepty</span><span><i></i>Výdavky</span></div></div>
+      <figcaption><b>Fotky a sklo</b>Sklenené dlaždice na fotke v pozadí, číslo pri Výdavkoch hlási chýbajúci bloček.</figcaption></figure>
+    <figure><div class="ph w"><div class="sb"><span>20:42</span><span>●●● 70 %</span></div>
+      <div class="pad"><div class="ttl">Domov</div>
+        <div class="sec"><b>Treba vybaviť · 1</b></div>
+        <div class="mini gl warn"><span class="ic2" style="background:#3a4fb8">dm</span><div class="grow"><b>Bloček z Drogérie</b><small>~20,69 €</small></div><span class="btn2">Odfotiť</span></div>
+        <div class="tiles2" style="margin-top:4px">
+          <div class="tl2 gl" style="background:#e9f1ea"><span class="ti">🛒</span><b>Nákupy</b><small>Lucia dokončila · Lidl</small><span class="big">2 zoznamy</span><small>najbližší zajtra · ~29 €</small></div>
+          <div class="tl2 gl" style="background:#f6ebd5"><span class="ti">🍳</span><b>Varenie</b><small>dnes večer</small><span class="big" style="font-size:15px">Kuracie rizoto</span><small>chýbajú 2 suroviny</small></div>
+          <div class="tl2 gl" style="background:#f4e3dc"><span class="ti">💶</span><b>Výdavky</b><span class="badge2">1</span><small>október</small><span class="big">881 €</span><small>zostáva 119 €</small></div>
+          <div class="tl2 gl" style="background:#dde9e0"><span class="ti">🎙️</span><b>Nadiktovať</b><small>povedzte, čo kúpiť</small><span class="big" style="font-size:14px;color:#3d7a59">Hovoriť ›</span></div>
+        </div>
+      </div>
+      <div class="tab gl"><span class="on"><i></i>Domov</span><span><i></i>Nákupy</span><span class="mic"></span><span><i></i>Recepty</span><span><i></i>Výdavky</span></div></div>
+      <figcaption><b>Teplá kuchyňa</b>Každá oblasť má svoju jemnú farbu, takže sa dá rozlíšiť aj bez čítania.</figcaption></figure>
+  </div>
+
+  <section class="col">
+    <h2>Moje odporúčanie</h2>
+    <div class="box rec"><b>Variant A</b><p>Zachová všetko, na čo ste si zvykli, len to roztriedi do skupín s jasnými nadpismi. Skupina „Treba vybaviť“ je vždy navrchu, takže chýbajúci bloček alebo žiadosť od Lucie nikto neprehliadne. Z variantu B by som prevzal pozdrav s dátumom a z variantu C farebné odlíšenie oblastí v Teplej kuchyni.</p></div>
+    <p class="hint">Napíšte, ktorý variant chcete (prípadne čo z ktorého), a až potom ho zapracujem do interaktívneho návrhu.</p>
+  </section>
+</div>
