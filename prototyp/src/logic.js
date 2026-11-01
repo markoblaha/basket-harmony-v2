@@ -374,7 +374,7 @@ export const withStore = (l, rest) => (l.store ? `${storeName(l.store)} · ${res
 export function allReceipts(S) {
   const mine = ((S && S.receipts) || []).map((r) => ({ id: r.id, storeName: storeName(r.store), store: r.store, date: r.date, time: r.time || '', total: r.total, mine: true, demo: r.demo,
     lines: r.lines.map((l) => ({ ...l, c: (l.pid && PRODUCTS[l.pid] && PRODUCTS[l.pid].c) || 'other', kind: (l.pid && PRODUCTS[l.pid] && PRODUCTS[l.pid].n.replace(/ ·.*$/, '')) || l.n, vkey: l.pid ? 'p:' + l.pid : null })) }));
-  return [...mine, ...REAL].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  return [...mine, ...(S && S.noReal ? [] : REAL)].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
 }
 export const inMonth = (r, mo) => r.date.startsWith(mo);
 export function catsOf(rs) { const c = {}; for (const r of rs) for (const l of r.lines) { if (l.c === 'deposit') continue; c[l.c] = (c[l.c] || 0) + l.t; } return c; }

@@ -23,7 +23,8 @@ export function StoreTile({ k, n, s = 46, r }) {
   const st = STORES[k] || { n: k, s: (k || n || '?').trim().slice(0, 1).toUpperCase() || '?', c1: '#9a9488', c2: '#6b665c' };
   return <span className="stile" style={{ width: s, height: s, borderRadius: r || Math.round(s * .32), fontSize: st.s.length > 1 ? s * .34 : s * .4, background: `linear-gradient(160deg, ${st.c1}, ${st.c2})` }}>{st.s}</span>;
 }
-export function Avatars({ ids = ['m', 'l'], sm }) {
+export function Avatars({ ids: ids0 = ['m', 'l'], sm }) {
+  const { S } = useApp(); const ids = S && S.solo ? ids0.filter((x) => x === 'm') : ids0;
   return <span className={'avs' + (sm ? ' sm' : '')}>{ids.map((id) => <i key={id} style={{ background: MEMBERS[id].col }}>{MEMBERS[id].ini}</i>)}</span>;
 }
 export function Av({ id, s = 28 }) {

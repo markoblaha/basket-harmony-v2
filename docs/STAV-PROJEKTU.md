@@ -151,9 +151,9 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   Návrh „Ukážka a sprievodca“ (`prototyp/ukazka-sprievodca-navrh.html`) čaká na súhlas majiteľa: Vitajte s 3 možnosťami,
   ukážková domácnosť na kópii údajov, 8 kapitol s kartou sprievodcu a „Ukáž mi to“, koniec → prázdna appka s Prvými
   krokmi, „?“ s ponukou (nápovedy / kapitola / celá ukážka), Viac → Pomoc a ukážka. Otvorené: meno domácnosti, dĺžka.
-  Interaktívny náhľad sprievodcu je samostatná kópia prototypu (`prototyp/sprievodca-nahlad/`, hlavný prototyp nezmenený):
+  Sprievodca je od 1. 11. spojený s hlavným prototypom (`prototyp/src/tour.jsx`; samostatná kópia zrušená):
   Vitajte, 8 kapitol s krokmi a „Ukáž mi to“, prestávka, pokračovanie po zavretí, koniec → prázdna appka (bez Lucie
-  a bez reálnych bločkov) s Prvými krokmi, „?“ ponuka, Viac → Pomoc a ukážka, pozvánka. Po schválení spojiť s `prototyp/src`.
+  a bez reálnych bločkov) s Prvými krokmi, „?“ ponuka, Viac → Pomoc a ukážka, pozvánka. Okná nápovedy majú obrátený povrch.
   Návrh jednej témy „Teplé sklo“ (`prototyp/tema-teple-sklo-navrh.html`) – spojenie Teplej kuchyne a Fotiek a skla:
   sklo nad fotkou trhu s teplým závojom, Fraunces + DM Sans, paprika = akcia, bazalka = hotovo, med = pozor, 3 hrúbky skla,
   overený kontrast. Čaká na súhlas; nič nie je implementované.

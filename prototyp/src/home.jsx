@@ -1,5 +1,6 @@
 import { MissingReceipts } from './receipt.jsx';
 import { HelpBtn } from './coach.jsx';
+import { FirstSteps } from './tour.jsx';
 import { useApp, I, E, IB, Btn, StoreTile, Avatars, Av, pe, useMemo, Sheet } from './ui.jsx';
 import { RECIPES } from './data.js';
 import { longDate, greeting, listTotals, eur, eur0, rangeText, relDay, dkey, addDays, dayShort, dayName, storeName, recipeById, haveCount, ago } from './logic.js';
@@ -146,11 +147,12 @@ export function Home() {
       <header className="nb"><button type="button" className="avbtn" onClick={() => push('more')} aria-label="Domácnosť a nastavenia"><Avatars /></button><span className="nbt">Domov</span><div className="nbr"><HelpBtn screen="home" /><IB n="gear-six" w="fill" label="Nastavenia" onClick={() => push('more')} /></div></header>
       <div className="body home-a">
         <h1 className="lt">Domov</h1>
+        <FirstSteps g={g} />
         {ms.length > 0 && <HSec t="Treba vybaviť" link={ms.length > 2 ? `Všetky (${ms.length})` : null} onLink={() => jump('money')}>
           {ms.slice(0, 2).map((m) => <HRow key={m.id} g={g} warn lead={m.store ? <StoreTile k={m.store} s={40} /> : <span className="th ic"><I n="receipt" /></span>} title="Chýba bloček" sub={`${m.name} · ${relDay(m.at)} · ~${eur0(m.total)}`}
             action={<Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => modal('scan', { listId: m.listId, missing: m.id })}><I n="camera" />Odfotiť</Btn>} />)}
         </HSec>}
-        <HSec t="Nákupy" link="Všetky" onLink={() => jump('lists')}>
+        {!(S.first && !live && !next) && <HSec t="Nákupy" link="Všetky" onLink={() => jump('lists')}>
           {live && <HRow g={g} lead={<StoreTile k={live.store} s={40} />} onClick={() => modal('follow')} label="Luciin nákup"
             title={liveT.done === liveT.n ? 'Lucia nakúpila' : 'Lucia nakupuje'} sub={`${storeName(live.store)} · ${liveT.done === liveT.n ? `${liveT.n} položiek · ${eur(liveT.doneV)}` : `${liveT.done} z ${liveT.n} v košíku`}`}
             action={<Btn cls="soft sm">{liveT.done === liveT.n ? 'Pozrieť' : 'Sledovať'}</Btn>} />}
@@ -158,13 +160,13 @@ export function Home() {
             title={next.store ? storeName(next.store) : next.name} sub={`${relDay(next.when)} · ${nOpen} ${nOpen === 1 ? 'položka' : nOpen < 5 && nOpen > 0 ? 'položky' : 'položiek'}${nextT.priced ? ' · ~' + eur0(nextT.v) : ''}`}
             action={nOpen > 0 ? <Btn cls={(going ? 'ok' : 'pri') + ' sm' + (g && !going ? ' a' : '')} onClick={stopThen(() => modal('shop', { listId: next.id }))}><I n={going ? 'play' : 'basket'} />{going ? 'Pokračovať' : 'Nakupovať'}</Btn> : null} />
             : <HRow g={g} lead={<span className="th ic"><I n="basket" /></span>} title="Žiadny otvorený zoznam" sub="Začnite nový nákup" onClick={() => sheet('newList')} action={<Btn cls="soft sm"><I n="plus" w="bold" />Nový</Btn>} />}
-        </HSec>
-        <HSec t="Naplánované recepty" link="Plán týždňa" onLink={() => jump('recipes')}>
+        </HSec>}
+        {!(S.first && !plan.length) && <HSec t="Naplánované recepty" link="Plán týždňa" onLink={() => jump('recipes')}>
           {plan.length ? plan.map(({ k, r }) => { const h = haveCount(r, S); const miss = h.all - h.have; return <HRow key={k} g={g} lead={r.pic ? <span className={'th tph pic-' + r.pic} /> : <span className={'th bg-' + r.bg}><E k={r.e} /></span>} onClick={() => push('recipe', { id: r.id })} label={`Recept ${r.n}`}
             title={r.n} sub={`${relDay(k)} · ${r.min} min · ${miss === 0 ? 'suroviny máte' : `chýba ${miss} ${miss === 1 ? 'surovina' : miss < 5 ? 'suroviny' : 'surovín'}`}`}
             action={<button type="button" className="hplay" aria-label={`Variť ${r.n}`} onClick={stopThen(() => modal('cook', { id: r.id }))}><I n="play" /></button>} />; })
             : <HRow g={g} lead={<span className="th ic"><I n="cooking-pot" /></span>} title="Nič naplánované" sub="Vyberte jedlo v knihe receptov" onClick={() => jump('recipes')} action={<I n="caret-right" w="bold" cls="chev" />} />}
-        </HSec>
+        </HSec>}
         <HSec t="Rýchlo">
           <div className="hqa">{QA.map(([ic, t, fn]) => <button type="button" key={t} className={'hqab' + (g ? ' glass2' : '')} onClick={fn}><span className="qi"><I n={ic} w={ic === 'plus' ? 'bold' : 'fill'} /></span>{t}</button>)}</div>
         </HSec>

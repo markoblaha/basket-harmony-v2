@@ -1,8 +1,9 @@
-import { useApp, Back, MeBtn, useState, I, E, IB, Btn, Av, Seg, Toggle } from './ui.jsx';
+import { useApp, Back, MeBtn, useState, useEffect, I, E, IB, Btn, Av, Seg, Toggle } from './ui.jsx';
 import { PRODUCTS, PANTRY, MEMBERS } from './data.js';
 import { eur0 } from './logic.js';
 import { PHOTO_CREDITS } from './credits.js';
 import { COACH } from './coach.jsx';
+import { HelpSection } from './tour.jsx';
 
 /* icons: caret-left caret-right copy users user-plus target sparkle translate arrow-counter-clockwise info check map-trifold lightbulb */
 
@@ -26,10 +27,12 @@ export function ThemePicker({ value, onPick, big }) {
   );
 }
 
-export function More() {
+export function More({ p = {} }) {
   const { S, act, pop, push, theme, toast, sheet, ai, reset, frame } = useApp();
   const g = theme === 'g';
-  const [inv, setInv] = useState(false);
+  const [inv, setInv0] = useState(!!p.invite);
+  const setInv = (v) => { setInv0(v); if (v && S.first && !S.first.invited) act((s) => (s.first ? { ...s, first: { ...s.first, invited: true } } : s)); };
+  useEffect(() => { if (p.invite) setInv(true); }, []);
   const [confirm, setConfirm] = useState(false);
   const [pantry, setPantry] = useState(false);
   const code = 'BH-7K2Q';
@@ -41,7 +44,7 @@ export function More() {
       <div className="sc">
         <header className="nb"><Back /><span className="nbt">Viac</span><span className="ibs" /></header>
         <div className="body">
-          <div className="lhead"><Av id="m" s={60} /><div className="grow"><h1 className="lt">Marek</h1><div className="meta">Domácnosť Blahovci · 2 členovia</div></div></div>
+          <div className="lhead"><Av id="m" s={60} /><div className="grow"><h1 className="lt">Marek</h1><div className="meta">{S.solo ? 'Vaša domácnosť · zatiaľ len vy' : 'Domácnosť Blahovci · 2 členovia'}</div></div></div>
 
           <div className="h2 sm">Téma prototypu</div>
           <ThemePicker value={theme} onPick={(t) => { act((s) => ({ ...s, theme: t })); toast(t === 'w' ? 'Téma: Teplá kuchyňa' : 'Téma: Fotky a sklo', { icon: 'paint-brush' }); }} />
@@ -50,10 +53,12 @@ export function More() {
 
           <div className="h2 sm">Domácnosť</div>
           <div className={'lst' + (g ? ' glass2' : '')}>
-            {Object.values(MEMBERS).map((m) => <div className="row" key={m.id}><Av id={m.id} s={40} /><div className="tx"><b>{m.name}</b><span className="sub">{m.id === 'm' ? 'vy · správca' : 'člen · vidí všetky zoznamy'}</span></div></div>)}
+            {Object.values(MEMBERS).filter((m) => !S.solo || m.id === 'm').map((m) => <div className="row" key={m.id}><Av id={m.id} s={40} /><div className="tx"><b>{m.name}</b><span className="sub">{m.id === 'm' ? 'vy · správca' : 'člen · vidí všetky zoznamy'}</span></div></div>)}
             <button type="button" className="row tap" onClick={() => setInv(!inv)}><span className="th ic"><I n="user-plus" /></span><div className="tx"><b>Pozvať do domácnosti</b><span className="sub">kód alebo odkaz</span></div><I n={inv ? 'caret-up' : 'caret-down'} w="bold" cls="chev" /></button>
             {inv && <div className="invite"><span className="code">{code}</span><Btn cls="soft sm" onClick={copy}><I n="copy" />Kopírovať</Btn><p className="meta sm">Druhý človek zadá kód v appke pri registrácii. Kód platí 7 dní.</p></div>}
           </div>
+
+          <HelpSection g={g} />
 
           <div className="h2 sm">Nastavenia</div>
           <div className={'lst menu-l' + (g ? ' glass2' : '')}>
@@ -63,8 +68,6 @@ export function More() {
             {pantry && <div className="chips wrap pantry">{pantryAll.filter((x) => PRODUCTS[x]).map((pid) => <button type="button" key={pid} className={'chip' + (S.have.includes(pid) ? ' on' : '')} onClick={() => act('toggleHave', pid)}><E k={PRODUCTS[pid].e} />{PRODUCTS[pid].n.replace(/ ·.*$/, '')}</button>)}</div>}
             <div className="row"><span className="th ic"><I n="sparkle" /></span><div className="tx"><b>AI asistent</b><span className="sub">{ai == null ? 'zisťujem…' : ai ? 'Claude – hlas, recepty, bločky' : 'nedostupný – rozpoznávanie v telefóne'}</span></div><span className={'stat' + (ai ? ' ok' : '')}>{ai ? 'zapnutý' : 'offline'}</span></div>
             <button type="button" className="row tap" onClick={() => push('bookmap')}><span className="th ic"><I n="map-trifold" /></span><div className="tx"><b>Mapa knihy receptov</b><span className="sub">čo máme, čo chýba, čo ľudia hľadajú · pre správcu</span></div><I n="caret-right" w="bold" cls="chev" /></button>
-            <div className="row"><span className="th ic"><I n="lightbulb" /></span><div className="tx"><b>Nápovedy</b><span className="sub">{S.coach && S.coach.off ? 'vypnuté – otáznik vpravo hore ich ukáže aj tak' : `ukazujú sa pri prvej návšteve obrazovky · videné ${Object.keys((S.coach && S.coach.seen) || {}).length} z ${COACH.length}`}</span></div><Toggle on={!(S.coach && S.coach.off)} onChange={(v) => act((s) => ({ ...s, coach: { ...(s.coach || {}), off: !v, welcomed: true } }))} label="Nápovedy" /></div>
-            <button type="button" className="row tap" onClick={() => { act((s) => ({ ...s, coach: { seen: {}, off: false, welcomed: true }, tips: {} })); toast('Nápovedy sa znova ukážu na každej obrazovke', { icon: 'lightbulb' }); }}><span className="th ic"><I n="arrow-counter-clockwise" /></span><div className="tx"><b>Ukázať všetky nápovedy znova</b><span className="sub">od začiatku, na každej obrazovke</span></div><I n="caret-right" w="bold" cls="chev" /></button>
             <div className="row"><span className="th ic"><I n="translate" /></span><div className="tx"><b>Jazyk</b><span className="sub">Slovenčina</span></div></div>
           </div>
 
@@ -72,7 +75,7 @@ export function More() {
           <div className={'card' + (g ? ' glass2' : '')}>
             <p className="meta">Toto je klikací prototyp. Zoznamy, nákupy, recepty a bločky sa ukladajú len v tomto prehliadači. Ceny a výdavky sú z testovacej databázy (66 bločkov). Do skutočnej appky sa nič neposiela.</p>
             {confirm ? <div className="sh-act"><Btn cls="soft" onClick={() => setConfirm(false)}>Nie</Btn><Btn cls="danger" onClick={() => { reset(); setConfirm(false); pop(); }}>Áno, začať odznova</Btn></div>
-              : <Btn cls="soft full" onClick={() => setConfirm(true)}><I n="arrow-counter-clockwise" w="bold" />Začať ukážku odznova</Btn>}
+              : <Btn cls="soft full" onClick={() => setConfirm(true)}><I n="arrow-counter-clockwise" w="bold" />Začať od uvítania</Btn>}
           </div>
           <details className={'card credits' + (g ? ' glass2' : '')}>
             <summary>Zdroje fotiek jedál</summary>

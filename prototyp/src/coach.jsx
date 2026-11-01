@@ -36,8 +36,8 @@ export const coachScreens = new Set(COACH.map((c) => c.screen));
 
 // „?“ v hlavičke – prehrá nápovedy obrazovky znova
 export function HelpBtn({ screen }) {
-  const { act } = useApp();
-  return <IB n="question" cls="helpb" label="Ako to tu funguje?" onClick={() => act((s) => ({ ...s, coach: { ...(s.coach || {}), welcomed: true, replay: { screen, k: Date.now() } } }))} />;
+  const { sheet } = useApp();
+  return <IB n="question" cls="helpb" label="Pomoc" onClick={() => sheet('help', { screen })} />;
 }
 
 const PAD = 6, GAP = 14, EDGE = 12;

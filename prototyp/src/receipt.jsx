@@ -81,8 +81,8 @@ export function Scan({ p }) {
       <div className={'capfoot' + (g ? ' glass2' : '')}>
         {err && <p className="vnote"><I n="warning-circle" />{err}</p>}
         {g && <div className="t1 c">Bloček v rámčeku, celý a rovno</div>}
-        <Btn cls={'pri full big' + (g ? ' a' : '')} onClick={() => cam.current.click()}><I n="camera" />Odfotiť bloček</Btn>
-        <Btn cls={'soft full' + (g ? ' gl' : '')} onClick={() => gal.current.click()}><I n="image" />Z galérie</Btn>
+        <Btn cls={'pri full big' + (g ? ' a' : '')} onClick={() => (S.tour && S.tour.on ? demo() : cam.current.click())}><I n="camera" />Odfotiť bloček</Btn>
+        <Btn cls={'soft full' + (g ? ' gl' : '')} onClick={() => (S.tour && S.tour.on ? demo() : gal.current.click())}><I n="image" />Z galérie</Btn>
       </div>
     </div>
   );

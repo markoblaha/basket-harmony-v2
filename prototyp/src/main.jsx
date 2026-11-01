@@ -8,7 +8,8 @@ import { Shop, Follow, FinishSheet } from './shop.jsx';
 import { Voice } from './voice.jsx';
 import { Cook, PlanSheet, ImportSheet, AddRecipeSheet } from './recipes.jsx';
 import { Taste, BookMap } from './book.jsx';
-import { Coach, CoachWelcome, coachScreens } from './coach.jsx';
+import { Coach, coachScreens } from './coach.jsx';
+import { Tour, Welcome, HelpSheet, startTour, CHAPTERS } from './tour.jsx';
 import { Recipes, RecipeScreen, RecipeCollection } from './cookbook.jsx';
 import { Scan, Receipts, ReceiptDetail } from './receipt.jsx';
 import { Money, CategoryScreen, KindScreen, VariantScreen, ProductScreen, StoreScreen, BudgetSheet } from './money.jsx';
@@ -17,7 +18,7 @@ import { More, ThemePicker } from './more.jsx';
 /* icons: house basket plus cooking-pot chart-pie sun fork-knife wallet microphone */
 const SCREENS = { home: Home, lists: Lists, list: ListScreen, recipes: Recipes, recipe: RecipeScreen, rcol: RecipeCollection, money: Money, category: CategoryScreen, kind: KindScreen, variant: VariantScreen, product: ProductScreen, store: StoreScreen, receipts: Receipts, receipt: ReceiptDetail, more: More, bookmap: BookMap, history: History, histlist: HistList };
 const MODALS = { shop: Shop, follow: Follow, cook: Cook, scan: Scan, voice: Voice, taste: Taste };
-const SHEETS = { item: ItemSheet, newList: NewListSheet, listMenu: ListMenuSheet, finish: FinishSheet, plan: PlanSheet, import: ImportSheet, addRecipe: AddRecipeSheet, budget: BudgetSheet, notif: NotifSheet };
+const SHEETS = { item: ItemSheet, newList: NewListSheet, listMenu: ListMenuSheet, finish: FinishSheet, plan: PlanSheet, import: ImportSheet, addRecipe: AddRecipeSheet, budget: BudgetSheet, notif: NotifSheet, help: HelpSheet };
 const TABS = ['home', 'lists', 'recipes', 'money'];
 const LABEL = { home: 'Domov', lists: 'Nákupy', recipes: 'Recepty', money: 'Výdavky', list: 'Zoznam', recipe: 'Recept', category: 'Kategória', product: 'Produkt', store: 'Obchod', receipts: 'Bločky', receipt: 'Bloček', more: 'Nastavenia', bookmap: 'Mapa knihy', history: 'História', histlist: 'Nákup' };
 const backLabel = (e) => { if (!e) return 'Späť'; if (e.s === 'kind') return e.p.kind; if (e.s === 'variant') return 'Výrobok'; if (e.s === 'rcol') { const c = e.p && (RCATS.find((x) => x.id === e.p.cat) || RCOLS.find((x) => x.id === e.p.col)); return c ? c.n.split(',')[0] : 'Recepty'; } return LABEL[e.s] || 'Späť'; };
@@ -219,7 +220,7 @@ export function App() {
     return () => clearTimeout(t);
   }, [S.shopping && S.shopping.listId, S.shopping && S.shopping.req]);
 
-  const reset = () => { clearSaved(); const s = initialState(); s.theme = S.theme; s.mode = S.mode; setS(s); setNav({ tab: 'home', stacks: { home: [{ s: 'home', k: 'r' }], lists: [{ s: 'lists', k: 'r' }], recipes: [{ s: 'recipes', k: 'r' }], money: [{ s: 'money', k: 'r' }] }, anim: 'tab', modal: null }); toast('Ukážka je ako na začiatku'); };
+  const reset = () => { clearSaved(); const s = initialState(); s.theme = S.theme; s.mode = S.mode; s.onb = null; s.tour = null; setS(s); setNav({ tab: 'home', stacks: { home: [{ s: 'home', k: 'r' }], lists: [{ s: 'lists', k: 'r' }], recipes: [{ s: 'recipes', k: 'r' }], money: [{ s: 'money', k: 'r' }] }, anim: 'tab', modal: null }); toast('Prototyp je ako pri prvom spustení'); };
 
   const onSc = (e) => { const t = e.target; if (t && t.classList && t.classList.contains('sc') && !t.classList.contains('rsc')) t.classList.toggle('scrolled', t.scrollTop > 8); };
   const ctx = { S, act, setS, theme, dark, frame, nav, go, push, pop, modal, closeModal, jump, sheet: openSheet, closeSheet, toast, voice, ai, ovl, reset };
@@ -229,10 +230,11 @@ export function App() {
   const topK = stack[stack.length - 1].k;
   const M = nav.modal && MODALS[nav.modal.s];
   const SH = sheet && SHEETS[sheet.name];
+  const touring = !!(S.tour && S.tour.on);
   const hideTabs = !!(nav.modal && !nav.modal.out) || stack.length > 1 && ['list'].includes(stack[stack.length - 1].s);
 
   const app = (
-    <div ref={appRef} className={`app ${theme} ${dark ? 't-d' : 't-l'}${frame ? ' framed' : ''}${hideTabs ? ' notabs' : ''}`}>
+    <div ref={appRef} className={`app ${theme} ${dark ? 't-d' : 't-l'}${frame ? ' framed' : ''}${hideTabs ? ' notabs' : ''}${touring ? ' touring' : ''}`}>
       {TABS.map((tab) => nav.stacks[tab].map((e, i) => {
         const Sc = SCREENS[e.s]; const st = nav.stacks[tab]; const top = tab === nav.tab && i === st.length - 1;
         const anim = top ? (nav.anim === 'push' ? ' in-push' : nav.anim === 'pop' ? ' in-pop' : nav.anim === 'tab' ? ' in-tab' : nav.anim === 'fly' ? ' in-fly' : '') : '';
@@ -240,12 +242,14 @@ export function App() {
         return <section key={tab + e.k} className={'scr s-' + e.s + (top ? ' top' + anim : ' off')} data-prev={prev ? '' : undefined} aria-hidden={!top} onScrollCapture={onSc}>{theme === 'g' && <div className="bgl"><div className="bgb pic-trh_p" /><div className="veil" /></div>}<ScreenCtx.Provider value={{ back: backLabel(st[i - 1]) }}><Sc p={e.p || {}} top={top} /></ScreenCtx.Provider></section>;
       }))}
       {stack.length > 1 && !nav.modal && !(sheet && sheet.open) && <EdgeBack appRef={appRef} done={popNow} />}
-      {(() => { const mOpen = nav.modal && !nav.modal.out; const scr = mOpen ? 'm-' + nav.modal.s : stack[stack.length - 1].s; const blk = !!(sheet && sheet.open) || (mOpen && !coachScreens.has(scr)); return <><Coach appRef={appRef} screen={scr} blocked={blk} /><CoachWelcome blocked={blk || mOpen} /></>; })()}
+      {(() => { const mOpen = nav.modal && !nav.modal.out; const scr = mOpen ? 'm-' + nav.modal.s : stack[stack.length - 1].s; const blk = !!(sheet && sheet.open) || (mOpen && !coachScreens.has(scr)) || touring || !(S.onb && S.onb.started); return <Coach appRef={appRef} screen={scr} blocked={blk} />; })()}
       {!hideTabs && <div className="tabfade" aria-hidden="true" />}
       {!hideTabs && <TabBar tab={nav.tab} go={go} voice={voice} vOn={!!(nav.modal && nav.modal.s === 'voice' && !nav.modal.out)} badge={(S.missingReceipts || []).length} />}
       {M && <section key={nav.modal.k} className={'mdl m-' + nav.modal.s + (nav.modal.out ? ' out' : '')} onScrollCapture={onSc}><M p={nav.modal.p} /></section>}
       <div className="ovl" ref={setOvl} />
       {SH && <SH key={sheet.k} open={sheet.open} close={closeSheet} {...sheet.props} />}
+      {(() => { const mOpen = nav.modal && !nav.modal.out; const scr = mOpen ? 'm-' + nav.modal.s : stack[stack.length - 1].s; return <Tour appRef={appRef} where={{ scr, sheet: sheet && sheet.open ? sheet.name : null }} />; })()}
+      <Welcome />
       <Toasts t={toastS} close={() => setToast(null)} />
       {!S.theme && <ThemeIntro onPick={(t) => act((s) => ({ ...s, theme: t }))} />}
     </div>
@@ -283,6 +287,10 @@ function Desk({ app }) {
     ['cooking-pot', 'Prelistujte knihu receptov', 'Kategórie, obľúbené a plán týždňa.', () => jump('recipes')],
     ['wallet', 'Pozrite výdavky', 'Október z vašich bločkov.', () => jump('money')],
   ];
+  const tour = [
+    ['hand-tap', 'Prvé spustenie od začiatku', 'Uvítanie: ukážka, naprázdno alebo pozvánka.', () => reset()],
+    ...CHAPTERS.map((c, i) => [c.ic, `Kapitola ${i + 1}: ${c.n}`, `${c.time} · potom sa vrátite k svojim údajom`, () => { jump('home'); startTour(act, null, { fromHelp: true, ch: i, only: i }); }]),
+  ];
   return (
     <div className="desk">
       <div className="phone-col">
@@ -297,7 +305,7 @@ function Desk({ app }) {
         <div className="p-head">
           <span className="p-k">Interaktívny prototyp</span>
           <h1>Basket Harmony</h1>
-          <p>Všetko v telefóne funguje: zoznamy, nákup, hlas, recepty, bločky aj výdavky. Zmeny sa ukladajú v tomto prehliadači. Späť sa vrátite aj potiahnutím z ľavého okraja obrazovky doprava.</p>
+          <p>Všetko v telefóne funguje: zoznamy, nákup, hlas, recepty, bločky aj výdavky. Pri prvom spustení privíta nového človeka sprievodca s ukážkou. Zmeny sa ukladajú v tomto prehliadači; späť sa vrátite aj potiahnutím z ľavého okraja doprava.</p>
         </div>
         <div className="p-sec">
           <h2>Téma</h2>
@@ -311,10 +319,14 @@ function Desk({ app }) {
           <h2>Vyskúšajte</h2>
           <div className="p-try">{tryIt.map(([ic, t, d, fn]) => <button type="button" key={t} onClick={fn}><I n={ic} /><span><b>{t}</b><small>{d}</small></span><I n="caret-right" w="bold" /></button>)}</div>
         </div>
+        <div className="p-sec">
+          <h2>Ukážka a sprievodca</h2>
+          <div className="p-try">{tour.map(([ic, t, d, fn]) => <button type="button" key={t} onClick={fn}><I n={ic} /><span><b>{t}</b><small>{d}</small></span><I n="caret-right" w="bold" /></button>)}</div>
+        </div>
         <div className="p-sec p-foot">
           <p className="p-ai"><i className={ai ? 'ok' : ''} />{ai == null ? 'Zisťujem, či je dostupná AI…' : ai ? 'AI (Claude) je pripojená – rozpoznáva reč, recepty aj bločky. Pri prvom použití sa opýta na povolenie.' : 'AI tu nie je dostupná – hlas a bločky sa rozpoznávajú v telefóne a cez ukážky.'}</p>
           {confirm ? <div className="p-confirm"><span>Vymazať všetky zmeny?</span><button type="button" className="d" onClick={() => { reset(); setConfirm(false); }}>Áno, začať odznova</button><button type="button" onClick={() => setConfirm(false)}>Nie</button></div>
-            : <button type="button" className="p-reset" onClick={() => setConfirm(true)}><I n="arrow-counter-clockwise" w="bold" />Začať ukážku odznova</button>}
+            : <button type="button" className="p-reset" onClick={() => setConfirm(true)}><I n="arrow-counter-clockwise" w="bold" />Začať od uvítania</button>}
         </div>
       </aside>
     </div>
