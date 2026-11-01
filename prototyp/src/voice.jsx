@@ -3,6 +3,7 @@ import { PRODUCTS, RECIPES } from './data.js';
 import { plural, parseLocal, matchProduct, toItemQty, estimate, unitPrice, eur, fmtQty, qtyOptions, storeName, relDay, recipeById, norm, splitChunks, parseChunk } from './logic.js';
 import { aiParseVoice, aiRecipeFromText, aiErrorText } from './ai.js';
 import { nextOpenList } from './store.js';
+import { VoiceTalk } from './voicetalk.jsx';
 
 /* icons: microphone keyboard x check caret-down arrow-up sparkle receipt cooking-pot stop warning-circle */
 
@@ -24,7 +25,9 @@ function fromAI(x) {
 }
 const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), ms))]);
 
-export function Voice({ p }) {
+// Diktovanie do nákupu má vlastnú obrazovku (voicetalk.jsx); tu ostáva hľadanie receptu a diktovanie receptu.
+export function Voice({ p }) { return (p.mode || 'talk') === 'talk' ? <VoiceTalk p={p} /> : <VoiceOther p={p} />; }
+function VoiceOther({ p }) {
   const { S, act, closeModal, theme, toast, jump, modal, push, ai } = useApp();
   const g = theme === 'g';
   const lists = S.lists.filter((l) => !l.live);

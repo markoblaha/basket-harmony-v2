@@ -117,6 +117,15 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   Prototyp s appkou ani DB nesúvisí. Zdroj je v `prototyp/` (React bez balíčkovača; `python3 prototyp/build.py` zostaví
   `prototyp/dist/basket-harmony-prototyp.html`, ten sa publikuje na adresu vyššie). Ikony a obrázky sú už vložené
   v `prototyp/gen/`; nové ikony/emoji vie pridať `build_full.py` (potrebuje zdrojové obrázky a balík @phosphor-icons/core).
+  1. 11. (schválené majiteľom, len v prototype): košík na karte zoznamu v Nákupoch (spustí nákup; pri rozbehnutom
+  nákupe zelené „pokračovať“), pripnutá hlavička nákupu s pásikom – dielik = položka, vždy aj pri 50 položkách
+  (namiesto kruhu), Hlasový nákup 2.0 (`prototyp/src/voicetalk.jsx`; návrh https://claude.ai/artifact/NHecpUar1srDgRvWcuwF3F):
+  cieľ hore („Do: Lidl · zajtra“, dá sa povedať), živý prepis „Počujem“, padajúce položky, zlúčenie rovnakých,
+  viditeľná oprava (mlieka → Mlieko polotučné, 500 g → 1 kg), neistota „syr“ s voľbami, ťuk = úprava hlasom
+  („radšej kilo“, „zmaž“), „zmaž pivo“, Hotovo → uloží rovno (ak cieľ zaznel) alebo panel „Kam pridať?“,
+  potom prechod do Nákupov s pulzom a „Späť“, rozdiktovaný koncept sa ukladá. Majiteľ ho neskôr upresní.
+  Ďalej: sklo a veľkosti podľa iOS (`prototyp/css/polish.css`), nápovedy pre nových používateľov (`coach.jsx`),
+  animácia odškrtnutia a zvýraznenie novej žiadosti. Do skutočnej appky zatiaľ nič z toho.
   30. 10.: prerobené rozloženie podľa pripomienok – 4 záložky s popisom (Domov, Nákupy, Recepty, Výdavky), bez
   záhadného akčného tlačidla; každá akcia má jedno miesto (hlas = mikrofón v poli zoznamu, bloček = Výdavky/Domov).
   Recepty ako kniha: Kniha receptov (kategórie, rýchly výber, zdroje) / Moje (obľúbené, pridané) / Plán týždňa,

@@ -1,0 +1,326 @@
+<title>Hlasový nákup 2.0</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400..750&display=swap">
+<style>
+/* Rozloženie: úzky textový stĺpec, pri každej téme pás telefónov (mockupy appky v téme Fotky a sklo, tmavý režim) */
+:root {
+  --bg: #f4f3f0; --surface: #ffffff; --sunken: #ebe9e4; --fg: #1c1b19; --muted: #5f5c55; --line: #dcd8d0;
+  --acc: #e8571c; --acc-soft: #fbe3d6; --ok: #1f9d5c; --ok-soft: #dcf1e5; --warn: #a96a06; --warn-soft: #f6ead0;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif; --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121210; --surface: #1c1b19; --sunken: #262421; --fg: #ecebe7; --muted: #a9a59c; --line: #34322e;
+  --acc: #ff8a52; --acc-soft: #3a2418; --ok: #4fd38c; --ok-soft: #15301f; --warn: #e8b85c; --warn-soft: #33290f; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121210; --surface: #1c1b19; --sunken: #262421; --fg: #ecebe7; --muted: #a9a59c; --line: #34322e;
+  --acc: #ff8a52; --acc-soft: #3a2418; --ok: #4fd38c; --ok-soft: #15301f; --warn: #e8b85c; --warn-soft: #33290f; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 400 16.5px/1.55 var(--body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 22px; }
+.col { max-width: 680px; display: flex; flex-direction: column; gap: 12px; }
+h1 { font: 800 clamp(34px, 6vw, 52px)/1.02 var(--display); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+h2 { font: 750 clamp(24px, 3.6vw, 31px)/1.12 var(--display); letter-spacing: -.01em; margin: 28px 0 0; text-wrap: balance; }
+h3 { font: 700 18px/1.25 var(--display); margin: 6px 0 0; }
+p, ul, ol { margin: 0; } ul, ol { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font: 700 12px/1 var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--acc); }
+.lede { font-size: 18.5px; color: var(--muted); }
+.verdict { display: inline-flex; align-self: flex-start; gap: 8px; align-items: center; font: 700 13px/1 var(--body); padding: 8px 12px; border-radius: 99px; background: var(--ok-soft); color: var(--ok); }
+.verdict.mid { background: var(--warn-soft); color: var(--warn); }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.box b { font-family: var(--display); }
+.strip { display: flex; gap: 18px; overflow-x: auto; padding: 6px 2px 14px; scroll-snap-type: x mandatory; }
+.strip::-webkit-scrollbar { height: 6px; } .strip::-webkit-scrollbar-thumb { background: var(--line); border-radius: 9px; }
+figure { margin: 0; flex: none; width: 270px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 10px; }
+figcaption { font-size: 14px; color: var(--muted); line-height: 1.45; }
+figcaption b { color: var(--fg); font-family: var(--display); font-size: 15px; display: block; margin-bottom: 2px; }
+.tag { display: inline-block; font: 700 11px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 5px 8px; border-radius: 99px; background: var(--sunken); color: var(--muted); margin-bottom: 4px; }
+.tag.new { background: var(--acc-soft); color: var(--acc); }
+.hint { font-size: 13.5px; color: var(--muted); margin-bottom: -10px; }
+.decide { display: flex; flex-direction: column; gap: 10px; counter-reset: q; }
+.decide > div { display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+.decide > div::before { counter-increment: q; content: counter(q); font: 750 14px/30px var(--display); text-align: center; height: 30px; border-radius: 99px; background: var(--acc-soft); color: var(--acc); }
+
+/* ---------- telefón (appka: Fotky a sklo, tmavý režim – pevné farby zámerne) ---------- */
+.ph { position: relative; width: 270px; height: 560px; border-radius: 40px; overflow: hidden; color: #fff; font: 500 13px/1.3 -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
+  background: radial-gradient(120% 70% at 20% 0%, #5b4a1c 0%, transparent 60%), radial-gradient(90% 60% at 100% 60%, #5a2a14 0%, transparent 65%), #141210;
+  box-shadow: 0 0 0 8px #0b0b0b, 0 0 0 9px #2a2a2a, 0 30px 60px -30px rgb(0 0 0 / .6); }
+.ph * { box-sizing: border-box; }
+.sb { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-weight: 650; font-size: 12px; }
+.gl { background: linear-gradient(180deg, rgb(255 255 255 / .1), rgb(255 255 255 / .02) 45%, transparent 70%), rgb(40 38 36 / .62); box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .16), inset 0 1px 0 rgb(255 255 255 / .2), 0 12px 26px -14px rgb(0 0 0 / .8); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+.pad { padding: 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.ttl { font-size: 24px; font-weight: 800; letter-spacing: -.6px; padding: 2px 4px 4px; }
+.card { border-radius: 20px; padding: 12px 13px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.row { display: flex; align-items: center; gap: 9px; }
+.grow { flex: 1; min-width: 0; }
+.t1 { font-size: 14.5px; font-weight: 750; letter-spacing: -.2px; } .s { font-size: 11.5px; color: rgb(255 255 255 / .62); }
+.price { font-size: 19px; font-weight: 800; letter-spacing: -.4px; text-align: right; white-space: nowrap; }
+.av { display: inline-flex; } .av i { width: 20px; height: 20px; border-radius: 99px; font: 750 9px/20px system-ui; text-align: center; font-style: normal; color: #fff; box-shadow: 0 0 0 2px #2a2724; }
+.av i + i { margin-left: -6px; } .m { background: #c96f5c; } .l { background: #5f8bb8; }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 99px; background: rgb(255 255 255 / .1); font-size: 11px; font-weight: 650; }
+.btnc { width: 44px; height: 44px; border-radius: 99px; flex: none; display: grid; place-items: center; background: linear-gradient(160deg, #ff9a5e, #f2601f); box-shadow: 0 10px 20px -10px #f2601f, inset 0 1px 0 rgb(255 255 255 / .35); }
+.btnc svg, .ic svg { width: 21px; height: 21px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.pill { height: 40px; border-radius: 99px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 750; font-size: 13.5px; padding: 0 16px; }
+.pri { background: linear-gradient(160deg, #ff9a5e, #f2601f); box-shadow: 0 10px 20px -12px #f2601f; }
+.ghost { background: rgb(255 255 255 / .12); }
+.tab { position: absolute; left: 10px; right: 10px; bottom: 12px; height: 52px; border-radius: 99px; display: flex; align-items: center; justify-content: space-around; font-size: 9.5px; font-weight: 650; color: rgb(255 255 255 / .8); }
+.tab span { display: flex; flex-direction: column; align-items: center; gap: 3px; } .tab span i { width: 18px; height: 18px; border-radius: 5px; background: rgb(255 255 255 / .75); }
+.tab .on { color: #ff8a52; } .tab .on i { background: #ff8a52; }
+.tab .mic { width: 44px; height: 44px; border-radius: 99px; background: rgb(255 120 70 / .3); box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .2); }
+.lst { border-radius: 18px; overflow: hidden; }
+.it { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-top: .5px solid rgb(255 255 255 / .08); position: relative; }
+.it:first-child { border-top: 0; }
+.em { width: 30px; height: 30px; border-radius: 9px; background: rgb(255 255 255 / .08); display: grid; place-items: center; font-size: 16px; flex: none; }
+.q { min-width: 46px; height: 26px; border-radius: 9px; background: rgb(255 255 255 / .1); display: grid; place-items: center; font-weight: 750; font-size: 12px; padding: 0 8px; }
+.ck { width: 22px; height: 22px; border-radius: 99px; border: 2px solid rgb(255 255 255 / .4); flex: none; }
+.ck.on { background: #31c46f; border-color: #31c46f; display: grid; place-items: center; } .ck.on::after { content: ""; width: 8px; height: 4px; border-left: 2.4px solid #fff; border-bottom: 2.4px solid #fff; transform: rotate(-45deg) translate(1px, -1px); }
+.it.done .grow b { text-decoration: line-through; color: rgb(255 255 255 / .55); }
+.it.done { background: rgb(49 196 111 / .12); }
+/* hlavička nákupu */
+.hd { padding: 6px 14px 10px; display: flex; flex-direction: column; gap: 8px; border-radius: 0 0 22px 22px; }
+.seg { display: flex; gap: 3px; align-items: center; }
+.seg i { flex: 1; height: 6px; border-radius: 99px; background: rgb(255 255 255 / .16); }
+.seg i.d { background: linear-gradient(90deg, #3ed283, #22b268); }
+.seg i.n { background: linear-gradient(90deg, #3ed283, #22b268); animation: segin 2.4s ease-out infinite; transform-origin: left; }
+@keyframes segin { 0% { transform: scaleX(0); } 30%, 100% { transform: scaleX(1); } }
+.seg b { font-size: 13px; margin-left: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; } .seg b small { color: rgb(255 255 255 / .55); font-size: 13px; font-weight: 600; }
+.ring { width: 78px; height: 78px; border-radius: 99px; background: conic-gradient(#31c46f 0 36%, rgb(255 255 255 / .1) 0); display: grid; place-items: center; flex: none; }
+.ring span { width: 62px; height: 62px; border-radius: 99px; background: #1d1b19; display: grid; place-items: center; text-align: center; font-weight: 800; font-size: 18px; line-height: 1; }
+.ring small { display: block; font-size: 8.5px; font-weight: 600; color: rgb(255 255 255 / .6); margin-top: 2px; }
+/* hlas */
+.vtop { display: flex; align-items: center; gap: 8px; padding: 2px 12px 8px; }
+.ic { width: 34px; height: 34px; border-radius: 99px; display: grid; place-items: center; flex: none; background: rgb(255 255 255 / .12); }
+.ic svg { width: 17px; height: 17px; }
+.target { flex: 1; height: 34px; border-radius: 99px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 12.5px; background: rgb(255 255 255 / .1); }
+.target em { font-style: normal; color: rgb(255 255 255 / .55); font-weight: 600; }
+.vlist { padding: 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.vi { border-radius: 15px; display: flex; align-items: center; gap: 9px; padding: 8px 10px; }
+.vi .grow b { font-size: 13.5px; } .vi .grow small { display: block; font-size: 11px; color: rgb(255 255 255 / .55); margin-top: 1px; }
+.vi.drop { animation: drop 4.8s cubic-bezier(.2,1.25,.35,1) infinite; }
+.vi.drop.d2 { animation-delay: .9s; }
+@keyframes drop { 0% { transform: translateY(-46px) scale(.92); opacity: 0; } 9% { transform: none; opacity: 1; box-shadow: 0 0 0 1.5px #31c46f, 0 0 22px rgb(49 196 111 / .45); } 26% { box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .16); } 90% { opacity: 1; } 100% { opacity: 1; } }
+.fix { font-size: 10.5px; color: #8fe0b2; } .fix s { color: rgb(255 255 255 / .45); }
+.vi.sel { box-shadow: 0 0 0 2px #ff8a52, 0 0 24px rgb(255 138 82 / .45); }
+.vi.unsure { box-shadow: 0 0 0 1.5px #e8b85c; }
+.opts { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; } .opts span { height: 24px; padding: 0 9px; border-radius: 99px; background: rgb(255 255 255 / .12); display: inline-flex; align-items: center; font-size: 11px; font-weight: 650; }
+.opts span.a { background: #e8b85c; color: #2a1d00; }
+.vbot { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px 16px; display: flex; flex-direction: column; gap: 10px; align-items: center;
+  background: linear-gradient(180deg, transparent, rgb(20 18 16 / .92) 30%); }
+.heard { align-self: stretch; border-radius: 16px; padding: 9px 12px; font-size: 13px; line-height: 1.35; }
+.heard small { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: rgb(255 255 255 / .5); font-weight: 700; margin-bottom: 2px; }
+.heard i { font-style: normal; color: rgb(255 255 255 / .45); }
+.ctrl { display: flex; align-items: center; justify-content: space-between; align-self: stretch; }
+.orb { width: 66px; height: 66px; border-radius: 99px; background: radial-gradient(circle at 30% 28%, #fff3d6 0%, #ffb36b 22%, #ff6a5a 46%, #b44cff 76%, #5b6cff 100%); box-shadow: 0 0 0 8px rgb(255 120 90 / .14), 0 16px 34px -10px rgb(255 106 90 / .7); position: relative; }
+.orb::after { content: ""; position: absolute; inset: -14px; border-radius: 99px; border: 1.5px solid rgb(255 160 120 / .4); animation: ring 1.8s ease-out infinite; }
+@keyframes ring { from { transform: scale(.85); opacity: 1; } to { transform: scale(1.25); opacity: 0; } }
+.orb.edit { background: radial-gradient(circle at 30% 28%, #fff3d6 0%, #ffcf8a 30%, #ff8a52 70%); }
+.wave { display: flex; gap: 3px; align-items: center; height: 18px; } .wave i { width: 3px; border-radius: 3px; background: rgb(255 255 255 / .7); animation: wv 1s ease-in-out infinite; }
+.wave i:nth-child(1) { height: 6px; } .wave i:nth-child(2) { height: 14px; animation-delay: .15s; } .wave i:nth-child(3) { height: 18px; animation-delay: .3s; } .wave i:nth-child(4) { height: 10px; animation-delay: .45s; } .wave i:nth-child(5) { height: 7px; animation-delay: .6s; }
+@keyframes wv { 50% { transform: scaleY(.4); } }
+.side { width: 64px; text-align: center; font-size: 11.5px; font-weight: 700; color: rgb(255 255 255 / .75); }
+.done { height: 38px; padding: 0 16px; border-radius: 99px; background: #fff; color: #141210; font-weight: 800; font-size: 13px; display: grid; place-items: center; }
+.scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .45); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 28px 28px 0 0; padding: 8px 14px 18px; display: flex; flex-direction: column; gap: 9px;
+  background: linear-gradient(180deg, rgb(255 255 255 / .1), transparent 40%), rgb(34 32 30 / .9); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); box-shadow: inset 0 .5px 0 rgb(255 255 255 / .2); }
+.grab { width: 34px; height: 4px; border-radius: 99px; background: rgb(255 255 255 / .3); align-self: center; }
+.sh-t { font-size: 17px; font-weight: 800; letter-spacing: -.3px; } .k { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; font-weight: 750; color: rgb(255 255 255 / .55); }
+.opt { border-radius: 15px; padding: 9px 11px; display: flex; align-items: center; gap: 9px; background: rgb(255 255 255 / .07); }
+.opt.on { box-shadow: 0 0 0 1.5px #ff8a52; background: rgb(255 138 82 / .12); }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; } .tiles span { height: 30px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 11px; background: rgb(255 255 255 / .08); }
+.tiles span.on { background: rgb(255 138 82 / .22); box-shadow: inset 0 0 0 1px #ff8a52; }
+.toast { position: absolute; left: 10px; right: 10px; top: 42px; border-radius: 16px; padding: 10px 12px; display: flex; align-items: center; gap: 9px; font-weight: 650; font-size: 12.5px; background: rgb(24 24 27 / .9); box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .14); }
+.toast u { text-decoration: none; margin-left: auto; padding: 5px 10px; border-radius: 99px; background: rgb(255 255 255 / .16); font-weight: 750; }
+.pulse { box-shadow: 0 0 0 2px #31c46f, 0 0 26px rgb(49 196 111 / .5) !important; }
+@media (prefers-reduced-motion: reduce) { .vi.drop, .orb::after, .wave i, .seg i.n { animation: none; } }
+</style>
+
+<div class="wrap">
+  <header class="col">
+    <span class="eyebrow">Basket Harmony · návrh na schválenie</span>
+    <h1>Hlasový nákup 2.0</h1>
+    <p class="lede">Tri návrhy k nákupom: tlačidlo Nakupovať priamo na karte zoznamu, kompaktnejšia hlavička počas nákupu a prepracovaný hlasový režim. Obrazovky sú nakreslené v téme Fotky a sklo, v Teplej kuchyni budú rovnaké, len vo svojich farbách. Nič z toho ešte nie je v interaktívnom návrhu.</p>
+  </header>
+
+  <!-- ========== 1 ========== -->
+  <section class="col">
+    <h2>Tlačidlo Nakupovať na karte zoznamu</h2>
+    <span class="verdict">Odporúčam, s tromi pravidlami</span>
+    <p>Dnes treba na nákup ťuknúť dvakrát: otvoriť zoznam a potom Nakupovať. V obchode je to zbytočný krok. Okrúhle tlačidlo s košíkom priamo na karte ho odstráni a zároveň je na prvý pohľad jasné, ktorý zoznam je pripravený na nákup.</p>
+    <ul>
+      <li><b>Samostatná plocha 44 × 44 bodov</b> vpravo dole, oddelená od zvyšku karty. Ťuk na kartu ďalej otvára zoznam, ťuk na košík spúšťa nákup. Omyl nevadí, nákup sa dá hneď zavrieť a nič sa nestratí.</li>
+      <li><b>Len pri zozname s položkami.</b> Prázdny zoznam tlačidlo nemá.</li>
+      <li><b>Keď už niekto nakupuje</b>, namiesto košíka je zelené „Sledovať“, aby dvaja nenakupovali ten istý zoznam naraz.</li>
+    </ul>
+  </section>
+  <div class="strip" aria-label="Návrh karty zoznamu">
+    <figure>
+      <div class="ph"><div class="sb"><span>19:30</span><span>●●● 62 %</span></div>
+        <div class="pad"><div class="ttl">Nákupy</div>
+          <div class="card gl"><div class="row"><div class="grow"><div class="t1">Nakupuje: Lucia <span style="color:#3ed283">●</span></div><div class="s">Lidl · 5 z 9 v košíku</div></div><span class="pill ghost" style="height:30px;font-size:11.5px;color:#7fe3a9">Sledovať</span></div></div>
+          <div class="card gl">
+            <div class="row"><div class="grow"><div class="row" style="gap:6px"><span class="t1">Veľký nákup</span><span class="av"><i class="m">M</i><i class="l">L</i></span></div><div class="s">Kaufland · Zajtra 17:30</div></div><div><div class="price">~29 €</div><div class="s" style="text-align:right">10 položiek</div></div></div>
+            <div class="row"><span class="chip">🍲 Hovädzí guláš · piatok</span><span class="grow"></span><span class="btnc" aria-label="Nakupovať"><svg viewBox="0 0 24 24"><path d="M5 10h14l-1.4 9H6.4z"/><path d="M9 10l3-5 3 5"/></svg></span></div>
+          </div>
+          <div class="card gl">
+            <div class="row"><div class="grow"><div class="row" style="gap:6px"><span class="t1">Drogéria</span><span class="av"><i class="m">M</i><i class="l">L</i></span></div><div class="s">dm · Streda</div></div><div><div class="price">~21 €</div><div class="s" style="text-align:right">4 položky</div></div><span class="btnc" style="margin-left:8px"><svg viewBox="0 0 24 24"><path d="M5 10h14l-1.4 9H6.4z"/><path d="M9 10l3-5 3 5"/></svg></span></div>
+          </div>
+        </div>
+        <div class="tab gl"><span>⌂<i></i>Domov</span><span class="on"><i></i>Nákupy</span><span class="mic"></span><span><i></i>Recepty</span><span><i></i>Výdavky</span></div>
+      </div>
+      <figcaption><b>Návrh</b>Oranžový košík vpravo. Pri karte s receptom je v riadku s receptom, pri jednoduchej karte vedľa ceny. Lucia už nakupuje, preto má jej karta „Sledovať“.</figcaption>
+    </figure>
+  </div>
+
+  <!-- ========== 2 ========== -->
+  <section class="col">
+    <h2>Hlavička počas nákupu</h2>
+    <span class="verdict">Odporúčam, kompaktná a pripnutá hore</span>
+    <p>Kruh je pekný, ale zaberá tretinu obrazovky a pri posúvaní zmizne. Počas nákupu chce človek vidieť hlavne položky. Váš návrh s pásikom je lepší: <b>zmestí sa do hlavičky, zostane hore aj pri posúvaní</b> a ukazuje to isté.</p>
+    <ul>
+      <li><b>Jeden dielik = jedna položka</b>, nie kus. Šesť rožkov je jedna položka. Pri odškrtnutí sa dielik plynulo naplní zelenou, presne v rytme animácie odškrtnutia.</li>
+      <li><b>Nad 20 položiek</b> by dieliky boli príliš tenké, preto sa zmenia na jeden súvislý pásik. Číslo „7/10“ ostáva vždy.</li>
+      <li><b>Text v hlavičke:</b> „Nakupuješ · Kaufland“ a pod tým „od 19:24 · v košíku 12,40 € · zostáva 3“. Suma v košíku zostane, len menšia.</li>
+      <li><b>Pri Teplej kuchyni</b> rovnako, v jej zelenej. Odznak „Obrazovka ostáva zapnutá“ sa zmení na malú ikonku slnka vedľa krížika.</li>
+    </ul>
+  </section>
+  <div class="strip" aria-label="Porovnanie hlavičky nákupu">
+    <figure>
+      <div class="ph"><div class="sb"><span>17:50</span><span>●●● 23 %</span></div>
+        <div class="pad"><div class="row"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span><b style="font-size:15px">Kaufland</b><span class="chip" style="margin-left:auto">☀ Obrazovka ostáva zapnutá</span></div>
+          <div class="card gl" style="flex-direction:row;align-items:center;gap:14px"><div class="ring"><span>4<small>/11 v košíku</small></span></div><div><div class="s">Kaufland · 6 min</div><div style="font-size:24px;font-weight:800">8,72 €</div><div class="s">zostáva ~21 €</div></div></div>
+          <div class="lst gl"><div class="it"><span class="ck"></span><div class="grow"><b>Banány</b><div class="s">1 ks · ~0,81 €</div></div><span class="em">🍌</span></div><div class="it"><span class="ck"></span><div class="grow"><b>Cibuľa</b><div class="s">3 ks · ~0,66 €</div></div><span class="em">🧅</span></div><div class="it"><span class="ck"></span><div class="grow"><b>Paprika</b><div class="s">2 ks · ~1,06 €</div></div><span class="em">🫑</span></div></div>
+        </div>
+      </div>
+      <figcaption><span class="tag">Dnes</span><b>Kruh v karte</b>Zaberá veľa miesta a pri posúvaní odíde z obrazovky.</figcaption>
+    </figure>
+    <figure>
+      <div class="ph"><div class="sb"><span>17:50</span><span>●●● 23 %</span></div>
+        <div class="hd gl">
+          <div class="row"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span><div class="grow"><div class="t1">Nakupuješ · Kaufland</div><div class="s">od 17:44 · v košíku 8,72 € · zostáva 7</div></div><span class="ic" title="Obrazovka ostáva zapnutá" style="background:rgb(255 176 87 / .2)"><svg viewBox="0 0 24 24" style="stroke:#ffb057"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M5 19l1.4-1.4M17.6 6.4L19 5"/></svg></span></div>
+          <div class="seg"><i class="d"></i><i class="d"></i><i class="d"></i><i class="n"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><b>4<small>/11</small></b></div>
+        </div>
+        <div class="pad" style="margin-top:10px">
+          <div class="s" style="font-weight:750;letter-spacing:.08em;text-transform:uppercase;font-size:10px;padding:0 4px">Teraz: ovocie a zelenina · 1/4</div>
+          <div class="lst gl"><div class="it done"><span class="ck on"></span><div class="grow"><b>Avokádo</b><div class="s">2 ks · ~1,98 €</div></div><span class="em">🥑</span></div><div class="it"><span class="ck"></span><div class="grow"><b>Banány</b><div class="s">1 ks · ~0,81 €</div></div><span class="em">🍌</span></div><div class="it"><span class="ck"></span><div class="grow"><b>Cibuľa</b><div class="s">3 ks · ~0,66 €</div></div><span class="em">🧅</span></div><div class="it"><span class="ck"></span><div class="grow"><b>Paprika</b><div class="s">2 ks · ~1,06 €</div></div><span class="em">🫑</span></div></div>
+          <div class="s" style="font-weight:750;letter-spacing:.08em;text-transform:uppercase;font-size:10px;padding:2px 4px 0">Mliečne a vajcia · 0/3</div>
+          <div class="lst gl"><div class="it"><span class="ck"></span><div class="grow"><b>Mlieko</b><div class="s">2 ks · ~1,98 €</div></div><span class="em">🥛</span></div></div>
+        </div>
+      </div>
+      <figcaption><span class="tag new">Návrh</span><b>Pásik v pripnutej hlavičke</b>O 40 % menej miesta, viac položiek naraz na obrazovke. Štvrtý dielik sa práve plní po odškrtnutí.</figcaption>
+    </figure>
+  </div>
+
+  <!-- ========== 3 ========== -->
+  <section class="col">
+    <h2>Hlasový nákup</h2>
+    <span class="verdict">Princíp z nasadenej appky je dobrý, prepracoval by som štyri veci</span>
+    <p>V nasadenej appke položky padajú do zoznamu so zelenou animáciou, opravujú sa množstvá aj pravopis, ťuknutím na položku ju upravíte hlasom a po Hotovo príde „Kam to dať?“. To je správny základ a ostáva. Chýbajú však štyri veci:</p>
+    <ol>
+      <li><b>Človek nevidí, čo appka práve počuje.</b> Pridám živý prepis dole: hovorené slová sa objavujú v bubline a hneď ako appka vetu pochopí, „odletia“ ako položky hore.</li>
+      <li><b>Oprava nie je viditeľná.</b> Keď appka opraví „jogurty“ na „Bio jogurt“ alebo „tri“ na „3 ks“, pod položkou na 2 sekundy uvidíte prečiarknuté pôvodné slovo a nové, nech viete, čo sa zmenilo.</li>
+      <li><b>Neistota sa nehlási.</b> Keď si appka nie je istá („mlieko“: polotučné alebo trvanlivé?), položka dostane jantárový okraj a dve voľby na ťuknutie. Dá sa aj povedať „polotučné“.</li>
+      <li><b>„Kam to dať?“ je až na konci.</b> Hore bude stále viditeľný cieľ (napríklad „Do: Veľký nákup“) a dá sa zmeniť kedykoľvek. Hotovo potom otvorí ten istý panel ako Nový zoznam, aby si človek nemusel zvykať na dva rôzne.</li>
+    </ol>
+  </section>
+  <p class="hint">Šesť obrazoviek za sebou, posúvajte do strany →</p>
+  <div class="strip" aria-label="Hlasový nákup – obrazovky">
+    <figure>
+      <div class="ph"><div class="sb"><span>19:05</span><span>●●● 70 %</span></div>
+        <div class="vtop"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span><span class="target">Do: <em>nový zoznam</em> ▾</span></div>
+        <div class="vlist" style="margin-top:80px;text-align:center;align-items:center;gap:8px;color:rgb(255 255 255 / .7)"><b style="font-size:19px;color:#fff">Hovorte, čo kúpiť</b><span style="font-size:12.5px">Napríklad: „dve mlieka, chlieb a pol kila mletého mäsa do Lidla“</span></div>
+        <div class="vbot"><div class="ctrl"><span class="side">Písať</span><span class="orb"></span><span class="side">Pauza</span></div><span class="s">počúvam</span></div>
+      </div>
+      <figcaption><span class="tag new">1 · Začiatok</span><b>Počúva hneď</b>Hore je cieľ, kam sa položky pridajú. Dá sa ťuknutím zmeniť alebo povedať („do Lidla“, „do Veľkého nákupu“).</figcaption>
+    </figure>
+    <figure>
+      <div class="ph"><div class="sb"><span>19:05</span><span>●●● 70 %</span></div>
+        <div class="vtop"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span><span class="target">Do: Lidl · zajtra ▾</span></div>
+        <div class="vlist">
+          <div class="s" style="padding:0 4px">4 položky · ťuknutím upravíte</div>
+          <div class="vi gl drop d2"><span class="em">🥩</span><div class="grow"><b>Mleté mäso</b><small>bravčovo-hovädzie</small></div><span class="q">500 g</span></div>
+          <div class="vi gl drop"><span class="em">🍞</span><div class="grow"><b>Chlieb</b></div><span class="q">1 ks</span></div>
+          <div class="vi gl"><span class="em">🥛</span><div class="grow"><b>Mlieko polotučné</b><small class="fix"><s>mlieka</s> → Mlieko polotučné</small></div><span class="q">2 ks</span></div>
+          <div class="vi gl"><span class="em">🍌</span><div class="grow"><b>Banány</b></div><span class="q">1 ks</span></div>
+        </div>
+        <div class="vbot"><div class="heard gl"><small>Počujem</small>…chlieb a pol kila mletého mäsa <i>do Lidla</i></div><div class="ctrl"><span class="side">Písať</span><span class="orb"></span><span class="done">Hotovo</span></div></div>
+      </div>
+      <figcaption><span class="tag new">2 · Diktovanie</span><b>Položky padajú zhora</b>Nová položka dopadne s pružinou a zeleným zábleskom. Pod opravenou položkou sa na chvíľu ukáže, čo sa zmenilo. „Do Lidla“ hneď prepne cieľ hore.</figcaption>
+    </figure>
+    <figure>
+      <div class="ph"><div class="sb"><span>19:06</span><span>●●● 70 %</span></div>
+        <div class="vtop"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span><span class="target">Do: Lidl · zajtra ▾</span></div>
+        <div class="vlist">
+          <div class="vi gl unsure"><span class="em">🧀</span><div class="grow"><b>Syr?</b><small>Ktorý ste mysleli?</small><div class="opts"><span class="a">Eidam strúhaný</span><span>Mozzarella</span><span>iný</span></div></div><span class="q">1 ks</span></div>
+          <div class="vi gl"><span class="em">🥩</span><div class="grow"><b>Mleté mäso</b></div><span class="q">500 g</span></div>
+          <div class="vi gl"><span class="em">🍞</span><div class="grow"><b>Chlieb</b></div><span class="q">1 ks</span></div>
+          <div class="vi gl"><span class="em">🥛</span><div class="grow"><b>Mlieko polotučné</b></div><span class="q">2 ks</span></div>
+        </div>
+        <div class="vbot"><div class="heard gl"><small>Počujem</small>…a syr</div><div class="ctrl"><span class="side">Písať</span><span class="orb"></span><span class="done">Hotovo</span></div></div>
+      </div>
+      <figcaption><span class="tag new">3 · Neistota</span><b>Jantárový okraj a voľby</b>Najpravdepodobnejšia voľba je zvýraznená podľa toho, čo domácnosť kupuje najčastejšie. Ťuk alebo povedať „eidam“. Ak to nikto nerieši, ostane predvolená.</figcaption>
+    </figure>
+    <figure>
+      <div class="ph"><div class="sb"><span>19:06</span><span>●●● 70 %</span></div>
+        <div class="vtop"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span><span class="target">Do: Lidl · zajtra ▾</span></div>
+        <div class="vlist">
+          <div class="vi gl"><span class="em">🧀</span><div class="grow"><b>Eidam strúhaný</b></div><span class="q">1 ks</span></div>
+          <div class="vi gl sel"><span class="em">🥩</span><div class="grow"><b>Mleté mäso</b><small class="fix"><s>500 g</s> → 1 kg</small></div><span class="q">1 kg</span></div>
+          <div class="vi gl"><span class="em">🍞</span><div class="grow"><b>Chlieb</b></div><span class="q">1 ks</span></div>
+          <div class="vi gl"><span class="em">🥛</span><div class="grow"><b>Mlieko polotučné</b></div><span class="q">2 ks</span></div>
+        </div>
+        <div class="vbot"><div class="heard gl" style="box-shadow:0 0 0 1.5px #ff8a52"><small style="color:#ff8a52">Upravujem: mleté mäso</small>„radšej kilo“ · alebo „zmaž“, „bez…“</div><div class="ctrl"><span class="side">Hotovo s úpravou</span><span class="orb edit"></span><span class="side">Zmazať</span></div></div>
+      </div>
+      <figcaption><span class="tag">4 · Úprava (ako dnes)</span><b>Ťuk na položku = úprava hlasom</b>Vybraná položka svieti oranžovo a bublina dole hovorí, čo sa upravuje. Po vete sa výber sám zruší a diktuje sa ďalej.</figcaption>
+    </figure>
+    <figure>
+      <div class="ph"><div class="sb"><span>19:07</span><span>●●● 70 %</span></div>
+        <div class="vtop"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span><span class="target">Do: nový zoznam ▾</span></div>
+        <div class="vlist"><div class="vi gl"><span class="em">🧀</span><div class="grow"><b>Eidam strúhaný</b></div><span class="q">1 ks</span></div><div class="vi gl"><span class="em">🥩</span><div class="grow"><b>Mleté mäso</b></div><span class="q">1 kg</span></div></div>
+        <div class="scrim"></div>
+        <div class="sheet"><span class="grab"></span>
+          <div class="sh-t">Kam pridať 5 položiek?</div>
+          <span class="k">Do existujúceho</span>
+          <div class="opt on"><div class="grow"><b>Veľký nákup</b><div class="s">Kaufland · zajtra · 10 položiek</div></div><span class="av"><i class="m">M</i><i class="l">L</i></span></div>
+          <div class="opt"><div class="grow"><b>Drogéria</b><div class="s">dm · streda</div></div></div>
+          <span class="k">Alebo nový zoznam</span>
+          <div class="tiles"><span>Lidl</span><span>Kaufland</span><span>Billa</span></div>
+          <div class="row" style="gap:5px"><span class="chip">Dnes</span><span class="chip">Zajtra</span><span class="chip">Dátum</span><span class="chip" style="margin-left:auto">Blahovci</span></div>
+          <span class="pill pri" style="height:42px">Pridať do „Veľký nákup“</span>
+        </div>
+      </div>
+      <figcaption><span class="tag new">5 · Hotovo</span><b>Jeden panel ako pri novom zozname</b>Navrchu sú existujúce zoznamy, prvý je ten s rovnakým obchodom alebo najbližším termínom. Pod nimi nový zoznam s dlaždicami obchodov a dňami. Ak cieľ zaznel počas diktovania, panel sa preskočí.</figcaption>
+    </figure>
+    <figure>
+      <div class="ph"><div class="sb"><span>19:07</span><span>●●● 70 %</span></div>
+        <div class="toast"><span style="color:#7fe3a9">✓</span>5 položiek vo „Veľký nákup“<u>Späť</u></div>
+        <div class="pad" style="margin-top:56px"><div class="ttl">Nákupy</div>
+          <div class="card gl pulse"><div class="row"><div class="grow"><div class="row" style="gap:6px"><span class="t1">Veľký nákup</span><span class="av"><i class="m">M</i><i class="l">L</i></span></div><div class="s">Kaufland · Zajtra 17:30</div></div><div><div class="price">~41 €</div><div class="s" style="text-align:right">15 položiek</div></div><span class="btnc" style="margin-left:8px"><svg viewBox="0 0 24 24"><path d="M5 10h14l-1.4 9H6.4z"/><path d="M9 10l3-5 3 5"/></svg></span></div><div class="s" style="color:#7fe3a9">+5 nových položiek</div></div>
+          <div class="card gl"><div class="row"><div class="grow"><div class="t1">Drogéria</div><div class="s">dm · Streda</div></div><div class="price">~21 €</div></div></div>
+        </div>
+        <div class="tab gl"><span><i></i>Domov</span><span class="on"><i></i>Nákupy</span><span class="mic"></span><span><i></i>Recepty</span><span><i></i>Výdavky</span></div>
+      </div>
+      <figcaption><span class="tag new">6 · Potvrdenie</span><b>Plynulo do Nákupov</b>Obrazovka „odletí“ do Nákupov a zoznam, kam sa položky pridali, chvíľu zeleno pulzuje (rovnako ako pri receptoch). Správa hore má Späť pre prípad omylu.</figcaption>
+    </figure>
+  </div>
+
+  <section class="col">
+    <h3>Čo ostáva z nasadenej appky</h3>
+    <ul>
+      <li>Položky padajú do zoznamu, opravuje sa pravopis aj množstvo („nie, tri“, „zmaž maslo“).</li>
+      <li>Ťuk na položku a úprava hlasom. Potiahnutie doprava +1, doľava −1.</li>
+      <li>„Chcem uvariť guláš“ ponúkne recepty a ich suroviny.</li>
+      <li>Rozdiktovaný zoznam sa priebežne ukladá. Po zatvorení a otvorení sa pokračuje.</li>
+      <li>Žiadne zvuky. Len jemná vibrácia pri pridaní položky.</li>
+    </ul>
+    <div class="box"><b>Pre iPhone dôležité</b><p>Na iPhone appka nahráva po vetách a text spracuje AI, takže živý prepis tam bude po vetách, nie po slovách. Bublina „Počujem“ preto počas reči ukáže vlnku a text až po dokončení vety. Na Androide pôjde slovo po slove.</p></div>
+  </section>
+
+  <section class="col">
+    <h2>Na rozhodnutie</h2>
+    <div class="decide">
+      <div><span><b>Košík na karte zoznamu</b>: áno, podľa návrhu (oranžový, vpravo, „Sledovať“, keď už niekto nakupuje)?</span></div>
+      <div><span><b>Pásik v hlavičke nákupu</b> namiesto kruhu, pripnutý hore, do 20 položiek po dielikoch?</span></div>
+      <div><span><b>Hlasový nákup</b>: všetkých šesť krokov tak, ako sú nakreslené, alebo niečo vynechať či zmeniť?</span></div>
+      <div><span><b>Poradie</b>: najprv to dám do interaktívneho návrhu a až po odsúhlasení do skutočnej appky.</span></div>
+    </div>
+  </section>
+</div>

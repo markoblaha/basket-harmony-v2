@@ -11,6 +11,7 @@ export const COACH = [
   { id: 'quick', screen: 'home', sel: '.qa', title: 'Najčastejšie akcie', text: 'Pridať do nákupu, odfotiť bloček alebo nájsť, čo uvariť – všetko jedným ťuknutím.' },
   { id: 'newlist', screen: 'lists', sel: '.nb .nbr .ib:last-child, .nb > .ib:last-child', hand: 'tap', title: 'Nový zoznam', text: 'Pomenujte ho, vyberte deň a či ho uvidí celá domácnosť.' },
   { id: 'lcard', screen: 'lists', sel: '.lcard', hand: 'tap', title: 'Otvorte zoznam', text: 'Uvidíte položky, odhad ceny podľa bločkov a môžete ísť nakupovať.' },
+  { id: 'lgo', screen: 'lists', sel: '.lgo', hand: 'tap', title: 'Rovno do obchodu', text: 'Košíkom na karte spustíte nákup bez otvárania zoznamu.' },
   { id: 'composer', screen: 'list', sel: '.dock .field', title: 'Pridajte položku', text: 'Napíšte napríklad „mlieko 2“ alebo ťuknite na mikrofón a povedzte, čo treba.' },
   { id: 'shopbtn', screen: 'list', sel: '.est .btn', hand: 'tap', title: 'Ste v obchode?', text: 'Ťuknite na Nakupovať a odškrtávajte, čo dávate do košíka.' },
   { id: 'taste', screen: 'recipes', sel: '.tentry', hand: 'tap', title: 'Neviete, čo variť?', text: 'V Ochutnávači listujete recepty ako videá. Čo sa páči, označíte srdiečkom.' },

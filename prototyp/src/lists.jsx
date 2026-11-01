@@ -44,9 +44,12 @@ export function Lists() {
           {lists.map((l) => {
             const t = listTotals(l, S, true); const open = l.items.filter((i) => !i.done);
             return (
-              <button type="button" key={l.id} className={'card lcard tapc' + (g ? ' glass2' : '') + (l.hl && Date.now() - l.hl < 7000 ? ' lhl' : '')} onClick={() => push('list', { id: l.id })}
+              <div role="button" tabIndex={0} key={l.id} className={'card lcard tapc' + (g ? ' glass2' : '') + (l.hl && Date.now() - l.hl < 7000 ? ' lhl' : '')} onClick={() => push('list', { id: l.id })} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); push('list', { id: l.id }); } }} aria-label={`${l.name}, otvoriť zoznam`}
                 ref={l.hl && Date.now() - l.hl < 7000 ? (n) => n && setTimeout(() => n.scrollIntoView({ block: 'center', behavior: 'smooth' }), 450) : undefined}>
-                <div className="rowc"><div className="grow"><div className="ttl tw"><span>{l.name}</span>{l.shared.length > 1 ? <Avatars ids={l.shared} sm /> : <span className="prv" role="img" aria-label="Súkromný – iba ja"><I n="lock-simple" /></span>}</div><div className="meta">{withStore(l, when(l))}</div></div><div className="ra"><div className="price">{t.priced ? '~' + eur0(t.v) : '–'}</div><div className="meta">{open.length} {open.length === 1 ? 'položka' : open.length < 5 && open.length > 0 ? 'položky' : 'položiek'}</div></div></div>
+                <div className="rowc"><div className="grow"><div className="ttl tw"><span>{l.name}</span>{l.shared.length > 1 ? <Avatars ids={l.shared} sm /> : <span className="prv" role="img" aria-label="Súkromný – iba ja"><I n="lock-simple" /></span>}</div><div className="meta">{withStore(l, when(l))}</div></div><div className="ra"><div className="price">{t.priced ? '~' + eur0(t.v) : '–'}</div><div className="meta">{open.length} {open.length === 1 ? 'položka' : open.length < 5 && open.length > 0 ? 'položky' : 'položiek'}</div></div>
+                  {open.length > 0 && (() => { const going = S.shopping && S.shopping.listId === l.id; return (
+                    <button type="button" className={'lgo' + (going ? ' going' : '')} onClick={(e) => { e.stopPropagation(); modal('shop', { listId: l.id }); }} aria-label={going ? `Pokračovať v nákupe: ${l.name}` : `Nakupovať: ${l.name}`}>{going ? <I n="play" w="fill" /> : <I n="basket" w="fill" />}</button>
+                  ); })()}</div>
                 {(() => { // recepty pridané do zoznamu (skupiny „Na …“), každý raz
                   const rs = [...new Map(l.items.filter((i) => i.grp && i.grp.rid).map((i) => [i.grp.rid, i.grp])).values()];
                   if (!rs.length) return null;
@@ -55,7 +58,7 @@ export function Lists() {
                   ); })}</div>;
                 })()}
                 {!open.length && <div className="rowc lfoot"><span className="meta">{l.items.length ? 'Všetko kúpené' : 'Zatiaľ prázdny'}</span></div>}
-              </button>
+              </div>
             );
           })}
           <button type="button" className={'card addcard tapc' + (g ? ' glass2' : '')} onClick={() => sheet('newList')}><span className="pl"><I n="plus" w="bold" /></span>Nový zoznam</button>

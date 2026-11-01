@@ -229,7 +229,7 @@ export function App() {
   const topK = stack[stack.length - 1].k;
   const M = nav.modal && MODALS[nav.modal.s];
   const SH = sheet && SHEETS[sheet.name];
-  const hideTabs = !!(nav.modal && !nav.modal.out && nav.modal.s !== 'voice') || stack.length > 1 && ['list'].includes(stack[stack.length - 1].s);
+  const hideTabs = !!(nav.modal && !nav.modal.out) || stack.length > 1 && ['list'].includes(stack[stack.length - 1].s);
 
   const app = (
     <div ref={appRef} className={`app ${theme} ${dark ? 't-d' : 't-l'}${frame ? ' framed' : ''}${hideTabs ? ' notabs' : ''}`}>

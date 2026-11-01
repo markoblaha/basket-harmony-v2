@@ -10,6 +10,7 @@ const SEEN_REQ = new Set();
 // zaškrtávacie koliesko s kreslenou fajkou
 const CkBox = ({ on }) => <span className={'ckb' + (on ? ' on' : '')} aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" /></svg></span>;
 
+const hhmm = (ms) => { const d = new Date(ms); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
 const catOf = (i) => (i.pid && PRODUCTS[i.pid] ? PRODUCTS[i.pid].c : 'other');
 const unitOf = itemUnit;
 
@@ -37,6 +38,7 @@ export function Shop({ p }) {
   pendRef.current = pend;
   const commit = (id) => { clearTimeout(timers.current[id + 'a']); clearTimeout(timers.current[id + 'b']); act('toggleDone', p.listId, id); setPend((x) => { const y = { ...x }; delete y[id]; return y; }); };
   useEffect(() => () => { for (const id of Object.keys(pendRef.current)) { clearTimeout(timers.current[id + 'a']); clearTimeout(timers.current[id + 'b']); act('toggleDone', p.listId, id); } }, []);
+  const lastFill = useRef(0); const prevDone = useRef(null);
   if (!list) return null;
   const started = S.shopping && S.shopping.listId === list.id ? S.shopping.started : Date.now();
   const el = Math.max(mins, Math.round((Date.now() - started) / 60000));
@@ -47,6 +49,8 @@ export function Shop({ p }) {
   const cats = ROUTE.filter((c) => list.items.some((i) => catOf(i) === c));
   const curCat = cats.find((c) => open.some((i) => catOf(i) === c));
   const reqs = S.requests.filter((r) => r.listId === list.id);
+  if (prevDone.current !== null && t.done > prevDone.current) lastFill.current = t.done; else if (prevDone.current !== null && t.done < prevDone.current) lastFill.current = 0;
+  prevDone.current = t.done;
   // odškrtnutie s animáciou: fajka → zafarbenie a prečiarknutie → riadok sa zbalí → položka ide do košíka.
   // Druhé ťuknutie počas animácie ju zruší. Pri zatvorení nákupu sa rozbehnuté odškrtnutia dokončia.
   const toggle = (it) => {
@@ -60,27 +64,21 @@ export function Shop({ p }) {
   };
   const finish = () => sheet('finish', { listId: list.id });
   const close = () => { if (t.done) finish(); else { act('endShopping'); closeModal(); } };
-  const pct = t.n ? t.done / t.n : 0;
 
   return (
     <div className="scr shop">
       {g && <div className="bgl"><div className="bgb pic-trh_p" /><div className="veil" /></div>}
       <div className="sc">
-        <header className="nb"><IB n="x" label="Zavrieť nákup" onClick={close} /><span className="nbt sh">{list.store ? storeName(list.store) : list.name}</span>
-          {wake ? <span className="wake" title="Obrazovka počas nákupu ostáva zapnutá"><I n="sun" />Obrazovka ostáva zapnutá</span> : <span className="ibs" />}</header>
+        <header className="nb shopnb">
+          <div className="snb-row"><IB n="x" label="Zavrieť nákup" onClick={close} />
+            <div className="grow snb-t"><div className="t1">Nakupuješ · {list.store ? storeName(list.store) : list.name}</div><div className="snb-s">od {hhmm(started)} · v košíku {eur(t.doneV)} · zostáva {open.length}</div></div>
+            {wake ? <span className="snb-wake" title="Obrazovka počas nákupu ostáva zapnutá" aria-label="Obrazovka ostáva zapnutá"><I n="sun" /></span> : <span className="ibs" />}</div>
+          <div className="snb-seg" role="progressbar" aria-valuemin={0} aria-valuemax={t.n} aria-valuenow={t.done} aria-label={`V košíku ${t.done} z ${t.n}`}>
+            <span className="segs" style={{ gap: t.n > 40 ? 1.5 : t.n > 20 ? 2 : 3 }}>{Array.from({ length: t.n }, (_, k) => <i key={k} className={k < t.done ? (k === t.done - 1 && lastFill.current === t.done ? 'd n' : 'd') : ''} />)}</span>
+            <b>{t.done}<small>/{t.n}</small></b>
+          </div>
+        </header>
         <div className="body">
-          {g ? (
-            <div className="card glass2 prog-g">
-              <div className="ring" style={{ '--p': pct * 100 + '%' }}><span><b className="num">{t.done}<small>/{t.n}</small></b><small>v košíku</small></span></div>
-              <div className="grow"><div className="t2">{list.store ? storeName(list.store) : list.name} · {el} min</div><div className="num xl">{eur(t.doneV)}</div><div className="t2">zostáva ~{eur0(Math.max(0, t.v - t.doneV))}</div></div>
-            </div>
-          ) : (
-            <div className="card live shopc">
-              <span className="k">Nakupuješ · {el} min</span>
-              <div className="sc-row"><div className="t big">{t.done}<span> z {t.n}</span></div><div className="ra"><div className="sv">{eur(t.doneV)}</div><div className="s">v košíku</div></div></div>
-              <div className="prog"><i style={{ width: pct * 100 + '%' }} /></div>
-            </div>
-          )}
           {reqs.map((r) => { const pp = PRODUCTS[r.pid]; const u = unitPrice(r.pid, S, list.store); const fresh = !SEEN_REQ.has(r.id); SEEN_REQ.add(r.id); return (
             <div key={r.id} className={'card req' + (g ? ' glass2' : '') + (fresh ? ' new' : '')} role={fresh ? 'alert' : undefined}>
               <span className="req-av"><Av id={r.from} s={40} /></span>
