@@ -132,7 +132,10 @@ export function Home() {
   const ms = S.missingReceipts || [];
   const going = next && S.shopping && S.shopping.listId === next.id;
   const nOpen = next ? next.items.filter((i) => !i.done).length : 0;
-  const tr = today.r; const th = tr && haveCount(tr, S);
+  // naplánované a ešte neuvarené (uvarené = v daný deň alebo neskôr označené Uvarené)
+  // aj z posledných 3 dní – recept, na ktorý sa nakúpilo, ale ešte sa nevaril, čaká ďalej
+  const plan = Array.from({ length: 10 }, (_, i) => { const d = addDays(new Date(), i - 3); const k = dkey(d); return { d, k, r: S.week[k] && recipeById(S.week[k], S) }; })
+    .filter((x) => x.r && !((S.cooked || {})[x.r.id] >= new Date(x.d).setHours(0, 0, 0, 0))).slice(0, 2);
   const QA = [
     ['plus', 'Pridať do nákupu', () => (next ? jump('lists', 'list', { id: next.id, focus: true }) : sheet('newList'))],
     ['camera', 'Odfotiť bloček', () => modal('scan', { listId: next && next.id })],
@@ -156,11 +159,11 @@ export function Home() {
             action={nOpen > 0 ? <Btn cls={(going ? 'ok' : 'pri') + ' sm' + (g && !going ? ' a' : '')} onClick={stopThen(() => modal('shop', { listId: next.id }))}><I n={going ? 'play' : 'basket'} />{going ? 'Pokračovať' : 'Nakupovať'}</Btn> : null} />
             : <HRow g={g} lead={<span className="th ic"><I n="basket" /></span>} title="Žiadny otvorený zoznam" sub="Začnite nový nákup" onClick={() => sheet('newList')} action={<Btn cls="soft sm"><I n="plus" w="bold" />Nový</Btn>} />}
         </HSec>
-        <HSec t="Dnes večer" link="Plán týždňa" onLink={() => jump('recipes')}>
-          {tr ? <HRow g={g} lead={tr.pic ? <span className={'th tph pic-' + tr.pic} /> : <span className={'th bg-' + tr.bg}><E k={tr.e} /></span>} onClick={() => push('recipe', { id: tr.id })} label={`Recept ${tr.n}`}
-            title={tr.n} sub={`${tr.min} min · ${th.have === th.all ? 'suroviny máte' : `chýba ${th.all - th.have} ${th.all - th.have === 1 ? 'surovina' : th.all - th.have < 5 ? 'suroviny' : 'surovín'}`}`}
-            action={<button type="button" className="hplay" aria-label={`Variť ${tr.n}`} onClick={stopThen(() => modal('cook', { id: tr.id }))}><I n="play" /></button>} />
-            : <HRow g={g} lead={<span className="th ic"><I n="cooking-pot" /></span>} title="Zatiaľ nič naplánované" sub="Vyberte jedlo v knihe receptov" onClick={() => jump('recipes')} action={<I n="caret-right" w="bold" cls="chev" />} />}
+        <HSec t="Naplánované recepty" link="Plán týždňa" onLink={() => jump('recipes')}>
+          {plan.length ? plan.map(({ k, r }) => { const h = haveCount(r, S); const miss = h.all - h.have; return <HRow key={k} g={g} lead={r.pic ? <span className={'th tph pic-' + r.pic} /> : <span className={'th bg-' + r.bg}><E k={r.e} /></span>} onClick={() => push('recipe', { id: r.id })} label={`Recept ${r.n}`}
+            title={r.n} sub={`${relDay(k)} · ${r.min} min · ${miss === 0 ? 'suroviny máte' : `chýba ${miss} ${miss === 1 ? 'surovina' : miss < 5 ? 'suroviny' : 'surovín'}`}`}
+            action={<button type="button" className="hplay" aria-label={`Variť ${r.n}`} onClick={stopThen(() => modal('cook', { id: r.id }))}><I n="play" /></button>} />; })
+            : <HRow g={g} lead={<span className="th ic"><I n="cooking-pot" /></span>} title="Nič naplánované" sub="Vyberte jedlo v knihe receptov" onClick={() => jump('recipes')} action={<I n="caret-right" w="bold" cls="chev" />} />}
         </HSec>
         <HSec t="Rýchlo">
           <div className="hqa">{QA.map(([ic, t, fn]) => <button type="button" key={t} className={'hqab' + (g ? ' glass2' : '')} onClick={fn}><span className="qi"><I n={ic} w={ic === 'plus' ? 'bold' : 'fill'} /></span>{t}</button>)}</div>

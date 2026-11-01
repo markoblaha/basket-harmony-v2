@@ -441,3 +441,9 @@
 .g .hqab .qi { background: linear-gradient(160deg, var(--acc2), var(--acc)); color: #fff; }
 .w .hqab .qi { background: var(--pri); color: var(--onpri); }
 .hqab .qi .ico { width: 20px; height: 20px; }
+
+/* História nákupov: vedľajší odkaz – priehľadnejší, bez tieňa, aby nebol na úrovni zoznamov */
+.histrow.card { background: transparent !important; box-shadow: inset 0 0 0 1px var(--line) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; min-height: 60px; }
+.histrow .th.ic { width: 38px; height: 38px; background: transparent !important; color: var(--sec) !important; }
+.histrow .t1 { color: var(--sec); font-weight: 650; }
+.histrow .meta, .histrow .chev { color: var(--ter) !important; }

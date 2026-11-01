@@ -144,7 +144,9 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   (`recipeHave`), Nastavenia sa nemenia. „Čo mám doma“ v Nastaveniach: mriežka 2 stĺpce s vysvetlením.
   Domov – variant A (schválený z `prototyp/domov-varianty-navrh.html`): skupiny s nadpismi Treba vybaviť (chýbajúce
   bločky, len keď nejaké sú) / Nákupy (Lucia nakupuje, najbližší zoznam s Nakupovať) / Dnes večer (recept, ▶ Variť)
-  / Rýchlo (3 dlaždice). Každý riadok má jednu hlavnú akciu vpravo.
+  / Rýchlo (3 dlaždice). Každý riadok má jednu hlavnú akciu vpravo. „Dnes večer“ premenované na „Naplánované
+  recepty“: max. 2 najbližšie neuvarené z plánu (aj z posledných 3 dní, ak sa ešte nevarili; uvarené = `cooked`).
+  Bloček: len Odfotiť / Z galérie. História nákupov v Nákupoch je tichší, priehľadný riadok.
   30. 10.: prerobené rozloženie podľa pripomienok – 4 záložky s popisom (Domov, Nákupy, Recepty, Výdavky), bez
   záhadného akčného tlačidla; každá akcia má jedno miesto (hlas = mikrofón v poli zoznamu, bloček = Výdavky/Domov).
   Recepty ako kniha: Kniha receptov (kategórie, rýchly výber, zdroje) / Moje (obľúbené, pridané) / Plán týždňa,
