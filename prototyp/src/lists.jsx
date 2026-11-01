@@ -193,7 +193,7 @@ export function ListScreen({ p }) {
         <div className="body">
           <div className="lhead"><div className="grow"><h1 className="lt">{list.name}</h1><div className="meta">{withStore(list, when(list))}{list.shared.length > 1 ? '' : ' · iba ja'}</div></div></div>
           <div className={'card est' + (g ? ' glass2' : '')}>
-            <div className="grow"><div className="k">Odhad nákupu</div><div className="estv"><span className="price">{t.priced ? '~' + eur0(t.v) : '–'}</span><span className="meta">{t.priced ? rangeText(t) : ''}</span></div><div className="meta sm">{t.priced === t.n ? 'všetko s cenou z bločkov' : `${t.priced} z ${t.n} s cenou`}</div></div>
+            <div className="grow estc"><div className="k">Odhad nákupu</div><div className="price nw">{t.priced ? '~' + eur0(t.v) : '–'}</div><div className="estm">{t.priced ? <span className="nw">rozpätie {rangeText(t)}</span> : null}<span className="nw sm">{t.priced === t.n ? 'všetky ceny z bločkov' : `${t.priced} z ${t.n} položiek s cenou`}</span></div></div>
             <Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => modal('shop', { listId: list.id })} disabled={!open.length}><I n="basket" />Nakupovať</Btn>
           </div>
           {open.length > 0 && !(S.tips && S.tips.swipe) && <div className="tip"><I n="hand-swipe-right" /><div className="grow"><b>Rýchla úprava množstva</b><span>Potiahnite položku doprava = +1, doľava = −1. Ťuknutím otvoríte detail.</span></div><button type="button" className="tipx" onClick={() => act((s) => ({ ...s, tips: { ...(s.tips || {}), swipe: true } }))}>Rozumiem</button></div>}

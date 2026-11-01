@@ -196,3 +196,16 @@
 .reqnew i { width: 7px; height: 7px; border-radius: 99px; background: var(--acc); animation: pulse 1.2s infinite; }
 @keyframes reqnewout { 0%, 85% { max-height: 20px; opacity: 1; margin-bottom: 2px; } 100% { max-height: 0; opacity: 0; margin-bottom: 0; } }
 @media (prefers-reduced-motion: reduce) { .req.new, .req.new::before, .req.new::after, .req.new .req-av::after, .row.ck .ckb, .ckf { animation-duration: .01s !important; } .row.ck .ckb svg, .row.ck .stk::after { animation-duration: .01s; animation-delay: 0s; } }
+
+/* odhad nákupu v zozname: suma na jednom riadku, rozpätie pod ňou */
+.est { gap: 12px; padding: 16px 14px 16px 20px; }
+.estc { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.est .price { font-size: 34px; line-height: 1; white-space: nowrap; margin-top: 2px; }
+.estm { font-size: 14px; color: var(--sec); line-height: 1.35; font-variant-numeric: tabular-nums; }
+.est .btn { flex: none; align-self: center; }
+.estm { display: flex; flex-direction: column; gap: 1px; }
+.estm .sm { font-size: 13px; color: var(--ter); }
+.g .est .price, .w .est .price { font-size: 34px; }
+.est .k { white-space: nowrap; }
+@media (max-width: 350px) { .est .btn { padding: 0 14px; } .est .price { font-size: 30px !important; } }
+@media (max-width: 350px) { .estm .nw { white-space: normal; } }
