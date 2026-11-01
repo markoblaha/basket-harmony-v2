@@ -663,3 +663,4 @@
 #tx .tx-chap { white-space: nowrap; } #tx .tx-chap .n { flex: none; }
 #tx .tx-chap.ok .n .ico, #tx .tx-chl .n .ico, #tx .tx-fs .c .ico { width: 13px !important; height: 13px !important; }
 #tx .tx-scrim, #tx .tx-dlg { z-index: 8; }
+#tx .tx-sheet { z-index: 9; }
