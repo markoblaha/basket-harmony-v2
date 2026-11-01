@@ -9,6 +9,7 @@ Aktualizované 23. 10. 2026. Pred prácou si prečítaj celé – je to krátke.
 | Ostrá appka | vetva `main` → Cloudflare Worker `basket-harmony-v2`, DB `kjadeylctafnmgembgev` |
 | Testovacia appka | vetva `design/v2-mobile-redesign` → https://design-v2-mobile-redesign-basket-harmony-v2.markoblaha.workers.dev, DB `esftqxrdrlldvpmwirrx` (režim „staging“, `.env.staging`) |
 | Nasadenie | každý `push` – Cloudflare postaví vetvu sám (1–3 min). Overenie: zmení sa `assets/index-*.js` v HTML testovacej adresy. |
+| Prototyp v telefóne | https://design-v2-mobile-redesign-basket-harmony-v2.markoblaha.workers.dev/prototyp/ – súbor `public/prototyp/` (vytvorí `python3 prototyp/build.py && python3 prototyp/web.py`). Pred zlúčením do `main` rozhodnúť, či má ísť aj do ostrej appky. |
 | Starý repozitár | `markoblaha/basket-harmony` (pôvodná appka z Lovable) – s v2 nesúvisí |
 
 Majiteľ nechce: push do `main` ani Pull Request bez výslovného pokynu. Do ostrej DB len pri zlúčení.
