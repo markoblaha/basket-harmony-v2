@@ -126,6 +126,14 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   potom prechod do Nákupov s pulzom a „Späť“, rozdiktovaný koncept sa ukladá. Majiteľ ho neskôr upresní.
   Ďalej: sklo a veľkosti podľa iOS (`prototyp/css/polish.css`), nápovedy pre nových používateľov (`coach.jsx`),
   animácia odškrtnutia a zvýraznenie novej žiadosti. Do skutočnej appky zatiaľ nič z toho.
+  1. 11. večer: v nákupe ikona produktu vľavo a fajka priamo v nej (bez krúžku). Rozpoznávanie pri písaní: slovo patrí
+  k produktu len pri rovnakom slove alebo inej koncovke (mlieka/mlieko), nie pri spoločnom začiatku („silikon“ ≠
+  „Silikónová lyžička“); všeobecné „syr“, „mäso“ nevyberú konkrétny produkt; preklep („zemaky“) ponúkne bublinu
+  „Zemiaky? Preklep?“, nič sa nevymení samo. Skutočná appka to nemá (Enter tam pridá text tak, ako je).
+  Po odškrtnutí poslednej položky sa samo otvorí „Nákup dokončený?“ s „Vrátiť sa k nákupu“. „Teraz nie“ zapíše
+  nákup bez bločku (`missingReceipts`): červené číslo pri Výdavkoch na lište, karta „Chýba bloček“ vo Výdavkoch
+  (Odfotiť / Bloček nemám) a na Domove. Uložený bloček sa spáruje sám: rovnaký zoznam, alebo rovnaký obchod do 3 dní.
+  Lokalizácia (jazyk a krajina pri prvom spustení, pravopis podľa nej) – majiteľ ešte doriesi.
   30. 10.: prerobené rozloženie podľa pripomienok – 4 záložky s popisom (Domov, Nákupy, Recepty, Výdavky), bez
   záhadného akčného tlačidla; každá akcia má jedno miesto (hlas = mikrofón v poli zoznamu, bloček = Výdavky/Domov).
   Recepty ako kniha: Kniha receptov (kategórie, rýchly výber, zdroje) / Moje (obľúbené, pridané) / Plán týždňa,

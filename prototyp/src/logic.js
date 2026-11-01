@@ -171,18 +171,43 @@ function index() {
   return INDEX;
 }
 const pre = (a, b) => { let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++; return i; };
-const ENDS = new Set(['', 'a', 'e', 'i', 'o', 'u', 'y', 'ov', 'om', 'ou', 'ach', 'ami', 'iek', 'ok', 'ek', 'ky', 'ka', 'ko', 'ie', 'ia', 'ej', 'ych', 'ymi', 'ym', 'eho', 'ov', 'ce', 'ca', 'ku']);
+const ENDS = new Set(['', 'a', 'e', 'i', 'o', 'u', 'y', 'ov', 'om', 'ou', 'ach', 'ami', 'iek', 'ok', 'ek', 'ky', 'ka', 'ko', 'ie', 'ia', 'ej', 'ych', 'ymi', 'ym', 'eho', 'emu', 'ich', 'im', 'iu', 'ce', 'ca', 'ku', 'mi']);
+// Slovo patrí k produktu len vtedy, keď je rovnaké alebo sa líši iba v koncovke (mlieka/mlieko, rožky/rožkov,
+// mletého/mleté). Spoločný začiatok nestačí: „silikon“ nie je „silikónová lyžička“, „parad“ nie sú paradajky.
+// Na takéto prípady sú bubliny s návrhmi nad poľom – Enter pridá text tak, ako bol napísaný.
 function wordScore(w, t) {
   if (w === t) return 3;
   const c = pre(w, t);
-  if (c >= 5) return 2;
-  // kratšie slová sa môžu líšiť len v koncovke (mlieka/mlieko, rožky/rožkov), nie v inom písmene (salám ≠ šalát)
-  if (c >= 3 && ENDS.has(w.slice(c)) && ENDS.has(t.slice(c)) && (c >= 4 || (w.length <= 4 && t.length <= 5))) return 2;
+  for (let k = c; k >= Math.max(3, c - 3); k--) {
+    if (ENDS.has(w.slice(k)) && ENDS.has(t.slice(k)) && (k >= 4 || (w.length <= 4 && t.length <= 5))) return 2; // salám ≠ šalát
+  }
   return 0;
 }
+// Možný preklep: slovo, ktoré sa od známeho slova líši o 1 písmeno (o 2 pri dlhých slovách).
+export function editDist(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+export function typoProduct(text) {
+  const ws = norm(text).split(' ').filter((w) => w.length >= 4 && !FILL.has(w) && !UNITMAP[w] && NUMW[w] == null && !/^\d/.test(w));
+  if (!ws.length) return null;
+  let best = null, bs = 9;
+  for (const e of index()) {
+    let tot = 0;
+    for (const w of ws) { let m = 9; for (const t of e.nameT) { if (w.slice(0, -1) === t.slice(0, -1) && w.length === t.length) continue; m = Math.min(m, editDist(w, t)); } if (m > (w.length >= 7 ? 2 : 1)) { tot = 99; break; } tot += m; }
+    if (tot > 0 && tot < bs) { bs = tot; best = e.p; }
+  }
+  return best;
+}
+const GENERIC = new Set(['syr', 'syry', 'syra', 'maso', 'masa', 'ovocie', 'zelenina', 'zeleninu', 'pecivo', 'napoj', 'napoje', 'sladkosti', 'drogeria', 'kozmetika', 'ryba', 'ryby', 'salat', 'salaty']);
 export function matchProduct(text) {
   const ws = norm(text).split(' ').filter((w) => w.length > 2 && !FILL.has(w) && !UNITMAP[w] && NUMW[w] == null && !/^\d/.test(w));
   if (!ws.length) return null;
+  // všeobecné slovo samo osebe („syr“, „mäso“) nevyberie konkrétny produkt – pridá sa, ako je, a návrhy ponúknu druhy
+  if (ws.length === 1 && GENERIC.has(ws[0])) return null;
   let best = null, bs = 0;
   for (const e of index()) {
     let s = 0, firstHit = false;

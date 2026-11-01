@@ -60,9 +60,10 @@ export function Scan({ p }) {
     } catch (e) { clearInterval(t); setErr(aiErrorText(e)); setPhase('capture'); }
   };
   const save = () => {
-    act((s) => A.saveReceipt(s, rec, list, write).S);
+    const hit = (p.missing && (S.missingReceipts || []).find((m) => m.id === p.missing)) || pairMissing(S, rec, list && list.id);
+    act((s) => { const s2 = A.saveReceipt(s, rec, list, write).S; return hit ? { ...s2, missingReceipts: (s2.missingReceipts || []).filter((m) => m.id !== hit.id) } : s2; });
     closeModal();
-    setTimeout(() => { if (list) jump('lists', 'list', { id: list.id }); toast(write ? 'Bloček uložený – skutočné ceny sú pri položkách' : 'Bloček uložený do výdavkov', { e: 'receipt' }); }, 60);
+    setTimeout(() => { if (list) jump('lists', 'list', { id: list.id }); toast(hit ? `Bloček priradený k nákupu ${hit.name}` : write ? 'Bloček uložený – skutočné ceny sú pri položkách' : 'Bloček uložený do výdavkov', { e: 'receipt' }); }, 60);
   };
   const inputs = <><input ref={cam} type="file" accept="image/*" capture="environment" hidden onChange={(e) => fromFile(e.target.files && e.target.files[0])} /><input ref={gal} type="file" accept="image/*" hidden onChange={(e) => fromFile(e.target.files && e.target.files[0])} /></>;
 
@@ -208,5 +209,40 @@ export function ReceiptDetail({ p }) {
         </div>
       </div>
     </>
+  );
+}
+
+// ---------- nákupy bez bločku ----------
+// Po „Teraz nie“ si appka pamätá dokončený nákup bez bločku. Odfotený bloček sa s ním spáruje sám
+// (rovnaký zoznam, alebo rovnaký obchod do 3 dní od nákupu). Ukazuje sa na lište (číslo pri Výdavkoch),
+// vo Výdavkoch a na Domove.
+export function pairMissing(S, rec, listId) {
+  const ms = S.missingReceipts || [];
+  const day = (x) => new Date(x).setHours(0, 0, 0, 0);
+  const hit = ms.find((m) => m.listId === listId && (!rec.store || !m.store || rec.store === m.store))
+    || ms.find((m) => m.store && rec.store === m.store && Math.abs(day(rec.date) - day(m.at)) <= 3 * 864e5);
+  return hit || null;
+}
+export function MissingReceipts({ compact }) {
+  const { S, act, modal, theme, toast } = useApp();
+  const g = theme === 'g';
+  const ms = S.missingReceipts || [];
+  if (!ms.length) return null;
+  const when = (t) => { const d = new Date(t); const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(t).setHours(0, 0, 0, 0)) / 864e5); return (days === 0 ? 'dnes' : days === 1 ? 'včera' : `${d.getDate()}. ${d.getMonth() + 1}.`) + ` ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  const drop = (m) => { act((s) => ({ ...s, missingReceipts: (s.missingReceipts || []).filter((x) => x.id !== m.id) })); toast('Bez bločku – nákup ostane len s odhadom', { action: { label: 'Späť', fn: () => act((s) => ({ ...s, missingReceipts: [m, ...(s.missingReceipts || [])] })) } }); };
+  const list = compact ? ms.slice(0, 1) : ms;
+  return (
+    <div className={'card mrc' + (g ? ' glass2' : '')} role="region" aria-label="Chýbajúce bločky">
+      <div className="mrc-h"><span className="mrc-i"><I n="receipt" /><b>{ms.length}</b></span><div className="grow"><div className="t1">{ms.length === 1 ? 'Chýba bloček z nákupu' : `Chýbajú bločky z ${ms.length} nákupov`}</div><div className="meta sm">Odfoťte ho a skutočné ceny sa priradia k nákupu samé.</div></div></div>
+      {list.map((m) => (
+        <div key={m.id} className="mrc-r">
+          {m.store ? <StoreTile k={m.store} s={36} /> : <span className="th ic"><I n="basket" /></span>}
+          <div className="grow"><b>{m.name}</b><span className="sub">{when(m.at)} · {m.n} {m.n === 1 ? 'položka' : m.n < 5 ? 'položky' : 'položiek'} · ~{eur(m.total)}</span></div>
+          {!compact && <IB n="x" cls="flat sm" label={`Bloček nemám: ${m.name}`} onClick={() => drop(m)} />}
+          <Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => modal('scan', { listId: m.listId, missing: m.id })}><I n="camera" />Odfotiť</Btn>
+        </div>
+      ))}
+      {compact && ms.length > 1 && <div className="meta sm">a ďalšie vo Výdavkoch</div>}
+    </div>
   );
 }

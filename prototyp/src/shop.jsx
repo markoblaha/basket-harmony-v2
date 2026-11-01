@@ -40,6 +40,12 @@ export function Shop({ p }) {
   const commit = (id) => { clearTimeout(timers.current[id + 'a']); clearTimeout(timers.current[id + 'b']); act('toggleDone', p.listId, id); setPend((x) => { const y = { ...x }; delete y[id]; return y; }); };
   useEffect(() => () => { for (const id of Object.keys(pendRef.current)) { clearTimeout(timers.current[id + 'a']); clearTimeout(timers.current[id + 'b']); act('toggleDone', p.listId, id); } }, []);
   const lastFill = useRef(0); const prevDone = useRef(null);
+  const openN = list ? list.items.filter((i) => !i.na && !i.done).length : 0;
+  const prevOpen = useRef(openN);
+  useEffect(() => {
+    const was = prevOpen.current; prevOpen.current = openN;
+    if (was > 0 && openN === 0 && list && list.items.some((i) => i.done)) { const id = setTimeout(() => sheet('finish', { listId: list.id }), 650); return () => clearTimeout(id); }
+  }, [openN]);
   if (!list) return null;
   const started = S.shopping && S.shopping.listId === list.id ? S.shopping.started : Date.now();
   const el = Math.max(mins, Math.round((Date.now() - started) / 60000));
@@ -130,7 +136,9 @@ export function FinishSheet({ open, close, listId }) {
   if (!list) return <Sheet open={false} onClose={close} />;
   const t = listTotals({ ...list, items: list.items.filter((i) => !i.na) }, S);
   const left = list.items.filter((i) => !i.done && !i.na).length;
-  const end = () => { act((s) => ({ ...s, shopping: null, requests: s.requests.filter((r) => r.listId !== listId), lists: keep ? s.lists : s.lists.map((l) => l.id === listId ? { ...l, items: l.items.filter((i) => i.done) } : l) })); };
+  // nákup sa zapíše ako „bez bločku“; keď sa bloček odfotí a uloží, záznam sa sám odstráni (spárovanie)
+  const end = () => { const miss = t.done ? { id: Math.random().toString(36).slice(2, 9), listId, name: list.name, store: list.store || null, at: Date.now(), total: t.doneV, n: t.done } : null;
+    act((s) => ({ ...s, shopping: null, requests: s.requests.filter((r) => r.listId !== listId), missingReceipts: miss ? [miss, ...(s.missingReceipts || []).filter((m) => m.listId !== listId)] : s.missingReceipts, lists: keep ? s.lists : s.lists.map((l) => l.id === listId ? { ...l, items: l.items.filter((i) => i.done) } : l) })); };
   return (
     <Sheet open={open} onClose={close} label="Dokončiť nákup">
       <div className="finish">
@@ -140,7 +148,8 @@ export function FinishSheet({ open, close, listId }) {
         {left > 0 && <div className="tgrow"><span>Nekúpené ({left}) nechať v zozname</span><Toggle on={keep} onChange={setKeep} label="Nechať nekúpené" /></div>}
         <div className="callout"><I n="lightbulb" /><span>Odfoťte bloček – skutočné ceny sa zapíšu k položkám a nabudúce bude odhad presnejší.</span></div>
         <Btn cls={'pri full big' + (theme === 'g' ? ' a' : '')} onClick={() => { end(); close(); closeModal(); setTimeout(() => modal('scan', { listId }), 320); }}><I n="camera" />Odfotiť bloček</Btn>
-        <Btn cls="soft full" onClick={() => { end(); close(); closeModal(); toast('Nákup uložený – bloček môžete pridať neskôr'); }}>Teraz nie</Btn>
+        <Btn cls="soft full" onClick={() => { end(); close(); closeModal(); toast('Nákup uložený – bloček pridáte neskôr vo Výdavkoch', { icon: 'receipt' }); }}>Teraz nie</Btn>
+        <button type="button" className="lnk c fin-back" onClick={close}><I n="arrow-counter-clockwise" w="bold" />Vrátiť sa k nákupu</button>
       </div>
     </Sheet>
   );

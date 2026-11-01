@@ -92,9 +92,9 @@ function StatusBar({ light }) {
   );
 }
 
-function TabBar({ tab, go, voice, vOn }) {
+function TabBar({ tab, go, voice, vOn, badge }) {
   const T = [['home', 'Domov', 'house'], ['lists', 'Nákupy', 'basket'], ['recipes', 'Recepty', 'cooking-pot'], ['money', 'Výdavky', 'wallet']];
-  const btn = ([k, l, ic]) => <button type="button" key={k} className={tab === k && !vOn ? 'on' : ''} onClick={() => go(k)} aria-current={tab === k ? 'page' : undefined}><I n={ic} />{l}</button>;
+  const btn = ([k, l, ic]) => <button type="button" key={k} className={tab === k && !vOn ? 'on' : ''} onClick={() => go(k)} aria-current={tab === k ? 'page' : undefined} aria-label={k === 'money' && badge ? `${l}, chýba ${badge} ${badge === 1 ? 'bloček' : badge < 5 ? 'bločky' : 'bločkov'}` : undefined}><span className="tic"><I n={ic} />{k === 'money' && badge ? <span className="tbadge" key={badge}>{badge}</span> : null}</span>{l}</button>;
   return (
     <nav className="tabbar" aria-label="Hlavná navigácia">
       {T.slice(0, 2).map(btn)}
@@ -242,7 +242,7 @@ export function App() {
       {stack.length > 1 && !nav.modal && !(sheet && sheet.open) && <EdgeBack appRef={appRef} done={popNow} />}
       <Coach appRef={appRef} screen={stack[stack.length - 1].s} blocked={!!(nav.modal && !nav.modal.out) || !!(sheet && sheet.open)} />
       {!hideTabs && <div className="tabfade" aria-hidden="true" />}
-      {!hideTabs && <TabBar tab={nav.tab} go={go} voice={voice} vOn={!!(nav.modal && nav.modal.s === 'voice' && !nav.modal.out)} />}
+      {!hideTabs && <TabBar tab={nav.tab} go={go} voice={voice} vOn={!!(nav.modal && nav.modal.s === 'voice' && !nav.modal.out)} badge={(S.missingReceipts || []).length} />}
       {M && <section key={nav.modal.k} className={'mdl m-' + nav.modal.s + (nav.modal.out ? ' out' : '')} onScrollCapture={onSc}><M p={nav.modal.p} /></section>}
       <div className="ovl" ref={setOvl} />
       {SH && <SH key={sheet.k} open={sheet.open} close={closeSheet} {...sheet.props} />}

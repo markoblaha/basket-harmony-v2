@@ -1,6 +1,6 @@
 import { useApp, Back, MeBtn, useState, useEffect, useRef, useMemo, Fragment, I, E, IB, Btn, StoreTile, Avatars, Av, pe, Sheet, Stepper, SwipeRow, Empty, Check, Seg } from './ui.jsx';
 import { PRODUCTS, STAPLES, STORES, SHOP_STORES, CATS, MEMBERS } from './data.js';
-import { weightOf, listTotals, estimate, unitPrice, eur, eur0, rangeText, fmtQty, bump, minQty, storeName, withStore, itemUnit, frequentStores, relDay, qtyOptions, norm, parseOne, splitChunks, parseChunk, history, shortDate, recipeById, dayLower, addDays, dkey, ago } from './logic.js';
+import { typoProduct, weightOf, listTotals, estimate, unitPrice, eur, eur0, rangeText, fmtQty, bump, minQty, storeName, withStore, itemUnit, frequentStores, relDay, qtyOptions, norm, parseOne, splitChunks, parseChunk, history, shortDate, recipeById, dayLower, addDays, dkey, ago } from './logic.js';
 import { when } from './home.jsx';
 
 /* icons: dots-three caret-left plus trash note-pencil arrows-left-right share-network broom pencil-simple storefront x check users magnifying-glass */
@@ -95,7 +95,9 @@ function Composer({ list, onAdded, focus0 }) {
   // Čo pridá Enter – rovnaký výsledok, aký ukazuje náhľad nad poľom
   const enter = useMemo(() => (txt.trim().length >= 2 ? splitChunks(txt.trim()).map(parseChunk).filter(Boolean) : []), [txt]);
   const enterPid = enter.length === 1 && enter[0].pid;
-  const sugg = useMemo(() => { const r = searchProducts(txt, inList); return enterPid ? [PRODUCTS[enterPid], ...r.filter((p) => p.id !== enterPid)].slice(0, 6) : r; }, [txt, inList, enterPid]);
+  // možný preklep („mlieo“ → Mlieko): Enter pridá text tak, ako je, oprava je len ponuka na ťuknutie
+  const typo = useMemo(() => (enter.length === 1 && !enterPid ? typoProduct(enter[0].n) : null), [enter, enterPid]);
+  const sugg = useMemo(() => { const r = searchProducts(txt, inList).filter((p) => !typo || p.id !== typo.id); return enterPid ? [PRODUCTS[enterPid], ...r.filter((p) => p.id !== enterPid)].slice(0, 6) : r.slice(0, typo ? 5 : 6); }, [txt, inList, enterPid, typo]);
   // dlaždice „istý nákup“ – ťuk = +1, po 2 s sa pridá a nahradí ďalšou
   const [pend, setPend] = useState({});
   const cnt = useRef({}); const tm = useRef({});
@@ -127,7 +129,8 @@ function Composer({ list, onAdded, focus0 }) {
       {typing ? (
         <div className="bubbles" role="listbox" aria-label="Návrhy">
           {enter.length > 1 && <div className={'bub none ent' + (g ? ' glass2' : '')}><span><b>{enter.length} položky: {enter.map((x) => (x.pid ? PRODUCTS[x.pid].n.replace(/ ·.*$/, '') : x.n)).join(', ')}</b><small>Pridá Enter</small></span><kbd>Enter</kbd></div>}
-          {enter.length === 1 && !enterPid && <button type="button" className={'bub ent new' + (g ? ' glass2' : '')} onPointerDown={(e) => e.preventDefault()} onClick={submit}><span className="nwi"><I n="plus" w="bold" /></span><span><b>{enter[0].n}</b><small>{fmtQty(enter[0].q, enter[0].u)} · nová položka</small></span><kbd>Enter</kbd></button>}
+          {enter.length === 1 && !enterPid && <button type="button" className={'bub ent new' + (g ? ' glass2' : '')} onPointerDown={(e) => e.preventDefault()} onClick={submit}><span className="nwi"><I n="plus" w="bold" /></span><span><b>{enter[0].n}</b><small>{fmtQty(enter[0].q, enter[0].u)} · {typo ? 'pridá sa takto' : 'nová položka'}</small></span><kbd>Enter</kbd></button>}
+          {typo && <button type="button" className={'bub typo' + (g ? ' glass2' : '')} onPointerDown={(e) => e.preventDefault()} onClick={() => add(typo, enter[0].q, enter[0].u === 'ks' ? 'ks' : enter[0].u)}><E k={typo.e} s={28} /><span><b>{typo.n.replace(/ ·.*$/, '')}?</b><small>Preklep? Ťuknite pre opravu</small></span></button>}
           {sugg.map((p) => { const ent = enterPid === p.id; const q = ent ? enter[0].q : 1; const qu = ent ? enter[0].u : 'ks'; const e = estimate({ pid: p.id, q, u: qu }, S, list.store); return (
             <button type="button" key={p.id} className={'bub' + (ent ? ' ent' : '') + (g ? ' glass2' : '')} onPointerDown={(e) => e.preventDefault()} onClick={() => add(p, q, qu)}><E k={p.e} s={28} /><span><b>{p.n.replace(/ ·.*$/, '')}</b><small>{ent ? '↵ ' : ''}{fmtQty(q, qu)}{e ? ' · ~' + eur(e.v) : ''}</small></span></button>
           ); })}

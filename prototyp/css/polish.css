@@ -342,3 +342,22 @@
 .ckth.on .ckov { opacity: 1; transform: none; } .ckth.on .ckov svg { stroke-dashoffset: 0; }
 .row.done .ckth { opacity: 1; } .row.done .ckth .em { opacity: .5; }
 @media (prefers-reduced-motion: reduce) { .row.ck .ckov, .row.ck .ckov svg, .row.ck .ckth::after { animation-duration: .01s !important; animation-delay: 0s !important; } }
+/* bublina „Preklep?“ nad poľom zoznamu */
+.bub.typo { box-shadow: inset 0 0 0 1.5px var(--honey), var(--sh); }
+.bub.typo small { color: var(--honey); font-weight: 650; }
+
+/* ---------- nákupy bez bločku: číslo na lište, karta vo Výdavkoch a na Domove ---------- */
+.tic { position: relative; display: inline-grid; place-items: center; }
+.tbadge { position: absolute; top: -5px; right: -10px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; display: grid; place-items: center; font-size: 11px; font-weight: 800; line-height: 1; color: #fff; background: var(--danger); box-shadow: 0 0 0 2px var(--bg); font-variant-numeric: tabular-nums; animation: tbin .5s cubic-bezier(.3,1.6,.5,1); }
+@keyframes tbin { from { transform: scale(0); } }
+.mrc { gap: 10px; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--honey) 55%, transparent), var(--sh) !important; }
+.mrc-h { display: flex; gap: 12px; align-items: flex-start; }
+.mrc-i { position: relative; width: 40px; height: 40px; border-radius: 13px; flex: none; display: grid; place-items: center; background: var(--honeys); color: var(--honey); }
+.mrc-i .ico { width: 22px; height: 22px; }
+.mrc-i b { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 99px; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; background: var(--danger); box-shadow: 0 0 0 2px var(--card); }
+.mrc-r { display: flex; align-items: center; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.mrc-r .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mrc-r .grow b { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mrc-r .sub { font-variant-numeric: tabular-nums; }
+.fin-back { min-height: 44px; gap: 6px; font-size: 15px; margin-top: -2px; }
+.fin-back .ico { width: 15px; height: 15px; }

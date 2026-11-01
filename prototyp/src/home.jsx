@@ -1,3 +1,4 @@
+import { MissingReceipts } from './receipt.jsx';
 import { useApp, I, E, IB, Btn, StoreTile, Avatars, Av, pe, useMemo, Sheet } from './ui.jsx';
 import { RECIPES } from './data.js';
 import { longDate, greeting, listTotals, eur, eur0, rangeText, relDay, dkey, addDays, dayShort, dayName, storeName, recipeById, haveCount, ago } from './logic.js';
@@ -118,6 +119,7 @@ export function Home() {
       <div className="body">
         <h1 className="lt">Domov</h1>
         <QuickActions next={next} g={g} />
+        <MissingReceipts compact />
         {live && <LiveCard live={live} liveT={liveT} g={g} />}
         <NextCard next={next} nextT={nextT} g={g} />
         <Tonight x={today.r ? today : null} g={g} />

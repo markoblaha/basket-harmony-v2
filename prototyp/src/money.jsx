@@ -1,3 +1,4 @@
+import { MissingReceipts } from './receipt.jsx';
 import { useApp, Back, MeBtn, useState, useMemo, Fragment, I, E, IB, Btn, StoreTile, Sheet, Seg, Empty } from './ui.jsx';
 import { PRODUCTS, CATS, STORES } from './data.js';
 import { eur, eur0, monthCats, monthTotal, octReceipts, monthReceipts, allReceipts, catsOf, productsOf, insights, weeks, history, unitPrice, storeName, shortDate, catName, num, dkey, addDays, plural, lineEmoji, kindsOf, kindDetail, variantDetail, qtyTxt, perTxt, sizeTxt, variantName } from './logic.js';
@@ -102,6 +103,7 @@ export function Money() {
             {P.note && <span className="cond">{P.note}</span>}
             {used != null && <button type="button" className="cond bud" onClick={() => sheet('budget')}>Rozpočet {eur0(budget)} · {budget - P.total >= 0 ? `zostáva ${eur0(budget - P.total)}` : `prekročený o ${eur0(P.total - budget)}`}</button>}
           </div>
+          <MissingReceipts />
           {rbtns}
           {seg}
           {per === 'month' && <div className="card glass2 wkc"><span className="kk"><I n="calendar-blank" />Týždne v októbri</span><div className="wk">{wk.map((w) => <div key={w.label}><span>{w.label}</span><span className="tr"><i style={{ width: Math.max(2, w.v / wmax * 100) + '%' }} /></span><em>{eur0(w.v)}</em></div>)}</div></div>}
@@ -122,6 +124,7 @@ export function Money() {
       <header className="nb"><MeBtn /><span className="nbt">Výdavky</span><span className="ibs" /></header>
       <div className="body">
         <h1 className="lt">Výdavky</h1>
+        <MissingReceipts />
         {rbtns}
         {seg}
         {P.total > 0 && <button type="button" className="card sum tapc" onClick={() => per === 'month' && sheet('budget')}>
