@@ -147,6 +147,9 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   / Rýchlo (3 dlaždice). Každý riadok má jednu hlavnú akciu vpravo. „Dnes večer“ premenované na „Naplánované
   recepty“: max. 2 najbližšie neuvarené z plánu (aj z posledných 3 dní, ak sa ešte nevarili; uvarené = `cooked`).
   Bloček: len Odfotiť / Z galérie. História nákupov v Nákupoch je tichší, priehľadný riadok.
+  Návrh „Ukážka a sprievodca“ (`prototyp/ukazka-sprievodca-navrh.html`) čaká na súhlas majiteľa: Vitajte s 3 možnosťami,
+  ukážková domácnosť na kópii údajov, 8 kapitol s kartou sprievodcu a „Ukáž mi to“, koniec → prázdna appka s Prvými
+  krokmi, „?“ s ponukou (nápovedy / kapitola / celá ukážka), Viac → Pomoc a ukážka. Otvorené: meno domácnosti, dĺžka.
   30. 10.: prerobené rozloženie podľa pripomienok – 4 záložky s popisom (Domov, Nákupy, Recepty, Výdavky), bez
   záhadného akčného tlačidla; každá akcia má jedno miesto (hlas = mikrofón v poli zoznamu, bloček = Výdavky/Domov).
   Recepty ako kniha: Kniha receptov (kategórie, rýchly výber, zdroje) / Moje (obľúbené, pridané) / Plán týždňa,
