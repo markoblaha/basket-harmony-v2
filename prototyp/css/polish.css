@@ -327,3 +327,18 @@
 .vx-days button { min-height: 40px; padding: 0 12px; border-radius: 99px; font-size: 14px; font-weight: 650; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
 @media (prefers-reduced-motion: reduce) { .vxi, .vx, .vx-fix, .vx-orb.on::after, .vx-heard .wave i { animation: none !important; } }
 .vx-who { font-size: 13px; color: var(--sec); font-weight: 650; margin-right: 4px; }
+
+/* ---------- nákup: odškrtnutie priamo v ikone produktu (bez krúžku) ---------- */
+.ckth { position: relative; overflow: visible; isolation: isolate; }
+.ckth .em { transition: transform .45s cubic-bezier(.3,1.6,.5,1), opacity .3s, filter .3s; }
+.ckov { position: absolute; inset: 0; border-radius: inherit; display: grid; place-items: center; background: color-mix(in srgb, var(--ok) 88%, transparent); opacity: 0; transform: scale(.6); pointer-events: none; z-index: 1; }
+.ckov svg { width: 26px; height: 26px; fill: none; stroke: #fff; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 22; stroke-dashoffset: 22; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .2)); }
+.row.ck .ckov { opacity: 1; transform: none; animation: ckov .5s cubic-bezier(.3,1.6,.5,1); }
+.row.ck .ckov svg { animation: ckdraw .32s .12s cubic-bezier(.6,0,.4,1) forwards; }
+.row.ck .ckth .em { transform: scale(.82) rotate(-8deg); filter: saturate(.6); }
+.row.ck .ckth::after { content: ""; position: absolute; inset: -2px; border-radius: inherit; z-index: 2; pointer-events: none; animation: ckring .7s ease-out forwards; }
+@keyframes ckov { 0% { opacity: 0; transform: scale(.5); } 55% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }
+/* už v košíku (zoznam „V košíku“) – fajka ostáva, ťuk vráti položku */
+.ckth.on .ckov { opacity: 1; transform: none; } .ckth.on .ckov svg { stroke-dashoffset: 0; }
+.row.done .ckth { opacity: 1; } .row.done .ckth .em { opacity: .5; }
+@media (prefers-reduced-motion: reduce) { .row.ck .ckov, .row.ck .ckov svg, .row.ck .ckth::after { animation-duration: .01s !important; animation-delay: 0s !important; } }

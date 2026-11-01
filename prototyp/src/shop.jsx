@@ -8,7 +8,8 @@ import { itemName, PriceLine } from './lists.jsx';
 // žiadosti, ktoré už boli zvýraznené (aby sa animácia neopakovala pri každom otvorení nákupu)
 const SEEN_REQ = new Set();
 // zaškrtávacie koliesko s kreslenou fajkou
-const CkBox = ({ on }) => <span className={'ckb' + (on ? ' on' : '')} aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" /></svg></span>;
+// ikona produktu, v ktorej sa pri odškrtnutí nakreslí fajka
+const CkIcon = ({ pid, on }) => <span className={'th ckth' + (on ? ' on' : '')}><E k={pe(pid)} /><span className="ckov" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" /></svg></span></span>;
 
 const hhmm = (ms) => { const d = new Date(ms); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
 const catOf = (i) => (i.pid && PRODUCTS[i.pid] ? PRODUCTS[i.pid].c : 'other');
@@ -97,10 +98,8 @@ export function Shop({ p }) {
                 <div className={'lst big' + (g ? ' glass2' : '')}>
                   {its.map((it) => (
                     <div key={it.id} className={'row tap' + (it.flash && Date.now() - it.flash < 1500 ? ' flash' : '') + (pend[it.id] ? ' ck' : '') + (pend[it.id] === 'out' ? ' ckout' : '')} onClick={() => toggle(it)} onContextMenu={(e) => { e.preventDefault(); setMenu(it.id); }} role="checkbox" aria-checked={!!pend[it.id]} aria-label={itemName(it)}>
-                      {g && <CkBox on={!!pend[it.id]} />}
-                      {!g && <span className="th"><E k={pe(it.pid)} /></span>}
+                      <CkIcon pid={it.pid} on={!!pend[it.id]} />
                       <div className="tx"><b><span className="stk">{itemName(it)}</span></b><span className="sub">{fmtQty(it.q, unitOf(it))} · <PriceLine it={it} S={S} store={list.store} /></span></div>
-                      {g ? <span className="th"><E k={pe(it.pid)} /></span> : <CkBox on={!!pend[it.id]} />}
                       <button type="button" className="more" aria-label="Viac možností" onClick={(e) => { e.stopPropagation(); setMenu(menu === it.id ? null : it.id); }}><I n="dots-three-vertical" w="bold" /></button>
                       {menu === it.id && <div className="rmenu" onClick={(e) => e.stopPropagation()}><button type="button" onClick={() => { act('patchItem', list.id, it.id, { na: true }); setMenu(null); toast(`${itemName(it)} – nemali, ostane na budúce`, { icon: 'prohibit' }); }}><I n="prohibit" />Nemali</button><button type="button" onClick={() => setMenu(null)}><I n="x" w="bold" />Zrušiť</button></div>}
                     </div>
@@ -113,7 +112,7 @@ export function Shop({ p }) {
           {na.length > 0 && <><div className="group plain"><I n="prohibit" /><span className="gl">Nemali</span></div><div className={'lst' + (g ? ' glass2' : '')}>{na.map((it) => <div key={it.id} className="row done"><span className="th"><E k={pe(it.pid)} /></span><div className="tx"><b>{itemName(it)}</b><span className="sub">ostane v zozname na budúce</span></div><button type="button" className="qty" onClick={() => act('patchItem', list.id, it.id, { na: false })} aria-label="Vrátiť"><I n="arrow-counter-clockwise" w="bold" /></button></div>)}</div></>}
           {t.done > 0 && <>
             <button type="button" className="group plain tgl-g" onClick={() => setShowDone(!showDone)}><I n="check-circle" /><span className="gl">V košíku ({t.done})</span><I n={showDone ? 'caret-up' : 'caret-down'} w="bold" /></button>
-            {showDone && <div className={'lst' + (g ? ' glass2' : '')}>{all.filter((i) => i.done).map((it) => <div key={it.id} className="row done tap" onClick={() => toggle(it)}>{g && <Check on label="Vrátiť" />}<span className="th"><E k={pe(it.pid)} /></span><div className="tx"><b>{itemName(it)}</b><span className="sub">{fmtQty(it.q, unitOf(it))}</span></div>{!g && <Check on label="Vrátiť" />}</div>)}</div>}
+            {showDone && <div className={'lst' + (g ? ' glass2' : '')}>{all.filter((i) => i.done).map((it) => <div key={it.id} className="row done tap" onClick={() => toggle(it)} role="button" aria-label={`${itemName(it)} – vrátiť z košíka`}><CkIcon pid={it.pid} on /><div className="tx"><b>{itemName(it)}</b><span className="sub">{fmtQty(it.q, unitOf(it))}</span></div></div>)}</div>}
           </>}
         </div>
       </div>
