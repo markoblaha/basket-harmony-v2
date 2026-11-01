@@ -119,3 +119,36 @@
 .target b { font-size: 15px; }
 /* malé náhľady jedál: priblížiť na stred taniera (inak je vidno len okraj taniera) */
 .tile.tph, .th[class*="pic-"] { background-size: 165%; background-position: center 55%; }
+
+/* ---------- opravy rozloženia (kontrola 1. 11.) ---------- */
+.qblock .seg { width: min(100%, 240px); align-self: center; }
+.seg > button { white-space: nowrap; padding-left: 12px; padding-right: 12px; }
+.follow .live .t2, .follow .live .s { text-wrap: balance; }
+
+/* ---------- nápovedy pre nových používateľov ---------- */
+.coach { position: absolute; inset: 0; z-index: 95; animation: fadein .3s; cursor: pointer; }
+.co-hole { position: absolute; box-shadow: 0 0 0 9999px rgb(8 8 10 / .58); transition: all .35s cubic-bezier(.2,.9,.25,1); animation: copulse 1.8s ease-in-out .4s infinite; pointer-events: none; }
+@keyframes copulse { 0%, 100% { outline: 2px solid rgb(255 255 255 / .9); outline-offset: 0; } 50% { outline: 2px solid rgb(255 255 255 / .25); outline-offset: 6px; } }
+.co-bub { position: absolute; z-index: 2; padding: 16px 16px 14px; border-radius: 22px; cursor: default;
+  background: var(--mat-spec), var(--mat-thick); -webkit-backdrop-filter: blur(36px) saturate(1.8); backdrop-filter: blur(36px) saturate(1.8);
+  box-shadow: var(--mat-edge), 0 24px 50px -18px rgb(0 0 0 / .6); color: var(--fg); display: flex; flex-direction: column; gap: 6px;
+  animation: coin .42s cubic-bezier(.2,1.2,.35,1); overflow: hidden; }
+.co-bub.a { animation-name: coinup; }
+@keyframes coin { from { opacity: 0; transform: translateY(-10px) scale(.96); } }
+@keyframes coinup { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+.co-bub b { font-size: 17px; font-weight: 750; letter-spacing: -.3px; }
+.co-bub p { font-size: 15px; line-height: 1.4; color: var(--sec); }
+.co-arr { position: absolute; width: 16px; height: 16px; transform: rotate(45deg); background: var(--mat-thick); }
+.co-bub.b .co-arr { top: -7px; } .co-bub.a .co-arr { bottom: -7px; }
+.co-act { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; }
+.co-skip { min-height: 44px; font-size: 14px; font-weight: 650; color: var(--sec); padding: 0 4px; }
+.co-ok { min-height: 44px; padding: 0 20px; border-radius: 99px; background: var(--pri); color: var(--onpri); font-size: 15px; font-weight: 750; box-shadow: var(--prish); }
+.co-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.co-bar i { display: block; height: 100%; background: var(--acc); transform-origin: left; animation: cobar 10s linear forwards; }
+@keyframes cobar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.co-hand { position: absolute; z-index: 3; width: 40px; height: 40px; color: #fff; pointer-events: none; filter: drop-shadow(0 4px 10px rgb(0 0 0 / .5)); }
+.co-hand .ico { width: 40px; height: 40px; }
+.co-hand.tap { animation: cotap 1.6s ease-in-out infinite; }
+@keyframes cotap { 0%, 100% { transform: translate(10px, 18px) scale(1); } 45% { transform: translate(0, 4px) scale(.92); } 55% { transform: translate(0, 4px) scale(.92); } }
+@media (prefers-reduced-motion: reduce) { .co-hole, .co-hand, .co-bub { animation: none; } .co-bar i { animation-duration: 10s; } }
+.nw { white-space: nowrap; }

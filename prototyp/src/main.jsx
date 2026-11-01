@@ -8,6 +8,7 @@ import { Shop, Follow, FinishSheet } from './shop.jsx';
 import { Voice } from './voice.jsx';
 import { Cook, PlanSheet, ImportSheet, AddRecipeSheet } from './recipes.jsx';
 import { Taste, BookMap } from './book.jsx';
+import { Coach } from './coach.jsx';
 import { Recipes, RecipeScreen, RecipeCollection } from './cookbook.jsx';
 import { Scan, Receipts, ReceiptDetail } from './receipt.jsx';
 import { Money, CategoryScreen, KindScreen, VariantScreen, ProductScreen, StoreScreen, BudgetSheet } from './money.jsx';
@@ -222,6 +223,7 @@ export function App() {
 
   const onSc = (e) => { const t = e.target; if (t && t.classList && t.classList.contains('sc') && !t.classList.contains('rsc')) t.classList.toggle('scrolled', t.scrollTop > 8); };
   const ctx = { S, act, setS, theme, dark, frame, nav, go, push, pop, modal, closeModal, jump, sheet: openSheet, closeSheet, toast, voice, ai, ovl, reset };
+  window.__bh = ctx; // len pre automatické testy prototypu
 
   const stack = nav.stacks[nav.tab];
   const topK = stack[stack.length - 1].k;
@@ -238,6 +240,7 @@ export function App() {
         return <section key={tab + e.k} className={'scr s-' + e.s + (top ? ' top' + anim : ' off')} data-prev={prev ? '' : undefined} aria-hidden={!top} onScrollCapture={onSc}>{theme === 'g' && <div className="bgl"><div className="bgb pic-trh_p" /><div className="veil" /></div>}<ScreenCtx.Provider value={{ back: backLabel(st[i - 1]) }}><Sc p={e.p || {}} top={top} /></ScreenCtx.Provider></section>;
       }))}
       {stack.length > 1 && !nav.modal && !(sheet && sheet.open) && <EdgeBack appRef={appRef} done={popNow} />}
+      <Coach appRef={appRef} screen={stack[stack.length - 1].s} blocked={!!(nav.modal && !nav.modal.out) || !!(sheet && sheet.open)} />
       {!hideTabs && <div className="tabfade" aria-hidden="true" />}
       {!hideTabs && <TabBar tab={nav.tab} go={go} voice={voice} vOn={!!(nav.modal && nav.modal.s === 'voice' && !nav.modal.out)} />}
       {M && <section key={nav.modal.k} className={'mdl m-' + nav.modal.s + (nav.modal.out ? ' out' : '')} onScrollCapture={onSc}><M p={nav.modal.p} /></section>}

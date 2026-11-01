@@ -153,7 +153,7 @@ export function Follow() {
         <header className="nb"><IB n="caret-left" label="Späť" onClick={closeModal} /><span className="nbt sh">Nakupuje: Lucia</span><span className="ibs" /></header>
         <div className="body">
           <div className={'card ' + (g ? 'glass2' : 'live')}>
-            <div className="rowc"><StoreTile k={list.store} s={48} /><div className="grow"><div className={g ? 't1' : 't'}>{storeName(list.store)}</div><div className={g ? 't2' : 's'}>{fin ? 'Hotovo' : 'Nakupuje ' + ago(S.live.started).replace('pred ', '')} · {t.done} z {t.n}</div></div><div className="ra"><div className={g ? 'num' : 'sv'}>{eur(t.doneV)}</div><div className={g ? 't2' : 's'}>v košíku</div></div></div>
+            <div className="rowc"><StoreTile k={list.store} s={48} /><div className="grow"><div className={g ? 't1' : 't'}>{storeName(list.store)}</div><div className={g ? 't2' : 's'}>{fin ? 'Hotovo' : 'Nakupuje ' + ago(S.live.started).replace('pred ', '')} · <span className="nw">{t.done} z {t.n}</span></div></div><div className="ra"><div className={g ? 'num' : 'sv'}>{eur(t.doneV)}</div><div className={g ? 't2' : 's'}>v košíku</div></div></div>
             {!fin && <div className={g ? 'bar' : 'prog'}><i style={{ width: (t.done / t.n) * 100 + '%' }} /></div>}
           </div>
           <p className="hint c">Zoznam sa mení naživo – keď Lucia niečo vloží do košíka, uvidíte to tu.</p>

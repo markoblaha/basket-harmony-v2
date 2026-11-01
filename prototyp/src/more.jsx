@@ -3,7 +3,7 @@ import { PRODUCTS, PANTRY, MEMBERS } from './data.js';
 import { eur0 } from './logic.js';
 import { PHOTO_CREDITS } from './credits.js';
 
-/* icons: caret-left caret-right copy users user-plus target sparkle translate arrow-counter-clockwise info check map-trifold */
+/* icons: caret-left caret-right copy users user-plus target sparkle translate arrow-counter-clockwise info check map-trifold lightbulb */
 
 export function ThemePicker({ value, onPick, big }) {
   const T = [
@@ -61,6 +61,7 @@ export function More() {
             {pantry && <div className="chips wrap pantry">{pantryAll.filter((x) => PRODUCTS[x]).map((pid) => <button type="button" key={pid} className={'chip' + (S.have.includes(pid) ? ' on' : '')} onClick={() => act('toggleHave', pid)}><E k={PRODUCTS[pid].e} />{PRODUCTS[pid].n.replace(/ ·.*$/, '')}</button>)}</div>}
             <div className="row"><span className="th ic"><I n="sparkle" /></span><div className="tx"><b>AI asistent</b><span className="sub">{ai == null ? 'zisťujem…' : ai ? 'Claude – hlas, recepty, bločky' : 'nedostupný – rozpoznávanie v telefóne'}</span></div><span className={'stat' + (ai ? ' ok' : '')}>{ai ? 'zapnutý' : 'offline'}</span></div>
             <button type="button" className="row tap" onClick={() => push('bookmap')}><span className="th ic"><I n="map-trifold" /></span><div className="tx"><b>Mapa knihy receptov</b><span className="sub">čo máme, čo chýba, čo ľudia hľadajú · pre správcu</span></div><I n="caret-right" w="bold" cls="chev" /></button>
+            <button type="button" className="row tap" onClick={() => { act((s) => ({ ...s, coach: { seen: {}, off: false }, tips: {} })); toast('Nápovedy sa znova ukážu na každej obrazovke', { icon: 'lightbulb' }); }}><span className="th ic"><I n="lightbulb" /></span><div className="tx"><b>Ukázať nápovedy znova</b><span className="sub">{S.coach && S.coach.off ? 'teraz vypnuté' : `videné ${Object.keys((S.coach && S.coach.seen) || {}).length} z 12`}</span></div><I n="caret-right" w="bold" cls="chev" /></button>
             <div className="row"><span className="th ic"><I n="translate" /></span><div className="tx"><b>Jazyk</b><span className="sub">Slovenčina</span></div></div>
           </div>
 
