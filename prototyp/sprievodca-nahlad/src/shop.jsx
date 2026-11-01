@@ -1,0 +1,213 @@
+import { useApp, useState, useEffect, useRef, useMemo, Fragment, I, E, IB, Btn, StoreTile, Av, pe, Sheet, Check, Empty, useInterval, Toggle } from './ui.jsx';
+import { PRODUCTS, CATS, ROUTE, MEMBERS } from './data.js';
+import { itemUnit, listTotals, estimate, eur, eur0, fmtQty, storeName, ago, unitPrice, parseChunk } from './logic.js';
+import { itemName, PriceLine } from './lists.jsx';
+
+/* icons: x sun sun-dim check check-circle arrow-counter-clockwise prohibit camera paper-plane-right */
+
+// žiadosti, ktoré už boli zvýraznené (aby sa animácia neopakovala pri každom otvorení nákupu)
+const SEEN_REQ = new Set();
+// zaškrtávacie koliesko s kreslenou fajkou
+// ikona produktu, v ktorej sa pri odškrtnutí nakreslí fajka
+const CkIcon = ({ pid, on }) => <span className={'th ckth' + (on ? ' on' : '')}><E k={pe(pid)} /><span className="ckov" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" /></svg></span></span>;
+
+const hhmm = (ms) => { const d = new Date(ms); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const catOf = (i) => (i.pid && PRODUCTS[i.pid] ? PRODUCTS[i.pid].c : 'other');
+const unitOf = itemUnit;
+
+function useWake() {
+  const [on, setOn] = useState(false);
+  const lock = useRef(null);
+  const req = async () => { try { lock.current = await navigator.wakeLock.request('screen'); setOn(true); lock.current.addEventListener('release', () => setOn(false)); } catch { setOn(false); } };
+  useEffect(() => { req(); return () => { try { lock.current && lock.current.release(); } catch {} }; }, []);
+  return [on, req];
+}
+
+export function Shop({ p }) {
+  const { S, act, closeModal, sheet, theme, toast } = useApp();
+  const g = theme === 'g';
+  const list = S.lists.find((l) => l.id === p.listId);
+  const [wake] = useWake();
+  const [mins, setMins] = useState(0);
+  const [menu, setMenu] = useState(null);
+  const [showDone, setShowDone] = useState(false);
+  const refs = useRef({});
+  useEffect(() => { if (!S.shopping || S.shopping.listId !== p.listId) act('startShopping', p.listId); }, []);
+  useInterval(() => setMins((m) => m + 1), 60000);
+  const timers = useRef({}); const pendRef = useRef({});
+  const [pend, setPend] = useState({});
+  pendRef.current = pend;
+  const commit = (id) => { clearTimeout(timers.current[id + 'a']); clearTimeout(timers.current[id + 'b']); act('toggleDone', p.listId, id); setPend((x) => { const y = { ...x }; delete y[id]; return y; }); };
+  useEffect(() => () => { for (const id of Object.keys(pendRef.current)) { clearTimeout(timers.current[id + 'a']); clearTimeout(timers.current[id + 'b']); act('toggleDone', p.listId, id); } }, []);
+  const lastFill = useRef(0); const prevDone = useRef(null);
+  const openN = list ? list.items.filter((i) => !i.na && !i.done).length : 0;
+  const prevOpen = useRef(openN);
+  useEffect(() => {
+    const was = prevOpen.current; prevOpen.current = openN;
+    if (was > 0 && openN === 0 && list && list.items.some((i) => i.done)) { const id = setTimeout(() => sheet('finish', { listId: list.id }), 650); return () => clearTimeout(id); }
+  }, [openN]);
+  if (!list) return null;
+  const started = S.shopping && S.shopping.listId === list.id ? S.shopping.started : Date.now();
+  const el = Math.max(mins, Math.round((Date.now() - started) / 60000));
+  const all = list.items.filter((i) => !i.na);
+  const t = listTotals({ ...list, items: all }, S);
+  const open = all.filter((i) => !i.done);
+  const na = list.items.filter((i) => i.na);
+  const cats = ROUTE.filter((c) => list.items.some((i) => catOf(i) === c));
+  const curCat = cats.find((c) => open.some((i) => catOf(i) === c));
+  const reqs = S.requests.filter((r) => r.listId === list.id);
+  if (prevDone.current !== null && t.done > prevDone.current) lastFill.current = t.done; else if (prevDone.current !== null && t.done < prevDone.current) lastFill.current = 0;
+  prevDone.current = t.done;
+  // odškrtnutie s animáciou: fajka → zafarbenie a prečiarknutie → riadok sa zbalí → položka ide do košíka.
+  // Druhé ťuknutie počas animácie ju zruší. Pri zatvorení nákupu sa rozbehnuté odškrtnutia dokončia.
+  const toggle = (it) => {
+    if (it.done) { act('toggleDone', list.id, it.id); return; }
+    if (pend[it.id]) { clearTimeout(timers.current[it.id + 'a']); clearTimeout(timers.current[it.id + 'b']); setPend((x) => { const y = { ...x }; delete y[it.id]; return y; }); return; }
+    try { navigator.vibrate && navigator.vibrate(12); } catch {}
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setPend((x) => ({ ...x, [it.id]: 'on' }));
+    timers.current[it.id + 'a'] = setTimeout(() => setPend((x) => (x[it.id] ? { ...x, [it.id]: 'out' } : x)), reduce ? 250 : 750);
+    timers.current[it.id + 'b'] = setTimeout(() => commit(it.id), reduce ? 300 : 1120);
+  };
+  const finish = () => sheet('finish', { listId: list.id });
+  const close = () => { if (t.done) finish(); else { act('endShopping'); closeModal(); } };
+
+  return (
+    <div className="scr shop">
+      {g && <div className="bgl"><div className="bgb pic-trh_p" /><div className="veil" /></div>}
+      <div className="sc">
+        <header className="nb shopnb">
+          <div className="snb-row"><IB n="x" label="Zavrieť nákup" onClick={close} />
+            <div className="grow snb-t"><div className="t1">Nakupuješ · {list.store ? storeName(list.store) : list.name}</div><div className="snb-s">od {hhmm(started)} · v košíku {eur(t.doneV)} · zostáva {open.length}</div></div>
+            {wake ? <span className="snb-wake" title="Obrazovka počas nákupu ostáva zapnutá" aria-label="Obrazovka ostáva zapnutá"><I n="sun" /></span> : <span className="ibs" />}</div>
+          <div className="snb-seg" role="progressbar" aria-valuemin={0} aria-valuemax={t.n} aria-valuenow={t.done} aria-label={`V košíku ${t.done} z ${t.n}`}>
+            <span className="segs" style={{ gap: t.n > 40 ? 1.5 : t.n > 20 ? 2 : 3 }}>{Array.from({ length: t.n }, (_, k) => <i key={k} className={k < t.done ? (k === t.done - 1 && lastFill.current === t.done ? 'd n' : 'd') : ''} />)}</span>
+            <b>{t.done}<small>/{t.n}</small></b>
+          </div>
+        </header>
+        <div className="body">
+          {reqs.map((r) => { const pp = PRODUCTS[r.pid]; const u = unitPrice(r.pid, S, list.store); const fresh = !SEEN_REQ.has(r.id); SEEN_REQ.add(r.id); return (
+            <div key={r.id} className={'card req' + (g ? ' glass2' : '') + (fresh ? ' new' : '')} role={fresh ? 'alert' : undefined}>
+              <span className="req-av"><Av id={r.from} s={40} /></span>
+              <div className="grow">{fresh && <span className="reqnew"><i />Nová žiadosť</span>}<div className="t1">{MEMBERS[r.from].name}: {pp.n.toLowerCase()}</div><div className="meta">{fmtQty(r.q, pp.u)}{u ? ' · ~' + eur(u.up * r.q) : ''}{r.note ? ' · ' + r.note : ''}</div></div>
+              <Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => { act((s) => { const s1 = { ...s, requests: s.requests.filter((x) => x.id !== r.id) }; const L = s1.lists.find((x) => x.id === list.id); return { ...s1, lists: s1.lists.map((x) => x.id === list.id ? { ...x, items: [{ id: Math.random().toString(36).slice(2), pid: r.pid, q: r.q, by: r.from, t: Date.now(), done: false, flash: Date.now() }, ...x.items] } : x) }; }); toast('Pridané – Lucia dostane potvrdenie'); }}>Pridať</Btn>
+              <IB n="x" label="Odmietnuť" cls="flat sm" onClick={() => { act('dropRequest', r.id); toast('Lucia uvidí, že to nekúpite'); }} />
+            </div>
+          ); })}
+          {cats.map((c) => {
+            const its = open.filter((i) => catOf(i) === c);
+            if (!its.length) return null;
+            const all2 = all.filter((i) => catOf(i) === c);
+            return (
+              <Fragment key={c}>
+                <div className={'group' + (c === curCat ? ' cur' : '')} ref={(n) => (refs.current[c] = n)}><E k={CATS[c].e} /><span className="gl">{c === curCat ? 'Teraz: ' : ''}{CATS[c].n}</span><span className="cnt">{all2.length - its.length} / {all2.length}</span></div>
+                <div className={'lst big' + (g ? ' glass2' : '')}>
+                  {its.map((it) => (
+                    <div key={it.id} className={'row tap' + (it.flash && Date.now() - it.flash < 1500 ? ' flash' : '') + (pend[it.id] ? ' ck' : '') + (pend[it.id] === 'out' ? ' ckout' : '')} onClick={() => toggle(it)} onContextMenu={(e) => { e.preventDefault(); setMenu(it.id); }} role="checkbox" aria-checked={!!pend[it.id]} aria-label={itemName(it)}>
+                      <CkIcon pid={it.pid} on={!!pend[it.id]} />
+                      <div className="tx"><b><span className="stk">{itemName(it)}</span></b><span className="sub">{fmtQty(it.q, unitOf(it))} · <PriceLine it={it} S={S} store={list.store} /></span></div>
+                      <button type="button" className="more" aria-label="Viac možností" onClick={(e) => { e.stopPropagation(); setMenu(menu === it.id ? null : it.id); }}><I n="dots-three-vertical" w="bold" /></button>
+                      {menu === it.id && <div className="rmenu" onClick={(e) => e.stopPropagation()}><button type="button" onClick={() => { act('patchItem', list.id, it.id, { na: true }); setMenu(null); toast(`${itemName(it)} – nemali, ostane na budúce`, { icon: 'prohibit' }); }}><I n="prohibit" />Nemali</button><button type="button" onClick={() => setMenu(null)}><I n="x" w="bold" />Zrušiť</button></div>}
+                    </div>
+                  ))}
+                </div>
+              </Fragment>
+            );
+          })}
+          {!open.length && <div className={'card alldone' + (g ? ' glass2' : '')}><E k="party" s={56} /><div><div className="ttl">Všetko v košíku</div><div className="meta">{t.done} položiek · ~{eur(t.doneV)}</div></div></div>}
+          {na.length > 0 && <><div className="group plain"><I n="prohibit" /><span className="gl">Nemali</span></div><div className={'lst' + (g ? ' glass2' : '')}>{na.map((it) => <div key={it.id} className="row done"><span className="th"><E k={pe(it.pid)} /></span><div className="tx"><b>{itemName(it)}</b><span className="sub">ostane v zozname na budúce</span></div><button type="button" className="qty" onClick={() => act('patchItem', list.id, it.id, { na: false })} aria-label="Vrátiť"><I n="arrow-counter-clockwise" w="bold" /></button></div>)}</div></>}
+          {t.done > 0 && <>
+            <button type="button" className="group plain tgl-g" onClick={() => setShowDone(!showDone)}><I n="check-circle" /><span className="gl">V košíku ({t.done})</span><I n={showDone ? 'caret-up' : 'caret-down'} w="bold" /></button>
+            {showDone && <div className={'lst' + (g ? ' glass2' : '')}>{all.filter((i) => i.done).map((it) => <div key={it.id} className="row done tap" onClick={() => toggle(it)} role="button" aria-label={`${itemName(it)} – vrátiť z košíka`}><CkIcon pid={it.pid} on /><div className="tx"><b>{itemName(it)}</b><span className="sub">{fmtQty(it.q, unitOf(it))}</span></div></div>)}</div>}
+          </>}
+        </div>
+      </div>
+      <div className="dock solo">
+        <Btn cls={(open.length ? 'soft' : 'pri') + ' full big' + (g ? (open.length ? ' gl' : ' a') : '')} onClick={finish} disabled={!t.done}>{open.length ? (t.done ? `Dokončiť nákup · ešte ${open.length}` : 'Odškrtnite, čo dáte do košíka') : 'Dokončiť nákup'}</Btn>
+      </div>
+    </div>
+  );
+}
+
+export function FinishSheet({ open, close, listId }) {
+  const { S, act, closeModal, modal, toast, theme, jump } = useApp();
+  const list = S.lists.find((l) => l.id === listId);
+  const [keep, setKeep] = useState(true);
+  if (!list) return <Sheet open={false} onClose={close} />;
+  const t = listTotals({ ...list, items: list.items.filter((i) => !i.na) }, S);
+  const left = list.items.filter((i) => !i.done && !i.na).length;
+  // Ukončenie nákupu: kúpené položky idú do histórie nákupov a zoznam sa zavrie (ostane len s nekúpenými,
+  // ak si ich človek nechá). Nákup sa zapíše ako „bez bločku“; uložený bloček ho spáruje a záznam zmizne.
+  const end = () => {
+    const now = Date.now(); const hid = 'h' + now.toString(36);
+    const bought = list.items.filter((i) => i.done && !i.na);
+    const rest = list.items.filter((i) => !i.done);
+    const hist = { id: hid, srcId: list.id, name: list.name, store: list.store || null, shared: list.shared, started: S.shopping && S.shopping.listId === list.id ? S.shopping.started : now, closedAt: now, items: bought, total: t.doneV, n: bought.length, receipt: null };
+    const miss = bought.length ? { id: 'm' + now.toString(36), listId: hid, name: list.name, store: list.store || null, at: now, total: t.doneV, n: bought.length } : null;
+    act((s) => ({ ...s, shopping: null, requests: s.requests.filter((r) => r.listId !== listId),
+      history: bought.length ? [hist, ...(s.history || [])] : s.history || [],
+      missingReceipts: miss ? [miss, ...(s.missingReceipts || [])] : s.missingReceipts,
+      lists: keep && rest.length ? s.lists.map((l) => (l.id === listId ? { ...l, items: rest } : l)) : s.lists.filter((l) => l.id !== listId) }));
+    return { hid, miss };
+  };
+  return (
+    <Sheet open={open} onClose={close} label="Dokončiť nákup">
+      <div className="finish">
+        <E k="bags" s={72} />
+        <h2>Nákup dokončený?</h2>
+        <p className="meta">{t.done} z {t.n} položiek · odhad ~{eur(t.doneV)}</p>
+        {left > 0 && <div className="tgrow"><span>Nekúpené ({left}) nechať v zozname na budúce</span><Toggle on={keep} onChange={setKeep} label="Nechať nekúpené" /></div>}
+        <div className="callout"><I n="lightbulb" /><span>Odfoťte bloček – skutočné ceny sa zapíšu k položkám a nabudúce bude odhad presnejší.</span></div>
+        <Btn cls={'pri full big' + (theme === 'g' ? ' a' : '')} onClick={() => { const { hid, miss } = end(); close(); closeModal(); setTimeout(() => modal('scan', { listId: hid, missing: miss && miss.id }), 320); }}><I n="camera" />Odfotiť bloček</Btn>
+        <Btn cls="soft full" onClick={() => { end(); close(); closeModal(); setTimeout(() => jump('home'), 280); toast('Nákup je v histórii · bloček pridáte neskôr', { icon: 'receipt', action: { label: 'História', fn: () => jump('lists', 'history') } }); }}>Teraz nie</Btn>
+        <button type="button" className="lnk c fin-back" onClick={close}><I n="arrow-counter-clockwise" w="bold" />Vrátiť sa k nákupu</button>
+      </div>
+    </Sheet>
+  );
+}
+
+// Sledovanie Luciinho nákupu
+export function Follow() {
+  const { S, act, closeModal, theme, toast } = useApp();
+  const g = theme === 'g';
+  const list = S.live && S.lists.find((l) => l.id === S.live.listId);
+  const [txt, setTxt] = useState('');
+  if (!list) return <div className="scr"><div className="sc"><header className="nb"><IB n="caret-left" onClick={closeModal} label="Späť" /></header><Empty e="cart" t="Nikto práve nenakupuje" /></div></div>;
+  const t = listTotals(list, S);
+  const fin = t.done === t.n;
+  const send = (e) => {
+    e.preventDefault(); const v = txt.trim(); if (!v) return;
+    const x = parseChunk(v);
+    act('addItems', list.id, [x ? (x.pid ? { pid: x.pid, q: x.q, u: x.u } : { n: x.n, q: x.q, u: x.u }) : { n: v, q: 1 }], 'm');
+    toast('Lucia to uvidí hneď v zozname');
+    setTxt('');
+  };
+  const items = [...list.items].sort((a, b) => (a.done === b.done ? (b.doneAt || 0) - (a.doneAt || 0) : a.done ? 1 : -1));
+  return (
+    <div className="scr follow">
+      {g && <div className="bgl"><div className="bgb pic-trh_p" /><div className="veil" /></div>}
+      <div className="sc">
+        <header className="nb"><IB n="caret-left" label="Späť" onClick={closeModal} /><span className="nbt sh">Nakupuje: Lucia</span><span className="ibs" /></header>
+        <div className="body">
+          <div className={'card ' + (g ? 'glass2' : 'live')}>
+            <div className="rowc"><StoreTile k={list.store} s={48} /><div className="grow"><div className={g ? 't1' : 't'}>{storeName(list.store)}</div><div className={g ? 't2' : 's'}>{fin ? 'Hotovo' : 'Nakupuje ' + ago(S.live.started).replace('pred ', '')} · <span className="nw">{t.done} z {t.n}</span></div></div><div className="ra"><div className={g ? 'num' : 'sv'}>{eur(t.doneV)}</div><div className={g ? 't2' : 's'}>v košíku</div></div></div>
+            {!fin && <div className={g ? 'bar' : 'prog'}><i style={{ width: (t.done / t.n) * 100 + '%' }} /></div>}
+          </div>
+          <p className="hint c">Zoznam sa mení naživo – keď Lucia niečo vloží do košíka, uvidíte to tu.</p>
+          <div className={'lst' + (g ? ' glass2' : '')}>
+            {items.map((it) => (
+              <div key={it.id} className={'row' + (it.done ? ' done' : '') + (it.doneAt && Date.now() - it.doneAt < 4000 ? ' flash' : '')}>
+                <span className="th"><E k={pe(it.pid)} /></span>
+                <div className="tx"><b>{itemName(it)}</b><span className="sub">{fmtQty(it.q, unitOf(it))}{it.done && it.doneAt ? ' · v košíku ' + ago(it.doneAt) : it.by === 'm' ? ' · pridali ste vy' : ''}</span></div>
+                <Check on={it.done} label={it.done ? 'V košíku' : 'Ešte nie'} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {!fin && <div className="dock">
+        <form className={'field' + (g ? ' glass2' : '')} onSubmit={send}><input id="ask-lucia" value={txt} onChange={(e) => setTxt(e.target.value)} placeholder="Poprosiť o…, napr. „smotana“" autoComplete="off" aria-label="Poprosiť Luciu" /><button type="submit" className="m" aria-label="Poslať"><I n="paper-plane-right" /></button></form>
+      </div>}
+    </div>
+  );
+}
