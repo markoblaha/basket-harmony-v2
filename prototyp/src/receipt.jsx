@@ -82,8 +82,7 @@ export function Scan({ p }) {
         {err && <p className="vnote"><I n="warning-circle" />{err}</p>}
         {g && <div className="t1 c">Bloček v rámčeku, celý a rovno</div>}
         <Btn cls={'pri full big' + (g ? ' a' : '')} onClick={() => cam.current.click()}><I n="camera" />Odfotiť bloček</Btn>
-        <div className="rowc two"><Btn cls={'soft grow' + (g ? ' gl' : '')} onClick={() => gal.current.click()}><I n="image" />Z galérie</Btn><Btn cls={'soft grow' + (g ? ' gl' : '')} onClick={demo}><I n="sparkle" />Ukážkový</Btn></div>
-        <p className="meta sm c">{ai ? 'Fotku prečíta AI (Claude). Pri prvom použití sa opýta na povolenie.' : 'AI tu nie je dostupná – vyskúšajte ukážkový bloček.'}</p>
+        <Btn cls={'soft full' + (g ? ' gl' : '')} onClick={() => gal.current.click()}><I n="image" />Z galérie</Btn>
       </div>
     </div>
   );
