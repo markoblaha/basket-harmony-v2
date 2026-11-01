@@ -664,3 +664,30 @@
 #tx .tx-chap.ok .n .ico, #tx .tx-chl .n .ico, #tx .tx-fs .c .ico { width: 13px !important; height: 13px !important; }
 #tx .tx-scrim, #tx .tx-dlg { z-index: 8; }
 #tx .tx-sheet { z-index: 9; }
+
+/* ===== Okná nápovedy a sprievodcu: obrátený povrch, aby nesplývali s témou =====
+   Tmavý režim → svetlé „papierové“ okno s tmavým textom; svetlý režim → tmavé okno so svetlým textom.
+   Farby vnútri okna sa berú z rovnakých rolí (--fg, --sec, --acc, --pri…), len prepnutých pre tento povrch. */
+.app.t-d { --gs-bg: #fbf8f2; --gs-fg: #1c1a17; --gs-sec: rgb(28 26 23 / .68); --gs-ter: rgb(28 26 23 / .42); --gs-line: rgb(28 26 23 / .1); --gs-out: rgb(0 0 0 / .55); }
+.app.g.t-d { --gs-acc: #d9531a; --gs-btn: linear-gradient(160deg, #ff8a4c, #e9571a); --gs-onbtn: #fff; }
+.app.w.t-d { --gs-acc: #2f6b4a; --gs-btn: #2f6b4a; --gs-onbtn: #fff; }
+.app.t-l { --gs-fg: #fff; --gs-sec: rgb(255 255 255 / .74); --gs-ter: rgb(255 255 255 / .45); --gs-line: rgb(255 255 255 / .12); --gs-out: rgb(20 16 10 / .35); }
+.app.g.t-l { --gs-bg: #221e1a; --gs-acc: #ff9a63; --gs-btn: linear-gradient(160deg, #ff8a4c, #f2601f); --gs-onbtn: #fff; }
+.app.w.t-l { --gs-bg: #1d2a22; --gs-acc: #8fd4a7; --gs-btn: #8fd4a7; --gs-onbtn: #0f1a13; }
+#tx .tx-card, #tx .tx-chcard, #tx .tx-dlg, #tx .tx-sheet, #tx .tx-paused, #tx .tx-label, .coach .co-bub, .co-wel .co-wcard {
+  --fg: var(--gs-fg); --sec: var(--gs-sec); --ter: var(--gs-ter); --line: var(--gs-line); --acc: var(--gs-acc); --pri: var(--gs-btn); --onpri: var(--gs-onbtn); --mat-thick: var(--gs-bg);
+  background: var(--gs-bg) !important; color: var(--gs-fg); -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--gs-acc) 55%, transparent), 0 28px 70px -22px var(--gs-out), 0 10px 24px -12px var(--gs-out) !important; }
+#tx .tx-sheet { box-shadow: 0 -1.5px 0 0 color-mix(in srgb, var(--gs-acc) 55%, transparent), 0 -24px 60px -20px var(--gs-out) !important; }
+#tx .tx-paused { box-shadow: 0 0 0 1.5px var(--gs-acc), 0 18px 40px -14px var(--gs-out) !important; }
+.coach .co-arr { background: var(--gs-bg) !important; box-shadow: none !important; }
+/* tlačidlá a štítky v okne */
+#tx .tx-card .tx-ok, #tx .tx-chcard .tx-wide.p, #tx .tx-dlg .tx-wide.p, #tx .tx-sheet .tx-wide.p, #tx .tx-paused .go, .coach .co-ok { background: var(--gs-btn) !important; color: var(--gs-onbtn) !important; box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--gs-acc) 80%, transparent) !important; }
+#tx .tx-chap .n, #tx .tx-big .num { background: var(--gs-btn); color: var(--gs-onbtn); }
+#tx .tx-chap.ok .n { background: #2fb36a; color: #fff; }
+#tx .tx-ghost.hot { background: var(--gs-acc); color: var(--gs-onbtn); }
+#tx .tx-card .tx-prog i:not(.d):not(.c), #tx .tx-chcard .tx-prog i:not(.d):not(.c) { background: color-mix(in srgb, var(--gs-fg) 14%, transparent); }
+.app.t-d #tx .tx-nudge { background: #fdecc8; color: #3a2a07; } .app.t-d #tx .tx-nudge .ico { color: #b7790f; }
+.coach .co-bub p, .coach .co-skip { color: var(--gs-sec); } .coach .co-k { color: var(--gs-acc); }
+/* zvýraznené miesto: čistý biely okraj + prstenec v akcentovej farbe témy */
+#tx .tx-ring { border-color: var(--gs-acc); }
