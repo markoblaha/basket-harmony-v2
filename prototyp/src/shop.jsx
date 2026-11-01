@@ -5,6 +5,11 @@ import { itemName, PriceLine } from './lists.jsx';
 
 /* icons: x sun sun-dim check check-circle arrow-counter-clockwise prohibit camera paper-plane-right */
 
+// žiadosti, ktoré už boli zvýraznené (aby sa animácia neopakovala pri každom otvorení nákupu)
+const SEEN_REQ = new Set();
+// zaškrtávacie koliesko s kreslenou fajkou
+const CkBox = ({ on }) => <span className={'ckb' + (on ? ' on' : '')} aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" /></svg></span>;
+
 const catOf = (i) => (i.pid && PRODUCTS[i.pid] ? PRODUCTS[i.pid].c : 'other');
 const unitOf = itemUnit;
 
@@ -27,6 +32,11 @@ export function Shop({ p }) {
   const refs = useRef({});
   useEffect(() => { if (!S.shopping || S.shopping.listId !== p.listId) act('startShopping', p.listId); }, []);
   useInterval(() => setMins((m) => m + 1), 60000);
+  const timers = useRef({}); const pendRef = useRef({});
+  const [pend, setPend] = useState({});
+  pendRef.current = pend;
+  const commit = (id) => { clearTimeout(timers.current[id + 'a']); clearTimeout(timers.current[id + 'b']); act('toggleDone', p.listId, id); setPend((x) => { const y = { ...x }; delete y[id]; return y; }); };
+  useEffect(() => () => { for (const id of Object.keys(pendRef.current)) { clearTimeout(timers.current[id + 'a']); clearTimeout(timers.current[id + 'b']); act('toggleDone', p.listId, id); } }, []);
   if (!list) return null;
   const started = S.shopping && S.shopping.listId === list.id ? S.shopping.started : Date.now();
   const el = Math.max(mins, Math.round((Date.now() - started) / 60000));
@@ -37,7 +47,17 @@ export function Shop({ p }) {
   const cats = ROUTE.filter((c) => list.items.some((i) => catOf(i) === c));
   const curCat = cats.find((c) => open.some((i) => catOf(i) === c));
   const reqs = S.requests.filter((r) => r.listId === list.id);
-  const toggle = (it) => act('toggleDone', list.id, it.id);
+  // odškrtnutie s animáciou: fajka → zafarbenie a prečiarknutie → riadok sa zbalí → položka ide do košíka.
+  // Druhé ťuknutie počas animácie ju zruší. Pri zatvorení nákupu sa rozbehnuté odškrtnutia dokončia.
+  const toggle = (it) => {
+    if (it.done) { act('toggleDone', list.id, it.id); return; }
+    if (pend[it.id]) { clearTimeout(timers.current[it.id + 'a']); clearTimeout(timers.current[it.id + 'b']); setPend((x) => { const y = { ...x }; delete y[it.id]; return y; }); return; }
+    try { navigator.vibrate && navigator.vibrate(12); } catch {}
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setPend((x) => ({ ...x, [it.id]: 'on' }));
+    timers.current[it.id + 'a'] = setTimeout(() => setPend((x) => (x[it.id] ? { ...x, [it.id]: 'out' } : x)), reduce ? 250 : 750);
+    timers.current[it.id + 'b'] = setTimeout(() => commit(it.id), reduce ? 300 : 1120);
+  };
   const finish = () => sheet('finish', { listId: list.id });
   const close = () => { if (t.done) finish(); else { act('endShopping'); closeModal(); } };
   const pct = t.n ? t.done / t.n : 0;
@@ -61,10 +81,10 @@ export function Shop({ p }) {
               <div className="prog"><i style={{ width: pct * 100 + '%' }} /></div>
             </div>
           )}
-          {reqs.map((r) => { const pp = PRODUCTS[r.pid]; const u = unitPrice(r.pid, S, list.store); return (
-            <div key={r.id} className={'card req' + (g ? ' glass2' : '')}>
-              <Av id={r.from} s={40} />
-              <div className="grow"><div className="t1">{MEMBERS[r.from].name}: {pp.n.toLowerCase()}</div><div className="meta">{fmtQty(r.q, pp.u)}{u ? ' · ~' + eur(u.up * r.q) : ''}{r.note ? ' · ' + r.note : ''}</div></div>
+          {reqs.map((r) => { const pp = PRODUCTS[r.pid]; const u = unitPrice(r.pid, S, list.store); const fresh = !SEEN_REQ.has(r.id); SEEN_REQ.add(r.id); return (
+            <div key={r.id} className={'card req' + (g ? ' glass2' : '') + (fresh ? ' new' : '')} role={fresh ? 'alert' : undefined}>
+              <span className="req-av"><Av id={r.from} s={40} /></span>
+              <div className="grow">{fresh && <span className="reqnew"><i />Nová žiadosť</span>}<div className="t1">{MEMBERS[r.from].name}: {pp.n.toLowerCase()}</div><div className="meta">{fmtQty(r.q, pp.u)}{u ? ' · ~' + eur(u.up * r.q) : ''}{r.note ? ' · ' + r.note : ''}</div></div>
               <Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => { act((s) => { const s1 = { ...s, requests: s.requests.filter((x) => x.id !== r.id) }; const L = s1.lists.find((x) => x.id === list.id); return { ...s1, lists: s1.lists.map((x) => x.id === list.id ? { ...x, items: [{ id: Math.random().toString(36).slice(2), pid: r.pid, q: r.q, by: r.from, t: Date.now(), done: false, flash: Date.now() }, ...x.items] } : x) }; }); toast('Pridané – Lucia dostane potvrdenie'); }}>Pridať</Btn>
               <IB n="x" label="Odmietnuť" cls="flat sm" onClick={() => { act('dropRequest', r.id); toast('Lucia uvidí, že to nekúpite'); }} />
             </div>
@@ -78,11 +98,12 @@ export function Shop({ p }) {
                 <div className={'group' + (c === curCat ? ' cur' : '')} ref={(n) => (refs.current[c] = n)}><E k={CATS[c].e} /><span className="gl">{c === curCat ? 'Teraz: ' : ''}{CATS[c].n}</span><span className="cnt">{all2.length - its.length} / {all2.length}</span></div>
                 <div className={'lst big' + (g ? ' glass2' : '')}>
                   {its.map((it) => (
-                    <div key={it.id} className={'row tap' + (it.flash && Date.now() - it.flash < 1500 ? ' flash' : '')} onClick={() => toggle(it)} onContextMenu={(e) => { e.preventDefault(); setMenu(it.id); }}>
-                      {g && <Check on={false} label={'Odškrtnúť ' + itemName(it)} />}
+                    <div key={it.id} className={'row tap' + (it.flash && Date.now() - it.flash < 1500 ? ' flash' : '') + (pend[it.id] ? ' ck' : '') + (pend[it.id] === 'out' ? ' ckout' : '')} onClick={() => toggle(it)} onContextMenu={(e) => { e.preventDefault(); setMenu(it.id); }} role="checkbox" aria-checked={!!pend[it.id]} aria-label={itemName(it)}>
+                      {g && <CkBox on={!!pend[it.id]} />}
                       {!g && <span className="th"><E k={pe(it.pid)} /></span>}
-                      <div className="tx"><b>{itemName(it)}</b><span className="sub">{fmtQty(it.q, unitOf(it))} · <PriceLine it={it} S={S} store={list.store} /></span></div>
-                      {g ? <span className="th"><E k={pe(it.pid)} /></span> : <Check on={false} label={'Odškrtnúť ' + itemName(it)} />}
+                      <div className="tx"><b><span className="stk">{itemName(it)}</span></b><span className="sub">{fmtQty(it.q, unitOf(it))} · <PriceLine it={it} S={S} store={list.store} /></span></div>
+                      {g ? <span className="th"><E k={pe(it.pid)} /></span> : <CkBox on={!!pend[it.id]} />}
+                      {pend[it.id] && <span className="ckf"><I n="check" w="bold" />V košíku</span>}
                       <button type="button" className="more" aria-label="Viac možností" onClick={(e) => { e.stopPropagation(); setMenu(menu === it.id ? null : it.id); }}><I n="dots-three-vertical" w="bold" /></button>
                       {menu === it.id && <div className="rmenu" onClick={(e) => e.stopPropagation()}><button type="button" onClick={() => { act('patchItem', list.id, it.id, { na: true }); setMenu(null); toast(`${itemName(it)} – nemali, ostane na budúce`, { icon: 'prohibit' }); }}><I n="prohibit" />Nemali</button><button type="button" onClick={() => setMenu(null)}><I n="x" w="bold" />Zrušiť</button></div>}
                     </div>
