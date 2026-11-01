@@ -415,3 +415,29 @@
 /* surovina predvolene „doma“, ale v recepte prepnutá na „nemám“ */
 .ing.nohome { background: color-mix(in srgb, var(--honey) 12%, transparent); }
 .ing.nohome .sub { color: var(--honey); font-weight: 600; }
+
+/* ===== Domov – variant A: skupiny s nadpismi ===== */
+.home-a { gap: 10px; }
+.hsec { display: flex; flex-direction: column; gap: 8px; }
+.hsec + .hsec { margin-top: 8px; }
+.hsec-h { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; }
+.hsec-h h2 { font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--sec); }
+.hsec-h button { min-height: 44px; margin: -12px -4px; padding: 0 4px; font-size: 15px; font-weight: 650; color: var(--acc); }
+.hrow { flex-direction: row; align-items: center; gap: 12px; padding: 10px 12px; min-height: 64px; }
+.hrow .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hrow .grow b { font-size: 16.5px; font-weight: 700; letter-spacing: -.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w .hrow .grow b { font-family: var(--serif); font-weight: 560; font-size: 17px; }
+.hrow .grow small { font-size: 14px; line-height: 1.3; color: var(--sec); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-variant-numeric: tabular-nums; }
+.hrow .th, .hrow .stile { width: 40px; height: 40px; border-radius: 12px; flex: none; }
+.hrow.warn { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--honey) 60%, transparent), var(--sh) !important; }
+.hrow .btn { flex: none; }
+.btn.ok { background: var(--ok); color: #fff; }
+.hplay { width: 44px; height: 44px; border-radius: 99px; flex: none; display: grid; place-items: center; background: var(--pri); color: var(--onpri); box-shadow: var(--prish); }
+.hplay .ico { width: 18px; height: 18px; margin-left: 2px; }
+.hqa { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.hqab { min-height: 84px; border-radius: 18px; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; font-size: 13.5px; font-weight: 700; line-height: 1.2; background: var(--card); box-shadow: var(--sh); transition: transform .14s; }
+.hqab:active { transform: scale(.96); }
+.hqab .qi { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; }
+.g .hqab .qi { background: linear-gradient(160deg, var(--acc2), var(--acc)); color: #fff; }
+.w .hqab .qi { background: var(--pri); color: var(--onpri); }
+.hqab .qi .ico { width: 20px; height: 20px; }

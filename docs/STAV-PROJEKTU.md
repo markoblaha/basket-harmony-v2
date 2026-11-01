@@ -142,6 +142,9 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   nechajú), appka skočí na Domov; Nákupy → História nákupov → detail (bloček/chýba, Odfotiť, Nakúpiť znova).
   „Mám doma“ v recepte: každá surovina sa dá prepnúť (aj bežne doma / z Nastavení) len pre daný recept
   (`recipeHave`), Nastavenia sa nemenia. „Čo mám doma“ v Nastaveniach: mriežka 2 stĺpce s vysvetlením.
+  Domov – variant A (schválený z `prototyp/domov-varianty-navrh.html`): skupiny s nadpismi Treba vybaviť (chýbajúce
+  bločky, len keď nejaké sú) / Nákupy (Lucia nakupuje, najbližší zoznam s Nakupovať) / Dnes večer (recept, ▶ Variť)
+  / Rýchlo (3 dlaždice). Každý riadok má jednu hlavnú akciu vpravo.
   30. 10.: prerobené rozloženie podľa pripomienok – 4 záložky s popisom (Domov, Nákupy, Recepty, Výdavky), bez
   záhadného akčného tlačidla; každá akcia má jedno miesto (hlas = mikrofón v poli zoznamu, bloček = Výdavky/Domov).
   Recepty ako kniha: Kniha receptov (kategórie, rýchly výber, zdroje) / Moje (obľúbené, pridané) / Plán týždňa,

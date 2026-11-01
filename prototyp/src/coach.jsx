@@ -13,7 +13,7 @@ import { useApp, useState, useEffect, useRef, useLayoutEffect, I, IB } from './u
 export const COACH = [
   { id: 'mic', screen: 'home', sel: '.tabbar .tmic', global: true, hand: 'tap', title: 'Hovorte namiesto písania', text: 'Ťuknite sem a povedzte napríklad „dve mlieka a chlieb“. Položky sa pridajú do nákupu.' },
   { id: 'tabs', screen: 'home', sel: '.tabbar', global: true, title: 'Štyri časti appky', text: 'Domov, Nákupy, Recepty a Výdavky. Ťuknutím sa medzi nimi prepínate.' },
-  { id: 'quick', screen: 'home', sel: '.qa', title: 'Najčastejšie akcie', text: 'Pridať do nákupu, odfotiť bloček alebo nájsť, čo uvariť.' },
+  { id: 'quick', screen: 'home', sel: '.hqa', title: 'Rýchle akcie', text: 'Pridať do nákupu, odfotiť bloček alebo nájsť, čo uvariť – jedným ťuknutím.' },
   { id: 'help', screen: 'home', sel: '.nb .helpb', title: 'Pomoc je vždy tu', text: 'Keď si nebudete istí, ťuknite na otáznik. Nápovedy k obrazovke sa ukážu znova.' },
   { id: 'lcard', screen: 'lists', sel: '.lcard', title: 'Váš nákupný zoznam', text: 'Ťuknutím ho otvoríte: uvidíte položky a odhad ceny podľa bločkov.' },
   { id: 'lgo', screen: 'lists', sel: '.lgo', hand: 'tap', title: 'Rovno do obchodu', text: 'Košíkom na karte spustíte nákup bez otvárania zoznamu.' },

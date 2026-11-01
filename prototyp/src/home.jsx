@@ -109,21 +109,62 @@ function Tonight({ x, g }) {
   );
 }
 
+// Domov (variant A): skupiny s nadpismi – Treba vybaviť, Nákupy, Dnes večer, Rýchlo.
+// Skupina bez obsahu sa neukáže (okrem Nákupov a Dnes večer, ktoré ponúknu prvý krok).
+function HSec({ t, link, onLink, children }) {
+  return <section className="hsec" aria-label={t}><div className="hsec-h"><h2>{t}</h2>{link && <button type="button" onClick={onLink}>{link}</button>}</div>{children}</section>;
+}
+function HRow({ lead, title, sub, action, onClick, warn, g, label }) {
+  return (
+    <div className={'card hrow' + (g ? ' glass2' : '') + (warn ? ' warn' : '') + (onClick ? ' tapc' : '')} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} aria-label={label}
+      onClick={onClick} onKeyDown={onClick ? (e) => { if (e.key === 'Enter') onClick(); } : undefined}>
+      {lead}<div className="grow"><b>{title}</b>{sub && <small>{typeof sub === 'string' ? sub.split(' · ').map((x, i) => <React.Fragment key={i}>{i > 0 && ' · '}<span className="nw">{x}</span></React.Fragment>) : sub}</small>}</div>{action}
+    </div>
+  );
+}
+const stopThen = (fn) => (e) => { e.stopPropagation(); fn(); };
+
 export function Home() {
-  const { theme, push, modal, S } = useApp();
-  const { live, liveT, next, nextT, days, tonight } = useHomeData();
+  const { theme, push, modal, jump, sheet, S } = useApp();
+  const { live, liveT, next, nextT, days } = useHomeData();
   const g = theme === 'g';
   const today = days[0];
+  const ms = S.missingReceipts || [];
+  const going = next && S.shopping && S.shopping.listId === next.id;
+  const nOpen = next ? next.items.filter((i) => !i.done).length : 0;
+  const tr = today.r; const th = tr && haveCount(tr, S);
+  const QA = [
+    ['plus', 'Pridať do nákupu', () => (next ? jump('lists', 'list', { id: next.id, focus: true }) : sheet('newList'))],
+    ['camera', 'Odfotiť bloček', () => modal('scan', { listId: next && next.id })],
+    ['cooking-pot', 'Čo uvariť', () => jump('recipes')],
+  ];
   return (
     <div className="sc">
-      <header className="nb"><button type="button" className="avbtn" onClick={() => push('more')} aria-label="Domácnosť a nastavenia"><Avatars /></button><span className="nbt" /><div className="nbr"><HelpBtn screen="home" /><IB n="gear-six" w="fill" label="Nastavenia" onClick={() => push('more')} /></div></header>
-      <div className="body">
+      <header className="nb"><button type="button" className="avbtn" onClick={() => push('more')} aria-label="Domácnosť a nastavenia"><Avatars /></button><span className="nbt">Domov</span><div className="nbr"><HelpBtn screen="home" /><IB n="gear-six" w="fill" label="Nastavenia" onClick={() => push('more')} /></div></header>
+      <div className="body home-a">
         <h1 className="lt">Domov</h1>
-        <QuickActions next={next} g={g} />
-        <MissingReceipts compact />
-        {live && <LiveCard live={live} liveT={liveT} g={g} />}
-        <NextCard next={next} nextT={nextT} g={g} />
-        <Tonight x={today.r ? today : null} g={g} />
+        {ms.length > 0 && <HSec t="Treba vybaviť" link={ms.length > 2 ? `Všetky (${ms.length})` : null} onLink={() => jump('money')}>
+          {ms.slice(0, 2).map((m) => <HRow key={m.id} g={g} warn lead={m.store ? <StoreTile k={m.store} s={40} /> : <span className="th ic"><I n="receipt" /></span>} title="Chýba bloček" sub={`${m.name} · ${relDay(m.at)} · ~${eur0(m.total)}`}
+            action={<Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => modal('scan', { listId: m.listId, missing: m.id })}><I n="camera" />Odfotiť</Btn>} />)}
+        </HSec>}
+        <HSec t="Nákupy" link="Všetky" onLink={() => jump('lists')}>
+          {live && <HRow g={g} lead={<StoreTile k={live.store} s={40} />} onClick={() => modal('follow')} label="Luciin nákup"
+            title={liveT.done === liveT.n ? 'Lucia nakúpila' : 'Lucia nakupuje'} sub={`${storeName(live.store)} · ${liveT.done === liveT.n ? `${liveT.n} položiek · ${eur(liveT.doneV)}` : `${liveT.done} z ${liveT.n} v košíku`}`}
+            action={<Btn cls="soft sm">{liveT.done === liveT.n ? 'Pozrieť' : 'Sledovať'}</Btn>} />}
+          {next ? <HRow g={g} lead={<StoreTile k={next.store} n={next.name} s={40} />} onClick={() => jump('lists', 'list', { id: next.id })} label={`Zoznam ${next.name}`}
+            title={next.store ? storeName(next.store) : next.name} sub={`${relDay(next.when)} · ${nOpen} ${nOpen === 1 ? 'položka' : nOpen < 5 && nOpen > 0 ? 'položky' : 'položiek'}${nextT.priced ? ' · ~' + eur0(nextT.v) : ''}`}
+            action={nOpen > 0 ? <Btn cls={(going ? 'ok' : 'pri') + ' sm' + (g && !going ? ' a' : '')} onClick={stopThen(() => modal('shop', { listId: next.id }))}><I n={going ? 'play' : 'basket'} />{going ? 'Pokračovať' : 'Nakupovať'}</Btn> : null} />
+            : <HRow g={g} lead={<span className="th ic"><I n="basket" /></span>} title="Žiadny otvorený zoznam" sub="Začnite nový nákup" onClick={() => sheet('newList')} action={<Btn cls="soft sm"><I n="plus" w="bold" />Nový</Btn>} />}
+        </HSec>
+        <HSec t="Dnes večer" link="Plán týždňa" onLink={() => jump('recipes')}>
+          {tr ? <HRow g={g} lead={tr.pic ? <span className={'th tph pic-' + tr.pic} /> : <span className={'th bg-' + tr.bg}><E k={tr.e} /></span>} onClick={() => push('recipe', { id: tr.id })} label={`Recept ${tr.n}`}
+            title={tr.n} sub={`${tr.min} min · ${th.have === th.all ? 'suroviny máte' : `chýba ${th.all - th.have} ${th.all - th.have === 1 ? 'surovina' : th.all - th.have < 5 ? 'suroviny' : 'surovín'}`}`}
+            action={<button type="button" className="hplay" aria-label={`Variť ${tr.n}`} onClick={stopThen(() => modal('cook', { id: tr.id }))}><I n="play" /></button>} />
+            : <HRow g={g} lead={<span className="th ic"><I n="cooking-pot" /></span>} title="Zatiaľ nič naplánované" sub="Vyberte jedlo v knihe receptov" onClick={() => jump('recipes')} action={<I n="caret-right" w="bold" cls="chev" />} />}
+        </HSec>
+        <HSec t="Rýchlo">
+          <div className="hqa">{QA.map(([ic, t, fn]) => <button type="button" key={t} className={'hqab' + (g ? ' glass2' : '')} onClick={fn}><span className="qi"><I n={ic} w={ic === 'plus' ? 'bold' : 'fill'} /></span>{t}</button>)}</div>
+        </HSec>
       </div>
     </div>
   );
