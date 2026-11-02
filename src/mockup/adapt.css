@@ -77,3 +77,19 @@ body.kb-typing .bhm-tabs {
   max-width: 40rem;
   margin: 0 auto;
 }
+
+/* Nový zoznam na nízkom displeji (iPhone SE, Safari s lištami): rovnaký vzhľad, menšie medzery – zmestí sa bez rolovania. */
+@media (max-height: 640px) {
+  :root .bhm.bhm-ovl .sheet.nl .grabz { padding: 6px 0 2px; }
+  :root .bhm.bhm-ovl .sheet.nl .sh-head { padding-top: 2px; padding-bottom: 2px; }
+  :root .bhm.bhm-ovl .sheet.nl .sh-head h2 { font-size: 20px; }
+  :root .bhm.bhm-ovl .sheet.nl .sh-body { gap: 10px; }
+  :root .bhm.bhm-ovl .sheet.nl .fl { gap: 4px; }
+  :root .bhm.bhm-ovl .sheet.nl .fl input { height: 44px; }
+  :root .bhm.bhm-ovl .sheet.nl .stb { min-height: 44px; padding: 4px 6px; }
+  :root .bhm.bhm-ovl .sheet.nl .stgrid, :root .bhm.bhm-ovl .sheet.nl .days, :root .bhm.bhm-ovl .sheet.nl .who { margin-top: 4px; }
+  :root .bhm.bhm-ovl .sheet.nl .days .chip { height: 40px; }
+  :root .bhm.bhm-ovl .sheet.nl .whob { min-height: 46px; }
+  :root .bhm.bhm-ovl .sheet.nl .sh-foot { padding-top: 6px; padding-bottom: 8px; }
+  :root .bhm.bhm-ovl .sheet.nl .k small { display: none; }
+}

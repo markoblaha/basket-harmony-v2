@@ -7,7 +7,7 @@ import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { useToast } from "@/components/toast";
 import { useReceipts } from "@/features/receipts/api";
 import { errorMessage } from "@/lib/errors";
-import { formatDateTime, t, tn } from "@/i18n";
+import { formatDateTime, t } from "@/i18n";
 import { I } from "@/mockup/ui";
 import { Sheet } from "@/mockup/Sheet";
 import { Btn, STORES, storeKeyOf } from "@/mockup/kit";
@@ -125,10 +125,9 @@ export function NewListSheet({
             {t("nl.store")} <small>· {t("nl.storeHint")}</small>
           </span>
           <div className="stgrid">
-            {freq.map(({ k, cnt }) => (
+            {freq.map(({ k }) => (
               <button type="button" key={k} aria-pressed={store === k} className={`stb${store === k ? " on" : ""}`} style={{ "--sc": STORES[k]!.c1 } as CSSProperties} onClick={() => pick(k)}>
                 <b>{STORES[k]!.n}</b>
-                {cnt > 0 && <small>{tn("nl.trips", cnt)}</small>}
               </button>
             ))}
           </div>
