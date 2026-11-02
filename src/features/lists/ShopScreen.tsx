@@ -92,6 +92,7 @@ export function ShopScreen({
   estimator,
   pending,
   onClosed,
+  enter,
 }: {
   list: ShoppingList;
   items: Item[];
@@ -102,6 +103,8 @@ export function ShopScreen({
   estimator: Estimator;
   pending: AdditionRequest[];
   onClosed: () => void;
+  /** Nákup sa začal na otvorenom zozname – okno vyjde zdola (pri príchode z inej obrazovky sa neanimuje). */
+  enter?: boolean;
 }) {
   const g = useTheme().style === "glass";
   const gl = g ? " glass2" : "";
@@ -218,7 +221,7 @@ export function ShopScreen({
 
   const n = all.length;
   return (
-    <div className="bhm bhm-full">
+    <div className={`bhm bhm-full${enter ? " bhm-enter" : ""}`}>
       <div className="scr shop">
         {g && (
           <div className="bgl">
@@ -548,6 +551,7 @@ export function FollowScreen({
   estimator,
   onBack,
   onAsk,
+  enter,
 }: {
   list: ShoppingList;
   items: Item[];
@@ -558,6 +562,7 @@ export function FollowScreen({
   estimator: Estimator;
   onBack: () => void;
   onAsk: (input: { name: string; quantity: number | null; unit: string | null; quiet?: boolean }) => Promise<AddOutcome>;
+  enter?: boolean;
 }) {
   const g = useTheme().style === "glass";
   const toast = useToast();
@@ -582,7 +587,7 @@ export function FollowScreen({
     else toast.show(t("sp.asked"), "success");
   };
   return (
-    <div className="bhm bhm-full">
+    <div className={`bhm bhm-full${enter ? " bhm-enter" : ""}`}>
       <div className="scr follow">
         {g && (
           <div className="bgl">

@@ -1,5 +1,6 @@
 import { lazy, useEffect, type ComponentType, type ReactNode } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
+import { MotionRouter } from "@/components/navMotion";
 import { AppShell } from "@/components/AppShell";
 import { Spinner } from "@/components/ui";
 import { AuthPage } from "@/features/auth/AuthPage";
@@ -19,8 +20,13 @@ import { ShoppingHub } from "@/features/lists/ShoppingHub";
 const loaders: (() => Promise<unknown>)[] = [];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function page<M extends Record<string, any>>(load: () => Promise<M>, name: keyof M) {
-  loaders.push(load);
-  return lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
+  let mod: M | undefined;
+  const keep = () => load().then((m) => (mod = m));
+  loaders.push(keep);
+  // Už stiahnutá obrazovka sa vykreslí hneď (bez čakania na ďalší krok) – inak by pri prechode
+  // na chvíľu prebehla prázdna stránka.
+  type Lazy = Promise<{ default: ComponentType }>;
+  return lazy(() => (mod ? ({ then: (ok: (v: { default: ComponentType }) => void) => ok({ default: mod![name] as ComponentType }) } as unknown as Lazy) : keep().then((m) => ({ default: m[name] as ComponentType }))));
 }
 function usePreloadPages() {
   useEffect(() => {
@@ -89,7 +95,7 @@ function PublicOnly({ children }: { children: ReactNode }) {
 export function App() {
   usePreloadPages();
   return (
-    <BrowserRouter>
+    <MotionRouter>
       <Routes>
         <Route path="/auth" element={<PublicOnly><AuthPage /></PublicOnly>} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -139,6 +145,6 @@ export function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </MotionRouter>
   );
 }

@@ -251,8 +251,12 @@ export function Composer({
   }, [one?.name, cat, head, typo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // dlaždice „Často kupujete“ – ťuk = +1, po 2 s sa pridá a nahradí ďalšou
-  const staples = useStapleItems(householdId).data;
-  const frequent = useFrequentItems(householdId).data;
+  const staplesQ = useStapleItems(householdId);
+  const frequentQ = useFrequentItems(householdId);
+  const staples = staplesQ.data;
+  const frequent = frequentQ.data;
+  // Kým sa návrhy načítavajú, riadok má vyhradené miesto – pole dole potom neposkočí.
+  const chipsLoading = staplesQ.isPending || frequentQ.isPending;
   const [pend, setPend] = useState<Record<string, { n: number; k: number }>>({});
   const cnt = useRef<Record<string, number>>({});
   const tm = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -371,6 +375,10 @@ export function Composer({
               </button>
             );
           })}
+        </div>
+      ) : chipsLoading ? (
+        <div className="chips staples" aria-hidden="true" style={{ visibility: "hidden" }}>
+          <span className="chip">&nbsp;</span>
         </div>
       ) : (
         chips.length > 0 && (

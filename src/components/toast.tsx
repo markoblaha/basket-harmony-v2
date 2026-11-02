@@ -10,7 +10,7 @@ import { haptic } from "./kit";
 import { t } from "@/i18n";
 
 type Tone = "info" | "error" | "success";
-type Toast = { id: number; text: string; tone: Tone; undo?: () => void; high: boolean };
+type Toast = { id: number; text: string; tone: Tone; undo?: () => void; high: boolean; out?: boolean };
 /** Upozornenie v appke (banner hore): kto/čo sa stalo, ťuknutím otvorí cieľ. */
 export type Notice = { title: string; body?: string; onOpen?: () => void };
 export type Added = { title: string; qty?: string; note?: string; undo?: () => void };
@@ -29,7 +29,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const nextId = useRef(1);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const pillTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [notice, setNotice] = useState<(Notice & { id: number }) | null>(null);
+  const [notice, setNotice] = useState<(Notice & { id: number; out?: boolean }) | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const show = useCallback<Api["show"]>((text, tone = "info", opts) => {
@@ -39,7 +39,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const high = typeof document !== "undefined" && (!document.querySelector("nav.tabbar") || !!document.querySelector("[data-notab]"));
     setToast({ id, text, tone, undo: opts?.undo, high });
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast((x) => (x?.id === id ? null : x)), tone === "error" ? 6000 : opts?.undo ? 5000 : 3000);
+    // Na konci hláška plynulo odíde (trieda „out“), až potom sa odstráni.
+    timer.current = setTimeout(() => {
+      setToast((x) => (x?.id === id ? { ...x, out: true } : x));
+      timer.current = setTimeout(() => setToast((x) => (x?.id === id ? null : x)), 220);
+    }, tone === "error" ? 6000 : opts?.undo ? 5000 : 3000);
   }, []);
   const added = useCallback<Api["added"]>((a) => {
     const id = nextId.current++;
@@ -52,7 +56,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setNotice({ ...n, id });
     haptic(20);
     clearTimeout(noticeTimer.current);
-    noticeTimer.current = setTimeout(() => setNotice((x) => (x?.id === id ? null : x)), 5000);
+    noticeTimer.current = setTimeout(() => {
+      setNotice((x) => (x?.id === id ? { ...x, out: true } : x));
+      noticeTimer.current = setTimeout(() => setNotice((x) => (x?.id === id ? null : x)), 260);
+    }, 5000);
   }, []);
   const value = useMemo(() => ({ show, added, notify }), [show, added, notify]);
 
@@ -89,6 +96,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         >
           <div
             key={toast.id}
+            className={toast.out ? "out" : undefined}
             role={toast.tone === "error" ? "alert" : "status"}
             style={toast.tone === "error" ? { background: "var(--danger-solid)", color: "var(--on-danger-solid)" } : undefined}
           >
@@ -108,7 +116,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         </div>
       )}
       {notice && (
-        <div className="banner fixed top-[calc(env(safe-area-inset-top)+0.5rem)]" key={notice.id} role="status" aria-live="polite">
+        <div className={`banner fixed top-[calc(env(safe-area-inset-top)+0.5rem)]${notice.out ? " out" : ""}`} key={notice.id} role="status" aria-live="polite">
           <button
             type="button"
             onClick={() => {

@@ -4,9 +4,11 @@
   /* ------------------------------------------------------------- prechody obrazoviek (mockup)
    * Dopredu: nová obrazovka prichádza sprava. Späť: predchádzajúca sa vráti zľava. Medzi časťami lišty: jemné vynorenie.
    * „backwards“: po skončení animácia nič nedrží – inak by posun (transform) urobil kontajner pre fixed prvky. */
-  .screen-in { animation: tabin var(--dur-3) var(--ease-out) backwards; }
-  .screen-in.push { animation: pushin var(--dur-4) var(--ease-out) backwards; }
-  .screen-in.pop { animation: popin var(--dur-3) var(--ease-out) backwards; }
+  /* Náhradný prechod pre staršie prehliadače (bez View Transitions): len prelínanie – posun (transform)
+   * by z obrazovky urobil kontajner pre pevné prvky a pole dole by počas animácie skákalo. */
+  .screen-in { animation: tabin var(--dur-2) var(--ease-out) backwards; }
+  :root.has-vt .screen-in { animation: none; }
+  @media (prefers-reduced-motion: reduce) { .screen-in { animation: none; } }
   /* Návrat potiahnutím z ľavého okraja: obrazovka ide za prstom, pod ňou stmavnutie. */
   .edge-dim { position: fixed; inset: 0; z-index: 38; pointer-events: none; background: rgb(0 0 0 / var(--dim, 0)); }
 
@@ -20,11 +22,51 @@
   .toast.fixed, .addpill.fixed, .banner.fixed { max-width: calc(42rem - 24px); margin: 0 auto; }
   .banner.fixed { max-width: calc(42rem - 16px); }
   .toast.high.fixed { bottom: auto; }
+  /* odchod hlášky a bannera (predtým zmizli naraz) */
+  .toast > div.out { animation: sh-toast-out 200ms var(--ease-in) forwards; }
+  .toast.high > div.out { animation-name: sh-toast-out-up; }
+  .banner.out { animation: sh-toast-out-up 240ms var(--ease-in) forwards; }
   .dialog-wrap.fixed { position: fixed; }
 }
 
-@keyframes pushin { from { transform: translateX(32%); opacity: 0.3; } }
-@keyframes popin { from { transform: translateX(-14%); opacity: 0.5; } }
-@keyframes tabin { from { opacity: 0; transform: translateY(6px); } }
+@keyframes tabin { from { opacity: 0; } }
+
+/* ------------------------------------------------------------- prechody obrazoviek (View Transitions, src/components/navMotion.tsx)
+ * Prehliadač nasníma starú a novú obrazovku a animuje snímky mimo hlavného vlákna.
+ * Krivka a dĺžky ako pri iPhone: dopredu 420 ms, späť 360 ms, okná zdola 440/340 ms, záložky 200 ms. */
+:root { --vt-ease: cubic-bezier(0.32, 0.72, 0, 1); --vt-shadow: 0 0 36px rgb(0 0 0 / 0.16); }
+::view-transition-group(root) { animation-duration: 0s; }
+:root[data-nav]::view-transition-image-pair(root) { isolation: auto; }
+:root[data-nav]::view-transition-old(root),
+:root[data-nav]::view-transition-new(root) { mix-blend-mode: normal; animation-fill-mode: both; }
+
+:root[data-nav="push"]::view-transition-old(root) { animation: vt-under-out 420ms var(--vt-ease) both; }
+:root[data-nav="push"]::view-transition-new(root) { animation: vt-from-right 420ms var(--vt-ease) both; box-shadow: var(--vt-shadow); }
+:root[data-nav="pop"]::view-transition-old(root) { animation: vt-to-right 360ms var(--vt-ease) both; z-index: 2; box-shadow: var(--vt-shadow); }
+:root[data-nav="pop"]::view-transition-new(root) { animation: vt-under-in 360ms var(--vt-ease) both; }
+:root[data-nav="up"]::view-transition-old(root) { animation: vt-dim-out 440ms var(--vt-ease) both; }
+:root[data-nav="up"]::view-transition-new(root) { animation: vt-from-bottom 440ms var(--vt-ease) both; box-shadow: var(--vt-shadow); }
+:root[data-nav="down"]::view-transition-old(root) { animation: vt-to-bottom 340ms var(--vt-ease) both; z-index: 2; box-shadow: var(--vt-shadow); }
+:root[data-nav="down"]::view-transition-new(root) { animation: vt-dim-in 340ms var(--vt-ease) both; }
+/* prelínanie: stará ostáva pod novou (bez presvitania pozadia), nová sa vynorí navrch */
+:root[data-nav="tab"]::view-transition-old(root),
+:root[data-nav="fade"]::view-transition-old(root) { animation: none; }
+:root[data-nav="tab"]::view-transition-new(root) { animation: vt-fade-in 200ms ease-out both; }
+:root[data-nav="fade"]::view-transition-new(root) { animation: vt-fade-in 220ms ease-out both; }
+
+@keyframes vt-from-right { from { transform: translateX(100%); } }
+@keyframes vt-to-right { to { transform: translateX(100%); } }
+@keyframes vt-under-out { to { transform: translateX(-28%); filter: brightness(0.9); } }
+@keyframes vt-under-in { from { transform: translateX(-28%); filter: brightness(0.9); } }
+@keyframes vt-from-bottom { from { transform: translateY(100%); } }
+@keyframes vt-to-bottom { to { transform: translateY(100%); } }
+@keyframes vt-dim-out { to { filter: brightness(0.88); transform: scale(0.97); } }
+@keyframes vt-dim-in { from { filter: brightness(0.88); transform: scale(0.97); } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}
 @keyframes sh-sheet-down { to { transform: translateY(100%); } }
 @keyframes sh-fade-out { to { opacity: 0; } }
+@keyframes sh-toast-out { to { opacity: 0; transform: translateY(10px) scale(0.97); } }
+@keyframes sh-toast-out-up { to { opacity: 0; transform: translateY(-12px) scale(0.97); } }

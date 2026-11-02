@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 import { Camera, Check, Receipt } from "lucide-react";
 import { ErrorState, Spinner } from "@/components/ui";
@@ -47,6 +47,7 @@ export function ShoppingPage() {
   const start = useStartShopping(listId ?? "none");
 
   const [search, setSearch] = useSearchParams();
+  const listShown = useRef(false);
   const watching = search.get("sledovat") === "1";
   const plans = useRecipePlans(household.id);
   const hubSessions = useHubSessions(household.id);
@@ -97,6 +98,8 @@ export function ShoppingPage() {
   const elsewhereList = mySessionElsewhere ? lists.data?.find((l) => l.id === mySessionElsewhere.list_id) : undefined;
 
   const storeKey = storeKeyOf(list.name);
+  // Nákup / sledovanie začaté priamo na zozname vyjde zdola; pri príchode rovno do nákupu ho už posunie prechod obrazovky.
+  const enter = listShown.current;
   if (active && iAmShopping) {
     return (
       <ShopScreen
@@ -109,6 +112,7 @@ export function ShoppingPage() {
         estimator={estimator}
         pending={pendingForMe}
         onClosed={() => undefined}
+        enter={enter}
       />
     );
   }
@@ -124,6 +128,7 @@ export function ShoppingPage() {
         estimator={estimator}
         onBack={() => setSearch({}, { replace: true })}
         onAsk={smartAdd}
+        enter={enter}
       />
     );
   }
@@ -142,6 +147,7 @@ export function ShoppingPage() {
   }
 
   const others = openLists.filter((l) => l.id !== list.id);
+  listShown.current = true;
   return (
     <ListView
       list={list}

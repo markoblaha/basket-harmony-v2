@@ -201,6 +201,18 @@ mockup v tomto režime nič neukladá ani neposiela, koniec a prejdené kapitoly
 `bh-demo-ch`). Overené: celé Základy v appke až po koniec, do DB počas ukážky žiadny zápis. Oprava prevodu štýlov:
 trieda svetlého režimu `t-l` (okná nápovedy mali priehľadné pozadie). Pred vydaním (Fáza 10): ukážka je len po
 slovensky, má 4,7 MB a výdavky v nej sú zo snímky testovacej DB (pred zverejnením nahradiť vymyslenými).
+**Plynulosť animácií – 2. 11. (na žiadosť majiteľa):** meranie so 4× spomaleným procesorom ukázalo: pole dole počas
+prechodu odskočilo (posun obrazovky z nej urobil kontajner pre pevné prvky), poloha posúvania skákala a nevracala sa,
+stará obrazovka zmizla naraz, pri prvom otvorení obrazovky prebehla prázdna stránka, rad návrhov v zozname pribudol
+neskôr (+60 px), ťah panela prekresľoval obsah, nekonečné pulzy prekresľovali tieň v každom snímku, hlášky miznuli naraz.
+Oprava: prechody cez View Transitions (`src/components/navMotion.tsx`, `MotionRouter` namiesto `BrowserRouter`):
+prehliadač nasníma starú obrazovku, appka v pokoji nakreslí novú, potom sa snímky vymenia mimo hlavného vlákna –
+dopredu sprava, späť doprava, bloček/varenie/Ochutnávač zdola, záložky prelínaním, zmena len parametrov adresy bez
+animácie (CSS v `src/styles/shell.css`). Poloha posúvania: nová obrazovka hore, späť = pôvodné miesto (`bh.scroll`
+v relácii). Stiahnuté obrazovky sa vykreslia hneď (`page()` v `App.tsx`), čakanie na kód nechá starú obrazovku.
+Potiahnutie späť z okraja: pevné prvky dostanú vyrovnanie, návrat len prelínaním. Panel: ťah bez prekresľovania,
+švih nadol zavrie. Nákup/sledovanie začaté na zozname vyjde zdola, hlas sa zatvorí zasunutím nadol, hlášky plynulo
+odídu. Bez podpory View Transitions (iOS < 18) len krátke prelínanie. Pri „obmedziť pohyb“ v telefóne bez animácií.
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

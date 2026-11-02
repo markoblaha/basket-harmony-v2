@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from "react";
-import { Outlet, useLocation, useNavigate, useNavigationType } from "react-router";
+import { Outlet, useLocation, useNavigate } from "react-router";
 import { I } from "@/mockup/ui";
+import { animateChange, setNextTransition } from "./navMotion";
 import { useToast } from "./toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useHouseholdRealtime } from "@/features/realtime/useHouseholdRealtime";
-import { useHubSessions, useLists, useRequests } from "@/features/lists/api";
+import { useFrequentItems, useHubSessions, useLists, useRequests, useStapleItems } from "@/features/lists/api";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { haptic } from "./kit";
 import { useInAppNotices } from "./useInAppNotices";
@@ -98,10 +99,12 @@ export function AppShell() {
     return () => window.removeEventListener(VOICE_EVENT, f);
   }, []);
   const badges = useBadges(household.id);
+  // Návrhy v poli zoznamu sa načítajú vopred, aby po otvorení zoznamu nepribudli neskôr (skok poľa).
+  useFrequentItems(household.id);
+  useStapleItems(household.id);
   useInAppNotices(household.id);
   const showTabs = !NO_TABBAR.some((re) => re.test(pathname));
   const screen = useRef<HTMLDivElement>(null);
-  const motion = useScreenMotion(pathname);
   const { style } = useTheme();
   const help = useHelp();
   const helpUi = useHelpUi();
@@ -118,12 +121,12 @@ export function AppShell() {
         </div>
       )}
       <main className="flex-1" style={showTabs ? { paddingBottom: "var(--tabbar-space)" } : undefined}>
-        {/* Prechod obrazovky ako v mockupe: dopredu sprava, späť zľava, medzi záložkami jemné vynorenie. */}
-        <div key={screenKey(pathname)} ref={screen} className={`screen-in ${motion}`}>
-          <Suspense fallback={null}>
+        {/* Čakanie na kód obrazovky je mimo obrazovky: pri prechode ostane stará, kým nie je nová hotová. */}
+        <Suspense fallback={null}>
+          <div key={screenKey(pathname)} ref={screen} className="screen-in">
             <Outlet />
-          </Suspense>
-        </div>
+          </div>
+        </Suspense>
       </main>
       <EdgeBack screen={screen} enabled={!ROOTS.includes(pathname.replace(/\/$/, "") || "/")} />
       {style === "glass" && (
@@ -147,7 +150,7 @@ export function AppShell() {
           <div data-notab style={{ display: "contents" }} />
           <VoiceSession
             listId={voice.listId}
-            onClose={() => setVoice(false)}
+            onClose={() => animateChange("down", () => setVoice(false))}
             onSaved={(store, r) => {
               setVoice(false);
               navigate(`/lists/${r.listId}`);
@@ -176,22 +179,6 @@ export function AppShell() {
 
 type Tab = (typeof TABS)[number];
 
-const tabOf = (p: string) => TABS.findIndex((tab) => tab.match(p));
-
-/**
- * Druh prechodu: v rámci jednej záložky dopredu = „push“ (sprava), späť = „pop“ (zľava);
- * prepnutie záložky = jemné vynorenie. Prvé vykreslenie appky sa neanimuje.
- */
-function useScreenMotion(pathname: string): "push" | "pop" | "" {
-  const type = useNavigationType();
-  const state = useRef<{ path: string | null; motion: "push" | "pop" | "" }>({ path: null, motion: "" });
-  if (state.current.path !== pathname) {
-    const last = state.current.path;
-    const motion = last === null || tabOf(last) !== tabOf(pathname) ? "" : type === "POP" ? "pop" : "push";
-    state.current = { path: pathname, motion };
-  }
-  return state.current.motion;
-}
 
 /**
  * Návrat potiahnutím z ľavého okraja doprava (ako v iPhone appkách). Obrazovka ide za prstom
@@ -208,11 +195,30 @@ function EdgeBack({ screen, enabled }: { screen: RefObject<HTMLDivElement | null
     let dx = 0;
     let active = false;
     const el = () => screen.current;
+    // Posun obrazovky (transform) z nej urobí kontajner pre pevné prvky (pole dole, okná) – bez opravy by
+    // počas ťahu odskočili na koniec stránky. Preto sa im pri začiatku ťahu dopočíta vyrovnanie.
+    let fixed: HTMLElement[] = [];
+    const pin = () => {
+      const node = el();
+      if (!node) return;
+      const cand = [...node.querySelectorAll<HTMLElement>(".dock, .bhm-full, .bhm-ovl, .fixed, [data-fixed]")].filter((x) => getComputedStyle(x).position === "fixed");
+      const before = cand.map((x) => x.getBoundingClientRect());
+      node.style.transform = "translateX(0px)";
+      fixed = cand;
+      cand.forEach((x, i) => {
+        const r = x.getBoundingClientRect();
+        x.style.translate = `${before[i]!.left - r.left}px ${before[i]!.top - r.top}px`;
+      });
+    };
+    const unpin = () => {
+      fixed.forEach((x) => (x.style.translate = ""));
+      fixed = [];
+    };
     const paint = (x: number, anim: boolean) => {
       const node = el();
       if (!node) return;
       node.style.transition = anim ? "transform var(--dur-3) var(--ease-out)" : "none";
-      node.style.transform = x ? `translateX(${x}px)` : "";
+      node.style.transform = `translateX(${x}px)`;
       if (dim.current) {
         dim.current.style.transition = anim ? "opacity var(--dur-3)" : "none";
         dim.current.style.setProperty("--dim", String(Math.max(0, 0.18 * (1 - x / window.innerWidth))));
@@ -235,6 +241,7 @@ function EdgeBack({ screen, enabled }: { screen: RefObject<HTMLDivElement | null
         if (Math.abs(y) > 10 && Math.abs(y) > Math.abs(x)) { start = null; return; }
         if (x < 10) return;
         active = true;
+        pin();
       }
       e.preventDefault();
       dx = Math.max(0, x);
@@ -249,12 +256,24 @@ function EdgeBack({ screen, enabled }: { screen: RefObject<HTMLDivElement | null
         haptic(8);
         paint(window.innerWidth, true);
         window.setTimeout(() => {
-          const node = el();
-          if (node) { node.style.transition = ""; node.style.transform = ""; }
-          if (dim.current) dim.current.style.opacity = "0";
+          // Obrazovka už odišla prstom – návrat len jemne prelinie (bez druhej animácie posunu).
+          // Stav sa vráti až po vykreslení predchádzajúcej obrazovky, aby nebolo vidieť bliknutie.
+          setNextTransition("fade", () => {
+            const node = el();
+            if (node) { node.style.transition = ""; node.style.transform = ""; }
+            unpin();
+            if (dim.current) { dim.current.style.transition = "none"; dim.current.style.opacity = "0"; }
+          });
           navigate(-1);
-        }, 200);
-      } else paint(0, true);
+        }, 230);
+      } else {
+        paint(0, true);
+        window.setTimeout(() => {
+          const node = el();
+          if (node && !active) { node.style.transition = ""; node.style.transform = ""; }
+          unpin();
+        }, 300);
+      }
     };
     document.addEventListener("touchstart", down, { passive: true });
     document.addEventListener("touchmove", move, { passive: false });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
+import { setNextTransition } from "@/components/navMotion";
 import { ChevronDown } from "lucide-react";
 import { BottomSheet, ProgressBar, Seg as KitSeg, SheetHeader } from "@/components/kit";
 import { Spinner, cx } from "@/components/ui";
@@ -71,7 +72,10 @@ export function RecipePage() {
   }
   const go = (d: number) => {
     const n = ids[idx + d];
-    if (n) navigate(`/recipes/r/${encodeURIComponent(n)}`, { replace: true, state: { ids } });
+    if (!n) return;
+    // Ďalší recept prichádza sprava, predchádzajúci zľava (ako listovanie).
+    setNextTransition(d > 0 ? "push" : "pop");
+    navigate(`/recipes/r/${encodeURIComponent(n)}`, { replace: true, state: { ids } });
   };
   const a = art(r);
   const rows = recipeRows(r, por, recipes.find, est, isHome);

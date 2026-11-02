@@ -290,3 +290,33 @@ body.kb-typing .bhm-tabs {
   background: none;
   display: flex;
 }
+
+/* ------------------------------------------------------------------ plynulosť: nekonečné pulzy bez prekresľovania
+ * Mockup pulzuje tieňom (box-shadow) – telefón ho musí prekresliť v každom snímku, aj počas posúvania a prechodov.
+ * Tu je rovnaký efekt cez priehľadnosť a zväčšenie, ktoré zvládne grafický čip sám. */
+@keyframes bh-blink { 50% { opacity: 0.45; } }
+@keyframes bh-halo { 0% { opacity: 0; transform: scale(0.92); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.04); } }
+@keyframes bh-ring-out { from { opacity: 0.9; } to { opacity: 0; } }
+.bhm .dot,
+.bhm .reqnew i,
+.w .bhm .live .k::before { animation: bh-blink 1.8s ease-in-out infinite; }
+.bhm .lgo.going { position: relative; animation: none; }
+.bhm .lgo.going::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 99px;
+  border: 6px solid color-mix(in srgb, var(--ok) 22%, transparent);
+  pointer-events: none;
+  animation: bh-halo 2s ease-in-out infinite;
+}
+.bhm .co-hole::after { box-shadow: 0 0 0 7px rgb(255 255 255 / 0.4); animation: bh-ring-out 1.8s ease-out 0.3s infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .bhm .dot, .bhm .reqnew i, .w .bhm .live .k::before, .bhm .lgo.going::before, .bhm .co-hole::after { animation: none; }
+}
+/* Nákup alebo sledovanie začaté na otvorenom zozname: okno vyjde zdola (ako v mockupe). */
+:root .bhm.bhm-full.bhm-enter { animation: mk-mdlin var(--dur-4) var(--vt-ease, var(--ease-out)) both; }
+@media (prefers-reduced-motion: reduce) { :root .bhm.bhm-full.bhm-enter { animation: none; } }
+/* Recept: prechod obrazovky už obsah posúva – vlastné vynorenie fotky a textu by ho ukázalo druhýkrát. */
+:root.has-vt .bhm .rhero2,
+:root.has-vt .bhm .rbody { animation: none; }
