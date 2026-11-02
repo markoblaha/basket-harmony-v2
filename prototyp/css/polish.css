@@ -691,3 +691,5 @@
 .coach .co-bub p, .coach .co-skip { color: var(--gs-sec); } .coach .co-k { color: var(--gs-acc); }
 /* zvýraznené miesto: čistý biely okraj + prstenec v akcentovej farbe témy */
 #tx .tx-ring { border-color: var(--gs-acc); }
+/* pozvánka odkazom (Viac → Pozvať do domácnosti) */
+.invite .link { flex: 1 1 180px; min-width: 0; font-size: 14.5px; font-weight: 600; padding: 9px 12px; border-radius: 12px; background: var(--card2); color: var(--fg); overflow-wrap: anywhere; }

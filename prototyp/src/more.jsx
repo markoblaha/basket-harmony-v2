@@ -5,7 +5,7 @@ import { PHOTO_CREDITS } from './credits.js';
 import { COACH } from './coach.jsx';
 import { HelpSection } from './tour.jsx';
 
-/* icons: caret-left caret-right copy users user-plus target sparkle translate arrow-counter-clockwise info check map-trifold lightbulb */
+/* icons: link info paper-plane-right caret-left caret-right copy users user-plus target sparkle translate arrow-counter-clockwise info check map-trifold lightbulb */
 
 export function ThemePicker({ value, onPick, big }) {
   const T = [
@@ -35,8 +35,13 @@ export function More({ p = {} }) {
   useEffect(() => { if (p.invite) setInv(true); }, []);
   const [confirm, setConfirm] = useState(false);
   const [pantry, setPantry] = useState(false);
-  const code = 'BH-7K2Q';
-  const copy = () => { try { navigator.clipboard.writeText(code).then(() => toast('Kód skopírovaný'), () => toast('Kopírovanie tu nie je povolené – kód si prepíšte', { icon: 'warning-circle' })); } catch { toast('Kopírovanie tu nie je povolené', { icon: 'warning-circle' }); } };
+  const link = 'basketharmony.app/pozvanka/7K2Q-blahovci';
+  const send = async () => {
+    if (S.tour && S.tour.on) { toast('V ukážke sa pozvánka neodošle', { icon: 'info' }); return; }
+    const url = 'https://' + link;
+    try { if (navigator.share) { await navigator.share({ title: 'Pozvánka do domácnosti', text: 'Pridaj sa k nám v Basket Harmony', url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(url); toast('Odkaz skopírovaný – pošlite ho partnerovi'); } catch { toast('Odkaz: ' + url, { icon: 'link', ms: 6000 }); }
+  };
   const pantryAll = [...new Set([...PANTRY, 'mlieko', 'vajcia', 'muka', 'parmezan', 'smotana', 'kecup', 'soja', 'olivy', 'korenie'])];
   return (
     <>
@@ -54,8 +59,8 @@ export function More({ p = {} }) {
           <div className="h2 sm">Domácnosť</div>
           <div className={'lst' + (g ? ' glass2' : '')}>
             {Object.values(MEMBERS).filter((m) => !S.solo || m.id === 'm').map((m) => <div className="row" key={m.id}><Av id={m.id} s={40} /><div className="tx"><b>{m.name}</b><span className="sub">{m.id === 'm' ? 'vy · správca' : 'člen · vidí všetky zoznamy'}</span></div></div>)}
-            <button type="button" className="row tap" onClick={() => setInv(!inv)}><span className="th ic"><I n="user-plus" /></span><div className="tx"><b>Pozvať do domácnosti</b><span className="sub">kód alebo odkaz</span></div><I n={inv ? 'caret-up' : 'caret-down'} w="bold" cls="chev" /></button>
-            {inv && <div className="invite"><span className="code">{code}</span><Btn cls="soft sm" onClick={copy}><I n="copy" />Kopírovať</Btn><p className="meta sm">Druhý človek zadá kód v appke pri registrácii. Kód platí 7 dní.</p></div>}
+            <button type="button" className="row tap" onClick={() => setInv(!inv)}><span className="th ic"><I n="user-plus" /></span><div className="tx"><b>Pozvať do domácnosti</b><span className="sub">pošlete odkaz, partner ho potvrdí</span></div><I n={inv ? 'caret-up' : 'caret-down'} w="bold" cls="chev" /></button>
+            {inv && <div className="invite"><span className="link">{link}</span><Btn cls={'pri sm' + (g ? ' a' : '')} onClick={send}><I n="paper-plane-right" />Poslať</Btn><p className="meta sm">Pošlite odkaz SMS-kou, WhatsAppom alebo e-mailom. Kto ho otvorí, len potvrdí pridanie do domácnosti. Odkaz platí 7 dní.</p></div>}
           </div>
 
           <HelpSection g={g} />

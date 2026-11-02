@@ -87,7 +87,7 @@ export const CHAPTERS = [
       done: (S, w) => w.scr === 'more' },
     { kind: 'task', go: (c) => { c.jump('home'); setTimeout(() => c.push('more'), 300); }, at: 'more', sel: byText('.scr.top button.row', 'Pozvať'), hand: [.4, .5], t: 'Pozvite partnera', x: 'Ťuknite na „Pozvať do domácnosti“.',
       done: (S, w, b, app) => !!app.querySelector('.scr.top .invite') },
-    { kind: 'info', at: 'more', sel: '.scr.top .invite', pos: 'top', t: 'Kód pre partnera', x: 'Kód pošlite SMS-kou alebo cez WhatsApp. Partner ho zadá v appke a uvidíte rovnaké zoznamy. V ukážke sa nič neodošle.', next: 'Dokončiť ukážku' },
+    { kind: 'info', at: 'more', sel: '.scr.top .invite', pos: 'top', t: 'Pozvánka odkazom', x: 'Pozvánku pošlete ako odkaz – SMS-kou, WhatsAppom alebo e-mailom. Partner ho otvorí, potvrdí pridanie a uvidíte rovnaké zoznamy. V ukážke sa nič neodošle.', next: 'Dokončiť ukážku' },
   ] },
 ];
 export const CH_FOR = { home: 0, lists: 1, list: 1, history: 3, histlist: 3, recipes: 5, recipe: 5, rcol: 5, money: 6, receipts: 4, receipt: 4, category: 6, product: 6, store: 6, kind: 6, more: 7 };
@@ -245,7 +245,7 @@ export function Tour({ appRef, where }) {
     }
     setCleaning(true); closeModal(); closeSheet(); jump('home');
     setTimeout(() => {
-      act((s) => ({ ...s, ...emptyData(), tour: null, onb: { ...(s.onb || {}), started: true, tourDone: !!fromEnd }, coach: { ...(s.coach || {}), welcomed: true, off: false, seen: Object.fromEntries(['mic', 'tabs', 'quick', 'help', 'lcard', 'lgo', 'composer', 'shopbtn', 'shrow', 'shhead', 'vtarget', 'vorb', 'vdone', 'recadd', 'ing', 'scan', 'mrc'].map((x) => [x, 1])) } }));
+      act((s) => ({ ...s, ...emptyData(), tour: null, onb: { ...(s.onb || {}), started: true, tourDone: !!fromEnd }, coach: { ...(s.coach || {}), welcomed: true, off: true, v: 2} }));
       setCleaning(false);
     }, 1300);
   }
@@ -368,12 +368,10 @@ export function Tour({ appRef, where }) {
 // ---------- Vitajte (prvé spustenie) ----------
 export function Welcome() {
   const { S, act, jump } = useApp();
-  const [v, setV] = useState('main'); // main | intro | invite | joined
-  const [code, setCode] = useState('');
+  const [v, setV] = useState('main'); // main | intro
   if (!S.theme || (S.onb && S.onb.started) || (S.tour && S.tour.on)) return null;
-  const startEmpty = () => { act((s) => ({ ...s, ...emptyData(), onb: { ...(s.onb || {}), started: true, path: 'empty' }, coach: { ...(s.coach || {}), welcomed: true, off: false, seen: {} } })); jump('home'); };
-  const startDemo = () => { act((s) => ({ ...s, ...demoData(s), onb: { ...(s.onb || {}), started: true, path: 'tour' }, coach: { ...(s.coach || {}), welcomed: true, off: true }, tour: { on: true, ch: 0, st: 0, phase: 'chapter', k: Date.now() } })); jump('home'); };
-  const join = (tourIt) => { act((s) => ({ ...s, ...demoData(s), onb: { ...(s.onb || {}), started: true, path: 'invite' }, coach: { seen: {}, welcomed: true, off: !tourIt, replay: tourIt ? { screen: 'home', k: Date.now() } : undefined } })); jump('home'); };
+  const startEmpty = () => { act((s) => ({ ...s, ...emptyData(), onb: { ...(s.onb || {}), started: true, path: 'empty' }, coach: { ...(s.coach || {}), welcomed: true, off: true, v: 2, replay: { screen: 'home', k: Date.now() } } })); jump('home'); };
+  const startDemo = () => { act((s) => ({ ...s, ...demoData(s), onb: { ...(s.onb || {}), started: true, path: 'tour' }, coach: { ...(s.coach || {}), welcomed: true, off: true, v: 2 }, tour: { on: true, ch: 0, st: 0, phase: 'chapter', k: Date.now() } })); jump('home'); };
   if (v === 'intro') return (
     <div id="tx" className="tx-lay"><div className="tx-scrim" />
       <div className="tx-sheet" role="dialog" aria-modal="true" aria-labelledby="tx-it"><span className="tx-grab" />
@@ -386,27 +384,6 @@ export function Welcome() {
         <button type="button" className="tx-wide s" onClick={() => setV('main')}>Späť</button>
       </div></div>
   );
-  if (v === 'invite') return (
-    <div id="tx" className="tx-lay"><div className="tx-scrim" />
-      <form className="tx-sheet" onSubmit={(e) => { e.preventDefault(); if (code.trim().length >= 4) setV('joined'); }} aria-labelledby="tx-vt"><span className="tx-grab" />
-        <h2 className="tx-h2" id="tx-vt">Mám pozvánku</h2>
-        <p className="tx-lede">Zadajte kód, ktorý vám poslal partner. Nájde ho v appke vo Viac → Pozvať do domácnosti.</p>
-        <label className="tx-code"><span>Kód pozvánky</span><input id="tx-code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="BH-7K2Q" autoComplete="off" autoFocus maxLength={10} /></label>
-        <p className="tx-hint">V náhľade funguje akýkoľvek kód so 4 a viac znakmi.</p>
-        <button type="submit" className="tx-wide p" disabled={code.trim().length < 4}>Pripojiť sa</button>
-        <button type="button" className="tx-wide s" onClick={() => setV('main')}>Späť</button>
-      </form></div>
-  );
-  if (v === 'joined') return (
-    <div id="tx" className="tx-lay"><div className="tx-scrim" />
-      <div className="tx-dlg" role="dialog" aria-modal="true" aria-labelledby="tx-jt">
-        <div className="tx-pair"><span className="tx-av l">L</span><span className="tx-av m">M</span></div>
-        <h2 className="tx-h2" id="tx-jt">Vitajte u Blahovcov</h2>
-        <p className="tx-lede">Lucia vás pridala do domácnosti. Zoznamy, recepty a výdavky máte odteraz spoločné.</p>
-        <button type="button" className="tx-wide p" onClick={() => join(true)} autoFocus><I n="play" />Krátka prehliadka · 1 min</button>
-        <button type="button" className="tx-wide s" onClick={() => join(false)}>Rovno do appky</button>
-      </div></div>
-  );
   return (
     <div id="tx" className="tx-lay"><div className="tx-full" role="dialog" aria-modal="true" aria-labelledby="tx-wt">
       <span className="tx-logo"><I n="basket" /></span>
@@ -414,8 +391,7 @@ export function Welcome() {
       <p className="tx-lede">Spoločný nákupný zoznam, recepty a výdavky pre celú domácnosť.</p>
       <div className="tx-opts">
         <button type="button" className="tx-opt rec" onClick={() => setV('intro')} autoFocus><span className="oi"><I n="hand-tap" /></span><span className="ot"><span className="badge">Odporúčame · 4 min</span><b>Prezrieť si ukážku</b><span>Vyskúšate si appku na domácnosti, ktorá ju už používa. Nič sa neuloží.</span></span><I n="caret-right" w="bold" cls="chev" /></button>
-        <button type="button" className="tx-opt" onClick={startEmpty}><span className="oi"><I n="house" /></span><span className="ot"><b>Začať naprázdno</b><span>Hneď si vytvoríte vlastnú domácnosť.</span></span><I n="caret-right" w="bold" cls="chev" /></button>
-        <button type="button" className="tx-opt" onClick={() => setV('invite')}><span className="oi"><I n="link" /></span><span className="ot"><b>Mám pozvánku</b><span>Pridáte sa k domácnosti cez kód od partnera.</span></span><I n="caret-right" w="bold" cls="chev" /></button>
+        <button type="button" className="tx-opt" onClick={startEmpty}><span className="oi"><I n="house" /></span><span className="ot"><b>Začať naprázdno</b><span>Hneď si vytvoríte vlastnú domácnosť. Ukážem len pár tipov na úvod.</span></span><I n="caret-right" w="bold" cls="chev" /></button>
       </div>
       <p className="tx-foot">Ukážku si môžete pustiť aj neskôr: Viac → Pomoc a ukážka</p>
     </div></div>
@@ -452,8 +428,8 @@ export function HelpSection({ g }) {
       <div className={'lst' + (g ? ' glass2' : '')}>
         <button type="button" className="row tap" onClick={() => { jump('home'); startTour(act, null, { fromHelp: true }); }}><span className="th ic"><I n="hand-tap" /></span><div className="tx"><b>Spustiť ukážku</b><span className="sub">8 kapitol · {n ? `${n} z 8 prejdené` : 'asi 4 minúty'} · vaše údaje sa nezmenia</span></div><I n="caret-right" w="bold" cls="chev" /></button>
         <div className="tx-chl inl">{CHAPTERS.map((c, i) => <button type="button" key={i} onClick={() => { jump('home'); startTour(act, null, { fromHelp: true, ch: i, only: i }); }}><span className={'n' + (done[i] ? ' ok' : '')}>{done[i] ? <I n="check" w="bold" /> : i + 1}</span>{c.n}</button>)}</div>
-        <button type="button" className="row tap" onClick={() => act((s) => ({ ...s, coach: { ...(s.coach || {}), off: !off, welcomed: true } }))} role="switch" aria-checked={!off}><span className="th ic"><I n="lightbulb" /></span><div className="tx"><b>Nápovedy na obrazovkách</b><span className="sub">krátke tipy pri prvej návšteve obrazovky</span></div><span className={'tx-sw' + (off ? '' : ' on')}><i /></span></button>
-        <button type="button" className="row tap" onClick={() => { act((s) => ({ ...s, coach: { seen: {}, off: false, welcomed: true }, tips: {} })); toast('Nápovedy sa znova ukážu na každej obrazovke', { icon: 'lightbulb' }); }}><span className="th ic"><I n="arrow-counter-clockwise" /></span><div className="tx"><b>Ukázať nápovedy znova</b><span className="sub">všetky, ako pri prvom spustení</span></div></button>
+        <button type="button" className="row tap" onClick={() => act((s) => ({ ...s, coach: { ...(s.coach || {}), off: !off, welcomed: true, v: 2 } }))} role="switch" aria-checked={!off}><span className="th ic"><I n="lightbulb" /></span><div className="tx"><b>Nápovedy na obrazovkách</b><span className="sub">{off ? 'vypnuté – ukážu sa len cez otáznik „?“' : 'zapnuté – tipy pri prvej návšteve obrazovky'}</span></div><span className={'tx-sw' + (off ? '' : ' on')}><i /></span></button>
+        <button type="button" className="row tap" onClick={() => { act((s) => ({ ...s, coach: { seen: {}, off: false, welcomed: true, v: 2 }, tips: {} })); toast('Nápovedy sa ukážu pri ďalšej návšteve každej obrazovky', { icon: 'lightbulb' }); }}><span className="th ic"><I n="arrow-counter-clockwise" /></span><div className="tx"><b>Ukázať nápovedy znova</b><span className="sub">všetky, ako pri prvom spustení</span></div></button>
       </div>
     </>
   );
@@ -465,7 +441,7 @@ export function FirstSteps({ g }) {
   const F = S.first; if (!F) return null;
   const st = [
     { k: 'list', ok: S.lists.length > 0, t: 'Vytvorte prvý zoznam', d: 'napríklad „Veľký nákup“ na sobotu', b: 'Vytvoriť', fn: () => sheet('newList') },
-    { k: 'inv', ok: !!F.invited, t: 'Pozvite domácnosť', d: 'partner uvidí rovnaké zoznamy', b: 'Pozvať', fn: () => push('more', { invite: true }) },
+    { k: 'inv', ok: !!F.invited, t: 'Pozvite domácnosť', d: 'pošlete odkaz, partner ho len potvrdí', b: 'Pozvať', fn: () => push('more', { invite: true }) },
     { k: 'rc', ok: (S.receipts || []).length > 0, t: 'Odfoťte prvý bloček', d: 'výdavky sa začnú počítať samé', b: 'Odfotiť', fn: () => modal('scan', {}) },
   ];
   const n = st.filter((x) => x.ok).length;

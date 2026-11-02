@@ -131,6 +131,9 @@ export function App() {
 
   useEffect(() => { const t = setTimeout(() => save(S), 250); return () => clearTimeout(t); }, [S]);
   useEffect(() => { aiAvailable().then(setAi); }, []);
+  // Nápovedy sa samy neukazujú: po prvom spustení len na požiadanie („?“ alebo Viac → Pomoc a ukážka).
+  // Staršie uložené stavy (pred týmto pravidlom) sa raz prepnú na vypnuté.
+  useEffect(() => { if (S.onb && S.onb.started && !(S.coach && S.coach.v === 2)) setS((s) => ({ ...s, coach: { ...(s.coach || {}), welcomed: true, off: true, v: 2 } })); }, []);
   useEffect(() => { document.documentElement.style.colorScheme = dark ? 'dark' : 'light'; }, [dark]);
 
   // Spodná lišta a karty v doku ležia nad obsahom: ťah, ktorý začne na nich, sa prepošle do obsahu pod nimi
@@ -288,7 +291,7 @@ function Desk({ app }) {
     ['wallet', 'Pozrite výdavky', 'Október z vašich bločkov.', () => jump('money')],
   ];
   const tour = [
-    ['hand-tap', 'Prvé spustenie od začiatku', 'Uvítanie: ukážka, naprázdno alebo pozvánka.', () => reset()],
+    ['hand-tap', 'Prvé spustenie od začiatku', 'Uvítanie: ukážka alebo začať naprázdno.', () => reset()],
     ...CHAPTERS.map((c, i) => [c.ic, `Kapitola ${i + 1}: ${c.n}`, `${c.time} · potom sa vrátite k svojim údajom`, () => { jump('home'); startTour(act, null, { fromHelp: true, ch: i, only: i }); }]),
   ];
   return (
