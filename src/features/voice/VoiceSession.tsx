@@ -973,13 +973,22 @@ function WherePanel({
   return (
     <div className="vx-panel" role="dialog" aria-label={t("vx.wherePick")}>
       <div className="vx-scrim" onClick={onClose} />
-      <div className="vx-sheet">
+      <div className="vx-sheet where">
         <span className="grab" onClick={onClose} />
         <h2>{done ? tn("vx.whereN", n) : t("vx.wherePick")}</h2>
         {lists.length > 0 && (
           <>
             <span className="k">{t("vx.existing")}</span>
-            <div className="vx-lists">
+            <div
+              className="vx-lists"
+              ref={(el) => {
+                // vybraný zoznam je hneď vidieť (aj keď je nižšie v zozname)
+                if (el && !el.dataset.shown) {
+                  el.dataset.shown = "1";
+                  el.querySelector(".vx-opt.on")?.scrollIntoView({ block: "nearest" });
+                }
+              }}
+            >
               {lists.map((l) => (
                 <button type="button" key={l.id} className={`vx-opt${!isNew && c.listId === l.id ? " on" : ""}`} onClick={() => setC({ listId: l.id })}>
                   <span className="grow">

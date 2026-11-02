@@ -145,3 +145,33 @@ body.kb-typing .bhm-tabs {
   max-width: 40rem;
   margin: 0 auto;
 }
+/* „Kam pridávať?“ v hlasovom režime: nový zoznam a tlačidlo sú stále dole, posúvajú sa len existujúce zoznamy. */
+:root .bhm .vx-sheet.where {
+  overflow: hidden;
+}
+:root .bhm .vx-sheet.where > * {
+  flex: none;
+}
+:root .bhm .vx-sheet.where > .vx-lists {
+  flex: 0 1 auto;
+  min-height: 132px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
+  margin: -2px;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent);
+  padding-bottom: 18px;
+}
+/* Nízky displej (iPhone SE, mini): rovnaký vzhľad, menšie medzery – tlačidlo dole je vždy celé vidieť. */
+@media (max-height: 760px) {
+  :root .bhm .vx-sheet.where { max-height: calc(100% - var(--sat) - 8px); gap: 7px; padding-top: 6px; }
+  :root .bhm .vx-sheet.where h2 { font-size: 20px; }
+  :root .bhm .vx-sheet.where .k { margin-top: 0; }
+  :root .bhm .vx-sheet.where > .vx-lists { min-height: 104px; }
+  :root .bhm .vx-sheet.where .vx-opt { min-height: 50px; padding: 7px 12px; }
+  :root .bhm .vx-sheet.where .vx-new { gap: 6px; padding: 8px; }
+  :root .bhm .vx-sheet.where .vx-stores button { min-height: 38px; font-size: 14px; }
+  :root .bhm .vx-sheet.where .vx-days button { min-height: 36px; padding: 0 11px; font-size: 14px; }
+  :root .bhm .vx-sheet.where .btn.big { height: 50px; }
+}
