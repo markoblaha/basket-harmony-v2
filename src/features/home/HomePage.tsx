@@ -4,7 +4,7 @@
  */
 import { useNavigate } from "react-router";
 import { ChevronRight, CookingPot, ReceiptText, Settings2, ShoppingBasket, Wallet, type LucideIcon } from "lucide-react";
-import { ScreenHeader } from "@/components/kit";
+import { MkHeader } from "@/mockup/ui";
 import { t, type Key } from "@/i18n";
 
 const LINKS: { to: string; label: Key; sub?: Key; icon: LucideIcon }[] = [
@@ -19,7 +19,7 @@ export function HomePage() {
   const navigate = useNavigate();
   return (
     <div className="stack">
-      <ScreenHeader root title={t("nav.home")} />
+      <MkHeader title={t("nav.home")} />
       <div className="stack g-16 px" style={{ paddingTop: 4 }}>
         <p className="t-body t-2" style={{ padding: "0 4px" }}>
           {t("home.soon")}

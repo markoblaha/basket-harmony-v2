@@ -8,9 +8,6 @@ import { ChevronLeft, ChevronRight, Minus, Plus, Trash2, X, type LucideIcon } fr
 import { CategoryGlyph } from "./CategoryIcon";
 import { cx } from "./ui";
 import { formatNumber, t } from "@/i18n";
-import { useNavigate } from "react-router";
-import { useAuth, useUserId } from "@/features/auth/AuthProvider";
-import { useProfiles } from "@/features/household/api";
 
 type Hue = CSSProperties & { "--h": number };
 
@@ -39,7 +36,6 @@ export function ScreenHeader({
   children,
   className,
   sticky = true,
-  root = false,
 }: {
   title?: ReactNode;
   sub?: ReactNode;
@@ -51,30 +47,8 @@ export function ScreenHeader({
   className?: string;
   /** Hlavička ostáva hore pri posúvaní (predvolene áno). */
   sticky?: boolean;
-  /**
-   * Koreňová obrazovka záložky (Domov, Nákupy, Recepty, Výdavky): vľavo avatar, ktorý otvorí Viac,
-   * vpravo akcie a pod nimi veľký nadpis – ako v mockupe.
-   */
-  root?: boolean;
 }) {
   const Title = onTitle ? "button" : "div";
-  if (root) {
-    return (
-      <header className={cx("hdr root", className)}>
-        <MeButton />
-        <span className="hdr-right">{right}</span>
-        <Title
-          {...(onTitle ? { type: "button" as const, onClick: onTitle, "aria-label": titleLabel } : {})}
-          className="grow stack"
-          style={{ textAlign: "left", minWidth: 0 }}
-        >
-          {sub && <span className="sub ellipsis">{sub}</span>}
-          {title && <h1 className="ttl">{title}</h1>}
-          {children}
-        </Title>
-      </header>
-    );
-  }
   return (
     <header className={cx("hdr", sticky && "sticky top-[env(safe-area-inset-top)] z-20", onBack && "with-back", className)}>
       {onBack && (
@@ -93,20 +67,6 @@ export function ScreenHeader({
       </Title>
       {right}
     </header>
-  );
-}
-
-/** Avatar prihláseného človeka vľavo hore: otvorí Viac (profil, domácnosť, vzhľad, nastavenia). */
-export function MeButton() {
-  const navigate = useNavigate();
-  const me = useUserId();
-  const { user } = useAuth();
-  const profiles = useProfiles();
-  const name = profiles.data?.get(me) || user?.email?.split("@")[0] || "?";
-  return (
-    <button type="button" className="me-btn" onClick={() => navigate("/more")} aria-label={t("nav.me")}>
-      <PersonAvatar person={{ id: me, name }} />
-    </button>
   );
 }
 

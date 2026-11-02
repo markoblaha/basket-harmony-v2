@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Camera, ChefHat, Heart, Link2, Mic, Repeat, Search, ShoppingBasket, Sparkles, X } from "lucide-react";
-import { ScreenHeader, haptic } from "@/components/kit";
+import { Camera, ChefHat, Link2, Mic, Repeat, Search, ShoppingBasket, Sparkles, X } from "lucide-react";
+import { haptic } from "@/components/kit";
+import { IB, MkHeader } from "@/mockup/ui";
 import { animateOut, collapseOut } from "@/components/motion";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
@@ -31,15 +32,7 @@ export function RecipesPage() {
 
   return (
     <div className="stack">
-      <ScreenHeader
-        root
-        title={t("recipes.title")}
-        right={
-          <button type="button" className="ibtn" onClick={() => navigate("/recipes/search?favs=1")} aria-label={t("rc.favorites")}>
-            <Heart size={22} />
-          </button>
-        }
-      />
+      <MkHeader title={t("recipes.title")} right={<IB n="heart" label={t("rc.favorites")} onClick={() => navigate("/recipes/search?favs=1")} />} />
       <div className="stack g-24" style={{ padding: "4px 16px 0" }}>
         <div className="stack g-10">
           <div className="rc-search">

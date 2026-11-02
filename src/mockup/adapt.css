@@ -1,0 +1,63 @@
+/*
+ * Prispôsobenie mockupu skutočnej appke: v mockupe je všetko v ráme telefónu (.app s pevnou výškou
+ * a vlastným posúvaním), v appke sa posúva celé okno. Tu sú len rozdiely; vzhľad je v mockup.css.
+ */
+
+/* Obal prenesených častí: bez rámu, okraje displeja z iPhonu (výrez hore, pásik dole). */
+.bhm {
+  height: auto;
+  width: auto;
+  overflow: visible;
+  background: none;
+  isolation: auto;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: max(12px, calc(env(safe-area-inset-bottom, 0px) - 12px));
+}
+
+/* Miesto pod obsahom pre spodnú lištu (obsah a tlačidlá dole sa držia nad ňou). */
+:root {
+  --tabbar-space: calc(max(12px, calc(env(safe-area-inset-bottom, 0px) - 12px)) + 84px);
+}
+/* Obrazovky bez lišty (zoznam, varenie…): dole len bezpečný okraj. */
+body.no-tabs {
+  --tabbar-space: max(10px, env(safe-area-inset-bottom, 0px));
+}
+
+/* Hlavička: lepí sa hore pri posúvaní okna; sklo a malý nadpis pri posunutí (.sc.scrolled). */
+.bhm-top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.bhm.bhm-top .sc {
+  overflow: visible;
+}
+.bhm.bhm-title .body {
+  padding-bottom: 8px;
+  gap: 12px;
+}
+
+/* Spodná lišta a prechod pod ňou: pevne pri spodku okna, na širokom displeji v stĺpci appky. */
+/* :root zvyšuje prioritu nad pravidlami tém (.w .bhm .tabbar má position: absolute pre rám telefónu). */
+:root .bhm.bhm-tabs .tabbar,
+:root .bhm.bhm-tabs .tabfade {
+  position: fixed;
+}
+:root .bhm.bhm-tabs .tabbar {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+body.kb-typing .bhm-tabs {
+  display: none;
+}
+
+/* Pozadie témy Fotky a sklo: rozmazaná fotka trhu so závojom pod celou appkou. */
+.bhm-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+:root.g body {
+  background: transparent;
+}

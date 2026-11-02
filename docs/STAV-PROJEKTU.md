@@ -96,15 +96,20 @@ appka posiela `household_id` (`features/household/current.ts`); chyba `error.AI_
 Hlas pri prekročení limitu ukáže len všeobecné „nerozumel som / nepodarilo sa“ (konkrétny text príde s Hlasom 2.0 vo Fáze 5).
 Ďalej: Fáza 1 (vzhľad a kostra).
 
-**Fáza 1 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** témy Teplá kuchyňa a Fotky a sklo × svetlý/tmavý/podľa systému
-(`bh.style` = warm | glass, `bh.theme` = light | dark | system; stará „farebná“ → svetlý). Farby sú role v `src/styles.css`
-(4 sady + doplnky v `design.css`), tvar a sklo v `src/styles/themes.css`, kostra v `src/styles/shell.css`. Fotky a sklo:
-pod appkou vopred rozmazaná fotka trhu `src/assets/trh-blur.webp` (2 kB) so závojom, karty polopriehľadné. Písma v appke
-(DM Sans, Fraunces na nadpisy v Teplej kuchyni, Inter ako záloha systémového písma). Tokeny pohybu `--dur-1…5`, `--ease-spring`.
-Spodná lišta: Domov (`/home`, zatiaľ rozcestník – obsah vo Fáze 2) · Nákupy (`/`) · mikrofón · Recepty · Výdavky; Viac pod
-avatarom (`MeButton`, `ScreenHeader root`). Prechody: dopredu sprava, späť zľava; návrat potiahnutím z ľavého okraja len
-v appke z plochy (v Safari má gesto prehliadač). Pod ťahanou obrazovkou nie je vidno predchádzajúcu (len stmavnutie).
-Preklikanie: 4 vzhľady × 23 obrazoviek, 0 nálezov. Úvodná obrazovka po spustení je stále Nákupy (Domov ňou bude vo Fáze 2).
+**Postup prestavby (pokyn majiteľa 2. 11.): appka má byť 1:1 ako interaktívny mockup, napojená na funkčný backend.**
+Preto sa vzhľad NEkreslí nanovo – preberá sa priamo kód mockupu: `python3 prototyp/do-appky.py` vygeneruje
+`src/mockup/mockup.css` (štýly prototyp/css bez rámu telefónu, obmedzené na obal `.bhm`, animácie s predponou `mk-`),
+`src/mockup/icons.ts` (ikony Phosphor), `src/mockup/assets.css` + `public/mk/em|pic` (3D emoji a fotky). Na `<html>` je trieda
+témy ako na `.app` v mockupe (`w` / `g`, tmavý `t-d`). Prenesená časť appky je v `<div className="bhm">` (= `.app` mockupu);
+rozdiely voči rámu telefónu (posúvanie okna, pevná lišta, okraje iPhonu) sú len v `src/mockup/adapt.css`. Prvky z `ui.jsx`
+sú v `src/mockup/ui.tsx` (I, E, IB, Seg, MeBtn, Back, MkHeader). Každá ďalšia fáza prenesie obrazovky z `prototyp/src/*.jsx`
+takmer doslova a napojí ich na `features/*/api.ts`; mockup ostáva jediný vzor (zmena vzhľadu = zmena v prototype + skript).
+Staré (ešte neprenesené) obrazovky ostávajú mimo `.bhm` a používajú farby tém zo `src/styles.css` + `styles/themes.css`.
+
+**Fáza 1 – HOTOVÁ 2. 11., prerobená 1:1 (čaká na „OK“ majiteľa):** témy Teplá kuchyňa / Fotky a sklo × svetlý / tmavý /
+podľa systému (`bh.style`, `bh.theme`), lišta, hlavička (avatar · malý nadpis pri posúvaní · tlačidlá, veľký nadpis),
+pozadie Fotiek a skla (.bgl z mockupu), výber témy vo Viac – všetko z kódu mockupu. Domov je zatiaľ rozcestník (Fáza 2),
+na zozname sa lišta skryje ako v mockupe. Tlačidlo „?“ (nápovedy) príde vo Fáze 9. Preklikanie 4 vzhľady × 23 obrazoviek: 0 nálezov.
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

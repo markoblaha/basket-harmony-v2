@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { NavLink, Outlet, useLocation, useNavigate, useNavigationType } from "react-router";
-import { CookingPot, House, Mic, ShoppingBasket, Wallet, type LucideIcon } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from "react";
+import { Outlet, useLocation, useNavigate, useNavigationType } from "react-router";
+import { I } from "@/mockup/ui";
 import { useToast } from "./toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useHouseholdRealtime } from "@/features/realtime/useHouseholdRealtime";
@@ -14,17 +14,18 @@ import { useCart } from "@/features/recipes/cart";
 import { t, tn, type Key } from "@/i18n";
 import { OfflineBanner } from "./ui";
 import { primeAudio } from "@/features/voice/useRecorder";
+import { useTheme } from "@/theme/ThemeProvider";
 
 const VoiceSession = lazy(() => import("@/features/voice/VoiceSession").then((m) => ({ default: m.VoiceSession })));
 
 type Badge = "recipes" | "analytics" | "lists";
 /** Spodná lišta ako v mockupe: Domov · Nákupy · (mikrofón) · Recepty · Výdavky. Viac je pod avatarom vľavo hore. */
-const TABS: { to: string; label: Key; icon: LucideIcon; match: (p: string) => boolean; badge?: Badge }[] = [
-  { to: "/home", label: "nav.home", icon: House, match: (p) => p.startsWith("/home") },
-  { to: "/", label: "nav.lists", icon: ShoppingBasket, match: (p) => p === "/" || p.startsWith("/lists") || p.startsWith("/history"), badge: "lists" },
-  { to: "/recipes", label: "nav.recipes", icon: CookingPot, match: (p) => p.startsWith("/recipes"), badge: "recipes" },
+const TABS: { to: string; label: Key; icon: string; match: (p: string) => boolean; badge?: Badge }[] = [
+  { to: "/home", label: "nav.home", icon: "house", match: (p) => p.startsWith("/home") },
+  { to: "/", label: "nav.lists", icon: "basket", match: (p) => p === "/" || p.startsWith("/lists") || p.startsWith("/history"), badge: "lists" },
+  { to: "/recipes", label: "nav.recipes", icon: "cooking-pot", match: (p) => p.startsWith("/recipes"), badge: "recipes" },
   // Doklady sú časťou Výdavkov (záložka Doklady).
-  { to: "/analytics", label: "nav.analytics", icon: Wallet, match: (p) => p.startsWith("/analytics") || p.startsWith("/receipts"), badge: "analytics" },
+  { to: "/analytics", label: "nav.analytics", icon: "wallet", match: (p) => p.startsWith("/analytics") || p.startsWith("/receipts"), badge: "analytics" },
 ];
 
 /** Koreňové obrazovky záložiek: z nich sa potiahnutím z okraja nevracia. */
@@ -34,7 +35,7 @@ const ROOTS = ["/", "/home", "/recipes", "/analytics", "/analytics/categories", 
  * Obrazovky bez spodnej lišty (v prototype tabBar: false / celá plocha): kontrola surovín,
  * košík receptov, varenie. Hlášky (toast) sa na nich ukazujú hore (pozri toast.tsx).
  */
-const NO_TABBAR = [/^\/recipes\/check\/?$/, /^\/recipes\/cart\/?$/, /^\/recipes\/r\/[^/]+\/cook\/?$/];
+const NO_TABBAR = [/^\/recipes\/check\/?$/, /^\/recipes\/cart\/?$/, /^\/recipes\/r\/[^/]+\/cook\/?$/, /^\/lists\/[^/]+\/?$/];
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -91,6 +92,10 @@ export function AppShell() {
   const showTabs = !NO_TABBAR.some((re) => re.test(pathname));
   const screen = useRef<HTMLDivElement>(null);
   const motion = useScreenMotion(pathname);
+  const { style } = useTheme();
+  useEffect(() => {
+    document.body.classList.toggle("no-tabs", !showTabs);
+  }, [showTabs]);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col pt-safe">
@@ -109,24 +114,20 @@ export function AppShell() {
         </div>
       </main>
       <EdgeBack screen={screen} enabled={!ROOTS.includes(pathname.replace(/\/$/, "") || "/")} />
+      {style === "glass" && (
+        // Pozadie Fotiek a skla ako v mockupe: rozmazaná fotka trhu so závojom.
+        <div className="bhm bhm-bg" aria-hidden>
+          <div className="bgl">
+            <div className="bgb pic-trh_p" />
+            <div className="veil" />
+          </div>
+        </div>
+      )}
       {showTabs && (
-        <>
-          <div className="tabfade" aria-hidden />
-          <nav aria-label={t("nav.label")} className="tabbar">
-            <div className="tabbar-in">
-              {TABS.map((tab, i) => (
-                <TabItem
-                  key={tab.to}
-                  tab={tab}
-                  active={tab.match(pathname)}
-                  count={tab.badge && tab.badge !== "lists" ? badges[tab.badge] : 0}
-                  dot={tab.badge === "lists" && badges.lists > 0}
-                  before={i === 2 ? <VoiceButton onClick={() => setVoice(true)} /> : null}
-                />
-              ))}
-            </div>
-          </nav>
-        </>
+        <div className="bhm bhm-tabs">
+          <div className="tabfade" aria-hidden="true" />
+          <TabBar pathname={pathname} badges={badges} voiceOn={voice} onVoice={() => setVoice(true)} />
+        </div>
       )}
       {voice && (
         <Suspense fallback={null}>
@@ -256,55 +257,56 @@ function screenKey(pathname: string) {
   return /^\/analytics(\/(products|stores))?\/?$/.test(pathname) ? "/analytics" : pathname;
 }
 
-function TabItem({ tab, active, count, dot, before }: { tab: Tab; active: boolean; count: number; dot: boolean; before: ReactNode }) {
-  const Icon = tab.icon;
-  const extra = count > 0 ? `, ${tn("nav.waiting", count)}` : dot ? `, ${t("nav.request")}` : "";
-  return (
-    <>
-      {before}
-      <NavLink
-        to={tab.to}
-        className={active ? "tab on" : "tab"}
-        aria-current={active ? "page" : undefined}
-        aria-label={extra ? `${t(tab.label)}${extra}` : undefined}
+/** Spodná lišta presne ako v mockupe (prototyp/src/main.jsx TabBar). */
+function TabBar({ pathname, badges, voiceOn, onVoice }: { pathname: string; badges: Record<Badge, number>; voiceOn: boolean; onVoice: () => void }) {
+  const navigate = useNavigate();
+  const btn = (tab: Tab) => {
+    const on = tab.match(pathname) && !voiceOn;
+    const n = tab.badge ? badges[tab.badge] : 0;
+    return (
+      <button
+        type="button"
+        key={tab.to}
+        className={on ? "on" : ""}
+        aria-current={on ? "page" : undefined}
+        aria-label={n ? `${t(tab.label)}, ${tab.badge === "lists" ? t("nav.request") : tn("nav.waiting", n)}` : undefined}
         onClick={() => {
           // Ťuk na aktívnu kartu = späť na jej začiatok a navrch.
-          if (active) window.scrollTo({ top: 0, behavior: "smooth" });
+          if (on && pathname === tab.to) window.scrollTo({ top: 0, behavior: "smooth" });
+          else navigate(tab.to);
         }}
       >
-        <span className="ic">
-          <Icon size={26} strokeWidth={active ? 2.1 : 1.8} aria-hidden />
-          {dot && <span className="dot" aria-hidden />}
-          {/* Počet čakajúcich vecí: malá značka v rohu ikony, „9+“ pri väčšom počte. */}
-          {count > 0 && (
-            <span key={count} className="cnt num" aria-hidden>
-              {count > 9 ? "9+" : count}
+        <span className="tic">
+          <I n={tab.icon} />
+          {n > 0 && (
+            <span className="tbadge" key={n}>
+              {n > 9 ? "9+" : n}
             </span>
           )}
         </span>
-        <span className="lbl">{t(tab.label)}</span>
-      </NavLink>
-    </>
-  );
-}
-
-/** Stredné tlačidlo navigácie: otvorí hlasový nákup. */
-function VoiceButton({ onClick }: { onClick: () => void }) {
+        {t(tab.label)}
+      </button>
+    );
+  };
   return (
-    <div className="tmic">
+    <nav className="tabbar" aria-label={t("nav.label")}>
+      {TABS.slice(0, 2).map(btn)}
       <button
         type="button"
+        className={`tmic${voiceOn ? " on" : ""}`}
         onClick={() => {
           haptic(12);
           // iPhone pustí mikrofón do nahrávania len z ťuknutia – pripravíme ho hneď.
           primeAudio();
-          onClick();
+          onVoice();
         }}
         aria-label={t("voice.open")}
-        className="voice-btn"
       >
-        <Mic size={25} strokeWidth={2.2} aria-hidden />
+        <span className="tmb">
+          <I n="microphone" w="fill" />
+        </span>
       </button>
-    </div>
+      {TABS.slice(2).map(btn)}
+    </nav>
   );
 }

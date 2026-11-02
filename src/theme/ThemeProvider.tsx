@@ -111,6 +111,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     firstRender.current = false;
     root.dataset.theme = resolved;
     root.dataset.style = style;
+    // Triedy témy z mockupu (w = Teplá kuchyňa, g = Fotky a sklo, t-d = tmavý režim) – štýly src/mockup/mockup.css.
+    root.classList.toggle("w", style === "warm");
+    root.classList.toggle("g", style === "glass");
+    root.classList.toggle("t-d", resolved === "dark");
     root.style.colorScheme = resolved;
     setStatusBarColor(STATUS_BAR[style][resolved]);
   }, [resolved, style]);

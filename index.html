@@ -33,6 +33,8 @@
         var glass = style === "glass";
         root.dataset.theme = dark ? "dark" : "light";
         root.dataset.style = glass ? "glass" : "warm";
+        root.classList.add(glass ? "g" : "w");
+        if (dark) root.classList.add("t-d");
         root.style.colorScheme = dark ? "dark" : "light";
         root.lang = locale === "en" ? "en" : "sk";
         // Systémová lišta iPhonu (hodiny, batéria) má farbu z theme-color – v appke na ploche aj v Safari.

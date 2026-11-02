@@ -4,8 +4,8 @@
  */
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Search } from "lucide-react";
-import { ScreenHeader, Seg } from "@/components/kit";
+import { Seg } from "@/components/kit";
+import { IB, MkHeader } from "@/mockup/ui";
 import { cx } from "@/components/ui";
 import { formatDateTime, formatEuro, formatNumber, t, type Key } from "@/i18n";
 import { PRESETS, todayIso, usePeriod, type Period } from "./period";
@@ -81,15 +81,12 @@ export function AnalyticsTop({ part, period = true, right }: { part: Part; perio
   const { search } = useLocation();
   return (
     <>
-      <ScreenHeader
-        root
+      <MkHeader
         title={t("nav.analytics")}
         right={
           <>
             {right}
-            <button type="button" className="ibtn" onClick={() => navigate(`/analytics/products${search}`)} aria-label={t("an.searchProduct")}>
-              <Search size={21} />
-            </button>
+            <IB n="magnifying-glass" label={t("an.searchProduct")} onClick={() => navigate(`/analytics/products${search}`)} />
           </>
         }
       />

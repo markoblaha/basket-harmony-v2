@@ -19,6 +19,9 @@ import "./styles/recipes.css";
 import "./styles/more.css";
 import "./styles/voice.css";
 import "./styles/themes.css";
+import "./mockup/mockup.css";
+import "./mockup/assets.css";
+import "./mockup/adapt.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

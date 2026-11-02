@@ -388,17 +388,6 @@
   --ink-grad: linear-gradient(180deg, #dc5a1c, #bf440d);
 }
 
-/* Fotky a sklo: pod celou appkou rozmazaná fotka trhu so závojom. Je to jedna pevná vrstva
- * (vopred rozmazaný malý obrázok, ~2 kB) – pri posúvaní sa neprekresľuje. Karty sú polopriehľadné. */
-:root[data-style="glass"] body { background: transparent; }
-:root[data-style="glass"] body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: linear-gradient(var(--veil), var(--veil)), url("./assets/trh-blur.webp") center / cover no-repeat, var(--bg);
-}
 /* Plocha celej obrazovky (prihlásenie, hlasový nákup, nákup v obchode): tiež rozmazaná fotka. */
 [data-style="glass"] .bg-bg:not([data-theme-scope]) { background: var(--bg-fill); }
 /* Hlavné tlačidlá: oranžový prechod ako v mockupe. */

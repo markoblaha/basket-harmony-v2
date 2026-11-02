@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
 import { useSettings, setSetting, type Settings } from "@/lib/settings";
 import { shortName } from "@/lib/shortName";
-import { BottomSheet, Cell, ConfirmDialog, PersonAvatar, ScreenHeader, Seg, SheetHeader, Switch, hapticsSupported } from "@/components/kit";
+import { BottomSheet, Cell, ConfirmDialog, PersonAvatar, Seg, SheetHeader, Switch, hapticsSupported } from "@/components/kit";
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useAuth, useUserId } from "@/features/auth/AuthProvider";
@@ -20,6 +20,7 @@ import { useFavoriteTiles } from "@/features/lists/api";
 import { useReceipts, type Receipt } from "@/features/receipts/api";
 import { formatDateTime, formatEuro, formatNumber, t, tn, type Key } from "@/i18n";
 import { LanguagePicker, ThemePicker } from "./AppearancePicker";
+import { Back, MkHeader } from "@/mockup/ui";
 
 /** Prepínače zobrazovania (uložené v zariadení, src/lib/settings.ts). Hlavné sú vždy vidno, ostatné pod „Rozšírené“. */
 type Toggle = [keyof Settings & string, Key, Key];
@@ -86,7 +87,7 @@ export function MorePage() {
 
   return (
     <div className="stack">
-      <ScreenHeader title={t("more.title")} onBack={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/home"))} />
+      <MkHeader title={t("more.title")} back={<Back label={t("common.back")} onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/home"))} />} />
       <div className="stack g-20 pad" style={{ paddingTop: 4 }}>
         <button type="button" className="card row" style={{ padding: 16, gap: 14, textAlign: "left" }} onClick={() => setSheet("profile")}>
           <PersonAvatar person={{ id: me, name: shownName }} size="lg" />
@@ -144,8 +145,8 @@ export function MorePage() {
         </Section>
 
         <div className="stack g-8">
-          <span className="section-title">{t("more.appearance.title")}</span>
-          <ThemePicker />
+          <span className="section-title">{t("more.appearance.theme")}</span>
+          <ThemePicker name={shownName} />
         </div>
 
         <Section title={t("more.section.langData")}>

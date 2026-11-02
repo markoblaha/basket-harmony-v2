@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { ChefHat, ChevronRight, History, Lock, Plus, ReceiptText, ShoppingBasket, ShoppingCart } from "lucide-react";
+import { ChefHat, ChevronRight, History, Lock, ReceiptText, ShoppingBasket, ShoppingCart } from "lucide-react";
 import { ErrorState, Spinner, cx } from "@/components/ui";
-import { Avatars, Cell, Empty, Marquee, ProgressBar, ScreenHeader, StoreBadge, useLongPress, type Person } from "@/components/kit";
+import { Avatars, Cell, Empty, Marquee, ProgressBar, StoreBadge, useLongPress, type Person } from "@/components/kit";
+import { IB, MkHeader } from "@/mockup/ui";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
@@ -83,15 +84,7 @@ export function ShoppingHub() {
 
   return (
     <div className="stack">
-      <ScreenHeader
-        root
-        title={t("nav.shopping")}
-        right={
-          <button type="button" className="row g-6 hdr-btn" onClick={() => navigate("/more/household")} aria-label={t("shop.householdLabel", { name: household.name })}>
-            <Avatars people={people} />
-          </button>
-        }
-      />
+      <MkHeader title={t("nav.shopping")} right={<IB n="plus" cls="addb" label={t("ls.newList")} onClick={() => setCreating(true)} />} />
       <div className="stack g-16 px" style={{ paddingTop: 4 }}>
         {(liveList || missing > 0) && (
           <section className="stack g-8">
@@ -145,11 +138,6 @@ export function ShoppingHub() {
         </div>
       </div>
       <div className="tab-space" style={{ height: 160 }} />
-
-      <button type="button" className="fab fixed bottom-[calc(6.25rem+env(safe-area-inset-bottom))] right-4" onClick={() => setCreating(true)}>
-        <Plus size={20} strokeWidth={2.4} />
-        {t("ls.newList")}
-      </button>
 
       <ListSheet
         key={creating ? "new-open" : "new"}
