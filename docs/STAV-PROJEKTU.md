@@ -165,6 +165,14 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   (`src/notif.js`), „?“ aj v nákupe, hlase, sledovaní, varení, Ochutnávači, Histórii a Viac (+14 nápoved), žiadne samé tipy,
   sledovanie bez falošných tlačidiel, hlas do najbližšieho zoznamu, porovnanie v €, „Vrátiť“ pri odstránení odškrtnutých,
   slovník „V košíku“, „Recept od AI“, sprievodca pri prvom spustení „Základy“ (3 kapitoly, ~2 min) + „Ukážte mi aj zvyšok“.
+  Pridávanie položiek (3. 11., pravidlo majiteľa): appka nič nedomýšľa – 3 úrovne podľa napísaného textu (`resolveName` v logic.js):
+  všeobecná „pivo/smotana/chlieb/mlieko“ → virtuálna položka `g:<slovo>` s názvom ako napísané, cena = priemer nákupov všetkých
+  druhov danej kategórie za 120 dní (druh bez bločku sa počíta orientačnou cenou); druh („kyslá smotana“, „pivo 12°“) len keď sú
+  napísané všetky rozlišujúce slová; značka z bločkov („plzeň“, „radegast“, „kozel“) → `b:<značka>`, cena len z jej nákupov.
+  Synonymá sa zjednotia („chleba“ = chlieb), široké slová (ovocie, mäso…) ostanú ako text bez ceny. PRODUCTS je Proxy, ktorá
+  virtuálne položky dopočíta. Návrhy nad poľom sú zoznam riadkov (Enter ↵, druhy, značky, preklep); v detaile položky „Spresniť
+  druh alebo značku“. Bloček páruje všeobecnú položku s ktorýmkoľvek jej druhom (`covers`). Do skutočnej appky treba preniesť
+  rovnaké pravidlo (dnes Enter pridá text tak, ako je). Sprievodca: bezpečné okraje displeja, nezlomiteľné medzery, menšie displeje.
   Návrh jednej témy „Teplé sklo“ (`prototyp/tema-teple-sklo-navrh.html`) – spojenie Teplej kuchyne a Fotiek a skla:
   sklo nad fotkou trhu s teplým závojom, Fraunces + DM Sans, paprika = akcia, bazalka = hotovo, med = pozor, 3 hrúbky skla,
   overený kontrast. Čaká na súhlas; nič nie je implementované.

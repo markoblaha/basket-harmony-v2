@@ -7,6 +7,15 @@ export const { useState, useEffect, useRef, useMemo, useCallback, createContext,
 
 export const Ctx = createContext(null);
 export const useApp = () => useContext(Ctx);
+// Bezpečné okraje displeja (výrez, spodný pásik iPhonu) v pixeloch appky – čítajú sa z CSS premenných --sa-t / --sa-b
+export function safeInsets(app) {
+  if (!app) return { t: 0, b: 0 };
+  let p = app.querySelector(':scope > .sa-probe');
+  if (!p) { p = document.createElement('div'); p.className = 'sa-probe'; p.setAttribute('aria-hidden', 'true'); app.appendChild(p); }
+  return { t: p.offsetTop + parseFloat(getComputedStyle(p).paddingTop) || 0, b: parseFloat(getComputedStyle(p).paddingBottom) || 0 };
+}
+// Slovenská typografia: jednopísmenová predložka/spojka nezostane na konci riadku; číslo sa neoddelí od jednotky
+export const nbsp = (s) => (typeof s === 'string' ? s.replace(/(^|[\s(„])([vVkKsSzZaAoOuUiI])\s+/g, '$1$2\u00A0').replace(/(\d)\s+(€|%|min|ks|g|kg|l|s|h)(?=[\s.,;:)“]|$)/g, '$1\u00A0$2').replace(/(~)\s*(\d)/g, '$1$2') : s);
 
 // Ikony (Phosphor). w = fill | bold | regular
 export function I({ n, w = 'fill', s, cls = '' }) {

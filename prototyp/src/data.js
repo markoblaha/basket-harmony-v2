@@ -165,7 +165,13 @@ const P = [
   ['naplast', 'Náplasti', 'bandage', 'health', 'bal', 1, [['drmax', 1.09, '10-13']], 'naplast naplasti'],
 ];
 
-export const PRODUCTS = {};
+// Katalóg produktov. Okrem skutočných produktov vie vrátiť aj „virtuálne“ položky, ktoré vznikajú podľa toho,
+// čo človek napísal: všeobecná položka „g:pivo“ (priemer všetkých pív) a značka „b:pilsner-urquell“.
+// Virtuálne sa nevracajú v Object.values (katalóg ostáva čistý), ale PRODUCTS['g:pivo'] funguje všade.
+const _PRODUCTS = {};
+let VIRTUAL = null;
+export const setVirtual = (f) => { VIRTUAL = f; };
+export const PRODUCTS = new Proxy(_PRODUCTS, { get(t, k) { if (typeof k === 'string' && !(k in t) && VIRTUAL && /^[gb]:/.test(k)) return VIRTUAL(k) || undefined; return t[k]; } });
 for (const [id, n, e, c, u, dq, h, syn, approx] of P) {
   PRODUCTS[id] = { id, n, e, c, u, dq, h: h.map(([s, p, d]) => ({ s, p, d: '2026-' + d })), syn: syn || '', approx: approx || null };
 }

@@ -1,4 +1,4 @@
-import { PRODUCTS, STORES, CATS, RECIPES, PANTRY, SHOP_STORES } from './data.js';
+import { PRODUCTS, STORES, CATS, RECIPES, PANTRY, SHOP_STORES, setVirtual } from './data.js';
 import './book.js';
 import { REAL } from './real.js';
 import { picFor } from './pics.js';
@@ -109,6 +109,7 @@ export function history(pid, S) {
 // Bežná cena = medián posledných 3 nákupov za 120 dní; ak sa kupovalo v tom istom obchode, berie sa ten.
 export function unitPrice(pid, S, store) {
   const p = PRODUCTS[pid]; if (!p) return null;
+  if (p.grp) return groupPrice(p, S, store);
   const now = Date.now();
   const all = history(pid, S).filter((h) => now - new Date(h.d).getTime() <= 120 * DAY);
   if (!all.length) return p.approx ? { up: p.approx, approx: true, min: p.approx * .9, max: p.approx * 1.15, n: 0 } : null;
@@ -118,6 +119,24 @@ export function unitPrice(pid, S, store) {
   const last = pool[pool.length - 1];
   const ps = all.map((h) => h.p);
   return { up, last, store: last.s, same: same.length > 0, k: Math.min(3, pool.length), min: Math.min(...ps), max: Math.max(...ps), n: all.length };
+}
+// Všeobecná položka („Pivo“): priemer všetkých nákupov jej druhov za 120 dní; v zvolenom obchode, ak tam boli aspoň 2.
+function groupPrice(p, S, store) {
+  const now = Date.now();
+  // druh bez nákupu v bločkoch sa započíta orientačnou cenou (jeden bod), aby priemer zahŕňal všetky druhy
+  const all = p.grp.flatMap((id) => { const hs = history(id, S).filter((h) => now - new Date(h.d).getTime() <= 120 * DAY); const pp = PRODUCTS[id]; return hs.length ? hs : pp && pp.approx ? [{ s: null, p: pp.approx, d: new Date().toISOString().slice(0, 10), approx: true }] : []; }).sort((a, b) => a.d.localeCompare(b.d));
+  if (!all.length) {
+    const ap = p.grp.map((id) => PRODUCTS[id] && PRODUCTS[id].approx).filter(Boolean);
+    if (!ap.length) return null;
+    const v = ap.reduce((a, x) => a + x, 0) / ap.length;
+    return { up: v, approx: true, min: Math.min(...ap) * .9, max: Math.max(...ap) * 1.15, n: 0, group: p.grp.length };
+  }
+  const same = store ? all.filter((h) => h.s === store) : [];
+  const pool = same.length >= 2 ? same : all;
+  const md = median(pool.map((h) => h.p)); const ok = pool.filter((h) => h.p <= md * 3 && h.p >= md / 3);
+  const up = ok.reduce((a, h) => a + h.p, 0) / ok.length;
+  const ps = all.map((h) => h.p);
+  return { up, last: pool[pool.length - 1], store: null, same: same.length >= 2, k: ok.length, min: Math.min(...ps), max: Math.max(...ps), n: all.length, group: p.grp.length, avg: true, approx: all.every((h) => h.approx) || undefined };
 }
 export function estimate(item, S, store) {
   if (item.paid != null) return { v: item.paid, lo: item.paid, hi: item.paid, actual: true, store: item.paidStore };
@@ -163,7 +182,7 @@ const FILL = new Set('kup kupit kupte kupim kupis pridaj pridajte daj dajte este
 let INDEX = null;
 function index() {
   if (INDEX) return INDEX;
-  INDEX = Object.values(PRODUCTS).map((p) => {
+  INDEX = Object.values(PRODUCTS).filter((p) => !p.virt).map((p) => {
     const nameT = norm(p.n.replace(/·.*$/, '')).split(' ').filter((w) => w.length > 2);
     const synT = norm(p.syn).split(' ').filter((w) => w.length > 2);
     return { p, nameT, all: [...new Set([...nameT, ...synT])] };
@@ -191,16 +210,20 @@ export function editDist(a, b) {
   for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
   return d[a.length][b.length];
 }
-export function typoProduct(text) {
+export function typoProduct(text) { const r = typoFix(text); return r ? r.p : null; }
+// Preklep („zemaky“, „smotna“): opravený text sa znova rozpozná rovnakými pravidlami – „smotna“ → „Smotana“ (všetky druhy)
+export function typoFix(text) {
   const ws = norm(text).split(' ').filter((w) => w.length >= 4 && !FILL.has(w) && !UNITMAP[w] && NUMW[w] == null && !/^\d/.test(w));
   if (!ws.length) return null;
-  let best = null, bs = 9;
+  let best = null, bs = 9, fix = null;
   for (const e of index()) {
-    let tot = 0;
-    for (const w of ws) { let m = 9; for (const t of e.nameT) { if (w.slice(0, -1) === t.slice(0, -1) && w.length === t.length) continue; m = Math.min(m, editDist(w, t)); } if (m > (w.length >= 7 ? 2 : 1)) { tot = 99; break; } tot += m; }
-    if (tot > 0 && tot < bs) { bs = tot; best = e.p; }
+    let tot = 0; const rep = [];
+    for (const w of ws) { let m = 9, mt = null; for (const t of e.nameT) { if (w.slice(0, -1) === t.slice(0, -1) && w.length === t.length) continue; const d = editDist(w, t); if (d < m) { m = d; mt = t; } } if (m > (w.length >= 7 ? 2 : 1)) { tot = 99; break; } tot += m; rep.push(m ? origWord(e.p, mt) || mt : w); }
+    if (tot > 0 && tot < bs) { bs = tot; best = e.p; fix = rep.join(' '); }
   }
-  return best;
+  if (!best) return null;
+  const p = resolveName(fix) || best;
+  return { p, text: fix };
 }
 const GENERIC = new Set(['syr', 'syry', 'syra', 'maso', 'masa', 'ovocie', 'zelenina', 'zeleninu', 'pecivo', 'napoj', 'napoje', 'sladkosti', 'drogeria', 'kozmetika', 'ryba', 'ryby', 'salat', 'salaty']);
 export function matchProduct(text) {
@@ -226,6 +249,127 @@ export function matchProduct(text) {
   }
   return bs >= 1.9 ? best : null;
 }
+// ===================== Čo človek napísal → položka =====================
+// Tri úrovne, vždy podľa toho, čo bolo naozaj napísané – appka nič nedomýšľa:
+//  1. Všeobecná položka („pivo“, „smotana“, „chlieb“, „mlieko“): názov ostane presne taký, cena = priemer všetkých druhov.
+//  2. Druh („kyslá smotana“, „toastový chlieb“, „pivo 12°“): napísané sú všetky rozlišujúce slová druhu.
+//  3. Značka („plzeň“, „radegast“, „kozel“): cena len z nákupov tejto značky.
+// Konkrétne druhy a značky sa pri písaní len ponúknu v návrhoch nad poľom.
+const BROAD = new Set(['maso', 'masa', 'ovocie', 'zelenina', 'zeleninu', 'pecivo', 'napoj', 'napoje', 'sladkosti', 'drogeria', 'kozmetika', 'potraviny']);
+const isNum = (w) => /^\d+([.,]\d+)?$/.test(w);
+export const typedWords = (text) => norm(text).split(' ').filter((w) => w.length > 2 && !FILL.has(w) && !UNITMAP[w] && NUMW[w] == null && !isNum(w));
+const qualT = (e) => e.nameT.filter((t) => !FILL.has(t) && !isNum(t));
+const hitsAny = (w, toks) => toks.some((t) => wordScore(w, t) > 0);
+const hcount = (p) => (p.h ? p.h.length : 0);
+// pôvodné slovo s diakritikou z názvu produktu („smotana“ → „Smotana“, „svetle“ → „Svetlé“)
+const origWord = (p, t) => { for (const w of p.n.replace(/·.*$/, '').split(/[\s,()/]+/)) if (norm(w) === t) return w.toLowerCase(); return null; };
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const unitClass = (u) => (u === 'kg' ? 'kg' : u === 'l' ? 'l' : 'ks');
+
+// --- značky z bločkov ---
+const BRAND_ALIAS = { 'pilsner urquell': 'plzen plzne plzni plzenske plzensky plzenskeho pilsner prazdroj', 'velkopopovicky kozel': 'kozel kozla kozlik', staropramen: 'smichov', 'capri sun': 'caprisun' };
+let BRANDS = null;
+function brands() {
+  if (BRANDS) return BRANDS;
+  const m = {};
+  for (const r of REAL) for (const l of r.lines) {
+    if (!l.brand || !l.pid || !PRODUCTS[l.pid]) continue;
+    const k = norm(l.brand); const b = m[k] || (m[k] = { key: k, name: l.brand, lines: [] });
+    b.lines.push({ ...l, store: r.store || r.storeName, date: r.date });
+  }
+  // slovo, ktoré je aj v názve produktu („Kofola“, „Smíchov“), patrí produktu, nie značke
+  const names = new Set(index().flatMap((e) => e.nameT));
+  BRANDS = Object.values(m).map((b) => ({ ...b, toks: [...new Set([...b.key.split(' '), ...(BRAND_ALIAS[b.key] || '').split(' ')].filter((w) => w.length > 2 && !names.has(w)))], pids: [...new Set(b.lines.map((l) => l.pid))] })).filter((b) => b.toks.length);
+  return BRANDS;
+}
+const slug = (s) => norm(s).replace(/ /g, '-');
+function brandMatch(ws) {
+  let best = null;
+  for (const b of brands()) {
+    const bw = ws.filter((w) => b.toks.some((t) => w === t || wordScore(w, t) >= 2 && w.length >= 5));
+    if (!bw.length) continue;
+    const rest = ws.filter((w) => !bw.includes(w));
+    const kinds = b.pids.filter((pid) => { const e = index().find((x) => x.p.id === pid); return e && rest.every((w) => hitsAny(w, e.all)); });
+    if (!kinds.length) continue;
+    const sc = bw.length * 2 + rest.length;
+    if (!best || sc > best.sc) best = { b, rest, kinds, sc };
+  }
+  if (!best) return null;
+  return PRODUCTS['b:' + slug(best.b.name) + (best.rest.length ? '.' + best.rest.join('-') : '')];
+}
+function brandVirtual(id) {
+  const [bk, kk] = id.slice(2).split('.');
+  const b = brands().find((x) => slug(x.name) === bk); if (!b) return null;
+  const kw = kk ? kk.split('-') : [];
+  let lines = b.lines.filter((l) => { const e = index().find((x) => x.p.id === l.pid); return e && kw.every((w) => hitsAny(w, e.all)); });
+  if (!lines.length) return null;
+  const cnt = {}; lines.forEach((l) => { cnt[l.pid] = (cnt[l.pid] || 0) + 1; });
+  const pid = Object.keys(cnt).sort((a, c) => cnt[c] - cnt[a])[0]; const P0 = PRODUCTS[pid];
+  if (!kw.length) lines = lines.filter((l) => l.pid === pid); // bez upresnenia: hlavný druh značky (Staropramen = pivo, nie nealko)
+  const ps = lines.filter((l) => l.up > 0).map((l) => l.up); const md = ps.length ? median(ps) : 0;
+  const h = lines.filter((l) => l.up > 0 && l.up >= md * .3).map((l) => ({ s: l.store, p: l.up, d: l.date })).sort((a, c) => a.d.localeCompare(c.d));
+  const extra = kw.map((w) => { const e = index().find((x) => x.p.id === pid); const t = e && e.nameT.find((x) => wordScore(w, x) > 0); return t ? origWord(P0, t) || w : w; }).filter((w) => norm(w) !== norm(P0.n.split(' ')[0]) || kw.length > 1);
+  return { id, n: [b.name, ...extra].join(' '), e: P0.e, c: P0.c, u: P0.u, dq: P0.dq, h, syn: '', approx: h.length ? null : P0.approx, virt: 'brand', brand: b.name, kindPid: pid, members: [pid] };
+}
+// --- všeobecná položka ---
+function groupFor(ws) {
+  const cands = index().filter((e) => ws.every((w) => hitsAny(w, e.all)));
+  if (!cands.length) return null;
+  const head = (e) => { const q = qualT(e); return q.length && ws.some((w) => wordScore(w, q[0]) > 0) ? 1 : 0; };
+  const prim = [...cands].sort((a, b) => head(b) - head(a) || hcount(b.p) - hcount(a.p) || qualT(a).length - qualT(b).length)[0];
+  const members = cands.filter((e) => e.p.c === prim.p.c && unitClass(e.p.u) === unitClass(prim.p.u)).map((e) => e.p.id);
+  const canon = ws.map((w) => { const t = prim.nameT.find((x) => wordScore(w, x) > 0); return t || w; });
+  return { prim: prim.p, members, key: canon.join('-') };
+}
+function groupVirtual(id) {
+  const ws = id.slice(2).split('-').filter(Boolean); if (!ws.length) return null;
+  const g = groupFor(ws); if (!g) return null;
+  const P0 = g.prim;
+  const label = cap(ws.map((w) => origWord(P0, w) || fixDiacritics(w)).join(' '));
+  const h = g.members.flatMap((m) => PRODUCTS[m].h || []).sort((a, b) => a.d.localeCompare(b.d));
+  return { id, n: label, e: P0.e, c: P0.c, u: unitClass(P0.u) === 'ks' ? 'ks' : P0.u, dq: P0.dq, h, syn: '', approx: null, virt: 'group', grp: g.members, prim: P0.id };
+}
+const VCACHE = new Map();
+setVirtual((id) => { if (!VCACHE.has(id)) VCACHE.set(id, id[0] === 'g' ? groupVirtual(id) : brandVirtual(id)); return VCACHE.get(id); });
+
+// Hlavné rozhodnutie: čo znamená napísaný názov
+// Synonymum sa prevedie na slovo z názvu („chleba“ → chlieb, „krumple“ → zemiaky), aby „chleba“ aj „chlieb“ boli tá istá položka
+function canonWord(w) {
+  if (index().some((e) => hitsAny(w, e.nameT))) return w;
+  for (const e of index()) { if (!hitsAny(w, e.all)) continue; const syn = e.all.filter((t) => !e.nameT.includes(t)); if (!syn.some((t) => wordScore(w, t) > 0)) continue; const t = qualT(e).find((x) => e.all.includes(x) && syn.length && norm(e.p.syn).split(' ').includes(x)); if (t) return t; }
+  return w;
+}
+export function resolveName(text) {
+  const ws = typedWords(text).map(canonWord); if (!ws.length) return null;
+  if (ws.length === 1 && BROAD.has(ws[0])) return null;
+  const br = brandMatch(ws); if (br) return br;
+  // druh: napísané všetky rozlišujúce slová jeho názvu (jednoslovný názov spozná aj podľa tvaru/synonyma: „rožky“ = Rožok)
+  const exact = index().filter((e) => { if (!ws.every((w) => hitsAny(w, e.all))) return false; const q = qualT(e); return q.length && (q.every((t) => ws.some((w) => wordScore(w, t) > 0)) || (q.length === 1 && ws.length === 1)); });
+  if (exact.length) {
+    const sc = (e) => ws.reduce((a, w) => a + Math.max(...e.nameT.map((t) => wordScore(w, t)), 0), 0) * 10 - qualT(e).length + Math.min(hcount(e.p), 9) / 10;
+    return exact.sort((a, b) => sc(b) - sc(a))[0].p;
+  }
+  const g = groupFor(ws); if (!g) return null;
+  return PRODUCTS['g:' + g.key];
+}
+// Návrhy pri písaní: najprv to, čo pridá Enter, potom konkrétne druhy a značky
+export function refinements(p, n = 6) {
+  if (!p || !p.grp) return [];
+  const kinds = p.grp.map((id) => PRODUCTS[id]).sort((a, b) => hcount(b) - hcount(a));
+  const bs = brands().filter((b) => b.pids.some((x) => p.grp.includes(x))).sort((a, b) => b.lines.length - a.lines.length).map((b) => PRODUCTS['b:' + slug(b.name)]).filter(Boolean);
+  return [...kinds, ...bs].slice(0, n);
+}
+export const isVirtual = (pid) => /^[gb]:/.test(pid || '');
+// Patrí riadok bločku (konkrétny produkt) k položke zoznamu? Všeobecná „Pivo“ zahŕňa všetky pivá, značka svoj druh.
+export function covers(itemPid, linePid, line) {
+  if (!itemPid || !linePid) return false;
+  if (itemPid === linePid) return true;
+  const p = PRODUCTS[itemPid]; if (!p) return false;
+  if (p.grp) return p.grp.includes(linePid);
+  if (p.virt === 'brand') return p.kindPid === linePid && (!line || !line.brand || norm(line.brand) === norm(p.brand));
+  return false;
+}
+
 // Diakritika pre nové položky: slovo napísané bez mäkčeňov a dĺžňov sa doplní podľa známych slov
 // z katalógu („ovocne jogurty“ → „Ovocné jogurty“). Slová s diakritikou sa nemenia.
 let DIA = null;
@@ -259,7 +403,7 @@ export function parseChunk(chunk) {
   }
   const { q, u } = toItemQty(n, unit);
   const name = rest.filter((w) => !FILL.has(w)).join(' ');
-  const p = matchProduct(name || raw);
+  const p = resolveName(name || raw);
   if (p) return { pid: p.id, q, u, raw };
   // nová položka: presne podľa napísaného textu, bez čísel a jednotiek, s doplnenou diakritikou
   const toks = raw.split(/\s+/).filter((tk) => {
@@ -355,7 +499,7 @@ export function matchReceipt(rec, list) {
     if (l.itemId) { used.add(l.itemId); continue; }
     const p = l.pid ? PRODUCTS[l.pid] : matchProduct(l.n || l.raw || '');
     if (p) l.pid = p.id;
-    const it = list && list.items.find((i) => !used.has(i.id) && ((p && i.pid === p.id) || (!i.pid && norm(i.n || '') === norm(l.n || ''))));
+    const it = list && list.items.find((i) => !used.has(i.id) && ((p && covers(i.pid, p.id, l)) || (!i.pid && norm(i.n || '') === norm(l.n || ''))));
     if (it) { l.itemId = it.id; used.add(it.id); } else l.extra = true;
   }
   return rec;

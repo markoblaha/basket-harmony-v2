@@ -1,4 +1,4 @@
-import { useApp, useState, useEffect, useRef, useLayoutEffect, I, IB } from './ui.jsx';
+import { useApp, useState, useEffect, useRef, useLayoutEffect, I, IB, safeInsets, nbsp } from './ui.jsx';
 /* icons: hand-pointing question lightbulb x arrow-right sparkle */
 
 // ===================== Nápovedy =====================
@@ -144,7 +144,8 @@ export function Coach({ screen, blocked, appRef }) {
   const spaceBelow = H - (hole.top + hole.height) - GAP - EDGE; const spaceAbove = hole.top - GAP - EDGE;
   const below = spaceBelow >= hb || (spaceBelow >= spaceAbove && spaceAbove < hb);
   let top = below ? hole.top + hole.height + GAP : hole.top - GAP - hb;
-  top = Math.max(EDGE + 30, Math.min(H - EDGE - hb, top)); // vždy celá na obrazovke
+  const SA = safeInsets(appRef.current);
+  top = Math.max(EDGE + 30, SA.t + EDGE, Math.min(H - EDGE - hb - SA.b, top)); // vždy celá na obrazovke, mimo výrezu displeja
   const cx = box.x + box.w / 2;
   const left = Math.max(EDGE, Math.min(W - EDGE - bw, cx - bw / 2));
   const arrowX = Math.max(22, Math.min(bw - 22, cx - left));
@@ -164,8 +165,8 @@ export function Coach({ screen, blocked, appRef }) {
       <div ref={bubRef} className={'co-bub ' + (below ? 'b' : 'a')} style={{ left, top, width: bw }} onClick={(e) => e.stopPropagation()}>
         {arrowOk && <i className="co-arr" style={{ left: arrowX - 8 }} />}
         <div className="co-top"><span className="co-k"><I n="lightbulb" />{q.list.length > 1 ? `Nápoveda ${q.i + 1} z ${q.list.length}` : 'Nápoveda'}</span>{q.list.length > 1 && <span className="co-dots">{q.list.map((_, k) => <i key={k} className={k === q.i ? 'on' : k < q.i ? 'd' : ''} />)}</span>}</div>
-        <b id="co-t">{c.title}</b>
-        <p id="co-p">{c.text}</p>
+        <b id="co-t">{nbsp(c.title)}</b>
+        <p id="co-p">{nbsp(c.text)}</p>
         <div className="co-act">
           {!last ? <button type="button" className="co-skip" onClick={skip}>Preskočiť</button> : <span />}
           <button type="button" className="co-ok" onClick={() => next(true)} autoFocus>{last ? 'Rozumiem' : <>Ďalej<I n="arrow-right" w="bold" /></>}</button>

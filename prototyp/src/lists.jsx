@@ -1,7 +1,7 @@
 import { useApp, Back, MeBtn, useState, useEffect, useRef, useMemo, Fragment, I, E, IB, Btn, StoreTile, Avatars, Av, pe, Sheet, Stepper, SwipeRow, Empty, Check, Seg } from './ui.jsx';
 import { PRODUCTS, STAPLES, STORES, SHOP_STORES, CATS, MEMBERS } from './data.js';
 import { HelpBtn } from './coach.jsx';
-import { typoProduct, weightOf, listTotals, estimate, unitPrice, eur, eur0, rangeText, fmtQty, bump, minQty, storeName, withStore, itemUnit, frequentStores, relDay, qtyOptions, norm, parseOne, splitChunks, parseChunk, history, shortDate, recipeById, dayLower, addDays, dkey, ago } from './logic.js';
+import { typoFix, resolveName, refinements, isVirtual, weightOf, listTotals, estimate, unitPrice, eur, eur0, rangeText, fmtQty, bump, minQty, storeName, withStore, itemUnit, frequentStores, relDay, qtyOptions, norm, parseOne, splitChunks, parseChunk, history, shortDate, recipeById, dayLower, addDays, dkey, ago } from './logic.js';
 import { when } from './home.jsx';
 
 /* icons: dots-three caret-left plus trash note-pencil arrows-left-right share-network broom pencil-simple storefront x check users magnifying-glass */
@@ -17,6 +17,7 @@ export function PriceLine({ it, S, store, by }) {
   else {
     parts.push(<span key="v">~{eur(e.v)}{e.perKg ? <small className="pk"> · {eur(e.up)}/kg</small> : null}</span>);
     if (e.approx) parts.push(<span key="a" className="mk ap">orientačne</span>);
+    else if (e.avg && e.group > 1) parts.push(<span key="g" className="mk ap">priemer {e.group} druhov</span>);
     else if (e.store && e.store !== store) parts.push(<span key="s" className="mk" style={{ '--sc': (STORES[e.store] || {}).c1 }}>{storeName(e.store)}</span>);
   }
   if (it.note) parts.push(<span key="no" className="note">· {it.note}</span>);
@@ -97,9 +98,25 @@ function Composer({ list, onAdded, focus0 }) {
   // Čo pridá Enter – rovnaký výsledok, aký ukazuje náhľad nad poľom
   const enter = useMemo(() => (txt.trim().length >= 2 ? splitChunks(txt.trim()).map(parseChunk).filter(Boolean) : []), [txt]);
   const enterPid = enter.length === 1 && enter[0].pid;
-  // možný preklep („mlieo“ → Mlieko): Enter pridá text tak, ako je, oprava je len ponuka na ťuknutie
-  const typo = useMemo(() => (enter.length === 1 && !enterPid ? typoProduct(enter[0].n) : null), [enter, enterPid]);
-  const sugg = useMemo(() => { const r = searchProducts(txt, inList).filter((p) => !typo || p.id !== typo.id); return enterPid ? [PRODUCTS[enterPid], ...r.filter((p) => p.id !== enterPid)].slice(0, 6) : r.slice(0, typo ? 5 : 6); }, [txt, inList, enterPid, typo]);
+  // možný preklep („smotna“ → Smotana): Enter pridá text tak, ako je, oprava je len ponuka na ťuknutie
+  const typo = useMemo(() => { if (enter.length !== 1 || enterPid) return null; const f = typoFix(enter[0].n); return f ? f.p : null; }, [enter, enterPid]);
+  // Návrhy: 1. čo pridá Enter, 2. oprava preklepu, 3. konkrétne druhy a značky, 4. ďalšie zhody podľa začiatku slova
+  const sugg = useMemo(() => {
+    if (enter.length !== 1) return [];
+    const head = enterPid ? PRODUCTS[enterPid] : null;
+    const out = []; const seen = new Set(head ? [head.id] : []);
+    const push = (p) => { if (p && !seen.has(p.id)) { seen.add(p.id); out.push(p); } };
+    if (typo) push(typo);
+    if (head && head.grp) refinements(head, 6).forEach(push);
+    const found = searchProducts(txt, inList);
+    if (!head && found.length) { // rozpísané slovo („smot“): ponúkni najprv všeobecnú položku „Smotana“
+      const lw = norm(txt).split(' ').pop();
+      const t = found[0].n.replace(/ ·.*$/, '').split(/\s+/).find((w) => norm(w).startsWith(lw));
+      const g = t && resolveName(t); if (g && g.grp) push(g);
+    }
+    found.forEach(push);
+    return out.slice(0, head ? 4 : 5);
+  }, [txt, inList, enterPid, typo, enter]);
   // dlaždice „istý nákup“ – ťuk = +1, po 2 s sa pridá a nahradí ďalšou
   const [pend, setPend] = useState({});
   const cnt = useRef({}); const tm = useRef({});
@@ -129,12 +146,15 @@ function Composer({ list, onAdded, focus0 }) {
   return (
     <div className="dock">
       {typing ? (
-        <div className="bubbles" role="listbox" aria-label="Návrhy">
-          {enter.length > 1 && <div className={'bub none ent' + (g ? ' glass2' : '')}><span><b>{enter.length} položky: {enter.map((x) => (x.pid ? PRODUCTS[x.pid].n.replace(/ ·.*$/, '') : x.n)).join(', ')}</b><small>Pridá Enter</small></span><kbd>Enter</kbd></div>}
-          {enter.length === 1 && !enterPid && <button type="button" className={'bub ent new' + (g ? ' glass2' : '')} onPointerDown={(e) => e.preventDefault()} onClick={submit}><span className="nwi"><I n="plus" w="bold" /></span><span><b>{enter[0].n}</b><small>{fmtQty(enter[0].q, enter[0].u)} · {typo ? 'pridá sa takto' : 'nová položka'}</small></span><kbd>Enter</kbd></button>}
-          {typo && <button type="button" className={'bub typo' + (g ? ' glass2' : '')} onPointerDown={(e) => e.preventDefault()} onClick={() => add(typo, enter[0].q, enter[0].u === 'ks' ? 'ks' : enter[0].u)}><E k={typo.e} s={28} /><span><b>{typo.n.replace(/ ·.*$/, '')}?</b><small>Preklep? Ťuknite pre opravu</small></span></button>}
-          {sugg.map((p) => { const ent = enterPid === p.id; const q = ent ? enter[0].q : 1; const qu = ent ? enter[0].u : 'ks'; const e = estimate({ pid: p.id, q, u: qu }, S, list.store); return (
-            <button type="button" key={p.id} className={'bub' + (ent ? ' ent' : '') + (g ? ' glass2' : '')} onPointerDown={(e) => e.preventDefault()} onClick={() => add(p, q, qu)}><E k={p.e} s={28} /><span><b>{p.n.replace(/ ·.*$/, '')}</b><small>{ent ? '↵ ' : ''}{fmtQty(q, qu)}{e ? ' · ~' + eur(e.v) : ''}</small></span></button>
+        <div className={'sgl' + (g ? ' glass2' : '')} role="listbox" aria-label="Návrhy">
+          {enter.length > 1 && <button type="button" className="sgr ent" onPointerDown={(e) => e.preventDefault()} onClick={submit}><span className="sgi nwi"><I n="plus" w="bold" /></span><span className="sgt"><b>{enter.length} položky</b><small>{enter.map((x) => (x.pid ? PRODUCTS[x.pid].n.replace(/ ·.*$/, '') : x.n)).join(', ')}</small></span><kbd aria-label="Enter">↵</kbd></button>}
+          {enter.length === 1 && (() => { const x = enter[0]; const p = x.pid && PRODUCTS[x.pid]; const e = p && estimate({ pid: p.id, q: x.q, u: x.u }, S, list.store);
+            const what = !p ? (typo ? 'pridá sa presne takto' : 'nová položka') : p.grp ? (p.grp.length > 1 ? `všetky druhy (${p.grp.length})` : 'všeobecne') : p.virt === 'brand' ? `značka · ${PRODUCTS[p.kindPid].n.replace(/ ·.*$/, '')}` : 'presne tento druh';
+            return <button type="button" className="sgr ent" onPointerDown={(ev) => ev.preventDefault()} onClick={submit}>{p ? <span className="sgi"><E k={p.e} s={30} /></span> : <span className="sgi nwi"><I n="plus" w="bold" /></span>}<span className="sgt"><b>{p ? p.n.replace(/ ·.*$/, '') : x.n}</b><small>{fmtQty(x.q, x.u)} · {what}</small></span>{e && <span className="sgp">~{eur(e.v)}</span>}<kbd aria-label="Enter">↵</kbd></button>; })()}
+          {sugg.map((p) => { const q = enter.length === 1 ? enter[0].q : 1; const qu = enter.length === 1 ? enter[0].u : 'ks'; const e = estimate({ pid: p.id, q, u: qu }, S, list.store); const isT = typo && p.id === typo.id;
+            const what = isT ? 'preklep? ťuknite pre opravu' : p.grp ? (p.grp.length > 1 ? `všetky druhy (${p.grp.length})` : 'všeobecne') : p.virt === 'brand' ? 'značka' : 'druh';
+            return (
+            <button type="button" key={p.id} className={'sgr' + (isT ? ' typo' : '')} onPointerDown={(ev) => ev.preventDefault()} onClick={() => add(p, q, qu)}><span className="sgi"><E k={p.e} s={30} /></span><span className="sgt"><b>{isT ? p.n.replace(/ ·.*$/, '') + '?' : p.n.replace(/ ·.*$/, '')}</b><small>{what}</small></span>{e && <span className="sgp">~{eur(e.v)}</span>}</button>
           ); })}
         </div>
       ) : (
@@ -255,12 +275,14 @@ export function ItemSheet({ open, close, listId, itemId }) {
           <div className="pi-top"><div><div className="k">{it.paid != null ? 'Zaplatené' : 'Odhad'}</div><div className="price">{e ? (it.paid != null ? '' : '~') + eur(e.v) : '–'}</div></div>
             {up && <div className="ra"><div className="k">Bežná cena</div><div className="pv">{eur(up.up)} / {p.u === 'kg' ? 'kg' : p.u === 'l' ? 'l' : 'ks'}</div></div>}</div>
           {e && e.perKg && <p className="meta">Odhad podľa vášho bežného nákupu (~{fmtQty(weightOf(it, S), 'kg')}). Presnú cenu zapíše bloček.</p>}
-          {up && !up.approx && <p className="meta">{up.k === 1 ? 'Cena z posledného nákupu' : `Medián posledných ${up.k} nákupov`}{up.same ? ` v obchode ${storeName(list.store)}` : list.store ? ' zo všetkých obchodov' : ''}. Rozpätie {eur(up.min)} – {eur(up.max)}.{!up.same && list.store ? ` V obchode ${storeName(list.store)} ste to ešte nekupovali – cena je z obchodu ${storeName(up.store)}.` : ''}</p>}
+          {up && up.avg && <p className="meta">{p.grp.length > 1 ? `Priemer z ${up.k} nákupov ${p.grp.length} druhov` : `Priemer z ${up.k} nákupov`}{up.same ? ` v obchode ${storeName(list.store)}` : ''}. Rozpätie {eur(up.min)} – {eur(up.max)}. Keď položku spresníte, cena sa spočíta len z toho druhu.</p>}
+          {up && !up.approx && !up.avg && <p className="meta">{p && p.virt === 'brand' ? `Len nákupy značky ${p.brand}. ` : ''}{up.k === 1 ? 'Cena z posledného nákupu' : `Medián posledných ${up.k} nákupov`}{up.same ? ` v obchode ${storeName(list.store)}` : list.store ? ' zo všetkých obchodov' : ''}. Rozpätie {eur(up.min)} – {eur(up.max)}.{!up.same && list.store ? ` V obchode ${storeName(list.store)} ste to ešte nekupovali – cena je z obchodu ${storeName(up.store)}.` : ''}</p>}
           {up && up.approx && <p className="meta">Orientačná cena – v bločkoch zatiaľ nie je. Po prvom bločku sa sem zapíše skutočná.</p>}
           {!up && <p className="meta">Cenu zatiaľ nepoznáme. Zapíše sa z bločku po nákupe.</p>}
           {h.length > 0 && <div className="hist">{h.map((x, i) => <div key={i}><span>{shortDate(x.d)}</span><span className="mk" style={{ '--sc': (STORES[x.s] || {}).c1 }}>{storeName(x.s)}</span><b>{eur(x.p)}</b></div>)}</div>}
-          {it.pid && <button type="button" className="lnk" onClick={() => { save(); push('product', { pid: it.pid }); }}>Celá história ceny<I n="caret-right" w="bold" /></button>}
+          {it.pid && !isVirtual(it.pid) && <button type="button" className="lnk" onClick={() => { save(); push('product', { pid: it.pid }); }}>Celá história ceny<I n="caret-right" w="bold" /></button>}
         </div>
+        {p && p.grp && refinements(p, 8).length > 0 && <div className="mv"><span className="k">Spresniť druh alebo značku <small>· nepovinné</small></span><div className="chips wrap">{refinements(p, 8).map((x) => <button type="button" key={x.id} className="chip plain" onClick={() => { act('patchItem', listId, itemId, { pid: x.id }); toast(`Spresnené: ${x.n.replace(/ ·.*$/, '')}`, { icon: 'check-circle', action: { label: 'Vrátiť', fn: () => act('patchItem', listId, itemId, { pid: it.pid }) } }); }}><E k={x.e} />{x.n.replace(/ ·.*$/, '')}</button>)}</div></div>}
         <label className="fl"><span>Poznámka pre nakupujúceho</span><input id="item-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="napr. bez laktózy, väčšie balenie" /></label>
         {others.length > 0 && <div className="mv"><span className="k">Presunúť do</span><div className="chips wrap">{others.map((l) => <button type="button" key={l.id} className="chip plain" onClick={() => { act((s) => { const s1 = { ...s, lists: s.lists.map((x) => x.id === listId ? { ...x, items: x.items.filter((i) => i.id !== itemId) } : x.id === l.id ? { ...x, items: [{ ...it, t: Date.now() }, ...x.items] } : x) }; return s1; }); toast(`Presunuté do zoznamu ${l.name}`); close(); }}><StoreTile k={l.store} s={22} />{l.name}</button>)}</div></div>}
         <div className="sh-act"><Btn cls="danger soft" onClick={() => { const idx = list.items.findIndex((x) => x.id === itemId); act('removeItem', listId, itemId); toast(`${itemName(it)} – zmazané`, { icon: 'trash', action: { label: 'Vrátiť', fn: () => act('restoreItem', listId, it, idx) } }); close(); }}><I n="trash" />Zmazať</Btn><Btn cls="pri" onClick={save}>Hotovo</Btn></div>
