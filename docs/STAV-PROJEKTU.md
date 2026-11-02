@@ -69,6 +69,10 @@ Nákupy, História → 3 zoznam a pridávanie (všeobecná/druh/značka) → 4 n
 8 upozornenia a Viac → 9 uvítanie a nápovedy (ukážka bez zápisu do DB) → 10 pred obchodmi. Každá fáza: súpis, migrácia do
 testovacej DB + core_test, kód + sk/en, `npm run check`, prekliknutie testovacej adresy, push, odskúšanie majiteľom.
 Pred začatím rozhodnúť rozpory mockupu so staršími rozhodnutiami nižšie (kategórie v zozname, 6 bublín, dok, záložky, témy).
+Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
+FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
+(pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:
+`python3 prototyp/build.py && python3 prototyp/test-html.py && node prototyp/testy/<test>.cjs`.
 
 ## Rozhodnutia majiteľa (nemeniť bez opýtania)
 
