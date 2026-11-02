@@ -82,8 +82,8 @@ export function AnalyticsTop({ part, period = true, right }: { part: Part; perio
   return (
     <>
       <ScreenHeader
+        root
         title={t("nav.analytics")}
-        sticky={false}
         right={
           <>
             {right}

@@ -86,7 +86,7 @@ export function MorePage() {
 
   return (
     <div className="stack">
-      <ScreenHeader title={t("more.title")} />
+      <ScreenHeader title={t("more.title")} onBack={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/home"))} />
       <div className="stack g-20 pad" style={{ paddingTop: 4 }}>
         <button type="button" className="card row" style={{ padding: 16, gap: 14, textAlign: "left" }} onClick={() => setSheet("profile")}>
           <PersonAvatar person={{ id: me, name: shownName }} size="lg" />

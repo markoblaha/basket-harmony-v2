@@ -1,19 +1,27 @@
 /**
- * Farebný režim: svetlý, tmavý, farebný (pastelový) alebo podľa systému. Voľba sa pamätá v zariadení
- * (každý telefón si môže zvoliť inak) a premieta sa do atribútu data-theme na
- * <html>, podľa ktorého styles.css prepína sadu farieb.
+ * Vzhľad appky = téma × režim.
+ *  - téma (bh.style): „warm“ = Teplá kuchyňa, „glass“ = Fotky a sklo,
+ *  - režim (bh.theme): svetlý, tmavý alebo podľa systému.
+ * Voľba sa pamätá v zariadení (každý telefón si môže zvoliť inak) a premieta sa do atribútov
+ * data-style a data-theme na <html>, podľa ktorých styles.css prepína sadu farieb.
  *
- * Rovnaká logika beží aj v krátkom skripte v index.html – ten nastaví tému ešte
+ * Rovnaká logika beží aj v krátkom skripte v index.html – ten nastaví vzhľad ešte
  * pred prvým vykreslením, aby pri tmavom režime nebliklo svetlé pozadie.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-export type ThemePreference = "light" | "dark" | "color" | "system";
-export type ResolvedTheme = "light" | "dark" | "color";
+export type ThemePreference = "light" | "dark" | "system";
+export type ResolvedTheme = "light" | "dark";
+export type ThemeStyle = "warm" | "glass";
 
-const STORAGE_KEY = "bh.theme";
-/** Farba lišty prehliadača (zhodná s --bg v styles.css). */
-export const THEME_BG: Record<ResolvedTheme, string> = { light: "#f3f3f0", dark: "#0b0c0d", color: "#e4e6f4" };
+const MODE_KEY = "bh.theme";
+const STYLE_KEY = "bh.style";
+
+/** Farba systémovej lišty iPhonu (zhodná s --bg v styles.css). */
+export const STATUS_BAR: Record<ThemeStyle, Record<ResolvedTheme, string>> = {
+  warm: { light: "#f7f3ec", dark: "#11130f" },
+  glass: { light: "#f3f2f0", dark: "#050506" },
+};
 
 /**
  * Farba systémovej lišty iPhonu (hodiny, batéria) = farba témy. iPhone ju berie z <meta name="theme-color">
@@ -30,26 +38,47 @@ function setStatusBarColor(color: string) {
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
-function readPreference(): ThemePreference {
+function read(key: string): string | null {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === "light" || stored === "dark" || stored === "color" ? stored : "system";
+    return localStorage.getItem(key);
   } catch {
-    return "system";
+    return null;
   }
+}
+
+function write(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* súkromný režim prehliadača – voľba platí do zatvorenia */
+  }
+}
+
+/** Staré voľby (farebná téma) sa zmenia na svetlý režim. */
+function readPreference(): ThemePreference {
+  const stored = read(MODE_KEY);
+  if (stored === "color") return "light";
+  return stored === "light" || stored === "dark" ? stored : "system";
+}
+
+function readStyle(): ThemeStyle {
+  return read(STYLE_KEY) === "glass" ? "glass" : "warm";
 }
 
 type ThemeState = {
   preference: ThemePreference;
   /** Čo sa skutočne zobrazuje (pri "system" podľa zariadenia). */
   resolved: ResolvedTheme;
+  style: ThemeStyle;
   setPreference: (preference: ThemePreference) => void;
+  setStyle: (style: ThemeStyle) => void;
 };
 
 const ThemeContext = createContext<ThemeState | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>(readPreference);
+  const [style, setStyleState] = useState<ThemeStyle>(readStyle);
   const [systemDark, setSystemDark] = useState(() => window.matchMedia(DARK_QUERY).matches);
   const firstRender = useRef(true);
 
@@ -63,7 +92,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Zmena voľby v inej karte alebo okne tej istej appky.
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) setPreferenceState(readPreference());
+      if (e.key === MODE_KEY) setPreferenceState(readPreference());
+      if (e.key === STYLE_KEY) setStyleState(readStyle());
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -74,26 +104,31 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     // Pri ručnej zmene farby jemne prelínajú; pri štarte appky sa nič neanimuje.
-    if (!firstRender.current && root.dataset.theme !== resolved) {
+    if (!firstRender.current && (root.dataset.theme !== resolved || root.dataset.style !== style)) {
       root.classList.add("theme-fade");
       window.setTimeout(() => root.classList.remove("theme-fade"), 350);
     }
     firstRender.current = false;
     root.dataset.theme = resolved;
-    root.style.colorScheme = resolved === "dark" ? "dark" : "light";
-    setStatusBarColor(THEME_BG[resolved]);
-  }, [resolved]);
+    root.dataset.style = style;
+    root.style.colorScheme = resolved;
+    setStatusBarColor(STATUS_BAR[style][resolved]);
+  }, [resolved, style]);
 
   const setPreference = useCallback((next: ThemePreference) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* súkromný režim prehliadača – voľba platí do zatvorenia */
-    }
+    write(MODE_KEY, next);
     setPreferenceState(next);
   }, []);
 
-  const value = useMemo(() => ({ preference, resolved, setPreference }), [preference, resolved, setPreference]);
+  const setStyle = useCallback((next: ThemeStyle) => {
+    write(STYLE_KEY, next);
+    setStyleState(next);
+  }, []);
+
+  const value = useMemo(
+    () => ({ preference, resolved, style, setPreference, setStyle }),
+    [preference, resolved, style, setPreference, setStyle],
+  );
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 

@@ -95,6 +95,16 @@ appka posiela `household_id` (`features/household/current.ts`); chyba `error.AI_
 `_auto_match_receipt`, `_receipt_list_score` (a spúšťače). Testovací účet + `testy/preklikanie.cjs` (0 nálezov, 2 vzhľady × 22 obrazoviek).
 Hlas pri prekročení limitu ukáže len všeobecné „nerozumel som / nepodarilo sa“ (konkrétny text príde s Hlasom 2.0 vo Fáze 5).
 Ďalej: Fáza 1 (vzhľad a kostra).
+
+**Fáza 1 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** témy Teplá kuchyňa a Fotky a sklo × svetlý/tmavý/podľa systému
+(`bh.style` = warm | glass, `bh.theme` = light | dark | system; stará „farebná“ → svetlý). Farby sú role v `src/styles.css`
+(4 sady + doplnky v `design.css`), tvar a sklo v `src/styles/themes.css`, kostra v `src/styles/shell.css`. Fotky a sklo:
+pod appkou vopred rozmazaná fotka trhu `src/assets/trh-blur.webp` (2 kB) so závojom, karty polopriehľadné. Písma v appke
+(DM Sans, Fraunces na nadpisy v Teplej kuchyni, Inter ako záloha systémového písma). Tokeny pohybu `--dur-1…5`, `--ease-spring`.
+Spodná lišta: Domov (`/home`, zatiaľ rozcestník – obsah vo Fáze 2) · Nákupy (`/`) · mikrofón · Recepty · Výdavky; Viac pod
+avatarom (`MeButton`, `ScreenHeader root`). Prechody: dopredu sprava, späť zľava; návrat potiahnutím z ľavého okraja len
+v appke z plochy (v Safari má gesto prehliadač). Pod ťahanou obrazovkou nie je vidno predchádzajúcu (len stmavnutie).
+Preklikanie: 4 vzhľady × 23 obrazoviek, 0 nálezov. Úvodná obrazovka po spustení je stále Nákupy (Domov ňou bude vo Fáze 2).
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

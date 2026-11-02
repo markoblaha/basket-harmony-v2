@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
-import { AudioLines, ChartColumn, ChefHat, Menu, ShoppingBasket } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { NavLink, Outlet, useLocation, useNavigate, useNavigationType } from "react-router";
+import { CookingPot, House, Mic, ShoppingBasket, Wallet, type LucideIcon } from "lucide-react";
 import { useToast } from "./toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useHouseholdRealtime } from "@/features/realtime/useHouseholdRealtime";
@@ -18,13 +18,17 @@ import { primeAudio } from "@/features/voice/useRecorder";
 const VoiceSession = lazy(() => import("@/features/voice/VoiceSession").then((m) => ({ default: m.VoiceSession })));
 
 type Badge = "recipes" | "analytics" | "lists";
-const TABS: { to: string; label: Key; icon: typeof Menu; match: (p: string) => boolean; badge?: Badge }[] = [
+/** Spodná lišta ako v mockupe: Domov · Nákupy · (mikrofón) · Recepty · Výdavky. Viac je pod avatarom vľavo hore. */
+const TABS: { to: string; label: Key; icon: LucideIcon; match: (p: string) => boolean; badge?: Badge }[] = [
+  { to: "/home", label: "nav.home", icon: House, match: (p) => p.startsWith("/home") },
   { to: "/", label: "nav.lists", icon: ShoppingBasket, match: (p) => p === "/" || p.startsWith("/lists") || p.startsWith("/history"), badge: "lists" },
-  { to: "/recipes", label: "nav.recipes", icon: ChefHat, match: (p) => p.startsWith("/recipes"), badge: "recipes" },
-  // Doklady sú časťou Analytiky (záložka Doklady).
-  { to: "/analytics", label: "nav.analytics", icon: ChartColumn, match: (p) => p.startsWith("/analytics") || p.startsWith("/receipts"), badge: "analytics" },
-  { to: "/more", label: "nav.more", icon: Menu, match: (p) => p.startsWith("/more") },
+  { to: "/recipes", label: "nav.recipes", icon: CookingPot, match: (p) => p.startsWith("/recipes"), badge: "recipes" },
+  // Doklady sú časťou Výdavkov (záložka Doklady).
+  { to: "/analytics", label: "nav.analytics", icon: Wallet, match: (p) => p.startsWith("/analytics") || p.startsWith("/receipts"), badge: "analytics" },
 ];
+
+/** Koreňové obrazovky záložiek: z nich sa potiahnutím z okraja nevracia. */
+const ROOTS = ["/", "/home", "/recipes", "/analytics", "/analytics/categories", "/analytics/stores", "/receipts"];
 
 /**
  * Obrazovky bez spodnej lišty (v prototype tabBar: false / celá plocha): kontrola surovín,
@@ -85,6 +89,8 @@ export function AppShell() {
   const badges = useBadges(household.id);
   useInAppNotices(household.id);
   const showTabs = !NO_TABBAR.some((re) => re.test(pathname));
+  const screen = useRef<HTMLDivElement>(null);
+  const motion = useScreenMotion(pathname);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col pt-safe">
@@ -94,29 +100,33 @@ export function AppShell() {
           {t("status.reconnecting")}
         </div>
       )}
-      <main className={showTabs ? "flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))]" : "flex-1"}>
-        {/* Prechod obrazovky ako v prototype: nová obrazovka sa vynorí zdola (10 px) a zosvetlí (0,24 s). */}
-        <div key={screenKey(pathname)} className="screen-in">
+      <main className="flex-1" style={showTabs ? { paddingBottom: "var(--tabbar-space)" } : undefined}>
+        {/* Prechod obrazovky ako v mockupe: dopredu sprava, späť zľava, medzi záložkami jemné vynorenie. */}
+        <div key={screenKey(pathname)} ref={screen} className={`screen-in ${motion}`}>
           <Suspense fallback={null}>
             <Outlet />
           </Suspense>
         </div>
       </main>
+      <EdgeBack screen={screen} enabled={!ROOTS.includes(pathname.replace(/\/$/, "") || "/")} />
       {showTabs && (
-      <nav aria-label={t("nav.label")} className="tabbar">
-        <div className="tabbar-in">
-          {TABS.map((tab, i) => (
-            <TabItem
-              key={tab.to}
-              tab={tab}
-              active={tab.match(pathname)}
-              count={tab.badge && tab.badge !== "lists" ? badges[tab.badge] : 0}
-              dot={tab.badge === "lists" && badges.lists > 0}
-              before={i === 2 ? <VoiceButton onClick={() => setVoice(true)} /> : null}
-            />
-          ))}
-        </div>
-      </nav>
+        <>
+          <div className="tabfade" aria-hidden />
+          <nav aria-label={t("nav.label")} className="tabbar">
+            <div className="tabbar-in">
+              {TABS.map((tab, i) => (
+                <TabItem
+                  key={tab.to}
+                  tab={tab}
+                  active={tab.match(pathname)}
+                  count={tab.badge && tab.badge !== "lists" ? badges[tab.badge] : 0}
+                  dot={tab.badge === "lists" && badges.lists > 0}
+                  before={i === 2 ? <VoiceButton onClick={() => setVoice(true)} /> : null}
+                />
+              ))}
+            </div>
+          </nav>
+        </>
       )}
       {voice && (
         <Suspense fallback={null}>
@@ -147,6 +157,100 @@ export function AppShell() {
 
 type Tab = (typeof TABS)[number];
 
+const tabOf = (p: string) => TABS.findIndex((tab) => tab.match(p));
+
+/**
+ * Druh prechodu: v rámci jednej záložky dopredu = „push“ (sprava), späť = „pop“ (zľava);
+ * prepnutie záložky = jemné vynorenie. Prvé vykreslenie appky sa neanimuje.
+ */
+function useScreenMotion(pathname: string): "push" | "pop" | "" {
+  const type = useNavigationType();
+  const state = useRef<{ path: string | null; motion: "push" | "pop" | "" }>({ path: null, motion: "" });
+  if (state.current.path !== pathname) {
+    const last = state.current.path;
+    const motion = last === null || tabOf(last) !== tabOf(pathname) ? "" : type === "POP" ? "pop" : "push";
+    state.current = { path: pathname, motion };
+  }
+  return state.current.motion;
+}
+
+/**
+ * Návrat potiahnutím z ľavého okraja doprava (ako v iPhone appkách). Obrazovka ide za prstom
+ * a za ňou sa stmaví; po pustení za tretinou šírky (alebo rýchlym švihom) sa appka vráti späť.
+ * Len v appke spustenej z plochy – v Safari má rovnaké gesto prehliadač sám.
+ */
+function EdgeBack({ screen, enabled }: { screen: RefObject<HTMLDivElement | null>; enabled: boolean }) {
+  const navigate = useNavigate();
+  const dim = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
+    if (!enabled || !standalone) return;
+    let start: { x: number; y: number; t: number } | null = null;
+    let dx = 0;
+    let active = false;
+    const el = () => screen.current;
+    const paint = (x: number, anim: boolean) => {
+      const node = el();
+      if (!node) return;
+      node.style.transition = anim ? "transform var(--dur-3) var(--ease-out)" : "none";
+      node.style.transform = x ? `translateX(${x}px)` : "";
+      if (dim.current) {
+        dim.current.style.transition = anim ? "opacity var(--dur-3)" : "none";
+        dim.current.style.setProperty("--dim", String(Math.max(0, 0.18 * (1 - x / window.innerWidth))));
+        dim.current.style.opacity = x ? "1" : "0";
+      }
+    };
+    const down = (e: TouchEvent) => {
+      const p = e.touches[0];
+      if (!p || p.clientX > 20 || e.touches.length > 1) return;
+      start = { x: p.clientX, y: p.clientY, t: Date.now() };
+      dx = 0;
+      active = false;
+    };
+    const move = (e: TouchEvent) => {
+      const p = e.touches[0];
+      if (!start || !p) return;
+      const x = p.clientX - start.x;
+      const y = p.clientY - start.y;
+      if (!active) {
+        if (Math.abs(y) > 10 && Math.abs(y) > Math.abs(x)) { start = null; return; }
+        if (x < 10) return;
+        active = true;
+      }
+      e.preventDefault();
+      dx = Math.max(0, x);
+      paint(dx, false);
+    };
+    const up = () => {
+      if (!start || !active) { start = null; return; }
+      const fast = dx > 40 && Date.now() - start.t < 250;
+      start = null;
+      active = false;
+      if (dx > window.innerWidth / 3 || fast) {
+        haptic(8);
+        paint(window.innerWidth, true);
+        window.setTimeout(() => {
+          const node = el();
+          if (node) { node.style.transition = ""; node.style.transform = ""; }
+          if (dim.current) dim.current.style.opacity = "0";
+          navigate(-1);
+        }, 200);
+      } else paint(0, true);
+    };
+    document.addEventListener("touchstart", down, { passive: true });
+    document.addEventListener("touchmove", move, { passive: false });
+    document.addEventListener("touchend", up);
+    document.addEventListener("touchcancel", up);
+    return () => {
+      document.removeEventListener("touchstart", down);
+      document.removeEventListener("touchmove", move);
+      document.removeEventListener("touchend", up);
+      document.removeEventListener("touchcancel", up);
+    };
+  }, [enabled, navigate, screen]);
+  return <div ref={dim} className="edge-dim" style={{ opacity: 0 }} aria-hidden />;
+}
+
 /** Obrazovka pre animáciu prechodu: záložky Prehľadov sú jedna obrazovka (animuje sa len obsah pod nimi). */
 function screenKey(pathname: string) {
   return /^\/analytics(\/(products|stores))?\/?$/.test(pathname) ? "/analytics" : pathname;
@@ -168,8 +272,8 @@ function TabItem({ tab, active, count, dot, before }: { tab: Tab; active: boolea
           if (active) window.scrollTo({ top: 0, behavior: "smooth" });
         }}
       >
-        <span className="pill">
-          <Icon size={21} strokeWidth={active ? 2.2 : 1.9} aria-hidden />
+        <span className="ic">
+          <Icon size={26} strokeWidth={active ? 2.1 : 1.8} aria-hidden />
           {dot && <span className="dot" aria-hidden />}
           {/* Počet čakajúcich vecí: malá značka v rohu ikony, „9+“ pri väčšom počte. */}
           {count > 0 && (
@@ -178,7 +282,7 @@ function TabItem({ tab, active, count, dot, before }: { tab: Tab; active: boolea
             </span>
           )}
         </span>
-        {t(tab.label)}
+        <span className="lbl">{t(tab.label)}</span>
       </NavLink>
     </>
   );
@@ -187,7 +291,7 @@ function TabItem({ tab, active, count, dot, before }: { tab: Tab; active: boolea
 /** Stredné tlačidlo navigácie: otvorí hlasový nákup. */
 function VoiceButton({ onClick }: { onClick: () => void }) {
   return (
-    <div className="center">
+    <div className="tmic">
       <button
         type="button"
         onClick={() => {
@@ -199,7 +303,7 @@ function VoiceButton({ onClick }: { onClick: () => void }) {
         aria-label={t("voice.open")}
         className="voice-btn"
       >
-        <AudioLines size={26} aria-hidden />
+        <Mic size={25} strokeWidth={2.2} aria-hidden />
       </button>
     </div>
   );

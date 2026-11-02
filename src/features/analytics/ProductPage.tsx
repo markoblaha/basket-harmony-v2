@@ -284,7 +284,7 @@ export function ProductPage() {
         )}
       </div>
       <div style={{ height: 180 }} />
-      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl row g-8" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}>
+      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl row g-8" style={{ bottom: "var(--tabbar-space)" }}>
         <button type="button" className="btn btn-soft" onClick={() => setEditing(true)} aria-label={t("pp.edit")}>
           <Pencil size={17} />
           {t("pp.edit")}

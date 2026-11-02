@@ -177,7 +177,7 @@ export function RecipePage() {
         )}
       </div>
       <div style={{ height: 190 }} />
-      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}>
+      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl" style={{ bottom: "var(--tabbar-space)" }}>
         <div className="stack g-8">
           <div className="rc-sel">
             <ShoppingBasket size={16} />

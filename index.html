@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f3f3f0" />
+    <meta name="theme-color" content="#f7f3ec" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -14,27 +14,31 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>Basket Harmony</title>
     <!--
-      Farebný režim a jazyk sa nastavia ešte pred prvým vykreslením, aby pri tmavom
+      Vzhľad (téma × režim) a jazyk sa nastavia ešte pred prvým vykreslením, aby pri tmavom
       režime nebliklo svetlé pozadie. Rovnakú logiku má aj src/theme/ThemeProvider.tsx
-      (voľba "bh.theme": light | dark | color | system) a src/i18n/core.ts (voľba "bh.locale").
+      ("bh.style": warm | glass, "bh.theme": light | dark | system) a src/i18n/core.ts ("bh.locale").
     -->
     <script>
       (function () {
         var root = document.documentElement;
         var theme = null;
+        var style = null;
         var locale = null;
         try {
           theme = localStorage.getItem("bh.theme");
+          style = localStorage.getItem("bh.style");
           locale = localStorage.getItem("bh.locale");
         } catch (e) {}
         var dark = theme === "dark" || (theme !== "light" && theme !== "color" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-        root.dataset.theme = theme === "color" ? "color" : dark ? "dark" : "light";
+        var glass = style === "glass";
+        root.dataset.theme = dark ? "dark" : "light";
+        root.dataset.style = glass ? "glass" : "warm";
         root.style.colorScheme = dark ? "dark" : "light";
         root.lang = locale === "en" ? "en" : "sk";
         // Systémová lišta iPhonu (hodiny, batéria) má farbu z theme-color – v appke na ploche aj v Safari.
-        // Nastavíme ju podľa témy appky; iPhone k nej sám zvolí čitateľný (tmavý/svetlý) text.
+        // Nastavíme ju podľa vzhľadu appky; iPhone k nej sám zvolí čitateľný (tmavý/svetlý) text.
         var bar = document.querySelector('meta[name="theme-color"]');
-        if (bar) bar.setAttribute("content", theme === "color" ? "#e4e6f4" : dark ? "#0b0c0d" : "#f3f3f0");
+        if (bar) bar.setAttribute("content", glass ? (dark ? "#050506" : "#f3f2f0") : dark ? "#11130f" : "#f7f3ec");
       })();
     </script>
   </head>

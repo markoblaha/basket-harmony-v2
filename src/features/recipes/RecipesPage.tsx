@@ -32,6 +32,7 @@ export function RecipesPage() {
   return (
     <div className="stack">
       <ScreenHeader
+        root
         title={t("recipes.title")}
         right={
           <button type="button" className="ibtn" onClick={() => navigate("/recipes/search?favs=1")} aria-label={t("rc.favorites")}>

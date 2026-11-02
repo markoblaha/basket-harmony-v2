@@ -7,7 +7,7 @@ import type { Progress } from "./useBatch";
 /** Pás nad spodnou navigáciou: sem patria plávajúce prvky (priebeh nahrávania, tlačidlo +, lišta výberu). */
 export function Dock({ children }: { children: ReactNode }) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[var(--tabbar-space)] z-30">
       <div className="mx-auto flex max-w-2xl flex-col items-end gap-3 px-4 pb-3 [&>*]:pointer-events-auto">{children}</div>
     </div>
   );

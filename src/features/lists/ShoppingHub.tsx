@@ -84,6 +84,7 @@ export function ShoppingHub() {
   return (
     <div className="stack">
       <ScreenHeader
+        root
         title={t("nav.shopping")}
         right={
           <button type="button" className="row g-6 hdr-btn" onClick={() => navigate("/more/household")} aria-label={t("shop.householdLabel", { name: household.name })}>

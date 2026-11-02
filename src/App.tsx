@@ -35,6 +35,7 @@ const more = () => import("@/features/more/MorePage");
 const settings = () => import("@/features/more/SettingsPages");
 const analytics = () => import("@/features/analytics/AnalyticsLayout");
 const MorePage = page(more, "MorePage");
+const HomePage = page(() => import("@/features/home/HomePage"), "HomePage");
 const HouseholdPage = page(() => import("@/features/more/HouseholdPage"), "HouseholdPage");
 const NotificationsPage = page(settings, "NotificationsPage");
 const StoresPage = page(settings, "StoresPage");
@@ -104,6 +105,7 @@ export function App() {
           }
         >
           <Route index element={<ShoppingHub />} />
+          <Route path="home" element={<HomePage />} />
           <Route path="lists/:listId" element={<ShoppingPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="recipes" element={<RecipesPage />} />

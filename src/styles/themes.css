@@ -1,0 +1,35 @@
+/*
+ * Doplnky tém z mockupu, ktoré sa nedajú vyjadriť len farbou (prototyp/css/w.css, g.css, polish.css):
+ * zaoblenie kariet, sklo, písmo nadpisov. Farby sú v styles.css (role), tu len tvar a materiál.
+ */
+@layer components {
+  /* ------------------------------------------------------------- spoločné: tvar podľa mockupu */
+  .card, .cells { border-radius: var(--radius-surface); }
+  .sheet { border-radius: var(--radius-modal) var(--radius-modal) 0 0; }
+  .dialog { border-radius: 24px; }
+  .seg { border-radius: 14px; }
+  .btn { border-radius: 999px; }
+  .btn-sm { border-radius: 999px; }
+  .btn-lg { border-radius: 999px; }
+  /* Spodný panel a hláška: sklo s odleskom a tenkým okrajom. */
+  .sheet { background: var(--mat-spec), var(--mat-thick); -webkit-backdrop-filter: blur(44px) saturate(1.8); backdrop-filter: blur(44px) saturate(1.8); box-shadow: var(--mat-edge), 0 -10px 40px -10px rgb(0 0 0 / 0.35); }
+  .seg button.on { background-image: var(--mat-spec); }
+
+  /* ------------------------------------------------------------- Teplá kuchyňa: nadpisy písmom Fraunces */
+  [data-style="warm"] :is(.t-huge, .an-big) { font-family: var(--font-serif); font-weight: 460; letter-spacing: -0.025em; font-variation-settings: "opsz" 72; }
+  [data-style="warm"] .t-big { font-family: var(--font-serif); font-weight: 520; letter-spacing: -0.015em; font-variation-settings: "opsz" 36; }
+
+  /* ------------------------------------------------------------- Fotky a sklo: plochy nad fotkou */
+  [data-style="glass"] .hdr { background: transparent; }
+  /* Pripnutá hlavička a pole na pridávanie: hrubé sklo, aby obsah pod nimi nepresvital. */
+  [data-style="glass"] :is(.hdr.sticky, .sticky > .hdr, .sticky > .ls-composer, .ls-composer, .rc-check-wrap) {
+    background: var(--mat-thick); -webkit-backdrop-filter: var(--mat-blur); backdrop-filter: var(--mat-blur);
+  }
+  [data-style="glass"] :is(.ls-finish, .rc-check-wrap) { background: var(--bg-fill); }
+  [data-style="glass"] :is(.card, .cells) { background-image: var(--mat-spec); }
+  [data-style="glass"] .bottom-cta { background: linear-gradient(to top, var(--fade) 70%, transparent); }
+  [data-style="glass"] .bottom-cta:not(.no-tab) { background: linear-gradient(to top, var(--fade) 0%, var(--fade) calc(100% - 36px), transparent 100%); }
+  [data-style="glass"] :is(.dialog) { background: var(--elevated); -webkit-backdrop-filter: blur(36px) saturate(1.8); backdrop-filter: blur(36px) saturate(1.8); }
+  [data-style="glass"] .hdr.root .ttl { text-shadow: 0 1px 18px rgb(255 255 255 / 0.25); }
+  [data-style="glass"][data-theme="dark"] .hdr.root .ttl { text-shadow: 0 1px 18px rgb(0 0 0 / 0.35); }
+}

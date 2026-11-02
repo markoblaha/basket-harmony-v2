@@ -20,7 +20,7 @@
 
   /* ------------------------------------------------------------- dok pri palci (rýchle pridanie + pole) */
   .ls-dock {
-    z-index: 30; bottom: calc(60px + max(10px, env(safe-area-inset-bottom)));
+    z-index: 30; bottom: calc(var(--tabbar-space) - 2px);
     margin-left: auto; margin-right: auto; padding: 8px 12px 10px;
     border-radius: 26px 26px 0 0; background: var(--elevated); box-shadow: var(--sh-3);
     transition: bottom 180ms cubic-bezier(.2,.8,.2,1);
@@ -30,11 +30,6 @@
      na paneli ako súčasť klávesnice a v medzerách ani v zaoblených rohoch klávesnice nepresvitá zoznam.
      Pole samotné je hneď nad pásikom – iPhone do viditeľnej výšky pásik nezapočítava. */
   .ls-dock.typing::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% - 1px); height: 320px; background: inherit; }
-  /* Farebná téma má panel mierne priesvitný – pri písaní musí byť plný, inak cez neho presvitá zoznam. */
-  [data-theme="color"] .ls-dock.typing { background: rgb(250 248 255); }
-  /* Kým sa píše, spodná lišta úplne zmizne – pole je prilepené ku klávesnici. */
-  .tabbar { transition: transform 220ms cubic-bezier(.2,.8,.2,1), visibility 0s; }
-  body.kb-typing .tabbar { transform: translateY(110%); visibility: hidden; transition: transform 220ms cubic-bezier(.2,.8,.2,1), visibility 0s 220ms; }
   /* Rámik zamerania kreslí celé pole – vlastný obdĺžnik vstupu by bol druhý „štvorček“ v ňom. */
   .ls-field input:focus, .ls-field input:focus-visible { outline: none; }
 

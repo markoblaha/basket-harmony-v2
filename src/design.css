@@ -22,43 +22,58 @@
   --sh-1: var(--elev-card);
   --sh-2: var(--elev-raised);
 }
+/* Doplnky ku každej téme (svetlé / tmavé hodnoty; Fotky a sklo majú vlastné). */
 :root,
-[data-theme-scope="light"] {
-  --surface-2: #f8f8f6;
-  --line-2: #d6d6d0;
-  --orange: #a3500c;
-  --orange-soft: #fcefe2;
-  --sh-3: 0 18px 50px -12px rgb(20 20 20 / 0.32);
+[data-theme-scope="light"],
+[data-theme-scope="warm-light"] {
+  --surface-2: #faf6ef;
+  --line-2: #ddd6c9;
+  --orange: #9a4a12;
+  --orange-soft: #f7e1cf;
+  --sh-3: 0 18px 50px -12px rgb(70 55 30 / 0.32);
   --tint-bg: 92%;
   --tint-fg: 30%;
-  --tint-sat: 60%;
+  --tint-sat: 55%;
+  --bg-fill: var(--bg);
 }
 :root[data-theme="dark"],
-[data-theme-scope="dark"] {
-  --surface-2: #2b2d31;
-  --line-2: #42464b;
+[data-theme-scope="dark"],
+[data-theme-scope="warm-dark"] {
+  --surface-2: #22261f;
+  --line-2: #3a3f35;
   --orange: #f1a25f;
-  --orange-soft: #382513;
+  --orange-soft: #34271d;
   --sh-3: 0 0 0 1px rgb(255 255 255 / 0.07), 0 20px 50px -12px rgb(0 0 0 / 0.8);
   --tint-bg: 19%;
   --tint-fg: 80%;
   --tint-sat: 35%;
+  --bg-fill: var(--bg);
 }
-:root[data-theme="color"],
-[data-theme-scope="color"] {
-  --mint-grad: linear-gradient(90deg, #4f9a7d, #79b89c);
-  --glass: linear-gradient(180deg, rgb(255 255 255 / 0.86), rgb(255 255 255 / 0.66));
-  --glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 0 0 1px rgb(255 255 255 / 0.55);
-  --surface-2: rgb(255 255 255 / 0.6);
-  --line-2: rgb(50 70 160 / 0.18);
-  --orange: #b04f0c;
-  --orange-soft: rgb(255 230 205 / 0.92);
-  --sh-1: var(--glass-edge), 0 1px 2px rgb(40 50 120 / 0.04), 0 8px 22px -14px rgb(40 60 160 / 0.35);
-  --sh-2: var(--glass-edge), 0 14px 34px -14px rgb(40 60 160 / 0.42);
-  --sh-3: inset 0 1px 0 rgb(255 255 255 / 0.95), 0 28px 70px -18px rgb(30 40 130 / 0.5);
+:root[data-style="glass"],
+[data-style="glass"] [data-theme-scope="light"],
+[data-theme-scope="glass-light"] {
+  --surface-2: rgb(255 255 255 / 0.66);
+  --line-2: rgb(0 0 0 / 0.14);
+  --orange: #9a4a12;
+  --orange-soft: rgb(246 215 194 / 0.9);
+  --sh-3: inset 0 1px 0 rgb(255 255 255 / 0.95), 0 24px 60px -18px rgb(40 25 10 / 0.5);
   --tint-bg: 90%;
-  --tint-fg: 32%;
-  --tint-sat: 38%;
+  --tint-fg: 30%;
+  --tint-sat: 45%;
+  --bg-fill: linear-gradient(var(--veil), var(--veil)), url("./assets/trh-blur.webp") center / cover no-repeat, var(--bg);
+}
+:root[data-style="glass"][data-theme="dark"],
+[data-style="glass"] [data-theme-scope="dark"],
+[data-theme-scope="glass-dark"] {
+  --surface-2: rgb(255 255 255 / 0.08);
+  --line-2: rgb(255 255 255 / 0.18);
+  --orange: #ffb057;
+  --orange-soft: rgb(58 42 32 / 0.9);
+  --sh-3: inset 0 1px 0 rgb(255 255 255 / 0.15), 0 24px 60px -16px rgb(0 0 0 / 0.85);
+  --tint-bg: 19%;
+  --tint-fg: 80%;
+  --tint-sat: 35%;
+  --bg-fill: linear-gradient(var(--veil), var(--veil)), url("./assets/trh-blur.webp") center / cover no-repeat, var(--bg);
 }
 
 @layer components {
@@ -213,7 +228,7 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
 .fab { position: absolute; right: 16px; bottom: 120px; z-index: 25; height: 52px; padding: 0 20px 0 16px; border-radius: 999px; background: var(--ink); color: var(--on-ink);
   display: inline-flex; align-items: center; gap: 8px; font-weight: 650; font-size: 15px; box-shadow: var(--sh-2); transition: transform 120ms; }
 .fab:active { transform: scale(0.96); }
-.bottom-cta { position: absolute; left: 0; right: 0; bottom: 84px; z-index: 24; padding: 10px 16px 12px; background: linear-gradient(to top, var(--bg) 70%, transparent); }
+.bottom-cta { position: absolute; left: 0; right: 0; bottom: var(--tabbar-space); z-index: 24; padding: 10px 16px 12px; background: linear-gradient(to top, var(--bg) 70%, transparent); }
 .bottom-cta.no-tab { bottom: 0; padding-bottom: 22px; }
 
 /* ------------------------------------------------------------- spodný panel, dialóg, hláška, banner */
@@ -281,89 +296,9 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
 .spin { animation: spin 1s linear infinite; }
 .live { position: relative; width: 8px; height: 8px; border-radius: 999px; background: currentColor; flex: none; }
 .live::after { content: ""; position: absolute; inset: 0; border-radius: 999px; background: currentColor; animation: p-ping 1.6s ease-out infinite; }
-[data-theme="color"] .ls-finish { background: var(--mesh); }
-[data-theme="color"] .hdr,
-[data-theme="color"] .ls-composer { background: transparent; }
-[data-theme="color"] .ls-composer { box-shadow: none; }
-[data-theme="color"] .hdr .ttl { font-weight: 700; letter-spacing: -0.02em; }
-[data-theme="color"] .section-title { text-transform: uppercase; letter-spacing: 0.07em; font-size: 11.5px; font-weight: 700; color: #5d6390; }
-[data-theme="color"] .rc-check-wrap { background: rgb(241 243 252 / 0.78); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
-[data-theme="color"] .bottom-cta { background: linear-gradient(to top, rgb(250 248 255 / 0.97) 0%, rgb(250 248 255 / 0.97) calc(100% - 36px), rgb(250 248 255 / 0) 100%); }
 
-/* sklenené plochy – jemný svetlý prechod, biela hrana, farebný tieň */
-[data-theme="color"] :is(.card, .cells, .ls-listcard, .rc-wait, .rc-tile, .rc-search, .rc-cat, .tile, .ls-tile) {
-  background: var(--glass);
-}
-[data-theme="color"] :is(.card, .cells) { border-radius: 22px; }
-[data-theme="color"] .ls-listcard { border-radius: 22px; padding: 15px; }
-[data-theme="color"] .rc-tile.home { background: rgb(255 255 255 / 0.32); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.55); }
-[data-theme="color"] .ls-sub, [data-theme="color"] .ls-sub .cell { background: rgb(255 255 255 / 0.4); }
-[data-theme="color"] .ls-sub { border-color: rgb(255 255 255 / 0.65); }
-[data-theme="color"] :is(.sheet, .dialog) {
-  background: linear-gradient(180deg, rgb(236 241 255) 0%, rgb(255 255 255) 140px);
-}
-[data-theme="color"] .sheet .grab { background: rgb(50 70 160 / 0.22); }
-
-/* bento dlaždice rýchleho pridania a kategórie receptov – striedanie pastelov */
-[data-theme="color"] :is(.ls-tile, .rc-cat):nth-child(5n+1) { background: linear-gradient(155deg, rgb(222 229 245 / 0.95), rgb(238 241 249 / 0.8)); }
-[data-theme="color"] :is(.ls-tile, .rc-cat):nth-child(5n+2) { background: linear-gradient(155deg, rgb(244 234 208 / 0.95), rgb(249 245 232 / 0.8)); }
-[data-theme="color"] :is(.ls-tile, .rc-cat):nth-child(5n+3) { background: linear-gradient(155deg, rgb(232 227 245 / 0.95), rgb(244 241 250 / 0.8)); }
-[data-theme="color"] :is(.ls-tile, .rc-cat):nth-child(5n+4) { background: linear-gradient(155deg, rgb(219 236 228 / 0.95), rgb(236 245 240 / 0.8)); }
-[data-theme="color"] :is(.ls-tile, .rc-cat):nth-child(5n+5) { background: linear-gradient(155deg, rgb(243 225 231 / 0.92), rgb(249 240 243 / 0.8)); }
-[data-theme="color"] .ls-tile .star.on { color: #e3a200; }
-
-/* farebné odznaky obchodov, avatary a ilustrácie – dvojfarebný prechod podľa odtieňa */
-[data-theme="color"] :is(.store, .avatar, .rc-cat .ic) {
-  background: linear-gradient(140deg, hsl(var(--h) 42% 91%), hsl(calc(var(--h) + 16) 38% 86%));
-  color: hsl(var(--h) 35% 32%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8);
-}
-[data-theme="color"] .avatars .avatar { box-shadow: 0 0 0 2px #fff; }
-[data-theme="color"] .rc-cover {
-  background: radial-gradient(80% 90% at 85% 15%, hsl(calc(var(--h) + 14) 40% 93%) 0%, transparent 70%), linear-gradient(150deg, hsl(var(--h) 36% 89%), hsl(calc(var(--h) - 12) 32% 84%));
-  color: hsl(var(--h) 30% 34%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
-}
-
-/* hlavné tlačidlá: kobaltovo-fialový prechod, horný lesk a žiara */
-[data-theme="color"] :is(.btn-ink, .fab, .chip.on) {
-  background: var(--ink-grad); color: #fff;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), inset 0 -1px 0 rgb(0 0 40 / 0.2), 0 12px 26px -14px rgb(50 65 130 / 0.6);
-}
-[data-theme="color"] .btn-ink { letter-spacing: 0.005em; }
-[data-theme="color"] :is(.btn-ink, .fab):active { filter: brightness(0.94); transform: scale(0.985); }
-[data-theme="color"] .btn-ink:disabled { background: rgb(50 70 160 / 0.14); color: rgb(27 33 80 / 0.42); box-shadow: none; }
-[data-theme="color"] .btn-soft { background: rgb(255 255 255 / 0.66); box-shadow: var(--glass-edge); }
-[data-theme="color"] .btn-line { background: rgb(255 255 255 / 0.5); box-shadow: inset 0 0 0 1px rgb(50 70 160 / 0.16); }
-[data-theme="color"] .btn-danger { box-shadow: var(--glass-edge); }
-
-
-/* ovládacie prvky */
-[data-theme="color"] .seg { background: rgb(255 255 255 / 0.42); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.65); }
-[data-theme="color"] .seg button.on { background: #fff; color: #1c2a7a; box-shadow: 0 6px 14px -8px rgb(40 60 160 / 0.5), inset 0 0 0 1px rgb(255 255 255 / 0.9); }
-[data-theme="color"] .chip:not(.on) { background: rgb(255 255 255 / 0.62); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.75), 0 4px 10px -8px rgb(40 60 160 / 0.4); }
-[data-theme="color"] .input { background: rgb(255 255 255 / 0.66); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.8), inset 0 1px 3px rgb(40 60 160 / 0.06); }
-[data-theme="color"] :is(.input:focus, .rc-search:focus-within) { box-shadow: inset 0 0 0 2px #5a6fae, 0 0 0 4px rgb(90 111 174 / 0.14); }
-[data-theme="color"] .cat-ic { background: linear-gradient(140deg, rgb(224 230 244 / 0.95), rgb(243 236 216 / 0.95)); color: #3d4f9a; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8); }
-[data-theme="color"] .ls-check { box-shadow: inset 0 0 0 2px rgb(50 70 160 / 0.28); background: rgb(255 255 255 / 0.6); }
-[data-theme="color"] .ls-check.on { background: var(--mint-grad); box-shadow: 0 6px 14px -8px rgb(63 138 111 / 0.6); }
-[data-theme="color"] .switch.on, [data-theme="color"] .switch[aria-checked="true"] { background: var(--mint-grad); }
-[data-theme="color"] .bar { background: rgb(50 70 160 / 0.1); }
-[data-theme="color"] .bar > span { background: var(--mint-grad); }
-[data-theme="color"] .ls-seg { background: rgb(50 70 160 / 0.14); }
-[data-theme="color"] .ls-seg.b { background: var(--mint-grad); }
-[data-theme="color"] .ls-seg.n { background: linear-gradient(90deg, #cf8f68, #ddaa88); }
-[data-theme="color"] .t-huge { background: linear-gradient(120deg, #2b3566, #4a5f9e 55%, #7d6aa0); -webkit-background-clip: text; background-clip: text; color: transparent; }
-[data-theme="color"] .badge { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.6); }
-
-/* hlášky a upozornenia */
-[data-theme="color"] .toast > div { background: linear-gradient(135deg, rgb(28 42 122), rgb(60 70 170)); color: #fff; box-shadow: 0 16px 36px -14px rgb(28 42 122 / 0.7); }
-[data-theme="color"] .banner > button { background: #fff; box-shadow: inset 0 1px 0 #fff, 0 18px 40px -16px rgb(30 45 140 / 0.45); }
-[data-theme="color"] .banner .app-ic { background: var(--ink-grad); }
-[data-theme="color"] .addpill > div { background: #fff; box-shadow: inset 0 1px 0 #fff, 0 14px 30px -12px rgb(30 45 140 / 0.45); }
-[data-theme="color"] .addpill .ok { background: var(--mint-grad); }
-
-/* hlasové tlačidlo vždy nad prechodom lišty */
 /* tlačidlo nad lištou leží nad jej prechodom, aby ho prechod neprekrýval */
-.bottom-cta:not(.no-tab) { bottom: 84px; padding: 36px 16px 28px;
+.bottom-cta:not(.no-tab) { bottom: var(--tabbar-space); padding: 36px 16px 28px;
   background: linear-gradient(to top, var(--bg) 0%, var(--bg) calc(100% - 36px), color-mix(in srgb, var(--bg) 0%, transparent) 100%); }
 /* obsah sa dá doscrollovať celý nad tlačidlo pri lište */
 :has(> .bottom-cta:not(.no-tab)) > .scroll { padding-bottom: 72px; }
@@ -463,7 +398,6 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
   background: var(--accent-soft); color: var(--accent-text); transition: transform 120ms; }
 .ls-go:active { transform: scale(0.95); }
 .ls-go.on { background: var(--violet-soft); color: var(--violet); box-shadow: none; }
-[data-theme="color"] .ls-go:not(.on) { background: linear-gradient(120deg, #dfe4f2, #e7e2f1); color: #3a4a8c; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9); }
 
 /* Odškrtnutie počas nákupu: fajka sa nakreslí, karta jemne zosvetlie (vrstva s priehľadnosťou),
  * potom klesne do košíka a ostatné sa dokĺžu (components/motion.ts – len transform a opacity). */
@@ -531,8 +465,6 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
 .ls-tok .front small { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 650; color: var(--text-2); }
 .ls-tok .back { background: var(--accent); color: #fff; transform: rotateY(180deg); }
 .ls-tok.done > span { transform: rotateY(180deg); }
-[data-theme="color"] .ls-tok .front { background: rgb(255 255 255 / 0.7); box-shadow: inset 0 0 0 1px rgb(50 70 160 / 0.1); }
-[data-theme="color"] .ls-tok .back { background: var(--mint-grad); }
 .ls-sname { font-size: 16px; font-weight: 500; }
 .ls-meta { font-size: 13px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .ls-rc { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
@@ -543,14 +475,6 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
 
 }
 
-/* Prilepená hlavička a pole na pridávanie: vo farebnej téme sklo, aby obsah pod nimi nepresvital. */
-[data-theme="color"] .hdr.sticky,
-[data-theme="color"] .sticky > .hdr,
-[data-theme="color"] .sticky > .ls-composer {
-  background: rgb(244 244 250 / 0.84);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  backdrop-filter: blur(18px) saturate(1.4);
-}
 
 /* Analytika (prototyp) – farby grafov a „papierový“ bloček, pre všetky témy. */
 @layer components {
@@ -583,10 +507,6 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
 .an-stack { display: flex; height: 14px; border-radius: 999px; overflow: hidden; gap: 2px; }
 .an-stack > span { display: block; height: 100%; }
 .an-review { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--yellow-soft); color: var(--yellow); width: 100%; text-align: left; }
-[data-theme="color"] {
-  --mix-1: #5a6fae; --mix-2: #c9a65a; --mix-3: #8f84b8; --mix-4: #5f9e86; --mix-5: #c58b9d; --mix-6: #6fa3bf; --mix-7: #c98a64; --mix-8: #a8abba;
-  --chart-muted: rgb(60 80 170 / 0.18);
-}
 }
 
 /* Pole vložené v riadku .input (lupa + text): rámik má celý riadok, nie vnútorné pole. */

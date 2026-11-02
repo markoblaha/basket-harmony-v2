@@ -27,10 +27,12 @@ const env = Object.fromEntries(
     .filter((l) => /^VITE_/.test(l)).map((l) => l.split(/=(.*)/s).slice(0, 2)),
 );
 
-// Vzhľady: doplnia sa s Fázou 1 (témy Teplá kuchyňa a Fotky a sklo). Teraz appka pozná svetlý/tmavý.
+// Vzhľady: obe témy z mockupu (Teplá kuchyňa, Fotky a sklo), každá svetlá a tmavá.
 const LOOKS = [
-  { name: "svetly", theme: "light", scheme: "light" },
-  { name: "tmavy", theme: "dark", scheme: "dark" },
+  { name: "tepla-svetla", style: "warm", theme: "light", scheme: "light" },
+  { name: "tepla-tmava", style: "warm", theme: "dark", scheme: "dark" },
+  { name: "sklo-svetla", style: "glass", theme: "light", scheme: "light" },
+  { name: "sklo-tmava", style: "glass", theme: "dark", scheme: "dark" },
 ];
 
 /** Id-čka pre obrazovky s detailom – načítané cez API ako testovací účet (len čítanie). */
@@ -57,6 +59,7 @@ async function ids() {
 
 function screens(id) {
   return [
+    ["domov", "/home"],
     ["nakupy", "/"],
     id.list && ["zoznam", `/lists/${id.list}`],
     ["historia", "/history"],
@@ -138,9 +141,9 @@ const CHECK = () => {
       viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
       colorScheme: look.scheme, locale: "sk-SK",
     });
-    await ctx.addInitScript((theme) => {
-      try { localStorage.setItem("bh.theme", theme); localStorage.setItem("bh.locale", "sk"); } catch { /* */ }
-    }, look.theme);
+    await ctx.addInitScript(([theme, style]) => {
+      try { localStorage.setItem("bh.theme", theme); localStorage.setItem("bh.style", style); localStorage.setItem("bh.locale", "sk"); } catch { /* */ }
+    }, [look.theme, look.style]);
     const page = await ctx.newPage();
     const errs = [];
     page.on("pageerror", (e) => errs.push(`js: ${e.message}`));

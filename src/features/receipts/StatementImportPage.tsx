@@ -274,7 +274,7 @@ export function StatementImportPage() {
       <input ref={input} type="file" accept="application/pdf,image/*,.csv,text/csv,.txt" hidden onChange={onPick} />
 
       {data && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[var(--tabbar-space)] z-30">
           <div className="pointer-events-auto mx-auto max-w-2xl px-4 pb-3">
             <Button block size="lg" className="shadow-raised" disabled={selected.length === 0} loading={importer.isPending} onClick={doImport}>
               {selected.length === 0

@@ -18,6 +18,7 @@ import "./styles/receipts.css";
 import "./styles/recipes.css";
 import "./styles/more.css";
 import "./styles/voice.css";
+import "./styles/themes.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
