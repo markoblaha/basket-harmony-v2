@@ -73,6 +73,9 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
 .ph { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 14px; }
 .ph .no { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; font: 800 22px/1 var(--display); background: var(--sunken); color: var(--fg); }
 .ph.now .no { background: var(--acc); color: #fff; }
+.ph.done .no { background: var(--ok); color: #fff; }
+.ph .done-note { font-size: 14.5px; background: var(--ok-soft); color: var(--ok); border-radius: 12px; padding: 9px 12px; }
+.state { display: flex; flex-wrap: wrap; gap: 8px; }
 .ph .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .ph h3 { font: 750 19px/1.25 var(--display); margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
 .ph h3 small { font: 650 13px/1 var(--body); color: var(--muted); }
@@ -98,6 +101,11 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
     <p class="lede">Ako prenesieme interaktívny mockup do skutočnej testovacej appky (vetva <code>design/v2-mobile-redesign</code>, testovacia databáza) – po častiach, každú dotiahnutú, otestovanú a vami odskúšanú v telefóne, kým začneme ďalšiu.</p>
   </div>
 
+  <div class="col"><h2>Kde sme (2. 11. 2026)</h2>
+    <div class="state"><span class="pill ok">Fáza 0 hotová a nasadená</span><span class="pill fix">čaká na vaše „OK“</span><span class="pill fix">ďalej: Fáza 1</span></div>
+    <p>Rozhodnutia sú zapísané nižšie. Otvorené: súhlas so spustením celého kontrolného testu <code>core_test.sql</code> (obsahuje <code>delete</code> len vlastných testovacích riadkov, celý blok sa vráti späť).</p>
+  </div>
+
   <div class="col"><h2>Prečo nie naraz</h2>
     <p>Mockup je jedna stránka s vymyslenými údajmi v prehliadači. Skutočná appka má prihlásenie, domácnosť zdieľanú naživo, 20 tabuliek a 45 funkcií v databáze, AI na bločky, hlas a recepty a povinné preklady do angličtiny. Každú obrazovku z mockupu treba postaviť nanovo na skutočných dátach. Keby sme to prepísali naraz, chyba v jednej časti by zablokovala celú appku a ťažko by sa hľadala.</p>
     <p>Preto: <b>jedna fáza = jedna ucelená časť</b>, ktorá po nasadení funguje sama o sebe. Ostatné časti medzitým fungujú po starom.</p>
@@ -116,7 +124,7 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
 
   <div class="col"><h2>Fázy</h2></div>
   <div class="timeline">
-    <div class="ph now"><span class="no">0</span><div class="card"><h3>Príprava a poistky <small>bez viditeľnej zmeny · 1 relácia</small></h3>
+    <div class="ph done"><span class="no">0</span><div class="card"><h3>Príprava a poistky <small>bez viditeľnej zmeny · hotová 2. 11.</small></h3>
       <p class="goal">Pevný základ, aby sa ďalšie fázy nestavali na známych chybách.</p>
       <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
         <li>Zlúčiť zmenu z <code>main</code> (čítanie bločkov na pozadí) do testovacej vetvy + jej migrácie do testovacej DB.</li>
@@ -124,9 +132,10 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
         <li>Testovací účet na testovacej DB pre automatické prekliknutie appky.</li>
         <li>Skript, ktorý appku prekliká vo všetkých vzhľadoch (ako pri mockupe).</li></ul></div>
       <div><div class="lab">Databáza</div><ul><li>Migrácie z <code>main</code>, oprava práv funkcií.</li></ul></div></div>
-      <div class="check"><b>Vyskúšate:</b> appka funguje ako doteraz (prihlásenie, zoznam, bloček).</div></div></div>
+      <div class="check"><b>Vyskúšate:</b> appka funguje ako doteraz (prihlásenie, zoznam, bloček).</div>
+      <div class="done-note"><b>Výsledok:</b> zmena z <code>main</code> zlúčená, bločky sa čítajú na pozadí (overené: ~9 s). Hlas a recepty s AI overia v databáze členstvo v domácnosti a limit (hlas 300/h · 1500/deň, recepty 40/h · 200/deň), náklady sa zapisujú. Vnútorné funkcie párovania zamknuté. Testovací účet s kópiou údajov (len pridanie). Skript <code>testy/preklikanie.cjs</code>: 22 obrazoviek × svetlý/tmavý, 0 nálezov. <code>npm run check</code> prešiel.</div></div></div>
 
-    <div class="ph"><span class="no">1</span><div class="card"><h3>Vzhľad a kostra <small>1–2 relácie</small></h3>
+    <div class="ph now"><span class="no">1</span><div class="card"><h3>Vzhľad a kostra <small>1–2 relácie</small></h3>
       <p class="goal">Appka vyzerá ako mockup: témy, sklo, písmo, lišta, hlavičky – zatiaľ so starým obsahom obrazoviek.</p>
       <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
         <li>Farby, písmo, rohy a pohyb z mockupu ako tokeny v <code>styles.css</code> (jediný zdroj), obe témy × svetlý/tmavý/podľa systému.</li>
@@ -203,11 +212,11 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
     </tbody>
   </table></div>
 
-  <div class="col"><h2>Na rozhodnutie pred začatím</h2></div>
+  <div class="col"><h2>Rozhodnuté 2. 11. 2026</h2></div>
   <div class="decide">
-    <div><span><b>Rozpory v tabuľke vyššie.</b><p>Odporúčam ísť podľa mockupu vo všetkých piatich (je novší a odsúhlasený na obrazovkách). Ak pri niektorom chcete ostať pri staršom, napíšte pri ktorom.</p></span></div>
-    <div><span><b>Jedna téma alebo dve?</b><p>Prestavba je rovnaká, ale dve témy znamenajú pri každej obrazovke kontrolu navyše. Ak neviete, začnem s oboma – jednu sa dá zrušiť kedykoľvek.</p></span></div>
-    <div><span><b>Testovací účet.</b><p>Na automatické prekliknutie appky potrebujem v testovacej DB vlastný účet (napr. test@… s domácnosťou s kópiou vašich dát). Vytvorí sa len pridaním – nič sa nemaže. Súhlasíte?</p></span></div>
-    <div><span><b>Môžem začať Fázou 0?</b><p>Bez viditeľnej zmeny, len poistky a opravy. Po nej vám pošlem súpis Fázy 1.</p></span></div>
+    <div><span><b>Rozpory: všetkých päť podľa mockupu.</b><p>Kategórie v zozname, návrhy pri písaní ako zoznam riadkov, rad často kupovaných namiesto doku, záložky Domov · Nákupy · mikrofón · Recepty · Výdavky (Viac pod avatarom), témy Teplá kuchyňa a Fotky a sklo.</p></span></div>
+    <div><span><b>Obe témy, každá svetlá a tmavá.</b><p>Kontrola každej obrazovky v štyroch vzhľadoch.</p></span></div>
+    <div><span><b>Testovací účet: áno.</b><p>Vytvorený len pridaním, vlastná domácnosť s kópiou údajov; heslo v trezore testovacej DB, nie v repozitári.</p></span></div>
+    <div><span><b>Začať Fázou 0: áno.</b><p>Hotová. Ďalšia fáza až po vašom „OK“, vždy len jedna.</p></span></div>
   </div>
 </div>
