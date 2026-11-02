@@ -110,6 +110,14 @@ Staré (ešte neprenesené) obrazovky ostávajú mimo `.bhm` a používajú farb
 podľa systému (`bh.style`, `bh.theme`), lišta, hlavička (avatar · malý nadpis pri posúvaní · tlačidlá, veľký nadpis),
 pozadie Fotiek a skla (.bgl z mockupu), výber témy vo Viac – všetko z kódu mockupu. Domov je zatiaľ rozcestník (Fáza 2),
 na zozname sa lišta skryje ako v mockupe. Tlačidlo „?“ (nápovedy) príde vo Fáze 9. Preklikanie 4 vzhľady × 23 obrazoviek: 0 nálezov.
+
+**Fáza 2 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** z mockupu prenesené Domov (`/`, `features/home/HomePage.tsx`:
+Treba vybaviť = nákupy bez bločku za 30 dní, Nákupy = kto nakupuje + najbližší zoznam s Nakupovať, Naplánované recepty =
+`recipe_plans` PENDING, Rýchlo), Nákupy (`/lists`, `ShoppingHub.tsx`: karty .lcard s košíkom, + Nový zoznam, História),
+História (`/history`) a detail nákupu (`/history/:id`, `HistoryScreens.tsx`: spolu z bločku, Odfotiť bloček, kúpené
+položky, Nakúpiť znova = nový zoznam na zajtra s rovnakými položkami cez add_item). Ikony položiek: 3D emoji podľa názvu
+z katalógu mockupu (`src/mockup/catalog.ts`, `emojiFor`), dlaždice obchodov podľa názvu zoznamu (`storeKeyOf`).
+Appka sa otvára na Domove; Nákupy sú na `/lists`. Databáza bez zmeny.
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

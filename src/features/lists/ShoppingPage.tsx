@@ -166,11 +166,11 @@ export function ShoppingPage() {
   // Nákup neexistuje, bol odstránený z prehľadu, alebo je súkromný cudzí → späť na prehľad.
   // Zoznam zmizol (dokončený alebo zmazaný niekým iným) – prototyp ukáže prázdny stav s cestou späť.
   if (!list || !listId) {
-    if (!params.listId) return <Navigate to="/" replace />;
+    if (!params.listId) return <Navigate to="/lists" replace />;
     return (
       <div className="stack">
         <header className="hdr with-back">
-          <button type="button" className="ibtn" onClick={() => navigate("/")} aria-label={t("trip.backAria")}>
+          <button type="button" className="ibtn" onClick={() => navigate("/lists")} aria-label={t("trip.backAria")}>
             <ChevronLeft size={24} />
           </button>
           <div className="grow stack" style={{ minWidth: 0 }}>
@@ -182,7 +182,7 @@ export function ShoppingPage() {
           title={t("ls.listGone")}
           text={t("ls.listGoneText")}
           action={
-            <button type="button" className="btn btn-soft" onClick={() => navigate("/")}>
+            <button type="button" className="btn btn-soft" onClick={() => navigate("/lists")}>
               {t("ls.toLists")}
             </button>
           }
@@ -272,7 +272,7 @@ export function ShoppingPage() {
             else if (d > 60) goRel(-1);
           }}
         >
-          <button type="button" className="ibtn" onClick={() => navigate("/")} aria-label={t("trip.backAria")}>
+          <button type="button" className="ibtn" onClick={() => navigate("/lists")} aria-label={t("trip.backAria")}>
             <ChevronLeft size={24} />
           </button>
           <button
@@ -445,7 +445,7 @@ export function ShoppingPage() {
         hint={editing ? hints.data?.get(editing.id) : undefined}
       />
       <SwitchListSheet open={switching} onClose={() => setSwitching(false)} lists={openLists} current={list.id} stats={stats.data} />
-      <ListActionsSheet list={actionsOpen ? list : null} onClose={() => setActionsOpen(false)} onDeleted={() => navigate("/")} />
+      <ListActionsSheet list={actionsOpen ? list : null} onClose={() => setActionsOpen(false)} onDeleted={() => navigate("/lists")} />
     </div>
   );
 }
@@ -496,7 +496,7 @@ function SwitchListSheet({
           className="btn btn-soft btn-block"
           onClick={() => {
             onClose();
-            navigate("/?novy=1");
+            navigate("/lists?novy=1");
           }}
         >
           <Plus size={18} />

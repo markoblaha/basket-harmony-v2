@@ -347,7 +347,7 @@ function TargetSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
             "success",
           );
           // späť na prehľad zoznamov – nový (doplnený) zoznam sa krátko rozsvieti
-          navigate("/", { replace: true, state: { highlight: res.list_id } });
+          navigate("/lists", { replace: true, state: { highlight: res.list_id } });
         },
         onError: (e) => toast.show(errorMessage(e), "error"),
       },

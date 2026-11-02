@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { ChefHat, ChevronRight, History, Lock, ReceiptText, ShoppingBasket, ShoppingCart } from "lucide-react";
-import { ErrorState, Spinner, cx } from "@/components/ui";
-import { Avatars, Cell, Empty, Marquee, ProgressBar, StoreBadge, useLongPress, type Person } from "@/components/kit";
-import { IB, MkHeader } from "@/mockup/ui";
+import { ErrorState, Spinner } from "@/components/ui";
+import { useLongPress, type Person } from "@/components/kit";
+import { E, I, IB, MkHeader } from "@/mockup/ui";
+import { Avatars, eur0, recipeArt } from "@/mockup/kit";
+import { useTheme } from "@/theme/ThemeProvider";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
-import { formatDateTime, formatEuro, t, tn } from "@/i18n";
+import { t, tn } from "@/i18n";
 import { useListPriceHints } from "@/features/analytics/api";
 import { useRecipePlans } from "@/features/recipes/api";
 import { useHubSessions, useItems, useListStats, useLists, useStartShopping, type ListStats, type Session, type ShoppingList } from "./api";
@@ -50,6 +51,7 @@ export function ShoppingHub() {
     if (params.has("novy") || params.has("zvyraznit")) setParams({}, { replace: true });
   }, [params, setParams]);
   const plans = useRecipePlans(household.id);
+  const g = useTheme().style === "glass";
   const [actionsFor, setActionsFor] = useState<ShoppingList | null>(null);
 
   const people: Person[] = useMemo(() => {
@@ -84,60 +86,44 @@ export function ShoppingHub() {
 
   return (
     <div className="stack">
-      <MkHeader title={t("nav.shopping")} right={<IB n="plus" cls="addb" label={t("ls.newList")} onClick={() => setCreating(true)} />} />
-      <div className="stack g-16 px" style={{ paddingTop: 4 }}>
-        {(liveList || missing > 0) && (
-          <section className="stack g-8">
-            {live && liveList && <LiveCard session={live} list={liveList} mine={live.shopper_id === me} shopper={shortName(nameOf(live.shopper_id))} />}
-            {missing > 0 && (
-              <button type="button" className="card ls-sub row g-12" style={{ padding: "10px 14px", minHeight: 52, textAlign: "left" }} onClick={() => navigate("/history?filter=missing")}>
-                <span className="cat-ic sm" style={{ background: "var(--orange-soft)", color: "var(--orange)" }}>
-                  <ReceiptText size={15} />
-                </span>
-                <span className="grow t-sm fw-5">{tn("ls.missingReceipts", missing)}</span>
-                <span className="t-sm fw-6 t-accent">{t("ls.complete")}</span>
-              </button>
-            )}
-          </section>
-        )}
-
-        {open.length === 0 ? (
-          <Empty icon={ShoppingBasket} title={t("ls.emptyTitle")} text={t("ls.emptyText")} />
-        ) : (
-          <section className="stack g-10">
-            {open.map((l) => (
-              <ListCard
-                key={fresh?.id === l.id ? `${l.id}-${fresh.at}` : l.id}
-                list={l}
-                stats={stats.data?.get(l.id)}
-                session={sessionByList.get(l.id)}
-                shopper={sessionByList.get(l.id) ? shortName(nameOf(sessionByList.get(l.id)!.shopper_id)) : ""}
-                people={participants(l, stats.data?.get(l.id)?.adders ?? [], people)}
-                recipes={recipesOf(l.id)}
-                fresh={fresh?.id === l.id && Date.now() - fresh.at < 4000}
-                onActions={() => setActionsFor(l)}
-              />
-            ))}
-            <span className="t-xs t-3" style={{ textAlign: "center" }}>
-              {t("ls.holdHint")}
-            </span>
-          </section>
-        )}
-
-        <div className="cells ls-sub ls-quiet">
-          <Cell
-            icon={
-              <span className="cat-ic sm">
-                <History size={15} />
-              </span>
-            }
-            title={t("ls.history")}
-            sub={tn("ls.historyCount", history.length)}
-            onClick={() => navigate("/history")}
+      <MkHeader title={t("nav.shopping")} right={<IB n="plus" cls="addb" label={t("ls.newList")} onClick={() => setCreating(true)} />}>
+        {live && liveList && <LiveMini session={live} list={liveList} g={g} mine={live.shopper_id === me} shopper={shortName(nameOf(live.shopper_id))} />}
+        {open.map((l) => (
+          <ListCard
+            key={fresh?.id === l.id ? `${l.id}-${fresh.at}` : l.id}
+            list={l}
+            g={g}
+            stats={stats.data?.get(l.id)}
+            session={sessionByList.get(l.id)}
+            people={participants(l, stats.data?.get(l.id)?.adders ?? [], people)}
+            recipes={recipesOf(l.id)}
+            fresh={fresh?.id === l.id && Date.now() - fresh.at < 7000}
+            onActions={() => setActionsFor(l)}
           />
-        </div>
-      </div>
-      <div className="tab-space" style={{ height: 160 }} />
+        ))}
+        <button type="button" className={`card addcard tapc${g ? " glass2" : ""}`} onClick={() => setCreating(true)}>
+          <span className="pl">
+            <I n="plus" w="bold" />
+          </span>
+          {t("ls.newList")}
+        </button>
+        {history.length > 0 && (
+          <button type="button" className={`card row-card tapc histrow${g ? " glass2" : ""}`} onClick={() => navigate("/history")}>
+            <span className="th ic">
+              <I n="clock-counter-clockwise" />
+            </span>
+            <div className="grow">
+              <div className="t1">{t("ls.history")}</div>
+              <div className="meta">
+                {tn("ls.historyCount", history.length)}
+                {missing ? ` · ${tn("ls.historyMissing", missing)}` : ""}
+              </div>
+            </div>
+            <I n="caret-right" w="bold" cls="chev" />
+          </button>
+        )}
+      </MkHeader>
+      <div className="tab-space" />
 
       <ListSheet
         key={creating ? "new-open" : "new"}
@@ -154,45 +140,43 @@ export function ShoppingHub() {
   );
 }
 
-function LiveCard({ session, list, mine, shopper }: { session: Session; list: ShoppingList; mine: boolean; shopper: string }) {
+/** Prebiehajúci nákup hore (mockup: „Nakupuje: Lucia ●“ · obchod · 5 z 9 v košíku). */
+function LiveMini({ session, list, g, mine, shopper }: { session: Session; list: ShoppingList; g: boolean; mine: boolean; shopper: string }) {
   const navigate = useNavigate();
   const items = useItems(list.id).data ?? [];
   const since = new Date(session.started_at).getTime();
-  const handled = items.filter((i) => i.status !== "OPEN" && new Date(i.purchased_at ?? 0).getTime() >= since).length;
-  const total = handled + items.filter((i) => i.status === "OPEN").length;
-  const at = formatDateTime(session.started_at, { hour: "2-digit", minute: "2-digit" });
+  const done = items.filter((i) => i.status !== "OPEN" && new Date(i.purchased_at ?? 0).getTime() >= since).length;
+  const n = done + items.filter((i) => i.status === "OPEN").length;
   return (
-    <button type="button" className="ls-now anim-rise" onClick={() => navigate(`/lists/${list.id}`)}>
-      <span className="live" />
-      <span className="grow stack g-6">
-        <span className="t-h">
-          {mine ? t("ls.youShop") : t("ls.someoneShops", { name: shopper })} · {list.name}
-        </span>
-        <ProgressBar value={total ? handled / total : 0} color="var(--violet)" />
-        <span className="t-xs num">{t("ls.liveProgress", { done: handled, total, time: at })}</span>
-      </span>
-      <span className="row g-4 t-sm fw-6">
-        {mine ? t("ls.continue") : t("ls.watch")}
-        <ChevronRight size={16} />
-      </span>
+    <button type="button" className={`card row-card tapc livemini${g ? " glass2" : ""}`} onClick={() => navigate(`/lists/${list.id}`)}>
+      <div className="grow">
+        <div className="t1">
+          {mine ? t("home.youShop") : t("home.shopperLive", { name: shopper })} <span className="dot" />
+        </div>
+        <div className="meta">
+          {list.name} · {t("home.inCart", { done, n })}
+        </div>
+      </div>
+      <I n="caret-right" w="bold" cls="chev" />
     </button>
   );
 }
 
+/** Karta zoznamu (mockup .lcard): názov, ľudia alebo zámok, deň, odhad ceny, počet a košík na štart nákupu. */
 function ListCard({
   list,
+  g,
   stats,
   session,
-  shopper,
   people,
   recipes,
   fresh,
   onActions,
 }: {
   list: ShoppingList;
+  g: boolean;
   stats?: ListStats;
   session?: Session;
-  shopper: string;
   people: Person[];
   recipes: string[];
   fresh: boolean;
@@ -200,6 +184,7 @@ function ListCard({
 }) {
   const navigate = useNavigate();
   const toast = useToast();
+  const me = useUserId();
   const start = useStartShopping(list.id);
   const open = stats?.open ?? 0;
   const lp = useLongPress({ onTap: () => navigate(`/lists/${list.id}`), onLong: onActions });
@@ -208,6 +193,7 @@ function ListCard({
   const [showEstimate] = useSetting("estimate");
   const priced = [...(hints.data?.values() ?? [])].filter((h) => h.last_price > 0);
   const estimate = priced.reduce((sum, h) => sum + Number(h.last_price), 0);
+  const going = !!session && session.shopper_id === me;
 
   async function go() {
     if (session) {
@@ -224,36 +210,35 @@ function ListCard({
 
   return (
     <div
-      className={cx("ls-listcard anim-rise", fresh && "ls-fresh", session && "ls-active")}
-      data-new={t("ls.newTag")}
+      className={`card lcard tapc${g ? " glass2" : ""}${fresh ? " lhl" : ""}`}
       role="button"
       tabIndex={0}
       {...lp}
-      aria-label={`${list.name}, ${listDay(list)}, ${tn("shop.itemCount", open)}`}
+      aria-label={t("ls.openListAria", { name: list.name })}
+      ref={fresh ? (n) => void (n && setTimeout(() => n.scrollIntoView({ block: "center", behavior: "smooth" }), 450)) : undefined}
     >
-      {session && <span className="ls-active-glow" aria-hidden />}
-      <span className="row g-12">
-        <StoreBadge name={list.name} />
-        <span className="grow stack g-2">
-          <span className="row g-8" style={{ minWidth: 0 }}>
-            <span className="t-h ellipsis">{list.name}</span>
+      <div className="rowc">
+        <div className="grow">
+          <div className="ttl tw">
+            <span>{list.name}</span>
             {list.is_private ? (
-              <Lock size={13} className="t-3 shrink-0" aria-label={t("trip.onlyMe")} />
-            ) : (
-              <span className="ls-ppl">
-                <Avatars people={people} max={3} size="xs" />
+              <span className="prv" role="img" aria-label={t("trip.onlyMe")}>
+                <I n="lock-simple" />
               </span>
+            ) : (
+              <Avatars people={people.slice(0, 3)} sm />
             )}
-          </span>
-          <span className="t-sm t-2 num ellipsis">
-            {listDay(list)} · {tn("shop.itemCount", open)}
-            {showEstimate && priced.length > 0 ? ` · ~${formatEuro(estimate)}` : ""}
-          </span>
-        </span>
-        {(session || open > 0) && (
+          </div>
+          <div className="meta">{listDay(list)}</div>
+        </div>
+        <div className="ra">
+          <div className="price">{showEstimate && priced.length ? `~${eur0(estimate)}` : "–"}</div>
+          <div className="meta">{tn("shop.itemCount", open)}</div>
+        </div>
+        {(open > 0 || session) && (
           <button
             type="button"
-            className={cx("ls-go", session && "on")}
+            className={`lgo${going || session ? " going" : ""}`}
             disabled={start.isPending}
             onPointerDown={(e) => e.stopPropagation()}
             onPointerUp={(e) => e.stopPropagation()}
@@ -263,27 +248,27 @@ function ListCard({
             }}
             aria-label={session ? t("ls.openShopAria", { name: list.name }) : t("ls.startShopAria", { name: list.name })}
           >
-            {session ? <span className="live" style={{ width: 7, height: 7 }} /> : <ShoppingCart size={16} />}
-            <span>{session ? t("ls.open") : t("ls.start")}</span>
+            <I n={session ? "play" : "basket"} w="fill" />
           </button>
         )}
-      </span>
-      {(session || recipes.length > 0 || list.note) && (
-        <span className="row g-6 wrap">
-          {session && (
-            <span className="badge b-violet">
-              <span className="live" style={{ width: 6, height: 6 }} />
-              {t("hub.shopping", { name: shopper })}
-            </span>
-          )}
-          {recipes.length > 0 && (
-            <span className="badge b-gray fit">
-              <ChefHat size={12} className="shrink-0" />
-              <Marquee text={t("ls.fromRecipe", { names: recipes.join(" + ") })} />
-            </span>
-          )}
-          {list.note && recipes.length === 0 && <span className="t-xs t-3 ellipsis">{list.note}</span>}
-        </span>
+      </div>
+      {recipes.length > 0 && (
+        <div className="lrec">
+          {recipes.map((name) => {
+            const art = recipeArt("", name);
+            return (
+              <span key={name} className="rch">
+                <E k={art.e} s={20} />
+                <span>{name}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
+      {!open && (
+        <div className="rowc lfoot">
+          <span className="meta">{stats && stats.bought ? t("ls.allBought") : t("ls.stillEmpty")}</span>
+        </div>
       )}
     </div>
   );

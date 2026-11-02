@@ -21,15 +21,15 @@ const VoiceSession = lazy(() => import("@/features/voice/VoiceSession").then((m)
 type Badge = "recipes" | "analytics" | "lists";
 /** Spodná lišta ako v mockupe: Domov · Nákupy · (mikrofón) · Recepty · Výdavky. Viac je pod avatarom vľavo hore. */
 const TABS: { to: string; label: Key; icon: string; match: (p: string) => boolean; badge?: Badge }[] = [
-  { to: "/home", label: "nav.home", icon: "house", match: (p) => p.startsWith("/home") },
-  { to: "/", label: "nav.lists", icon: "basket", match: (p) => p === "/" || p.startsWith("/lists") || p.startsWith("/history"), badge: "lists" },
+  { to: "/", label: "nav.home", icon: "house", match: (p) => p === "/" },
+  { to: "/lists", label: "nav.lists", icon: "basket", match: (p) => p.startsWith("/lists") || p.startsWith("/history"), badge: "lists" },
   { to: "/recipes", label: "nav.recipes", icon: "cooking-pot", match: (p) => p.startsWith("/recipes"), badge: "recipes" },
   // Doklady sú časťou Výdavkov (záložka Doklady).
   { to: "/analytics", label: "nav.analytics", icon: "wallet", match: (p) => p.startsWith("/analytics") || p.startsWith("/receipts"), badge: "analytics" },
 ];
 
 /** Koreňové obrazovky záložiek: z nich sa potiahnutím z okraja nevracia. */
-const ROOTS = ["/", "/home", "/recipes", "/analytics", "/analytics/categories", "/analytics/stores", "/receipts"];
+const ROOTS = ["/", "/lists", "/recipes", "/analytics", "/analytics/categories", "/analytics/stores", "/receipts"];
 
 /**
  * Obrazovky bez spodnej lišty (v prototype tabBar: false / celá plocha): kontrola surovín,

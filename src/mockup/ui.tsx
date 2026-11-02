@@ -86,7 +86,7 @@ function useScrolled() {
  * Hlavička obrazovky z mockupu: vľavo avatar (koreňová obrazovka) alebo Späť, v strede malý nadpis
  * (ukáže sa pri posúvaní), vpravo tlačidlá; pod tým veľký nadpis. Lepí sa hore pri posúvaní.
  */
-export function MkHeader({ title, back, right, children, style }: { title: string; back?: ReactNode; right?: ReactNode; children?: ReactNode; style?: CSSProperties }) {
+export function MkHeader({ title, back, right, children, style, bodyClass = "" }: { title: string; back?: ReactNode; right?: ReactNode; children?: ReactNode; style?: CSSProperties; bodyClass?: string }) {
   const scrolled = useScrolled();
   return (
     <>
@@ -100,7 +100,7 @@ export function MkHeader({ title, back, right, children, style }: { title: strin
         </div>
       </div>
       <div className="bhm bhm-title" style={style}>
-        <div className="body">
+        <div className={`body ${bodyClass}`}>
           <h1 className="lt">{title}</h1>
           {children}
         </div>

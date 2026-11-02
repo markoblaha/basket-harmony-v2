@@ -159,3 +159,17 @@ for sel, kind, data in re.findall(r'\.((?:em|pic)-[\w-]+)\{background-image:url\
     lines.append('.%s { background-image: url("/mk/%s/%s.%s"); }' % (sel, folder, name, kind))
 open(os.path.join(OUT, 'assets.css'), 'w').write('/* VYGENEROVANÉ z prototyp/gen/assets.css skriptom prototyp/do-appky.py. */\n' + '\n'.join(lines) + '\n')
 print('mockup.css', len(scoped) // 1024, 'KB ·', len(lines), 'obrázkov ·', len(keyframes), 'animácií')
+
+# katalóg z mockupu: produkty (názov, synonymá, 3D emoji, kategória), kategórie a obchody – na ikony skutočných položiek
+import json, shutil, subprocess, tempfile
+tmp = tempfile.mkdtemp()
+shutil.copy(os.path.join(P, 'src', 'data.js'), os.path.join(tmp, 'data.mjs'))
+dump = subprocess.run(['node', '-e', 'import(process.argv[1]).then((m) => process.stdout.write(JSON.stringify({ products: Object.values(m.PRODUCTS).map((p) => ({ n: p.n, syn: p.syn, e: p.e, c: p.c })), cats: m.CATS, stores: m.STORES, recipes: m.RECIPES.map((r) => ({ id: r.id, n: r.n, e: r.e, pic: r.pic || null, bg: r.bg })) })))', os.path.join(tmp, 'data.mjs')], capture_output=True, text=True, check=True).stdout
+cat = json.loads(dump)
+open(os.path.join(OUT, 'catalog.ts'), 'w').write(
+    '// VYGENEROVANÉ z prototyp/src/data.js skriptom prototyp/do-appky.py – 3D emoji produktov, kategórie a farby obchodov z mockupu.\n'
+    'export const PRODUCTS: { n: string; syn: string; e: string; c: string }[] = ' + json.dumps(cat['products'], ensure_ascii=False) + ';\n'
+    'export const CATS: Record<string, { n: string; e: string; col: string }> = ' + json.dumps(cat['cats'], ensure_ascii=False) + ';\n'
+    'export const STORES: Record<string, { n: string; s: string; c1: string; c2: string }> = ' + json.dumps(cat['stores'], ensure_ascii=False) + ';\n'
+    'export const RECIPES: { id: string; n: string; e: string; pic: string | null; bg: string }[] = ' + json.dumps(cat['recipes'], ensure_ascii=False) + ';\n')
+print('catalog.ts', len(cat['products']), 'produktov')

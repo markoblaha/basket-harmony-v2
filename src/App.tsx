@@ -40,7 +40,8 @@ const HouseholdPage = page(() => import("@/features/more/HouseholdPage"), "House
 const NotificationsPage = page(settings, "NotificationsPage");
 const StoresPage = page(settings, "StoresPage");
 const TilesPage = page(settings, "TilesPage");
-const HistoryPage = page(() => import("@/features/lists/HistoryPage"), "HistoryPage");
+const HistoryPage = page(() => import("@/features/lists/HistoryScreens"), "HistoryPage");
+const HistoryDetailPage = page(() => import("@/features/lists/HistoryScreens"), "HistoryDetailPage");
 const AnalyticsLayout = page(analytics, "AnalyticsLayout");
 const CategoriesTab = page(() => import("@/features/analytics/CategoriesTab"), "CategoriesTab");
 const CategoryPage = page(() => import("@/features/analytics/CategoryPage"), "CategoryPage");
@@ -104,10 +105,12 @@ export function App() {
             </RequireAuth>
           }
         >
-          <Route index element={<ShoppingHub />} />
-          <Route path="home" element={<HomePage />} />
+          <Route index element={<HomePage />} />
+          <Route path="lists" element={<ShoppingHub />} />
+          <Route path="home" element={<Navigate to="/" replace />} />
           <Route path="lists/:listId" element={<ShoppingPage />} />
           <Route path="history" element={<HistoryPage />} />
+          <Route path="history/:id" element={<HistoryDetailPage />} />
           <Route path="recipes" element={<RecipesPage />} />
           <Route path="recipes/search" element={<RecipeSearchPage />} />
           <Route path="recipes/check" element={<RecipeCheckPage />} />

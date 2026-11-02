@@ -46,6 +46,7 @@ async function ids() {
   const get = (q) => fetch(`${url}/rest/v1/${q}`, { headers: { apikey: key, Authorization: `Bearer ${login.access_token}` } }).then((r) => r.json());
   const [list] = await get("shopping_lists?select=id&is_archived=eq.false&completed_at=is.null&order=updated_at.desc&limit=1");
   const [receipt] = await get("receipts?select=id,store_key&status=eq.OK&order=purchased_on.desc&limit=1");
+  const [trip] = await get("shopping_lists?select=id&completed_at=not.is.null&order=completed_at.desc&limit=1");
   const [product] = await get("products?select=id,kind,name&kind=not.is.null&merged_into=is.null&limit=1");
   let kindKey = null;
   if (product) {
@@ -54,15 +55,16 @@ async function ids() {
       body: JSON.stringify({ p_kind: product.kind, p_name: product.name }),
     }).then((r) => r.json());
   }
-  return { list: list?.id, receipt: receipt?.id, store: receipt?.store_key, product: product?.id, kind: typeof kindKey === "string" ? kindKey : null };
+  return { trip: trip?.id, list: list?.id, receipt: receipt?.id, store: receipt?.store_key, product: product?.id, kind: typeof kindKey === "string" ? kindKey : null };
 }
 
 function screens(id) {
   return [
-    ["domov", "/home"],
-    ["nakupy", "/"],
+    ["domov", "/"],
+    ["nakupy", "/lists"],
     id.list && ["zoznam", `/lists/${id.list}`],
     ["historia", "/history"],
+    id.trip && ["nakup-detail", `/history/${id.trip}`],
     ["recepty", "/recipes"],
     ["recepty-hladat", "/recipes/search"],
     ["recept", "/recipes/r/segedin"],
