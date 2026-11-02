@@ -180,6 +180,15 @@ opravami, nákup / Priradiť k nákupu, položky → výrobok, fotka, Upraviť /
 (všetko z analytics_*). Zmazané staré obrazovky (AnalyticsLayout, OverviewTab, CategoriesTab, StoresTab, akit, charts,
 ReceiptRow, UploadStatus, useBatch). Rozdiely: zoznam bločkov už nemá hľadanie, spájanie a hromadné nahrávanie
 (mockup ich nemá); `/analytics/products` (hľadanie výrobkov) ostal len ako adresa.
+**Fáza 8 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** Viac z mockupu (`more.jsx`, `notif.js`): `MorePage.tsx` – profil,
+Upozornenia (`features/more/notif.ts`: kto nakupuje, kto pridal položky, chýbajúce bločky, zmena ceny; počíta sa
+z existujúcich dát, „prečítané“ v zariadení `bh.notifSeen`; nové označí červená bodka na avatare `MeBtn`), Téma, Vzhľad,
+Domácnosť (členovia, Pozvať – odkaz cez zdieľanie telefónu alebo skopírovanie, jedna pozvánka na otvorenie, Spravovať,
+Prepnúť, Nová), Nastavenia (rozpočet cez panel z Výdavkov, Čo mám doma – `bh.pantry`, recepty to predvolene nekúpia,
+obchody, upozornenia, prepínače, rozšírené, jazyk, export, pomoc), Odhlásiť, Zmazať účet, zdroje fotiek. Databáza bez
+zmeny. Chýbajúce ikony Phosphor (bell, sign-out, download-simple) v `src/mockup/icons-extra.ts`. Podstránky
+`/more/household`, `/more/notifications`, `/more/stores`, `/more/tiles` ostali v pôvodnom rozložení (mockup ich nemá).
+Upozornenia do telefónu (push) sú samostatný krok.
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

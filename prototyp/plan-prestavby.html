@@ -102,7 +102,7 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
   </div>
 
   <div class="col"><h2>Kde sme (2. 11. 2026)</h2>
-    <div class="state"><span class="pill ok">Fáza 0 hotová</span><span class="pill ok">Fáza 1 hotová</span><span class="pill ok">Fáza 2 hotová</span><span class="pill ok">Fáza 3 hotová</span><span class="pill ok">Fáza 4 hotová</span><span class="pill ok">Fáza 5 hotová</span><span class="pill ok">Fáza 6 hotová</span><span class="pill ok">Fáza 7 hotová a nasadená</span><span class="pill fix">čaká na vaše „OK“</span><span class="pill fix">ďalej: Fáza 8</span></div>
+    <div class="state"><span class="pill ok">Fáza 0 hotová</span><span class="pill ok">Fáza 1 hotová</span><span class="pill ok">Fáza 2 hotová</span><span class="pill ok">Fáza 3 hotová</span><span class="pill ok">Fáza 4 hotová</span><span class="pill ok">Fáza 5 hotová</span><span class="pill ok">Fáza 6 hotová</span><span class="pill ok">Fáza 7 hotová</span><span class="pill ok">Fáza 8 hotová a nasadená</span><span class="pill fix">čaká na vaše „OK“</span><span class="pill fix">ďalej: Fáza 9</span></div>
     <p><b>Postup (pokyn 2. 11.):</b> appka má byť 1:1 ako interaktívny mockup. Vzhľad sa preto nekreslí nanovo – preberá sa priamo kód mockupu (štýly, ikony, 3D obrázky, rozloženie obrazoviek) a len sa napojí na skutočné dáta. Obrazovka vyzerá ako mockup vždy od fázy, v ktorej sa prenesie.</p>
     <p>Rozhodnutia sú zapísané nižšie. Otvorené: súhlas so spustením celého kontrolného testu <code>core_test.sql</code> (obsahuje <code>delete</code> len vlastných testovacích riadkov, celý blok sa vráti späť).</p>
   </div>
@@ -193,11 +193,12 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
       <ul><li>Súčet mesiaca, kategórie → druh → výrobok (už v DB), obchody, „Oplatí sa vedieť“, porovnanie v eurách, chýbajúce bločky.</li></ul>
       <div class="done-note"><b>Výsledok:</b> Výdavky, kategória, druh, výrobok, obchod, rozpočet, Bločky a detail bločku z mockupu, napojené na existujúce výpočty v databáze (bez zmeny DB). Opravy bločkov a výrobkov ostali. Preklikanie 4 vzhľady × 30 obrazoviek: 0 nálezov.</div></div></div>
 
-    <div class="ph now"><span class="no">8</span><div class="card"><h3>Upozornenia, domácnosť, Viac <small>1 relácia</small></h3>
+    <div class="ph done"><span class="no">8</span><div class="card"><h3>Upozornenia, domácnosť, Viac <small>hotová 2. 11.</small></h3>
       <ul><li>Upozornenia v appke (bodka na avatare, zoznam vo Viac), pozvánka odkazom so zdieľaním (stránka <code>/join</code> už existuje), Čo mám doma, rozpočet, nastavenia.</li>
-        <li>Upozornenia do telefónu (push) sú samostatný krok – webová appka ich na iPhone vie až po pridaní na plochu.</li></ul></div></div>
+        <li>Upozornenia do telefónu (push) sú samostatný krok – webová appka ich na iPhone vie až po pridaní na plochu.</li></ul>
+      <div class="done-note"><b>Výsledok:</b> Viac z mockupu: upozornenia (kto nakupuje, kto pridal, chýbajúce bločky, zmena ceny) s červenou bodkou na avatare, pozvánka odkazom so zdieľaním, Čo mám doma, rozpočet a nastavenia. Bez zmeny DB. Preklikanie 4 vzhľady × 30 obrazoviek: 0 nálezov.</div></div></div>
 
-    <div class="ph"><span class="no">9</span><div class="card"><h3>Uvítanie, ukážka a nápovedy <small>1–2 relácie</small></h3>
+    <div class="ph now"><span class="no">9</span><div class="card"><h3>Uvítanie, ukážka a nápovedy <small>1–2 relácie</small></h3>
       <ul><li>Vitajte (ukážka / naprázdno), Základy v 3 kapitolách, „?“ s nápovedami a kapitolami, Prvé kroky.</li>
         <li>Ukážka beží na <b>vymyslených údajoch len v telefóne</b> – do databázy nič nezapíše a nikomu nič nepošle.</li>
         <li>Až na konci, lebo sprievodca ukazuje hotové obrazovky z fáz 1–8.</li></ul></div></div>
