@@ -157,6 +157,9 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   Pravidlo majiteľa: nápovedy a ukážka sa samy ukážu len pri prvom spustení (ukážka, alebo pri „Začať naprázdno“ tipy
   na Domove); potom nič samo – len cez „?“ (nápovedy obrazovky / kapitola / celá ukážka). Vitajte nemá „Mám pozvánku“:
   pozývanie je odkazom, ktorý hlavný člen pošle z appky a pozvaný ho len potvrdí (Viac → Pozvať do domácnosti → Poslať).
+  Revízia rozhrania (`prototyp/revizia-rozhrania.html`, 2. 11.): 6 kritických a 10 dôležitých nálezov (kontrast tlačidiel
+  v téme Fotky a sklo, ťukacie plochy < 44, písmo < 13 px, 2 tipy sa ukazujú samy, upozornenia bez vstupu, 2 chybné texty),
+  návrh systému pohybu (5 dĺžok, 3 krivky), písma (8 veľkostí), upozornení a plán Fáza 1 (prototyp) / Fáza 2 (appka). Čaká na súhlas.
   Návrh jednej témy „Teplé sklo“ (`prototyp/tema-teple-sklo-navrh.html`) – spojenie Teplej kuchyne a Fotiek a skla:
   sklo nad fotkou trhu s teplým závojom, Fraunces + DM Sans, paprika = akcia, bazalka = hotovo, med = pozor, 3 hrúbky skla,
   overený kontrast. Čaká na súhlas; nič nie je implementované.
