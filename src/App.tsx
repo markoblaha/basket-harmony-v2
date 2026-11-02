@@ -33,7 +33,6 @@ function usePreloadPages() {
 
 const more = () => import("@/features/more/MorePage");
 const settings = () => import("@/features/more/SettingsPages");
-const analytics = () => import("@/features/analytics/AnalyticsLayout");
 const MorePage = page(more, "MorePage");
 const HomePage = page(() => import("@/features/home/HomePage"), "HomePage");
 const HouseholdPage = page(() => import("@/features/more/HouseholdPage"), "HouseholdPage");
@@ -45,15 +44,12 @@ const HistoryDetailPage = page(() => import("@/features/lists/HistoryScreens"), 
 const CollectionPage = page(() => import("@/features/recipes/CollectionPage"), "CollectionPage");
 const TastePage = page(() => import("@/features/recipes/TastePage"), "TastePage");
 const ScanScreen = page(() => import("@/features/lists/ScanScreen"), "ScanScreen");
-const AnalyticsLayout = page(analytics, "AnalyticsLayout");
-const CategoriesTab = page(() => import("@/features/analytics/CategoriesTab"), "CategoriesTab");
+const MoneyPage = page(() => import("@/features/analytics/MoneyPage"), "MoneyPage");
 const CategoryPage = page(() => import("@/features/analytics/CategoryPage"), "CategoryPage");
-const OverviewTab = page(() => import("@/features/analytics/OverviewTab"), "OverviewTab");
 const ProductPage = page(() => import("@/features/analytics/ProductPage"), "ProductPage");
 const KindPage = page(() => import("@/features/analytics/KindPage"), "KindPage");
 const ProductsTab = page(() => import("@/features/analytics/ProductsTab"), "ProductsTab");
 const StorePage = page(() => import("@/features/analytics/StorePage"), "StorePage");
-const StoresTab = page(() => import("@/features/analytics/StoresTab"), "StoresTab");
 const ReceiptsPage = page(() => import("@/features/receipts/ReceiptsPage"), "ReceiptsPage");
 const MatchPage = page(() => import("@/features/receipts/MatchPage"), "MatchPage");
 const ReceiptDetailPage = page(() => import("@/features/receipts/ReceiptDetailPage"), "ReceiptDetailPage");
@@ -127,11 +123,9 @@ export function App() {
           <Route path="receipts/statement" element={<StatementImportPage />} />
           <Route path="receipts/:id" element={<ReceiptDetailPage />} />
           <Route path="receipts/:id/match" element={<MatchPage />} />
-          <Route path="analytics" element={<AnalyticsLayout />}>
-            <Route index element={<OverviewTab />} />
-            <Route path="categories" element={<CategoriesTab />} />
-            <Route path="stores" element={<StoresTab />} />
-          </Route>
+          <Route path="analytics" element={<MoneyPage />} />
+          <Route path="analytics/categories" element={<Navigate to="/analytics" replace />} />
+          <Route path="analytics/stores" element={<Navigate to="/analytics" replace />} />
           <Route path="analytics/products" element={<ProductsTab />} />
           <Route path="analytics/category/:id" element={<CategoryPage />} />
           <Route path="analytics/store/:key" element={<StorePage />} />

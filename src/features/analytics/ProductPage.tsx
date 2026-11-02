@@ -1,114 +1,30 @@
-import { useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ChevronRight, Merge, Pencil, Plus, Search, X } from "lucide-react";
-import { BottomSheet, CatIcon, ScreenHeader, SheetHeader, StoreBadge, storeHue } from "@/components/kit";
+import { Search, X } from "lucide-react";
+import { BottomSheet, CatIcon, SheetHeader } from "@/components/kit";
 import { useAddItem, useLists } from "@/features/lists/api";
-import { dayLabel, listDay } from "@/features/lists/dates";
 import { errorMessage } from "@/lib/errors";
-import { ErrorState, Spinner, cx } from "@/components/ui";
+import { ErrorState, Spinner } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { CATEGORIES, normalizeName } from "@/lib/categories";
-import { formatShortDate, parseAmount, readErrorMessage } from "@/features/receipts/format";
-import { formatEuro, formatNumber, t, tn, type Key } from "@/i18n";
+import { parseAmount, readErrorMessage } from "@/features/receipts/format";
+import { formatDateTime, formatEuro, formatNumber, t } from "@/i18n";
 import { unitLabel as pieceUnit } from "@/lib/parseItem";
-import { useMergeProducts, useProduct, useProducts, useSetProductKind, useUpdateProduct, type Basis, type ProductDetail } from "./api";
-import { categoryInfo, sizeLabel, storeLabel, unitLabel } from "./bits";
-import { usePeriod } from "./period";
+import { useMergeProducts, useProduct, useProducts, useSetProductKind, useUpdateProduct, type ProductDetail } from "./api";
+import { useTheme } from "@/theme/ThemeProvider";
+import { E, I, IB, Back, useScrolled } from "@/mockup/ui";
+import { Sheet } from "@/mockup/Sheet";
+import { Btn, StoreTile, emojiFor, eur, storeKeyOf } from "@/mockup/kit";
+import { PriceChart, cat, storeColors } from "./money";
+import { perUnit, sizeLabel, storeLabel } from "./bits";
 
-const EUR_PER: Record<Basis, Key> = { kg: "an.eurPer.kg", l: "an.eurPer.l", ks: "an.eurPer.ks" };
 
-/** Graf jednotkovej ceny v čase (prototyp) – bodky podľa obchodu, akcia ako dutý krúžok. */
-function PriceDots({ points, unit }: { points: { key: string; date: string; v: number; store: string; promo: boolean }[]; unit: string }) {
-  // Ťuk na bodku ukáže cenu, obchod a dátum toho nákupu.
-  const [sel, setSel] = useState<string | null>(null);
-  if (points.length < 2) return null;
-  const pts = points.map((p) => ({ ...p, tm: Date.parse(p.date + "T00:00:00") })).sort((a, b) => a.tm - b.tm);
-  const W = 320;
-  const H = 150;
-  const L = 44;
-  const B = 24;
-  const minT = pts[0]!.tm;
-  const maxT = pts[pts.length - 1]!.tm;
-  let minV = Math.min(...pts.map((p) => p.v));
-  let maxV = Math.max(...pts.map((p) => p.v));
-  if (maxV - minV < 0.05) {
-    minV -= 0.1;
-    maxV += 0.1;
-  }
-  const pad = (maxV - minV) * 0.15;
-  minV -= pad;
-  maxV += pad;
-  const x = (tm: number) => L + ((tm - minT) / Math.max(1, maxT - minT)) * (W - L - 10);
-  const y = (v: number) => 8 + (1 - (v - minV) / (maxV - minV)) * (H - B - 8);
-  const ticks = [minV + pad, (minV + maxV) / 2, maxV - pad];
-  const regular = pts.filter((p) => !p.promo);
-  const path = regular.map((p, i) => `${i ? "L" : "M"}${x(p.tm).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
-  const stores = [...new Set(pts.map((p) => p.store))];
-  const selected = pts.find((p) => p.key === sel);
-  return (
-    <div className="stack g-8">
-      <svg className="an-price" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={t("pp.priceTitle")} onClick={() => setSel(null)}>
-        {ticks.map((v) => (
-          <g key={v}>
-            <line x1={L} x2={W - 4} y1={y(v)} y2={y(v)} style={{ stroke: "var(--line)", strokeWidth: 1 }} />
-            <text x={L - 6} y={y(v) + 4} textAnchor="end" style={{ fill: "var(--text-3)", fontSize: 10.5 }}>
-              {formatNumber(v, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </text>
-          </g>
-        ))}
-        {path && <path d={path} pathLength={1} style={{ fill: "none", stroke: "var(--line-2)", strokeWidth: 1.5 }} />}
-        {pts.map((p, i) => (
-          <g key={p.key} style={{ cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); setSel(sel === p.key ? null : p.key); }}>
-            <circle cx={x(p.tm)} cy={y(p.v)} r={12} style={{ fill: "transparent" }} />
-            <circle
-              cx={x(p.tm)}
-              cy={y(p.v)}
-              r={sel === p.key ? 6 : p.promo ? 4.5 : 4}
-              className={cx("an-pt", p.promo && "promo")}
-              style={{ "--h": storeHue(p.store), animationDelay: `${Math.min(i * 30, 400)}ms` } as CSSProperties}
-            />
-          </g>
-        ))}
-        <text x={L} y={H - 4} style={{ fill: "var(--text-3)", fontSize: 10.5 }}>
-          {formatShortDate(pts[0]!.date)}
-        </text>
-        <text x={W - 4} y={H - 4} textAnchor="end" style={{ fill: "var(--text-3)", fontSize: 10.5 }}>
-          {formatShortDate(pts[pts.length - 1]!.date)}
-        </text>
-      </svg>
-      {selected && (
-        <div className="row g-8 t-sm anim-pop" style={{ padding: "8px 12px", borderRadius: 12, background: "var(--sunken)" }}>
-          <span className="an-dot" style={{ "--h": storeHue(selected.store) } as CSSProperties} />
-          <span className="grow">
-            {storeLabel(selected.store)} · {formatShortDate(selected.date)}
-            {selected.promo ? ` · ${t("an.promo")}` : ""}
-          </span>
-          <span className="fw-6 num">
-            {formatNumber(selected.v, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {unit}
-          </span>
-        </div>
-      )}
-      <div className="row wrap g-12 t-xs t-2">
-        {unit && <span>{unit}</span>}
-        {stores.map((st) => (
-          <span key={st} className="row g-4">
-            <span className="an-dot" style={{ "--h": storeHue(st) } as CSSProperties} />
-            {storeLabel(st)}
-          </span>
-        ))}
-        {pts.some((p) => p.promo) && (
-          <span className="row g-4">
-            <span className="an-dot" style={{ background: "transparent", boxShadow: "inset 0 0 0 2px var(--text-3)" }} />
-            {t("an.promo")}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** A3 – detail produktu (prototyp): veta, cena v čase, porovnanie obchodov, nákupy, pridať do zoznamu. */
+/**
+ * Výrobok vo Výdavkoch – z mockupu (money.jsx VariantScreen + ProductScreen): druh, priemer / naposledy / spolu,
+ * cena za jednotku v čase a v obchodoch, najlacnejší obchod, nákupy z bločkov a Pridať do zoznamu.
+ * Úprava a zlúčenie výrobku (opravy rozpoznania) ostali pod ⋯.
+ */
 export function ProductPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -117,187 +33,193 @@ export function ProductPage() {
   const lists = useLists(household.id);
   const add = useAddItem();
   const toast = useToast();
+  const g = useTheme().style === "glass";
+  const scrolled = useScrolled();
   const [editing, setEditing] = useState(false);
   const [merging, setMerging] = useState(false);
-  const [pick, setPick] = useState(false);
-  const { search } = usePeriod();
+  const [menu, setMenu] = useState(false);
 
   if (query.isPending || query.isError)
     return (
-      <div className="stack">
-        <ScreenHeader title={t("an.searchProduct")} onBack={() => navigate(-1)} />
-        {query.isPending ? <Spinner /> : <ErrorState error={readErrorMessage(query.error)} onRetry={() => query.refetch()} />}
+      <div className="bhm bhm-list">
+        <div className="sc">
+          <header className="nb">
+            <Back label={t("mn.title")} onClick={() => navigate(-1)} />
+          </header>
+        </div>
+        <div className="body">{query.isPending ? <Spinner /> : <ErrorState error={readErrorMessage(query.error)} onRetry={() => query.refetch()} />}</div>
       </div>
     );
   const d = query.data;
   const p = d.product;
-  const info = categoryInfo(p.category_id);
+  const c = cat(p.category_id);
   const size = sizeLabel(p.size_value, p.size_unit);
+  const basis = d.purchases[0]?.basis ?? "ks";
+  const unitOf = (x: ProductDetail["purchases"][number]) => (x.paid_unit ?? x.line_total / Math.max(1, x.quantity));
+  const h = [...d.purchases].reverse().map((x) => ({ d: x.date, s: x.store, p: unitOf(x) }));
+  const avg = h.length ? h.reduce((a, x) => a + x.p, 0) / h.length : null;
   const last = d.purchases[0];
-  const basis = last?.basis ?? "ks";
-  const showUnit = basis !== "ks" || (p.size_value ?? 1) > 1;
-  const unit = showUnit ? unitLabel(basis) : t("an.perPiece");
-  const eurUnit = showUnit ? t(EUR_PER[basis]) : t("an.perPiece");
   const total = d.purchases.reduce((a, x) => a + x.line_total, 0);
-  const cheapest = d.stores[0];
-  const open = (lists.data ?? []).filter((l) => !l.completed_at);
-  const points = d.purchases
-    .filter((x) => x.basis === basis)
-    .map((x) => ({
-      key: x.item_id,
-      date: x.date,
-      v: showUnit && x.shelf_unit !== null ? x.shelf_unit : x.line_total / Math.max(1, x.quantity),
-      store: x.store,
-      promo: x.discount > 0,
-    }));
-  const sentence =
-    (d.interval_days !== null ? tn("an.cadence", Math.round(d.interval_days)) : t("an.boughtTimes", { n: d.purchases.length })) +
-    (d.stores.length > 1 && cheapest ? t("an.cheapestAt", { store: storeLabel(cheapest.name), price: formatEuro(cheapest.avg_unit), unit }) : ".");
+  const SC = storeColors(h);
+  const stores = [...d.stores].sort((a, b) => a.avg_unit - b.avg_unit);
+  const target = (lists.data ?? []).filter((l) => !l.completed_at).sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999"))[0];
+  const short = (x: string) => formatDateTime(new Date(`${x}T00:00`), { day: "numeric", month: "numeric" });
+  const pu = (v: number | null) => perUnit(v, basis);
 
-  async function addTo(listId: string, listName: string) {
-    setPick(false);
+  async function addTo() {
+    if (!target) return toast.show(t("addtolist.noList"), "error");
     try {
-      const res = await add.mutateAsync({ listId, name: p.name, categoryId: p.category_id });
-      toast.show(res.kind === "REQUEST" ? t("addtolist.request") : t("addtolist.added", { name: listName }), "success");
+      const res = await add.mutateAsync({ listId: target.id, name: p.kind || p.name, categoryId: p.category_id });
+      toast.show(res.kind === "REQUEST" ? t("addtolist.request") : t("addtolist.added", { name: target.name }), "success");
     } catch (err) {
       toast.show(errorMessage(err), "error");
     }
   }
 
   return (
-    <div className="stack">
-      <ScreenHeader title={p.name} sub={[info.name, size].filter(Boolean).join(" · ")} onBack={() => navigate(-1)} />
-      <div className="stack g-16" style={{ padding: "0 16px" }}>
-        <section className="card stack g-10" style={{ padding: 18 }}>
-          <div className="row g-12">
-            <CatIcon id={p.category_id} />
-            <span className="grow stack">
-              <span className="t-h">{p.name}</span>
-              <span className="t-sm t-2">{[p.brand, size ? t("an.pack", { size }) : null].filter(Boolean).join(" · ") || info.name}</span>
+    <>
+      <div className="bhm bhm-top">
+        <div className={`sc${scrolled ? " scrolled" : ""}`}>
+          <header className="nb">
+            <Back label={c.name} onClick={() => navigate(-1)} />
+            <span className="nbt">{p.brand || p.name}</span>
+            <div className="nbr">
+              <IB n="dots-three" label={t("pp.edit")} onClick={() => setMenu(true)} />
+            </div>
+          </header>
+        </div>
+      </div>
+      <div className="bhm bhm-list">
+        <div className="body">
+          <div className="lhead">
+            <span className="tile lg" style={{ "--tc": c.col } as React.CSSProperties}>
+              <E k={emojiFor(p.kind || p.name, p.category_id)} s={44} />
             </span>
+            <div className="grow">
+              <h1 className="lt">{p.name}</h1>
+              <div className="meta">{[p.brand, size, c.name].filter(Boolean).join(" · ")}</div>
+            </div>
           </div>
-          <p className="an-sentence" style={{ margin: 0 }}>
-            {sentence}
-          </p>
-          {/* Druh spája značky a balenia (Pivo, Kuracie prsia) – detail ukáže všetky výrobky spolu. */}
-          <button
-            type="button"
-            className="cell"
-            style={{ padding: "10px 12px", borderRadius: 12, background: "var(--sunken)" }}
-            onClick={() => navigate(`/analytics/kind/${encodeURIComponent(p.kind ?? p.name)}${search}`)}
-          >
-            <span className="grow stack g-2" style={{ minWidth: 0 }}>
-              <span className="t-xs t-3">{t("kd.kind")}</span>
-              <span className="t-body fw-6 ellipsis">{p.kind ?? p.name}</span>
-            </span>
-            <span className="t-sm t-2">{t("kd.allVariants")}</span>
-            <ChevronRight size={18} className="chev" />
-          </button>
-          <div className="row g-8 wrap">
-            <span className="badge b-gray">{tn("an.purchases", d.purchases.length)}</span>
-            <span className="badge b-gray num">{t("an.totalSpent", { amount: formatEuro(total) })}</span>
-            {last && <span className="badge b-gray">{t("an.lastOn", { day: dayLabel(last.date) })}</span>}
-          </div>
-        </section>
-
-        <section className="card stack g-10" style={{ padding: 18 }}>
-          <span className="t-h">{t("an.priceOverTime")}</span>
-          {points.length >= 2 ? <PriceDots points={points} unit={eurUnit} /> : <span className="t-sm t-2">{t("an.needTwo")}</span>}
-        </section>
-
-        {d.stores.length > 0 && (
-          <section className="stack g-8">
-            <span className="section-title">{t("an.compareStores", { unit: eurUnit })}</span>
-            <div className="cells">
-              {d.stores.map((st, i) => (
-                <div key={st.key} className="cell">
-                  <StoreBadge name={storeLabel(st.name)} size="sm" />
-                  <span className="grow stack">
-                    <span className="t-body fw-5">{storeLabel(st.name)}</span>
-                    <span className="t-xs t-2">{t("an.boughtN", { n: st.count })}</span>
-                  </span>
-                  {i === 0 && d.stores.length > 1 && <span className="badge b-green">{t("pp.cheapestTag")}</span>}
-                  <span className="t-body fw-6 num">{formatEuro(st.avg_unit)}</span>
+          {p.kind && (
+            <button type="button" className={`card krow${g ? " glass2" : ""}`} onClick={() => navigate(`/analytics/kind/${encodeURIComponent(p.kind!)}`)}>
+              <span className="kc">
+                <span className="k">{t("mn.kind")}</span>
+                <b>{p.kind}</b>
+              </span>
+              <span className="meta">{t("mn.compareBrands")}</span>
+              <I n="caret-right" w="bold" cls="chev" />
+            </button>
+          )}
+          <div className={`card kstat${g ? " glass2" : ""}`}>
+            <div>
+              <div className="k">{t("mn.avg")}</div>
+              <div className="price">{pu(avg) ?? "–"}</div>
+            </div>
+            <div>
+              <div className="k">{t("mn.last")}</div>
+              <div className="price">{last ? pu(unitOf(last)) : "–"}</div>
+              {last && (
+                <div className="meta sm">
+                  {last.store} · {short(last.date)}
                 </div>
-              ))}
+              )}
             </div>
-          </section>
-        )}
-
-        <section className="stack g-8">
-          <span className="section-title">{t("sp.purchases")}</span>
-          <div className="cells">
-            {d.purchases.slice(0, 20).map((x) => (
-              <button key={x.item_id} type="button" className="cell" onClick={() => navigate(`/receipts/${x.receipt_id}`)}>
-                <StoreBadge name={storeLabel(x.store)} size="sm" />
-                <span className="grow stack">
-                  <span className="t-body fw-5">
-                    {storeLabel(x.store)} · {dayLabel(x.date)}
-                  </span>
-                  <span className="t-xs t-2 num">
-                    {formatNumber(x.quantity)} ×{" "}
-                    {showUnit && x.shelf_unit !== null ? `${formatEuro(x.shelf_unit)} ${unitLabel(x.basis)}` : formatEuro(x.line_total / Math.max(1, x.quantity))}
-                    {x.discount > 0 ? ` · ${t("an.promo")}` : ""}
-                  </span>
-                </span>
-                <span className="t-body fw-6 num">{formatEuro(x.line_total)}</span>
-                <ChevronRight size={18} className="chev" />
-              </button>
-            ))}
+            <div>
+              <div className="k">{t("mn.total")}</div>
+              <div className="price">{eur(total)}</div>
+              <div className="meta sm">{t("mn.times", { n: d.purchases.length })}</div>
+            </div>
           </div>
-        </section>
-
-        {d.aliases.length > 0 && (
-          <section className="stack g-6">
-            <span className="section-title">{t("pp.aliases")}</span>
-            <span className="t-sm t-2" style={{ padding: "0 4px" }}>
-              {d.aliases.join(" · ")}
-            </span>
-          </section>
-        )}
-        <button type="button" className="btn btn-ghost" onClick={() => setMerging(true)}>
-          <Merge size={16} /> {t("pp.merge")}
-        </button>
-
-        {pick && (
-          <section ref={(el) => el?.scrollIntoView({ behavior: "smooth", block: "nearest" })} className="card stack g-8 anim-rise" style={{ padding: 14 }}>
-            <div className="row between">
-              <span className="t-h">{t("an.whichList")}</span>
-              <button type="button" className="ibtn sm" onClick={() => setPick(false)} aria-label={t("common.close")}>
-                <X size={18} />
-              </button>
-            </div>
-            {open.length ? (
-              open.map((l) => (
-                <button key={l.id} type="button" className="cell" style={{ padding: "8px 4px" }} onClick={() => void addTo(l.id, l.name)}>
-                  <StoreBadge name={l.name} size="sm" />
-                  <span className="grow t-body fw-5">
-                    {l.name} · {listDay(l)}
+          {h.length > 1 && (
+            <div className={`card${g ? " glass2" : ""}`}>
+              <div className="k">{t("mn.priceIn", { basis })}</div>
+              <PriceChart h={h} />
+              <div className="legend">
+                {Object.keys(SC).map((s) => (
+                  <span key={s}>
+                    <i style={{ background: SC[s] }} />
+                    {s}
                   </span>
-                  <Plus size={18} />
-                </button>
-              ))
-            ) : (
-              <span className="t-sm t-2">{t("addtolist.noList")}</span>
-            )}
-          </section>
-        )}
+                ))}
+              </div>
+            </div>
+          )}
+          {stores.length > 1 && (
+            <div className={`card insight${g ? " glass2" : ""}`}>
+              <span className="tile">
+                <E k="moneybag" />
+              </span>
+              <div className="grow">
+                <div className="ib-t">{t("mn.cheapestAt", { store: stores[0]!.name, price: pu(stores[0]!.avg_unit) ?? "" })}</div>
+                <div className="meta">{stores.slice(1).map((s) => `${s.name} ${pu(s.avg_unit)}`).join(" · ")}</div>
+              </div>
+            </div>
+          )}
+          {d.purchases.length > 0 ? (
+            <>
+              <div className="h2 sm">{t("mn.fromReceipts")}</div>
+              <div className={`lst${g ? " glass2" : ""}`}>
+                {d.purchases.map((x) => (
+                  <button type="button" className="row tap" key={x.item_id} onClick={() => navigate(`/receipts/${x.receipt_id}`)}>
+                    <StoreTile k={storeKeyOf(x.store)} n={x.store} s={34} />
+                    <div className="tx">
+                      <b>{x.store}</b>
+                      <span className="sub">
+                        {short(x.date)} · {formatNumber(x.quantity, { maximumFractionDigits: 3 })} {x.basis === "kg" ? "kg" : t("unit.ks")} {t("mn.for")} {eur(x.line_total)}
+                      </span>
+                    </div>
+                    <b className="amt">{pu(unitOf(x))}</b>
+                    <I n="caret-right" w="bold" cls="chev" />
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="vnote">
+              <I n="info" />
+              {t("mn.noPurchases")}
+            </p>
+          )}
+          {target && (
+            <Btn cls={`pri${g ? " a" : ""}`} onClick={() => void addTo()} disabled={add.isPending}>
+              <I n="plus" w="bold" />
+              {t("an.addToList")}
+            </Btn>
+          )}
+        </div>
       </div>
-      <div style={{ height: 180 }} />
-      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl row g-8" style={{ bottom: "var(--tabbar-space)" }}>
-        <button type="button" className="btn btn-soft" onClick={() => setEditing(true)} aria-label={t("pp.edit")}>
-          <Pencil size={17} />
-          {t("pp.edit")}
-        </button>
-        <button type="button" className="btn btn-ink grow" onClick={() => setPick(true)}>
-          <Plus size={18} />
-          {t("an.addToList")}
-        </button>
-      </div>
-
+      <Sheet open={menu} onClose={() => setMenu(false)} label={t("pp.edit")}>
+        <div className="sh-head">
+          <h2>{p.name}</h2>
+        </div>
+        <div className="sh-body">
+          <div className="menu">
+            <button
+              type="button"
+              onClick={() => {
+                setMenu(false);
+                setEditing(true);
+              }}
+            >
+              <I n="pencil-simple" />
+              {t("pp.edit")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenu(false);
+                setMerging(true);
+              }}
+            >
+              <I n="link" />
+              {t("pp.mergeTitle")}
+            </button>
+          </div>
+        </div>
+      </Sheet>
       {editing && <EditProductSheet d={d} onClose={() => setEditing(false)} />}
       {merging && <MergeProductSheet d={d} onClose={() => setMerging(false)} />}
-    </div>
+    </>
   );
 }
 
@@ -405,7 +327,6 @@ function MergeProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => vo
   const merge = useMergeProducts();
   const toast = useToast();
   const navigate = useNavigate();
-  const { search } = usePeriod();
   const [query, setQuery] = useState("");
   const words = normalizeName(d.product.name).split(" ").filter((w) => w.length > 2);
   const candidates = useMemo(() => {
@@ -428,7 +349,7 @@ function MergeProductSheet({ d, onClose }: { d: ProductDetail; onClose: () => vo
       await merge.mutateAsync({ target: d.product.id, sources: [id] });
       toast.show(t("pt.merged"), "success");
       onClose();
-      navigate(`/analytics/product/${d.product.id}${search}`, { replace: true });
+      navigate(`/analytics/product/${d.product.id}`, { replace: true });
     } catch (err) {
       toast.show(readErrorMessage(err), "error");
     }

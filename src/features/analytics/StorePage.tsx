@@ -1,134 +1,117 @@
+/**
+ * Obchod vo Výdavkoch – z mockupu (money.jsx StoreScreen): spolu a počet nákupov, čo tu kupujete (kategórie)
+ * a bločky z tohto obchodu za obdobie.
+ */
 import { useNavigate, useParams } from "react-router";
-import { ChevronRight } from "lucide-react";
-import { CatIcon, ScreenHeader, StoreBadge } from "@/components/kit";
-import { ErrorState, Spinner, cx } from "@/components/ui";
+import { ErrorState, Spinner } from "@/components/ui";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { formatShortDate, readErrorMessage } from "@/features/receipts/format";
-import { formatDateTime, formatEuro, t, tn } from "@/i18n";
+import { readErrorMessage } from "@/features/receipts/format";
+import { formatDateTime, t, tn } from "@/i18n";
+import { useTheme } from "@/theme/ThemeProvider";
+import { E, I, Back, useScrolled } from "@/mockup/ui";
+import { StoreTile, eur, storeKeyOf } from "@/mockup/kit";
 import { useStoreDetail } from "./api";
-import { ChangeBadge, PeriodChips, ShareRow, WeekdayBars, pct } from "./akit";
-import { categoryInfo, storeLabel } from "./bits";
-import { usePeriod } from "./period";
+import { cat, perTitle, usePer } from "./money";
 
-/** A4D – detail obchodu: veta, suma so zmenou, kedy tu nakupujete, čo tu kupujete, produkty a doklady. */
 export function StorePage() {
   const { key = "_none" } = useParams();
   const storeKey = decodeURIComponent(key);
   const { household } = useHousehold();
   const navigate = useNavigate();
-  const { period, search } = usePeriod();
-  const detail = useStoreDetail(household.id, storeKey, period);
-  const d = detail.data;
-  const name = d ? storeLabel(d.name) : t("sp.fallbackName");
-  const peak = d ? d.weekdays.indexOf(Math.max(...d.weekdays)) : -1;
-  const peakName = peak >= 0 ? formatDateTime(new Date(Date.UTC(2024, 0, 1 + peak, 12)), { weekday: "long" }) : "";
-
+  const g = useTheme().style === "glass";
+  const scrolled = useScrolled();
+  const { per, period, qs } = usePer();
+  const q = useStoreDetail(household.id, storeKey, period);
+  const d = q.data;
+  const name = d?.name || storeKey;
+  const cats = (d?.categories ?? []).filter((c) => c.amount > 0 && !c.id.startsWith("_")).sort((a, b) => b.amount - a.amount);
+  const max = Math.max(1, ...cats.map((c) => c.amount));
   return (
-    <div className="stack">
-      <ScreenHeader title={name} sub={t("an.storeSub")} onBack={() => navigate(-1)} />
-      <div style={{ margin: "0 0 8px" }}>
-        <PeriodChips />
+    <>
+      <div className="bhm bhm-top">
+        <div className={`sc${scrolled ? " scrolled" : ""}`}>
+          <header className="nb">
+            <Back label={t("mn.title")} onClick={() => navigate(-1)} />
+            <span className="nbt">{name}</span>
+            <span className="ibs" />
+          </header>
+        </div>
       </div>
-      {detail.isPending ? (
-        <Spinner />
-      ) : detail.isError || !d ? (
-        <ErrorState error={readErrorMessage(detail.error)} onRetry={() => detail.refetch()} />
-      ) : (
-        <div className={cx("stack g-16", detail.isPlaceholderData && "opacity-60")} style={{ padding: "0 16px" }}>
-          <section className="card stack g-10" style={{ padding: 18 }}>
-            <div className="row g-12">
-              <StoreBadge name={name} size="lg" />
-              <p className="an-sentence grow" style={{ margin: 0 }}>
-                {d.receipts
-                  ? t("an.storeDetailSentence", { store: name, count: d.receipts, amount: formatEuro(d.amount) }) +
-                    (d.weekdays[peak] ? t("an.storePeak", { day: peakName }) : ".")
-                  : t("an.storeNothing", { store: name })}
-              </p>
+      <div className="bhm bhm-list">
+        <div className="body">
+          <div className="lhead">
+            <StoreTile k={storeKeyOf(name)} n={name} s={60} />
+            <div className="grow">
+              <h1 className="lt">{name}</h1>
+              <div className="meta">{perTitle(per)}</div>
             </div>
-            <div className="row g-10 wrap" style={{ alignItems: "baseline" }}>
-              <span className="an-big">{formatEuro(d.amount)}</span>
-              <ChangeBadge now={d.amount} before={d.prev_amount} />
-            </div>
-            <span className="t-sm t-2 num">
-              {tn("an.purchases", d.receipts)} · {t("an.avgPurchase", { amount: formatEuro(d.receipts ? d.amount / d.receipts : 0) })}
-            </span>
-          </section>
-
-          {d.receipts > 0 && (
+          </div>
+          {q.isPending ? (
+            <Spinner />
+          ) : q.isError || !d ? (
+            <ErrorState error={readErrorMessage(q.error)} onRetry={() => q.refetch()} />
+          ) : (
             <>
-              {d.weekdays.some((n) => n > 0) && (
-                <section className="card stack g-8" style={{ padding: "18px 18px 10px" }}>
-                  <span className="t-h">{t("sp.weekdaysTitle")}</span>
-                  <WeekdayBars wd={d.weekdays} />
-                </section>
-              )}
-
-              {d.categories.length > 0 && (
-                <section className="stack g-8">
-                  <span className="section-title">{t("sp.buyHere")}</span>
-                  <div className="cells">
-                    {d.categories.slice(0, 6).map((c) => (
-                      <ShareRow
-                        key={c.id}
-                        icon={<CatIcon id={c.id} size="sm" />}
-                        title={categoryInfo(c.id).name}
-                        value={formatEuro(c.amount)}
-                        share={d.amount ? c.amount / d.amount : 0}
-                        sub={t("an.shareHere", { pct: pct(d.amount ? c.amount / d.amount : 0) })}
-                        onClick={() => navigate(`/analytics/category/${c.id}${search}`)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {d.products.length > 0 && (
-                <section className="stack g-8">
-                  <span className="section-title">{t("sp.topProducts")}</span>
-                  <div className="cells">
-                    {d.products.slice(0, 10).map((p) => (
-                      <button
-                        key={p.product_id ?? p.name}
-                        type="button"
-                        className="cell"
-                        disabled={!p.product_id}
-                        onClick={() => p.product_id && navigate(`/analytics/product/${p.product_id}${search}`)}
-                      >
-                        <span className="grow t-body fw-5 ellipsis">{p.name}</span>
-                        <span className="t-sm t-2 num">{p.count}×</span>
-                        <span className="t-sm fw-6 num">{formatEuro(p.amount)}</span>
-                        <ChevronRight size={18} className="chev" />
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {d.receipt_list.length > 0 && (
-                <section className="stack g-8">
-                  <span className="section-title">{t("tab.receipts")}</span>
-                  <div className="cells">
-                    {d.receipt_list.slice(0, 12).map((r) => (
-                      <button key={r.receipt_id} type="button" className="cell" onClick={() => navigate(`/receipts/${r.receipt_id}`)}>
-                        <span className="grow stack g-2">
-                          <span className="t-body fw-5">
-                            {formatShortDate(r.date)}
-                            {r.time ? ` · ${r.time.slice(0, 5)}` : ""}
+              <div className={`card match${g ? " mg" : ""}`}>
+                <div>
+                  <div className="k">{t("mn.total")}</div>
+                  <div className="price">{eur(d.amount)}</div>
+                </div>
+                <div className="ra">
+                  <div className="k">{t("mn.trips2")}</div>
+                  <div className="price mut">{d.receipts}</div>
+                  <div className="meta sm">{t("mn.avgPer", { avg: eur(d.amount / Math.max(1, d.receipts)) })}</div>
+                </div>
+              </div>
+              {cats.length > 0 && (
+                <>
+                  <div className="h2 sm">{t("mn.buyHere")}</div>
+                  <div className={`card cats${g ? " glass2" : ""}`}>
+                    {cats.map((x) => {
+                      const c = cat(x.id);
+                      return (
+                        <button type="button" key={x.id} className="cat" onClick={() => navigate(`/analytics/category/${x.id}${qs}`)}>
+                          <span className="tile" style={{ "--tc": c.col } as React.CSSProperties}>
+                            <E k={c.e} />
                           </span>
-                          {r.status === "NEEDS_REVIEW" && <span className="t-xs t-2">{t("sp.needsReview")}</span>}
-                        </span>
-                        <span className="t-body fw-6 num">{formatEuro(r.amount)}</span>
-                        <ChevronRight size={18} className="chev" />
-                      </button>
-                    ))}
+                          <div className="g1">
+                            <div className="cr">
+                              <span>{c.name}</span>
+                              <em>{eur(x.amount)}</em>
+                            </div>
+                            <div className="ln">
+                              <i style={{ width: `${(x.amount / max) * 100}%`, background: c.col }} />
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                </section>
+                </>
               )}
+              <div className="h2 sm">{t("mn.receipts")}</div>
+              <div className={`lst${g ? " glass2" : ""}`}>
+                {d.receipt_list.map((r) => (
+                  <button type="button" key={r.receipt_id} className="row tap" onClick={() => navigate(`/receipts/${r.receipt_id}`)}>
+                    <span className="th">
+                      <E k="receipt" />
+                    </span>
+                    <div className="tx">
+                      <b>
+                        {formatDateTime(new Date(`${r.date}T00:00`), { day: "numeric", month: "numeric" })} {r.time?.slice(0, 5) ?? ""}
+                      </b>
+                      {r.status === "NEEDS_REVIEW" && <span className="sub">{t("mn.toCheck")}</span>}
+                    </div>
+                    <b className="amt">{eur(r.amount)}</b>
+                    <I n="caret-right" w="bold" cls="chev" />
+                  </button>
+                ))}
+                {!d.receipt_list.length && <p className="meta pad">{tn("mn.trips", 0)}</p>}
+              </div>
             </>
           )}
         </div>
-      )}
-      <div className="tab-space" />
-    </div>
+      </div>
+    </>
   );
 }

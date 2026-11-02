@@ -169,6 +169,17 @@ alebo existujúci, deň), `CookPage.tsx` (kroky, viac časovačov naraz, Hotové
 na kategórie a druh mäsa receptov appky (`mk.tsx` RCATS). Rozdiely: v knihe nie je sekcia „Na otestovanie AI“
 (obsah knihy je samostatný projekt); pri chýbajúcom recepte appka nesľubuje doplnenie (nemá kam si to zapísať);
 AI otázky počas varenia a starý košík receptov (`/recipes/cart`, `/recipes/check`) z obrazoviek zmizli – súbory ostali.
+**Fáza 7 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** Výdavky z mockupu (`money.jsx`, `receipt.jsx`): `MoneyPage.tsx`
+(`/analytics`: chýbajúce bločky s Odfotiť / Bloček nemám, Odfotiť bloček / Všetky bločky, Týždeň / aktuálny mesiac / Rok
+v adrese `?per=`, prstenec kategórií so súčtom a porovnaním, rozpočet – panel s posuvníkom, týždne/mesiace, kam peniaze
+odišli, obchody, „Oplatí sa vedieť“ zo zmien cien a dochádzajúcich vecí; v téme sklo veľké číslo a dlaždice),
+kategória → druh → výrobok → bloček a obchod v štýle mockupu (`CategoryPage`, `KindPage`, `ProductPage` – úprava
+a zlúčenie výrobku ostali pod ⋯, `StorePage`), Bločky (`ReceiptsPage`: mesiace, po dňoch, hore „Na kontrolu“,
+v ⋯ výdavok bez bločku a výpis z banky) a detail bločku (`ReceiptDetailPage`: zaplatené, rozdiel, kontrola s
+opravami, nákup / Priradiť k nákupu, položky → výrobok, fotka, Upraviť / Pridať položku / Zmazať). Databáza bez zmeny
+(všetko z analytics_*). Zmazané staré obrazovky (AnalyticsLayout, OverviewTab, CategoriesTab, StoresTab, akit, charts,
+ReceiptRow, UploadStatus, useBatch). Rozdiely: zoznam bločkov už nemá hľadanie, spájanie a hromadné nahrávanie
+(mockup ich nemá); `/analytics/products` (hľadanie výrobkov) ostal len ako adresa.
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:
