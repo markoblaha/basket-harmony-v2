@@ -388,6 +388,7 @@ export type Database = {
       accept_invitation: { Args: { p_token: string }; Returns: string };
       accept_request: { Args: { p_request_id: string }; Returns: Json };
       ai_allow: { Args: { p_household_id: string; p_fn: string }; Returns: undefined };
+      item_catalog: { Args: { p_household_id: string }; Returns: Json };
       add_item: {
         Args: {
           p_category_guess?: string;

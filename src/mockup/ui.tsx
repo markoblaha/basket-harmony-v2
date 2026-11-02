@@ -3,7 +3,7 @@
  * (vygenerované z prototyp/css) a platia len vo vnútri obalu <div className="bhm">.
  * Texty idú cez t(), dáta z features/*\/api.ts.
  */
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { useAuth, useUserId } from "@/features/auth/AuthProvider";
 import { useProfiles } from "@/features/household/api";
@@ -72,7 +72,7 @@ export function Back({ label, onClick }: { label: string; onClick: () => void })
 }
 
 /** Pri posúvaní stránky: hlavička dostane sklo a v strede sa ukáže malý nadpis (ako .sc.scrolled v mockupe). */
-function useScrolled() {
+export function useScrolled() {
   const [on, setOn] = useState(() => window.scrollY > 8);
   useEffect(() => {
     const f = () => setOn(window.scrollY > 8);
@@ -106,5 +106,122 @@ export function MkHeader({ title, back, right, children, style, bodyClass = "" }
         </div>
       </div>
     </>
+  );
+}
+
+/** − množstvo + (mockup Stepper). Hodnotu a krok počíta volajúci. */
+export function Stepper({ label, onMinus, onPlus, minDisabled }: { label: string; onMinus: () => void; onPlus: () => void; minDisabled?: boolean }) {
+  return (
+    <span className="step" onClick={(e) => e.stopPropagation()}>
+      <button type="button" aria-label={t("li.less")} onClick={onMinus} disabled={minDisabled}>
+        <I n="minus" w="bold" />
+      </button>
+      <b>{label}</b>
+      <button type="button" aria-label={t("li.more")} onClick={onPlus}>
+        <I n="plus" w="bold" />
+      </button>
+    </span>
+  );
+}
+
+/** Riadok s potiahnutím (mockup SwipeRow): doprava +1, doľava −1, pri minime dlhý ťah = zmazať. */
+export function SwipeRow({
+  children,
+  onPlus,
+  onMinus,
+  onDelete,
+  atMin,
+  cls = "",
+  onTap,
+  disabled,
+}: {
+  children: ReactNode;
+  onPlus?: () => void;
+  onMinus?: () => void;
+  onDelete?: () => void;
+  atMin?: boolean;
+  cls?: string;
+  onTap?: () => void;
+  disabled?: boolean;
+}) {
+  const [dx, setDx] = useState(0);
+  const [gone, setGone] = useState(false);
+  const st = useRef<{ x: number; y: number; lock: "x" | "y" | null } | null>(null);
+  const dxRef = useRef(0);
+  // po potiahnutí prehliadač pošle aj „click“ – ten nesmie otvoriť detail
+  const swiped = useRef(false);
+  const set = (v: number) => {
+    dxRef.current = v;
+    setDx(v);
+  };
+  const down = (e: React.PointerEvent) => {
+    if (disabled) return;
+    swiped.current = false;
+    st.current = { x: e.clientX, y: e.clientY, lock: null };
+  };
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = st.current;
+    if (!s) return;
+    const ddx = e.clientX - s.x;
+    const ddy = e.clientY - s.y;
+    if (s.lock == null && (Math.abs(ddx) > 8 || Math.abs(ddy) > 8)) {
+      s.lock = Math.abs(ddx) > Math.abs(ddy) ? "x" : "y";
+      if (s.lock === "x") e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    if (s.lock === "x") set(Math.max(-170, Math.min(110, ddx)));
+  };
+  const up = () => {
+    const s = st.current;
+    st.current = null;
+    if (!s) return;
+    if (s.lock !== "x") return set(0);
+    swiped.current = true;
+    const d = dxRef.current;
+    if (d > 60) onPlus?.();
+    else if (d < -130 && atMin && onDelete) {
+      setGone(true);
+      setTimeout(() => onDelete(), 220);
+      return;
+    } else if (d < -60 && !atMin) onMinus?.();
+    set(0);
+  };
+  const hint = dx > 30 ? "plus" : dx < -30 ? (atMin ? (dx < -130 ? "del go" : "del") : "minus") : "";
+  return (
+    <div className={`swr ${cls}${gone ? " gone" : ""}${dx ? " mv" : ""}`} style={{ "--dx": `${dx}px` } as CSSProperties}>
+      <div className={`swbg ${hint}`} aria-hidden="true">
+        <span className="l">
+          <I n="plus" w="bold" />1
+        </span>
+        <span className="r">
+          {atMin ? (
+            <>
+              <I n="trash" />
+              {dx < -130 ? t("li.swDelete") : t("li.swFurther")}
+            </>
+          ) : (
+            <>
+              <I n="minus" w="bold" />1
+            </>
+          )}
+        </span>
+      </div>
+      <div
+        className="swfg"
+        style={{ transform: dx ? `translateX(${dx}px)` : undefined, transition: dx && st.current ? "none" : undefined }}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+        onClick={() => {
+          if (swiped.current) {
+            swiped.current = false;
+            return;
+          }
+          onTap?.();
+        }}
+      >
+        {children}
+      </div>
+    </div>
   );
 }

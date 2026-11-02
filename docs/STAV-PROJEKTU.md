@@ -38,13 +38,15 @@ servera, chybové hlásenia, pretekanie, text mimo obrazovky a prekrytia. Fotky 
    `20261030000029_product_kinds` (v testovacej DB nasadená ako 3 kroky: product_kinds, product_kinds_units,
    product_kinds_by_name – súbor v repozitári je ich súčet). Funkciu `normalize-products` v3 (druh) nasadiť aj do ostrej.
    Históriu migrácií oboch DB porovnaj (`list_migrations`) – ostrá má niektoré pod inými menami.
-   Ďalej `20261102000030_ai_guard` (poistka AI + zamknuté vnútorné funkcie párovania).
+   Ďalej `20261102000030_ai_guard` (poistka AI + zamknuté vnútorné funkcie párovania) a `20261102000031_item_catalog`
+   (katalóg položiek pre rozpoznanie a odhad ceny v zozname).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
    Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v5,
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
    read-statement v3. Funkciu `proto-images` (vypnutá, 410) možno zmazať.
 4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` testovacích riadkov vo vnútri bloku, ktorý sa celý vráti
-   späť → treba súhlas majiteľa). Nové časti (fronta dokladov, poistka AI) overené samostatným blokom: fails=0.
+   späť → treba súhlas majiteľa). Nové časti (fronta dokladov, poistka AI, katalóg položiek) overené samostatným blokom:
+   všetko ok (katalóg: člen vidí, cudzí NOT_FOUND, neprihlásený nemá prístup).
 
 ## Čo je hotové v testovacej vetve (oproti `main`)
 
@@ -118,6 +120,20 @@ História (`/history`) a detail nákupu (`/history/:id`, `HistoryScreens.tsx`: s
 položky, Nakúpiť znova = nový zoznam na zajtra s rovnakými položkami cez add_item). Ikony položiek: 3D emoji podľa názvu
 z katalógu mockupu (`src/mockup/catalog.ts`, `emojiFor`), dlaždice obchodov podľa názvu zoznamu (`storeKeyOf`).
 Appka sa otvára na Domove; Nákupy sú na `/lists`. Databáza bez zmeny.
+**Fáza 3 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** zoznam (`/lists/:id`) prenesený z mockupu: `ListView.tsx`
+(hlavička Späť „Nákupy“ · ľudia · ⋯, názov s obchodom a dňom, karta Odhad nákupu s rozpätím a Nakupovať, položky,
+skupiny receptov podľa poznámky „na …“, V košíku s Odstrániť/Vrátiť) a `ListParts.tsx` (riadok ceny, potiahnutie
++1/−1/zmazať, ťuk na množstvo = − / +, pole s návrhmi a „Často kupujete“, detail položky: množstvo, Kusy/Váha, odhad,
+bežná cena s históriou, Spresniť druh alebo značku, poznámka, Presunúť do, Zmazať). Mikrofón v poli otvorí hlasový režim
+rovno pre tento zoznam (Fáza 5 ho prerobí). Nákupný režim, žiadosti a sledovanie ostali v `ShoppingPage.tsx` (Fáza 4).
+Rozpoznanie a ceny: `itemCatalog.ts` (+ testy) nad DB funkciou `item_catalog` (produkty domácnosti s nákupmi z bločkov
+za 180 dní). Pravidlo „appka nič nedomýšľa“: všeobecná položka = druh `products.kind` („pivo“ → priemer druhov piva
+v tej istej kategórii), druh = názov produktu („Svetlé pivo 12°“), značka = `products.brand` s hovorovými menami
+(„plzeň“ → Pilsner Urquell, cena len z nej); inak sa pridá text tak, ako je, bez ceny. Druh/značka = medián
+posledných 3 nákupov za 120 dní (prednostne v obchode zoznamu), všeobecná = priemer bez extrémov; vážený tovar
+v kusoch = cena za kg × bežne kupovaná váha (pri 3+ kusoch váha kusu). Rovnaký odhad je na kartách v Nákupoch a na Domove
+(`estimate.ts`). Starý `PlanList`/`Composer`/`QuickDock`/`EditItemSheet` sa už na zozname nepoužívajú (Composer ešte
+v nákupnom režime). Menu ⋯ je zatiaľ starý panel – prenesie sa s Fázou 4.
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

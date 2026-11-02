@@ -11,7 +11,7 @@ import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
-import { useListPriceHints } from "@/features/analytics/api";
+import { useListEstimate } from "@/features/lists/estimate";
 import { useRecipePlans, useRecipes } from "@/features/recipes/api";
 import { useHubSessions, useItems, useListStats, useLists, useStartShopping, type Session, type ShoppingList } from "@/features/lists/api";
 import { AddReceiptSheet } from "@/features/lists/HistoryPage";
@@ -256,12 +256,11 @@ function NextRow({ list, g, open, going }: { list: ShoppingList; g: boolean; ope
   const navigate = useNavigate();
   const toast = useToast();
   const start = useStartShopping(list.id);
-  const hints = useListPriceHints(open > 0 ? list.id : undefined);
-  const priced = [...(hints.data?.values() ?? [])].filter((h) => h.last_price > 0);
-  const total = priced.reduce((sum, h) => sum + Number(h.last_price), 0);
+  const { household } = useHousehold();
+  const est = useListEstimate(household.id, list, open > 0);
   const k = storeKeyOf(list.name);
   const day = list.planned_for ? relDay(list.planned_for) : t("trip.noDay");
-  const sub = [day, tn("shop.itemCount", open), priced.length ? `~${eur0(total)}` : ""].filter(Boolean).join(" · ");
+  const sub = [day, tn("shop.itemCount", open), est?.priced ? `~${eur0(est.v)}` : ""].filter(Boolean).join(" · ");
   async function go() {
     if (going) return navigate(`/lists/${list.id}`);
     try {

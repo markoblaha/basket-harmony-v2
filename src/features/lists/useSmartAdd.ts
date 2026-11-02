@@ -43,6 +43,8 @@ export function useSmartAdd({
       quantity?: number | null;
       unit?: string | null;
       note?: string | null;
+      /** Kategória z katalógu domácnosti (inak ju odhadne databáza podľa názvu). */
+      categoryId?: string | null;
       /** Bez bubliny – napr. diktovanie ukáže jednu súhrnnú hlášku. */
       quiet?: boolean;
     }): Promise<AddOutcome> => {
@@ -79,7 +81,7 @@ export function useSmartAdd({
       }
 
       try {
-        const result = await add.mutateAsync({ listId, name, quantity: input.quantity ?? null, unit, note: input.note ?? null });
+        const result = await add.mutateAsync({ listId, name, quantity: input.quantity ?? null, unit, note: input.note ?? null, categoryId: input.categoryId ?? null });
         if (result.kind === "ITEM") onLanded?.(result.id);
         if (!input.quiet)
           onFeed({

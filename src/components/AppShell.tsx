@@ -14,6 +14,7 @@ import { useCart } from "@/features/recipes/cart";
 import { t, tn, type Key } from "@/i18n";
 import { OfflineBanner } from "./ui";
 import { primeAudio } from "@/features/voice/useRecorder";
+import { VOICE_EVENT } from "@/features/voice/open";
 import { useTheme } from "@/theme/ThemeProvider";
 
 const VoiceSession = lazy(() => import("@/features/voice/VoiceSession").then((m) => ({ default: m.VoiceSession })));
@@ -86,7 +87,13 @@ export function AppShell() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
-  const [voice, setVoice] = useState(false);
+  const [voice, setVoice] = useState<false | { listId?: string }>(false);
+  // Mikrofón v poli zoznamu otvorí ten istý hlasový režim, rovno pre daný zoznam.
+  useEffect(() => {
+    const f = (e: Event) => setVoice({ listId: (e as CustomEvent<{ listId?: string }>).detail?.listId });
+    window.addEventListener(VOICE_EVENT, f);
+    return () => window.removeEventListener(VOICE_EVENT, f);
+  }, []);
   const badges = useBadges(household.id);
   useInAppNotices(household.id);
   const showTabs = !NO_TABBAR.some((re) => re.test(pathname));
@@ -126,7 +133,7 @@ export function AppShell() {
       {showTabs && (
         <div className="bhm bhm-tabs">
           <div className="tabfade" aria-hidden="true" />
-          <TabBar pathname={pathname} badges={badges} voiceOn={voice} onVoice={() => setVoice(true)} />
+          <TabBar pathname={pathname} badges={badges} voiceOn={!!voice} onVoice={() => setVoice({})} />
         </div>
       )}
       {voice && (
@@ -134,6 +141,7 @@ export function AppShell() {
           {/* Hlasový režim prekrýva lištu – hlášky idú hore. */}
           <div data-notab style={{ display: "contents" }} />
           <VoiceSession
+            listId={voice.listId}
             onClose={() => setVoice(false)}
             onSaved={(store, r) => {
               setVoice(false);

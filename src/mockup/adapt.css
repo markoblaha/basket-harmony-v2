@@ -93,3 +93,32 @@ body.kb-typing .bhm-tabs {
   :root .bhm.bhm-ovl .sheet.nl .sh-foot { padding-top: 6px; padding-bottom: 8px; }
   :root .bhm.bhm-ovl .sheet.nl .k small { display: none; }
 }
+
+/* Obrazovka zoznamu: obsah pod hlavičkou, dole miesto pre pole na pridávanie (výška doku sa meria). */
+.bhm.bhm-list .body {
+  padding-top: 4px;
+}
+/* Pole na pridávanie: pevne dole; pri písaní sa drží tesne nad klávesnicou (--kb-top = jej horný okraj). */
+:root .bhm.bhm-dock .dock {
+  position: fixed;
+  bottom: 0;
+  max-width: 40rem;
+  margin: 0 auto;
+  z-index: 40;
+}
+:root .bhm.bhm-dock[style*="--kb-top"] .dock {
+  top: var(--kb-top);
+  bottom: auto;
+  transform: translateY(-100%);
+  padding-bottom: 8px;
+}
+/* Dlhé názvy zoznamov v čipoch (Presunúť do) sa skrátia trojbodkou, nič nepretečie. */
+.bhm .chips.wrap .chip {
+  max-width: 100%;
+}
+.bhm .chip .ell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

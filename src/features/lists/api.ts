@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import type { Row } from "@/lib/database.types";
 import { guessCategory } from "@/lib/categories";
 import { uploadReceipt } from "@/features/receipts/api";
+import { buildCatalog, type CatProduct, type ItemCatalog } from "./itemCatalog";
 
 export type ShoppingList = Row<"shopping_lists">;
 export type Item = Row<"shopping_list_items">;
@@ -25,6 +26,7 @@ export const listKeys = {
   stats: (hid: string) => ["list-stats", hid] as const,
   hubSessions: (hid: string) => ["hub-sessions", hid] as const,
   favorites: (hid: string) => ["favorites", hid] as const,
+  catalog: (hid: string) => ["item-catalog", hid] as const,
 };
 
 /** Kúpené položky zobrazujeme ešte 7 dní (dajú sa vrátiť do zoznamu). */
@@ -533,6 +535,26 @@ export function useUploadTripReceipt(householdId: string) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["receipts"] });
       qc.invalidateQueries({ queryKey: listKeys.lists(householdId) });
+    },
+  });
+}
+
+// ------------------------------------------------------------------ katalóg položiek (rozpoznanie a ceny)
+
+/**
+ * Produkty domácnosti s nákupmi z bločkov (item_catalog) – z nich appka rozpozná napísanú položku
+ * (všeobecná / druh / značka) a odhadne cenu. Bez katalógu zoznam funguje ďalej, len bez cien.
+ */
+export function useItemCatalog(householdId: string) {
+  return useQuery({
+    queryKey: listKeys.catalog(householdId),
+    staleTime: 10 * 60_000,
+    retry: false,
+    queryFn: async (): Promise<ItemCatalog> => {
+      const { data, error } = await supabase.rpc("item_catalog", { p_household_id: householdId });
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as CatProduct[];
+      return buildCatalog(rows.map((p) => ({ ...p, buys: p.buys.map((b) => ({ ...b, t: Number(b.t), q: b.q == null ? null : Number(b.q) })) })));
     },
   });
 }

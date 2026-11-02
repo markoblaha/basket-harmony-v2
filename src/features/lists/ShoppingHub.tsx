@@ -12,7 +12,7 @@ import { useProfiles } from "@/features/household/api";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
 import { t, tn } from "@/i18n";
-import { useListPriceHints } from "@/features/analytics/api";
+import { useListEstimate } from "./estimate";
 import { useRecipePlans } from "@/features/recipes/api";
 import { useHubSessions, useItems, useListStats, useLists, useStartShopping, type ListStats, type Session, type ShoppingList } from "./api";
 import { listDay } from "./dates";
@@ -187,10 +187,9 @@ function ListCard({
   const open = stats?.open ?? 0;
   const lp = useLongPress({ onTap: () => navigate(`/lists/${list.id}`), onLong: onActions });
   // Orientačný odhad podľa posledných cien z bločkov (ak nejaké sú).
-  const hints = useListPriceHints(open > 0 ? list.id : undefined);
+  const { household } = useHousehold();
+  const est = useListEstimate(household.id, list, open > 0);
   const [showEstimate] = useSetting("estimate");
-  const priced = [...(hints.data?.values() ?? [])].filter((h) => h.last_price > 0);
-  const estimate = priced.reduce((sum, h) => sum + Number(h.last_price), 0);
   const going = !!session && session.shopper_id === me;
 
   async function go() {
@@ -230,7 +229,7 @@ function ListCard({
           <div className="meta">{listDay(list)}</div>
         </div>
         <div className="ra">
-          <div className="price">{showEstimate && priced.length ? `~${eur0(estimate)}` : "–"}</div>
+          <div className="price">{showEstimate && est?.priced ? `~${eur0(est.v)}` : "–"}</div>
           <div className="meta">{tn("shop.itemCount", open)}</div>
         </div>
         {(open > 0 || session) && (

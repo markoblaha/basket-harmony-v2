@@ -67,7 +67,7 @@ type Modal = "where" | "store" | "unsure" | "recipes" | null;
  *  - Hotovo → „Kam to dať?“ (obchod, deň alebo existujúci zoznam). Ak obchod zaznel, nepýta sa.
  * Rozdiktovaný zoznam sa priebežne ukladá v zariadení a po otvorení pokračuje.
  */
-export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSaved: (store: string, r: SaveResult) => void }) {
+export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void; onSaved: (store: string, r: SaveResult) => void; /** Otvorené zo zoznamu – položky pôjdu doň. */ listId?: string }) {
   const { household } = useHousehold();
   const stores = useKnownStores(household.id).data ?? [];
   // Čo domácnosť často kupuje – AI podľa toho rozhodne nejasne vyslovené slovo.
@@ -87,7 +87,7 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
   const [restored, setRestored] = useState(!!draft);
   const [store, setStore] = useState(draft?.store ?? "");
   const [date, setDate] = useState(draft?.date || today);
-  const [targetListId, setTargetListId] = useState<string | null>(draft?.targetListId ?? null);
+  const [targetListId, setTargetListId] = useState<string | null>(listId ?? draft?.targetListId ?? null);
   const [items, setItems] = useState<DraftItem[]>(draft?.items ?? []);
   const [plans, setPlans] = useState<VoicePlan[]>(draft?.recipes ?? []);
   const [flash, setFlash] = useState<Record<string, number>>({});

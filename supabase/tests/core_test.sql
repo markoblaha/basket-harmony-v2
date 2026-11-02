@@ -903,6 +903,21 @@ begin
   if err is null then report := report || E'ok: limit receptov neblokuje hlas\n';
   else report := report || 'FAIL: hlas po limite receptov -> ' || err || E'\n'; fails := fails + 1; end if;
 
+  -- ---------------------------------------------------------------- katalóg položiek (migrácia 31)
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; txt := null;
+  begin txt := public.item_catalog(h)::text; exception when others then err := sqlerrm; end;
+  if err is null and left(txt, 1) = '[' then report := report || E'ok: člen vidí katalóg položiek svojej domácnosti\n';
+  else report := report || 'FAIL: item_catalog člen -> ' || coalesce(err, txt, 'null') || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.item_catalog(h); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nevidí katalóg a ceny inej domácnosti\n';
+  else report := report || 'FAIL: cudzí item_catalog -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
@@ -919,6 +934,10 @@ begin
   begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
   if err like 'permission denied%' then report := report || E'ok: neprihlásený nepoužije AI\n';
   else report := report || 'FAIL: anonym ai_allow -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.item_catalog(h); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: neprihlásený nevidí katalóg položiek\n';
+  else report := report || 'FAIL: anonym item_catalog -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
 
   execute 'reset role';
   raise exception E'TEST_REPORT fails=%\n%', fails, report;
