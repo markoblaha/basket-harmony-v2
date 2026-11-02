@@ -1,0 +1,213 @@
+<title>Plán prestavby appky</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400..750&display=swap">
+<style>
+
+/* Rozloženie: textový stĺpec s nálezmi; dôkazy (výrezy obrazoviek) vpravo od textu, na telefóne pod ním; ukážky pohybu v mriežke */
+:root {
+  --bg: #f4f3f0; --surface: #ffffff; --sunken: #ebe9e4; --fg: #1c1b19; --muted: #5f5c55; --line: #dcd8d0;
+  --acc: #c8480f; --acc-soft: #fbe3d6; --ok: #1f7a4c; --ok-soft: #dcf1e5; --warn: #8f5806; --warn-soft: #f6ead0; --bad: #b5372d; --bad-soft: #f8e1de;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif; --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --dur-1: 100ms; --dur-2: 180ms; --dur-3: 280ms; --dur-4: 420ms; --dur-5: 600ms;
+  --ease-out: cubic-bezier(.2,.8,.2,1); --ease-in: cubic-bezier(.4,0,1,1); --ease-spring: cubic-bezier(.34,1.3,.64,1);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121210; --surface: #1c1b19; --sunken: #262421; --fg: #ecebe7; --muted: #a9a59c; --line: #34322e;
+  --acc: #ff8a52; --acc-soft: #3a2418; --ok: #4fd38c; --ok-soft: #15301f; --warn: #e8b85c; --warn-soft: #33290f; --bad: #ff8a7e; --bad-soft: #3a1f1c; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121210; --surface: #1c1b19; --sunken: #262421; --fg: #ecebe7; --muted: #a9a59c; --line: #34322e;
+  --acc: #ff8a52; --acc-soft: #3a2418; --ok: #4fd38c; --ok-soft: #15301f; --warn: #e8b85c; --warn-soft: #33290f; --bad: #ff8a7e; --bad-soft: #3a1f1c; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 400 16.5px/1.55 var(--body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 20px; }
+.col { max-width: 720px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+h1 { font: 800 clamp(36px, 6.4vw, 58px)/1.0 var(--display); letter-spacing: -.025em; margin: 0; text-wrap: balance; }
+h2 { font: 750 clamp(25px, 3.6vw, 33px)/1.12 var(--display); letter-spacing: -.012em; margin: 36px 0 0; text-wrap: balance; }
+h3 { font: 720 18.5px/1.28 var(--display); margin: 0; text-wrap: balance; }
+p, ul, ol { margin: 0; } ul, ol { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+code { font: 600 .9em ui-monospace, "SF Mono", Menlo, monospace; background: var(--sunken); padding: 1px 5px; border-radius: 5px; }
+.eyebrow { font: 700 12px/1 var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--acc); }
+.lede { font-size: 19px; color: var(--muted); }
+.small { font-size: 14px; } .muted { color: var(--muted); }
+nav.toc { display: flex; flex-wrap: wrap; gap: 8px; }
+nav.toc a { font: 650 14px/1 var(--body); padding: 9px 12px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); color: var(--fg); text-decoration: none; }
+nav.toc a:hover { border-color: var(--acc); } nav.toc a:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+
+/* tabuľky */
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+.tw.w table { min-width: 760px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 700 12px/1.3 var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--sunken); }
+tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill { display: inline-block; font: 750 11.5px/1 var(--body); padding: 5px 8px; border-radius: 99px; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.fix { background: var(--warn-soft); color: var(--warn); } .pill.bad { background: var(--bad-soft); color: var(--bad); }
+td q { quotes: "„" "“"; }
+td .new { display: block; margin-top: 4px; color: var(--ok); }
+
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.box h3 { font-size: 17px; }
+.box li, .box p { font-size: 15px; }
+.hdr { display: flex; flex-direction: column; gap: 8px; }
+.hdr img { width: 100%; max-width: 393px; border-radius: 10px; border: 1px solid var(--line); display: block; }
+.mock { display: flex; align-items: center; justify-content: space-between; height: 54px; padding: 0 12px; border-radius: 14px; background: var(--sunken); max-width: 393px; }
+.mock .av { width: 34px; height: 34px; border-radius: 99px; background: linear-gradient(160deg, #e07a5f, #b85a40); color: #fff; display: grid; place-items: center; font-weight: 800; position: relative; }
+.mock .av i { position: absolute; top: -1px; right: -1px; width: 10px; height: 10px; border-radius: 99px; background: #d93a32; box-shadow: 0 0 0 2px var(--sunken); }
+.mock .r { display: flex; gap: 8px; } .mock .r span { width: 36px; height: 36px; border-radius: 99px; background: var(--surface); display: grid; place-items: center; font-weight: 800; color: var(--muted); }
+.mock em { font-style: normal; font-size: 12px; color: var(--muted); }
+.check { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.check li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.check li:last-child { border-bottom: 0; }
+.check li::before { font: 800 15px/1.4 var(--display); }
+.check li.y::before { content: "✓"; color: var(--ok); } .check li.p::before { content: "◐"; color: var(--warn); } .check li.n::before { content: "✗"; color: var(--bad); }
+.decide { display: flex; flex-direction: column; gap: 10px; counter-reset: q; }
+.decide > div { display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+.decide > div::before { counter-increment: q; content: counter(q); font: 750 14px/30px var(--display); text-align: center; height: 30px; border-radius: 99px; background: var(--acc-soft); color: var(--acc); }
+.decide p { font-size: 15px; color: var(--muted); } .decide b { font-family: var(--display); }
+.phase { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } @media (max-width: 760px) { .phase { grid-template-columns: 1fr; } }
+
+/* Rozloženie: textový stĺpec, fázy ako očíslovaná os s kartami, rozhodnutia na konci */
+.timeline { display: flex; flex-direction: column; gap: 14px; counter-reset: ph; }
+.ph { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 14px; }
+.ph .no { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; font: 800 22px/1 var(--display); background: var(--sunken); color: var(--fg); }
+.ph.now .no { background: var(--acc); color: #fff; }
+.ph .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ph h3 { font: 750 19px/1.25 var(--display); margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.ph h3 small { font: 650 13px/1 var(--body); color: var(--muted); }
+.ph .goal { font-size: 15.5px; color: var(--muted); }
+.ph .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ph .cols > div { min-width: 0; } .ph .lab { font: 700 11.5px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.ph ul { font-size: 14.5px; gap: 4px; }
+.ph .check { font-size: 14.5px; background: var(--ok-soft); color: var(--ok); border-radius: 12px; padding: 9px 12px; }
+.ph .check b { color: inherit; }
+.ph .risk { font-size: 14px; background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 9px 12px; }
+@media (max-width: 700px) { .ph .cols { grid-template-columns: 1fr; } .ph { grid-template-columns: 1fr; } .ph .no { width: 44px; height: 44px; font-size: 18px; } }
+.steps { list-style: none; padding: 0; counter-reset: s; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } @media (max-width: 700px) { .steps { grid-template-columns: 1fr; } }
+.steps li { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; font-size: 14.5px; display: flex; flex-direction: column; gap: 4px; }
+.steps li::before { counter-increment: s; content: counter(s); width: 26px; height: 26px; border-radius: 99px; display: grid; place-items: center; font: 800 13px/1 var(--display); background: var(--acc-soft); color: var(--acc); }
+.steps b { font-family: var(--display); font-size: 15.5px; }
+.conf td:first-child { width: 28%; }
+</style>
+
+<div class="wrap">
+  <div class="col">
+    <span class="eyebrow">Plán · mockup → testovacia appka</span>
+    <h1>Prestavba appky po fázach</h1>
+    <p class="lede">Ako prenesieme interaktívny mockup do skutočnej testovacej appky (vetva <code>design/v2-mobile-redesign</code>, testovacia databáza) – po častiach, každú dotiahnutú, otestovanú a vami odskúšanú v telefóne, kým začneme ďalšiu.</p>
+  </div>
+
+  <div class="col"><h2>Prečo nie naraz</h2>
+    <p>Mockup je jedna stránka s vymyslenými údajmi v prehliadači. Skutočná appka má prihlásenie, domácnosť zdieľanú naživo, 20 tabuliek a 45 funkcií v databáze, AI na bločky, hlas a recepty a povinné preklady do angličtiny. Každú obrazovku z mockupu treba postaviť nanovo na skutočných dátach. Keby sme to prepísali naraz, chyba v jednej časti by zablokovala celú appku a ťažko by sa hľadala.</p>
+    <p>Preto: <b>jedna fáza = jedna ucelená časť</b>, ktorá po nasadení funguje sama o sebe. Ostatné časti medzitým fungujú po starom.</p>
+  </div>
+
+  <div class="col"><h2>Každá fáza prebehne rovnako</h2></div>
+  <ol class="steps">
+    <li><b>Súpis</b>Presný zoznam zmien obrazoviek, databázy a textov. Pošlem vám ho na kontrolu, ak mení niečo, o čom ste už rozhodli.</li>
+    <li><b>Databáza</b>Zmena len novým súborom migrácie, najprv do testovacej DB. Spustí sa kontrolný test pravidiel (<code>core_test.sql</code>) – musí skončiť bez chýb.</li>
+    <li><b>Appka</b>Kód, texty po slovensky aj anglicky, automatické testy logiky.</li>
+    <li><b>Kontrola</b><code>npm run check</code> (typy, testy, zostavenie) + automatické prekliknutie na testovacej adrese v telefónovej veľkosti, v oboch témach a režimoch, s kontrolou prekrývania a pretekania.</li>
+    <li><b>Nasadenie</b>Odoslanie do testovacej vetvy, overenie, že Cloudflare nasadil novú verziu.</li>
+    <li><b>Vaše odskúšanie</b>Pošlem, čo presne vyskúšať. Ďalšia fáza začne až po vašom „OK“. Výhrady opravím v rámci tej istej fázy.</li>
+  </ol>
+  <p class="small muted">Na <code>main</code> (ostrú appku) a do ostrej databázy sa počas celej prestavby nesiaha. Mockup na <code>/prototyp/</code> ostáva ako vzor na porovnanie.</p>
+
+  <div class="col"><h2>Fázy</h2></div>
+  <div class="timeline">
+    <div class="ph now"><span class="no">0</span><div class="card"><h3>Príprava a poistky <small>bez viditeľnej zmeny · 1 relácia</small></h3>
+      <p class="goal">Pevný základ, aby sa ďalšie fázy nestavali na známych chybách.</p>
+      <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
+        <li>Zlúčiť zmenu z <code>main</code> (čítanie bločkov na pozadí) do testovacej vetvy + jej migrácie do testovacej DB.</li>
+        <li>Opraviť známe bezpečnostné chyby: AI funkcie bez kontroly domácnosti a limitu, vnútorné funkcie volateľné zvonku.</li>
+        <li>Testovací účet na testovacej DB pre automatické prekliknutie appky.</li>
+        <li>Skript, ktorý appku prekliká vo všetkých vzhľadoch (ako pri mockupe).</li></ul></div>
+      <div><div class="lab">Databáza</div><ul><li>Migrácie z <code>main</code>, oprava práv funkcií.</li></ul></div></div>
+      <div class="check"><b>Vyskúšate:</b> appka funguje ako doteraz (prihlásenie, zoznam, bloček).</div></div></div>
+
+    <div class="ph"><span class="no">1</span><div class="card"><h3>Vzhľad a kostra <small>1–2 relácie</small></h3>
+      <p class="goal">Appka vyzerá ako mockup: témy, sklo, písmo, lišta, hlavičky – zatiaľ so starým obsahom obrazoviek.</p>
+      <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
+        <li>Farby, písmo, rohy a pohyb z mockupu ako tokeny v <code>styles.css</code> (jediný zdroj), obe témy × svetlý/tmavý/podľa systému.</li>
+        <li>Spodná lišta: Domov · Nákupy · mikrofón · Recepty · Výdavky. Viac sa presunie pod avatar.</li>
+        <li>Jednotná hlavička (avatar · akcia · ?), prechody obrazoviek, potiahnutie späť z okraja.</li>
+        <li>Písma priamo v appke (nie z Google), bezpečné okraje iPhonu.</li></ul></div>
+      <div><div class="lab">Databáza</div><ul><li>Nič.</li></ul></div></div>
+      <div class="check"><b>Vyskúšate:</b> prepínanie tém a režimov vo Viac, všetky staré obrazovky čitateľné v novom vzhľade.</div>
+      <div class="risk">Najväčší zásah do štýlov – staré obrazovky sa v tejto fáze len „prefarbia“, prestavba ich obsahu príde v ďalších fázach.</div></div></div>
+
+    <div class="ph"><span class="no">2</span><div class="card"><h3>Domov, Nákupy a História <small>1–2 relácie</small></h3>
+      <p class="goal">Nová úvodná obrazovka a prehľad zoznamov podľa mockupu.</p>
+      <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
+        <li>Domov: Treba vybaviť · Nákupy (kto nakupuje naživo, najbližší zoznam) · Naplánované recepty · Rýchlo.</li>
+        <li>Nákupy: karty s košíkom (štart / pokračovať), Nový zoznam (obchod, deň, kto ho uvidí).</li>
+        <li>História ukončených nákupov s detailom a „Nakúpiť znova“.</li></ul></div>
+      <div><div class="lab">Databáza</div><ul><li>Pohľad na ukončené nákupy (už sa ukladajú) a na nákupy bez dokladu (už existuje „doklad neskôr“).</li></ul></div></div>
+      <div class="check"><b>Vyskúšate:</b> Domov s vašimi skutočnými zoznamami, spustenie nákupu z karty, História.</div></div></div>
+
+    <div class="ph"><span class="no">3</span><div class="card"><h3>Zoznam a pridávanie položiek <small>2 relácie</small></h3>
+      <p class="goal">Pravidlo „appka nič nedomýšľa“: všeobecná položka · druh · značka, s cenou podľa toho.</p>
+      <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
+        <li>Rozpoznanie pri písaní: „pivo“ → Pivo (priemer všetkých pív), „kyslá smotana“ → druh, „plzeň“ → značka.</li>
+        <li>Návrhy nad poľom ako zoznam riadkov, oprava preklepu, spresnenie v detaile položky.</li>
+        <li>Detail položky: množstvo, cena z bločkov, presun, poznámka.</li></ul></div>
+      <div><div class="lab">Databáza</div><ul><li>Položka môže odkazovať na druh (<code>products.kind</code> už existuje) alebo značku.</li><li>Nový výpočet ceny v <code>list_price_hints</code> (priemer druhu / len značka) – zároveň oprava chyby „Mlieko → telové mlieko“.</li></ul></div></div>
+      <div class="check"><b>Vyskúšate:</b> smotana, pivo, plzeň, chleba, 2 mlieka – názvy a ceny ako v mockupe.</div></div></div>
+
+    <div class="ph"><span class="no">4</span><div class="card"><h3>Nákup v obchode a bloček <small>1–2 relácie</small></h3>
+      <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
+        <li>Pripnutá hlavička s pásikom, odškrtnutie v ikone, žiadosť od člena zvýraznená.</li>
+        <li>Po poslednej položke „Nákup dokončený?“, Teraz nie → chýbajúci bloček (číslo na lište, karta na Domove).</li>
+        <li>Bloček: Odfotiť / Z galérie, automatické spárovanie s nákupom.</li></ul></div>
+      <div><div class="lab">Databáza</div><ul><li>Väčšinou existuje (<code>finish_shopping</code>, párovanie dokladov). Párovanie všeobecnej položky s ktorýmkoľvek druhom.</li></ul></div></div>
+      <div class="check"><b>Vyskúšate:</b> celý nákup s druhým telefónom (žiadosť), dokončenie, bloček neskôr.</div></div></div>
+
+    <div class="ph"><span class="no">5</span><div class="card"><h3>Hlasový nákup 2.0 <small>1–2 relácie</small></h3>
+      <ul><li>Cieľ hore („Do: Lidl · zajtra“), živý prepis, padajúce položky, úpravy hlasom („radšej kilo“, „zmaž pivo“), Kam pridať, rozdiktovaný koncept.</li>
+        <li>Stavia na existujúcom tichom nahrávaní a funkcii <code>parse-voice</code> – dohodnuté pravidlá (žiadne pípanie) ostávajú.</li></ul>
+      <div class="check"><b>Vyskúšate:</b> na iPhone – diktovanie, oprava, uloženie.</div></div></div>
+
+    <div class="ph"><span class="no">6</span><div class="card"><h3>Recepty <small>2 relácie</small></h3>
+      <ul><li>Kniha, Moje, Plán týždňa; detail s „mám doma“ pre každú surovinu; varenie krok po kroku; Ochutnávač.</li>
+        <li>Obsah knihy (1 000 receptov) je samostatný projekt podľa už schváleného plánu Recepty 2.0 – táto fáza stavia obrazovky.</li></ul>
+      <div class="check"><b>Vyskúšate:</b> recept do nákupu, plán týždňa, varenie.</div></div></div>
+
+    <div class="ph"><span class="no">7</span><div class="card"><h3>Výdavky <small>1 relácia</small></h3>
+      <ul><li>Súčet mesiaca, kategórie → druh → výrobok (už v DB), obchody, „Oplatí sa vedieť“, porovnanie v eurách, chýbajúce bločky.</li></ul></div></div>
+
+    <div class="ph"><span class="no">8</span><div class="card"><h3>Upozornenia, domácnosť, Viac <small>1 relácia</small></h3>
+      <ul><li>Upozornenia v appke (bodka na avatare, zoznam vo Viac), pozvánka odkazom so zdieľaním (stránka <code>/join</code> už existuje), Čo mám doma, rozpočet, nastavenia.</li>
+        <li>Upozornenia do telefónu (push) sú samostatný krok – webová appka ich na iPhone vie až po pridaní na plochu.</li></ul></div></div>
+
+    <div class="ph"><span class="no">9</span><div class="card"><h3>Uvítanie, ukážka a nápovedy <small>1–2 relácie</small></h3>
+      <ul><li>Vitajte (ukážka / naprázdno), Základy v 3 kapitolách, „?“ s nápovedami a kapitolami, Prvé kroky.</li>
+        <li>Ukážka beží na <b>vymyslených údajoch len v telefóne</b> – do databázy nič nezapíše a nikomu nič nepošle.</li>
+        <li>Až na konci, lebo sprievodca ukazuje hotové obrazovky z fáz 1–8.</li></ul></div></div>
+
+    <div class="ph"><span class="no">10</span><div class="card"><h3>Pred vydaním do obchodov <small>podľa rozsahu</small></h3>
+      <ul><li>Prístupnosť (veľkosť písma podľa telefónu, čítačka), stav offline, zmazanie účtu v appke, zásady súkromia, anglické texty, rýchlosť.</li>
+        <li>Zlúčenie do <code>main</code> a nasadenie do ostrej DB – len na váš výslovný pokyn, podľa zoznamu v STAV-PROJEKTU.</li></ul></div></div>
+  </div>
+
+  <div class="col"><h2>Rozpory s vašimi staršími rozhodnutiami</h2>
+    <p>Mockup sa v niekoľkých veciach líši od toho, čo ste pre skutočnú appku rozhodli skôr. Pri prestavbe platí to, čo potvrdíte:</p></div>
+  <div class="tw"><table class="conf">
+    <thead><tr><th>Téma</th><th>Skoršie rozhodnutie (appka)</th><th>Mockup</th></tr></thead>
+    <tbody>
+      <tr><td><b>Kategórie v zozname</b></td><td>Plánovanie bez kategórií, najnovšie hore; kategórie až v nákupe.</td><td>Zoznam zoskupený podľa kategórií (Pečivo, Mliečne…).</td></tr>
+      <tr><td><b>Návrhy pri písaní</b></td><td>Presne 6 bublín (3×2), bez posúvania.</td><td>Zoznam riadkov s celým názvom a cenou, Enter ↵ hore.</td></tr>
+      <tr><td><b>Dok pri palci</b></td><td>5 dlaždíc „istý nákup“, Všetky 3×3, Obľúbené s editorom.</td><td>Rad čipov „často kupujete“ (jednoduchšie).</td></tr>
+      <tr><td><b>Záložky</b></td><td>Zoznamy · Recepty · hlas · Analytika · Viac.</td><td>Domov · Nákupy · mikrofón · Recepty · Výdavky; Viac pod avatarom.</td></tr>
+      <tr><td><b>Témy</b></td><td>Svetlá / tmavá / farebná / podľa systému.</td><td>Teplá kuchyňa a Fotky a sklo, každá svetlá/tmavá.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="col"><h2>Na rozhodnutie pred začatím</h2></div>
+  <div class="decide">
+    <div><span><b>Rozpory v tabuľke vyššie.</b><p>Odporúčam ísť podľa mockupu vo všetkých piatich (je novší a odsúhlasený na obrazovkách). Ak pri niektorom chcete ostať pri staršom, napíšte pri ktorom.</p></span></div>
+    <div><span><b>Jedna téma alebo dve?</b><p>Prestavba je rovnaká, ale dve témy znamenajú pri každej obrazovke kontrolu navyše. Ak neviete, začnem s oboma – jednu sa dá zrušiť kedykoľvek.</p></span></div>
+    <div><span><b>Testovací účet.</b><p>Na automatické prekliknutie appky potrebujem v testovacej DB vlastný účet (napr. test@… s domácnosťou s kópiou vašich dát). Vytvorí sa len pridaním – nič sa nemaže. Súhlasíte?</p></span></div>
+    <div><span><b>Môžem začať Fázou 0?</b><p>Bez viditeľnej zmeny, len poistky a opravy. Po nej vám pošlem súpis Fázy 1.</p></span></div>
+  </div>
+</div>

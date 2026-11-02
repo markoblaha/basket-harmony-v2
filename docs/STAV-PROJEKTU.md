@@ -62,6 +62,14 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   vibrácie na iPhone cez systémový prepínač (`haptic()` v `components/kit.tsx`).
 - Systémová lišta iPhonu vo farbe témy, plynulejšie animácie (`components/motion.ts`: FLIP, animateOut, collapseOut).
 
+## Prestavba testovacej appky podľa mockupu (plán 3. 11. 2026, čaká na súhlas)
+
+Plán `prototyp/plan-prestavby.html`: fázy 0 (poistky, bezpečnostné opravy, testovací účet) → 1 vzhľad a kostra → 2 Domov,
+Nákupy, História → 3 zoznam a pridávanie (všeobecná/druh/značka) → 4 nákup a bloček → 5 hlas 2.0 → 6 recepty → 7 výdavky →
+8 upozornenia a Viac → 9 uvítanie a nápovedy (ukážka bez zápisu do DB) → 10 pred obchodmi. Každá fáza: súpis, migrácia do
+testovacej DB + core_test, kód + sk/en, `npm run check`, prekliknutie testovacej adresy, push, odskúšanie majiteľom.
+Pred začatím rozhodnúť rozpory mockupu so staršími rozhodnutiami nižšie (kategórie v zozname, 6 bublín, dok, záložky, témy).
+
 ## Rozhodnutia majiteľa (nemeniť bez opýtania)
 
 - Plánovanie bez kategórií; kategórie až v nákupe. Kategória sa priraďuje pri pridaní. Poradie trasy je všeobecné, nie podľa obchodu.
