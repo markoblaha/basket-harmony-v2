@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-function useKeyboardHeight(active: boolean) {
+export function useKeyboardHeight(active: boolean) {
   const [kb, setKb] = useState(0);
   useEffect(() => {
     const vv = window.visualViewport;

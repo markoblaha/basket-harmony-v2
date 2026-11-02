@@ -301,3 +301,20 @@ export function splitStore(text: string, stores: string[]): { store: string | nu
   if (m) return { store: cap(m[1]!.replace(/[.,!?]+$/, "")), rest: m[2]!.replace(/^[\s,.;:–-]+/, "").trim() };
   return { store: null, rest: text.trim() };
 }
+
+/**
+ * Pravidlo „appka nič nedomýšľa“ pre výsledok AI: z navrhnutého názvu ostanú len slová, ktoré naozaj zazneli
+ * („dve mlieka“ → nie „Mlieko plnotučné“, ale „Mlieko“). Keď nezaznelo žiadne slovo názvu (napr. „plzeň“ →
+ * „Pilsner Urquell“), názov sa nechá – to je preklad značky, nie domýšľanie.
+ */
+export function keepSaidWords(name: string, said: string): string {
+  const heard = normalizeName(said).split(/[^a-z0-9]+/).filter(Boolean);
+  const stem = (w: string) => w.slice(0, Math.max(3, Math.min(w.length - 1, 5)));
+  const was = (w: string) => heard.some((h) => h === w || (w.length >= 4 && h.length >= 4 && h.startsWith(stem(w))));
+  const parts = name.split(/\s+/).filter(Boolean);
+  const words = parts.map((p) => normalizeName(p).replace(/[^a-z0-9]/g, ""));
+  const keep = parts.filter((_, i) => !words[i] || /^\d/.test(words[i]!) || words[i]!.length < 3 || was(words[i]!));
+  if (!parts.some((_, i) => words[i]!.length >= 3 && !/^\d/.test(words[i]!) && was(words[i]!))) return name;
+  const out = keep.join(" ").trim();
+  return out ? out.charAt(0).toUpperCase() + out.slice(1) : name;
+}

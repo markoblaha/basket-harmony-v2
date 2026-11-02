@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchStore, parseLocal, splitStore } from "./parse";
+import { keepSaidWords, matchStore, parseLocal, splitStore } from "./parse";
 
 const add = (text: string) => parseLocal(text).filter((o) => o.op === "add");
 
@@ -79,5 +79,16 @@ describe("splitStore", () => {
   it("neznámu predajňu len za „idem do“", () => {
     expect(splitStore("idem do Fresh", stores)).toEqual({ store: "Fresh", rest: "" });
     expect(splitStore("mlieko a maslo", stores)).toEqual({ store: null, rest: "mlieko a maslo" });
+  });
+});
+
+describe("keepSaidWords – AI nedomýšľa", () => {
+  it("nechá len slová, ktoré zazneli", () => {
+    expect(keepSaidWords("Mlieko plnotučné", "dve mlieka")).toBe("Mlieko");
+    expect(keepSaidWords("Mleté mäso zmiešané", "pol kila mletého mäsa")).toBe("Mleté mäso");
+    expect(keepSaidWords("Kyslá smotana", "kyslú smotanu")).toBe("Kyslá smotana");
+  });
+  it("preklad značky nechá", () => {
+    expect(keepSaidWords("Pilsner Urquell", "šesť plzní")).toBe("Pilsner Urquell");
   });
 });

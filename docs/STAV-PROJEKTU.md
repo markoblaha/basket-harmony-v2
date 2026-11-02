@@ -148,6 +148,15 @@ Starý nákupný režim a staré časti zoznamu zmazané (ShoppingMode, PlanList
 ListSheet, ListActionsSheet). Rozdiely od mockupu: prepínač „Zapísať ceny“ vo výsledku bločku nie je (appka ceny
 z bločku zapisuje vždy), tlačidlo je „Hotovo“ (bloček je už uložený). Sledovanie (Follow) sa nedalo preklikať –
 testovací účet je v domácnosti sám.
+**Fáza 5 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** hlasový režim (`VoiceSession.tsx`) má vzhľad a ovládanie z mockupu
+(`voicetalk.jsx`): hore „Do: <zoznam>“ (predvolene najbližší otvorený zoznam, ťuk → „Kam pridávať?“), položky padajú
+zhora s ikonou, cenou a viditeľnou opravou na 3 s (~~plzeň~~ → Pilsner Urquell, ~~2 ks~~ → 3 ks), nejasná položka
+s možnosťami, ťuk = úprava (rýchle množstvá, „Upravujem: …“, Zmazať), dole „Počúvam / Počujem / Pozastavené“, Písať,
+guľa (pauza), Hotovo → ak cieľ nie je jasný, „Kam pridať N položiek?“ (existujúci zoznam alebo nový: obchod, deň,
+kto ho uvidí – „Iba ja“ = súkromný). Engine ostal (tiché nahrávanie bez pípania, parse-voice, recepty hlasom, koncept
+v zariadení). Nové: názvy sa pri uložení riadia katalógom (plzeň → Pilsner Urquell) a z názvu od AI ostanú len slová,
+ktoré zazneli (`keepSaidWords` – „dve mlieka“ ≠ „Mlieko plnotučné“). Mikrofón v poli zoznamu otvorí hlas pre ten zoznam.
+Známe: pri veľmi rýchlych vetách za sebou (bez pauzy) sa môžu výsledky AI premiešať – pri bežnom diktovaní nie.
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

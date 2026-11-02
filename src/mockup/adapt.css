@@ -137,3 +137,11 @@ body.kb-typing .bhm-tabs {
 .bhm .sub-in {
   display: contents;
 }
+/* Hlasový režim: nad celou appkou (aj nad lištou), v stĺpci appky. */
+:root .bhm.bhm-full.bhm-voice {
+  z-index: 60;
+}
+:root .bhm.bhm-full > .vx {
+  max-width: 40rem;
+  margin: 0 auto;
+}

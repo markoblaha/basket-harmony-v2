@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { Check, ChevronDown, History, Keyboard, ListPlus, Mic, MicOff, Pause, SendHorizontal, X } from "lucide-react";
-import { StoreBadge, haptic } from "@/components/kit";
-import { cx } from "@/components/ui";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { haptic } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { useFlip } from "@/components/motion";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { useFrequentItems, useLists, useListStats } from "@/features/lists/api";
+import { useFrequentItems, useLists, useListStats, type ShoppingList } from "@/features/lists/api";
+import { useEstimator } from "@/features/lists/estimate";
+import { fmtQty } from "@/features/lists/ListParts";
+import { useTheme } from "@/theme/ThemeProvider";
+import { E, I, IB } from "@/mockup/ui";
+import { useKeyboardHeight } from "@/mockup/Sheet";
+import { Btn, StoreTile, eur, storeKeyOf } from "@/mockup/kit";
 import { addDays, dayLabel, isoDay } from "@/features/lists/dates";
 import { usePlanRecipes, useSaveRecipe } from "@/features/recipes/api";
 import { guessCategory, normalizeName } from "@/lib/categories";
@@ -24,22 +28,17 @@ import {
   type SaveResult,
   type VoicePlan,
 } from "./api";
-import { matchStore, parseLocal, splitStore, type VoiceOp } from "./parse";
+import { keepSaidWords, matchStore, parseLocal, splitStore, type VoiceOp } from "./parse";
+
+/** Názvy od AI zúžené na to, čo zaznelo (pravidlo „appka nič nedomýšľa“). */
+const asSaid = (ops: VoiceOp[], text: string): VoiceOp[] => (text ? ops.map((o) => (o.op === "add" ? { ...o, name: keepSaidWords(o.name, text) } : o)) : ops);
 import { applyOps, diff, findItem, reconcile, type Effect } from "./engine";
 import { recipeCommand, splitCook } from "./recipeVoice";
 import { useSpeech } from "./useSpeech";
 import { recorderSupported, useRecorder } from "./useRecorder";
-import { VoiceCard } from "./VoiceRow";
 import { PlanRow, RecipeCardView, cardItems, cardPlan, cardRows, toggled, useRecipeCards, type Card } from "./VoiceRecipe";
 
-const cap = (s: string) => (s ? s[0]!.toLocaleUpperCase("sk-SK") + s.slice(1) : s);
 
-/** Krok pri +1/−1 ako v prototype: gramy a ml po 100, kilá a litre po pol, inak kusy. */
-function stepOf(unit: string | null): number {
-  if (unit === "g" || unit === "ml") return 100;
-  if (unit === "kg" || unit === "l") return 0.5;
-  return 1;
-}
 
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const hasSpeech = () => {
@@ -75,13 +74,16 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   const vocabRef = useRef<string[]>([]);
   vocabRef.current = (frequent ?? []).map((f) => f.name);
   const lists = useLists(household.id).data ?? [];
-  const stats = useListStats(household.id).data;
   const save = useSaveVoiceList(household.id);
   const saveRecipe = useSaveRecipe(household.id);
   const planRecipes = usePlanRecipes(household.id);
   const cards = useRecipeCards(household.id);
   const toast = useToast();
   const today = isoDay(new Date());
+  const estimator = useEstimator(household.id);
+  const estRef = useRef(estimator);
+  estRef.current = estimator;
+  const g = useTheme().style === "glass";
 
   const [draft] = useState(() => loadDraft(household.id));
   const [restored, setRestored] = useState(!!draft);
@@ -91,11 +93,12 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   const [items, setItems] = useState<DraftItem[]>(draft?.items ?? []);
   const [plans, setPlans] = useState<VoicePlan[]>(draft?.recipes ?? []);
   const [flash, setFlash] = useState<Record<string, number>>({});
+  /** Viditeľná oprava na 3 s („~~plzeň~~ → Pilsner Urquell“, „~~1 ks~~ → 6 ks“). */
+  const [fixes, setFixes] = useState<Record<string, { from: string; to: string; at: number }>>({});
   const [selected, setSelected] = useState<string | null>(null);
-  const [discardArm, setDiscardArm] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
   const [typing, setTyping] = useState(false);
-  const [doneHint, setDoneHint] = useState(false);
+  const [, setDoneHint] = useState(false);
   // Mikrofón sa po otvorení zapne sám, ak to nastavenie (Viac → Nastavenia) nevypne.
   const [listening, setListening] = useState(() => getSetting("micAutostart"));
   const [said, setSaid] = useState("");
@@ -103,6 +106,8 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   /** Nahrávky na serveri, ktoré ešte nemajú výsledok – v zozname ich ukazuje karta „Spracúvam…“. */
   const [pendingAudio, setPendingAudio] = useState(0);
   const [busy, setBusy] = useState(false);
+  /** Nový zoznam „Iba ja“ (vybrané v „Kam pridávať?“). */
+  const [priv, setPriv] = useState(false);
   const [engine, setEngine] = useState<Engine>(firstEngine);
 
   const itemsRef = useRef(items);
@@ -120,7 +125,17 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   useFlip(cardsBox, { enter: false });
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const openLists = useMemo(() => lists.filter((l) => !l.completed_at), [lists]);
+  const openLists = useMemo(
+    () => lists.filter((l) => !l.completed_at).sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999")),
+    [lists],
+  );
+  // Predvolený cieľ ako v mockupe: najbližší otvorený zoznam (ak nič iné nie je zvolené ani rozdiktované).
+  const defaulted = useRef(!!(listId || draft?.targetListId || draft?.store));
+  useEffect(() => {
+    if (defaulted.current || !openLists.length) return;
+    defaulted.current = true;
+    if (!store) setTargetListId(openLists[0]!.id);
+  }, [openLists, store]);
   const target = targetListId ? (lists.find((l) => l.id === targetListId) ?? null) : null;
   const storeName = target ? target.name : store;
 
@@ -133,7 +148,25 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
 
   /** Nový stav zoznamu: zmenené karty znova „dopadnú“ (ako v prototype), nové pribudnú hore. */
   const present = useCallback((next: DraftItem[]) => {
-    const d = diff(itemsRef.current, next);
+    const before = itemsRef.current;
+    const d = diff(before, next);
+    const now = Date.now();
+    const fx: Record<string, { from: string; to: string; at: number }> = {};
+    const label = (c: DraftItem) => estRef.current.resolve(c.name)?.label ?? c.name;
+    for (const id of d.changed) {
+      const o = before.find((x) => x.id === id)!;
+      const n = next.find((x) => x.id === id)!;
+      if (label(o) !== label(n)) fx[id] = { from: label(o), to: label(n), at: now };
+      else if (o.quantity !== n.quantity || o.unit !== n.unit) fx[id] = { from: fmtQty(o.quantity, o.unit), to: fmtQty(n.quantity, n.unit), at: now };
+    }
+    for (const id of d.added) {
+      const n = next.find((x) => x.id === id)!;
+      if (normalizeName(label(n)) !== normalizeName(n.name)) fx[id] = { from: n.name.toLowerCase(), to: label(n), at: now };
+    }
+    if (Object.keys(fx).length) {
+      setFixes((f) => ({ ...f, ...fx }));
+      timers.current.push(setTimeout(() => setFixes((f) => ({ ...f })), 3100));
+    }
     itemsRef.current = next;
     setItems(next);
     if (d.changed.length) {
@@ -169,18 +202,6 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
     [present, toast],
   );
 
-  const delta = useCallback(
-    (id: string, d: 1 | -1) => {
-      const c = itemsRef.current.find((x) => x.id === id);
-      if (!c) return;
-      const step = stepOf(c.unit);
-      const q = c.quantity ?? 1;
-      if (d < 0 && q <= step) return removeCard(id);
-      haptic(d > 0 ? 12 : 8);
-      patch(id, { quantity: Math.round((q + d * step) * 1000) / 1000, unit: c.unit ?? "ks" });
-    },
-    [patch, removeCard],
-  );
 
   const showRemoved = useCallback(
     (eff: Effect) => {
@@ -271,7 +292,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
 
   // ---------------------------------------------------------------- uloženie
 
-  async function finish(o: { store?: string; listId?: string | null } = {}) {
+  async function finish(o: { store?: string; listId?: string | null; date?: string; isPrivate?: boolean } = {}) {
     const all = itemsRef.current;
     if (!all.length || busy) return;
     const listId = o.listId !== undefined ? o.listId : (target?.id ?? null);
@@ -288,7 +309,12 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         plansRef.current = ps;
         setPlans(ps);
       }
-      const r = await save.mutateAsync({ store: name, listId, date, items: all });
+      // Názvy podľa pravidla „appka nič nedomýšľa“ (plzeň → Pilsner Urquell), kategória z katalógu.
+      const named = all.map((c) => {
+        const r = estRef.current.resolve(c.name);
+        return r ? { ...c, name: r.label, categoryId: r.category } : c;
+      });
+      const r = await save.mutateAsync({ store: name, listId, date: o.date ?? date, items: named, isPrivate: o.isPrivate ?? priv });
       const recipes = ps.filter((p) => p.key).map((p) => ({ key: p.key!, name: p.name, portions: p.portions }));
       if (recipes.length) {
         // Položky už sú v zozname; ak by sa nepodarilo zapísať plán receptu, povieme to, ale zoznam ostane.
@@ -377,7 +403,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         if (ai.store && !targetListId) setStore((s) => s || ai.store!);
         cards.confirmCook(mine, ai.cook);
         if (!ai.ops.length && local.understood) return;
-        const r = reconcile(itemsRef.current, local, ai.ops);
+        const r = reconcile(itemsRef.current, local, asSaid(ai.ops, sp.rest));
         present(r.items);
         if (r.done) setDoneHint(true);
       });
@@ -403,7 +429,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         if (!res.cook.length && !res.store && res.transcript) toast.show(t("voice.notUnderstood"));
         return;
       }
-      const eff = applyOps(itemsRef.current, res.ops);
+      const eff = applyOps(itemsRef.current, asSaid(res.ops, res.transcript));
       if (eff.done) setDoneHint(true);
       if (eff.understood) {
         present(eff.items);
@@ -457,7 +483,6 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   }, [engine, speech.error]);
 
   const blocked = engine === "none" || (engine === "rec" && !!rec.error) || (engine === "speech" && speech.error === "denied");
-  const unsupported = engine === "none";
 
   // Mikrofón počúva, kým nie je pozastavený (a kým sa neukladá).
   useEffect(() => {
@@ -494,24 +519,13 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
     setStore("");
     setTargetListId(null);
     setDate(today);
+    setPriv(false);
     setRestored(false);
     setDoneHint(false);
     setSaid("");
   }
 
-  function discard() {
-    if (!discardArm) {
-      haptic(16);
-      setDiscardArm(true);
-      timers.current.push(setTimeout(() => setDiscardArm(false), 3000));
-      return;
-    }
-    saveDraft(household.id, null);
-    speech.stop();
-    rec.stop();
-    onClose();
-    toast.show(t("voice.discarded"));
-  }
+
 
   useEffect(() => {
     const overflow = document.body.style.overflow;
@@ -528,12 +542,10 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
     };
   });
 
-  // ---------------------------------------------------------------- zobrazenie
+  // ---------------------------------------------------------------- zobrazenie (mockup voicetalk.jsx)
 
   const n = items.length;
   const unsureCount = items.filter((c) => c.status === "unclear").length;
-  const days = [0, 1, 2, 4].map((d) => isoDay(addDays(new Date(), d)));
-  const tileStores = store && !stores.some((s) => normalizeName(s) === normalizeName(store)) ? [...stores, store] : stores;
   const active = activeCard();
   const openCards = cards.cards.filter((c) => c.status !== "added");
   const orphanPlans = plans.filter((p) => !cards.cards.some((c) => c.id === p.card && c.status !== "added"));
@@ -544,276 +556,365 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   const live = engine === "speech" ? speech.interim : "";
   // iPhone mikrofón zapol, ale zvuk appky pustí až po ťuknutí – ťuk kamkoľvek ho rozbehne.
   const stalled = engine === "rec" && listening && rec.stalled;
+  const kb = useKeyboardHeight(true);
+  const shown = (c: DraftItem) => estimator.resolve(c.name)?.label ?? c.name;
+  const tStore = storeKeyOf(target ? target.name : store);
+  const tLabel = target ? target.name : store ? `${store} · ${dayLabel(date)}` : null;
+  const selItem = selected ? items.find((c) => c.id === selected) : undefined;
+  const now = Date.now();
+  const [txt, setTxt] = useState("");
+  const inp = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (typing) inp.current?.focus();
+  }, [typing]);
+  const send = (e: FormEvent) => {
+    e.preventDefault();
+    const v = txt.trim();
+    if (!v) return;
+    setTxt("");
+    setSaid(v);
+    setRestored(false);
+    apply(v);
+  };
+  const micOn = listening && !blocked;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("voice.open")}
-      className="v-root fixed inset-0 z-50 bg-bg pt-safe"
-      onClickCapture={() => {
-        if (stalled) rec.wake();
-      }}
-    >
-      <div className="relative mx-auto flex h-full w-full max-w-2xl flex-col">
-        <div className="stack v-screen min-h-0 flex-1">
-          <div className="v-top">
-            <button type="button" className="ibtn" onClick={close} aria-label={t("voice.closeKeep")}>
-              <X size={22} />
+    <div className="bhm bhm-full bhm-voice" style={{ "--kb": `${kb}px` } as CSSProperties}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("voice.open")}
+        className={`vx${g ? " g2" : ""}`}
+        onClickCapture={() => {
+          if (stalled) rec.wake();
+        }}
+      >
+        {g && (
+          <div className="bgl">
+            <div className="bgb pic-kari_p" />
+            <div className="veil" />
+            <div className="veil" />
+          </div>
+        )}
+        <div className="vx-top">
+          <IB n="x" cls="vx-ib" label={t("voice.closeKeep")} onClick={close} />
+          <button type="button" className="vx-target" onClick={() => setModal("store")} aria-label={t("vx.whereAria")}>
+            {t("vx.to")} {tLabel ? <b>{tLabel}</b> : <em>{t("vx.newList")}</em>}
+            <I n="caret-down" w="bold" />
+          </button>
+          <span className="ibs" />
+        </div>
+        {restored && n > 0 && (
+          <div className="vx-rest">
+            <I n="arrow-counter-clockwise" w="bold" />
+            <span className="grow">{t("vx.restored", { n })}</span>
+            <button type="button" onClick={reset}>
+              {t("voice.startOver")}
             </button>
-            {storeName ? (
-              <button
-                type="button"
-                className="grow stack center"
-                onClick={() => !target && setModal("store")}
-                style={{ minHeight: 44 }}
-                aria-label={target ? undefined : t("voice.changeStoreAria")}
-              >
-                <span className="row g-6 t-h">
-                  <StoreBadge name={storeName} size="sm" />
-                  {storeName}
-                  {!target && <ChevronDown size={16} className="t-3" />}
-                </span>
-                <span className="t-xs t-2">{target ? t("voice.addingToExisting") : dayLabel(date)}</span>
+          </div>
+        )}
+        <div
+          className="vx-list"
+          ref={cardsBox}
+          aria-live="polite"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelected(null);
+          }}
+        >
+          {empty ? (
+            <div className="vx-empty">
+              <b>{t("vx.emptyT")}</b>
+              <span>{t("vx.emptyS")}</span>
+              <div className="vx-ex">
+                {[t("vx.ex1"), t("vx.ex2"), t("vx.ex3")].map((x) => (
+                  <button
+                    type="button"
+                    key={x}
+                    onClick={() => {
+                      setSaid(x);
+                      apply(x);
+                    }}
+                  >
+                    {x}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              {n > 0 && <div className="vx-cnt">{t("vx.cnt", { items: tn("li.items", n) })}</div>}
+              {pendingAudio > 0 && (
+                <div className="vxi" role="status">
+                  <span className="th">
+                    <span className="think-l">
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  </span>
+                  <div className="grow">
+                    <b>{tn("voice.pending", pendingAudio)}</b>
+                    <small>{t("voice.pendingSub")}</small>
+                  </div>
+                </div>
+              )}
+              {openCards.map((c) => (
+                <RecipeCardView
+                  key={c.id}
+                  card={c}
+                  active={c.id === active?.id}
+                  onPick={(i) => cards.pick(c.id, i)}
+                  onPortions={(p) => cards.update(c.id, (x) => ({ ...x, portions: p }))}
+                  onToggle={(key) => cards.update(c.id, (x) => ({ ...x, off: toggled(x, key) }))}
+                  onAdd={() => addRecipe(c)}
+                  onClose={() => dropRecipe(c.id)}
+                  onRetry={() => cards.retry(c.id)}
+                  onRetryDetail={(o) => cards.retryDetail(c.id, o)}
+                />
+              ))}
+              {orphanPlans.map((p) => (
+                <PlanRow
+                  key={p.card}
+                  plan={p}
+                  count={items.filter((i) => i.recipeCard === p.card).length}
+                  onEdit={cards.cards.some((c) => c.id === p.card) ? () => editRecipe(p.card) : undefined}
+                  onRemove={() => dropRecipe(p.card)}
+                />
+              ))}
+              {items.map((c) => {
+                const name = shown(c);
+                const e = estimator.est({ name, quantity: c.quantity, unit: c.unit }, tStore);
+                const unsure = c.status === "unclear" && c.suggestions.length > 0;
+                const fx = fixes[c.id] && now - fixes[c.id]!.at < 3000 ? fixes[c.id] : null;
+                const bump = flash[c.id] ?? 0;
+                return (
+                  <div
+                    key={c.id}
+                    role="button"
+                    tabIndex={0}
+                    className={`vxi${selected === c.id ? " sel" : ""}${unsure ? " unsure" : ""}`}
+                    style={bump ? { animation: `${bump % 2 ? "mk-vxbumpA" : "mk-vxbumpB"} .55s cubic-bezier(.3,1.5,.5,1)` } : undefined}
+                    onClick={() => setSelected((x) => (x === c.id ? null : c.id))}
+                    onKeyDown={(ev) => ev.key === "Enter" && setSelected((x) => (x === c.id ? null : c.id))}
+                  >
+                    <span className="th">
+                      <E k={estimator.emoji(name, c.categoryId)} />
+                    </span>
+                    <div className="grow">
+                      <b>{unsure ? t("vx.unsure", { name }) : name}</b>
+                      {unsure ? (
+                        <div className="vx-opts">
+                          {c.suggestions.map((sg) => (
+                            <button
+                              type="button"
+                              key={sg}
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                patch(c.id, { name: sg, categoryId: guessCategory(sg), status: "ok", suggestions: [] });
+                                haptic(10);
+                              }}
+                            >
+                              {sg}
+                            </button>
+                          ))}
+                        </div>
+                      ) : fx ? (
+                        <small key={fx.at} className="vx-fix">
+                          <s>{fx.from}</s> → {fx.to}
+                        </small>
+                      ) : e ? (
+                        <small>~{eur(e.v)}</small>
+                      ) : null}
+                    </div>
+                    <span className="q">{fmtQty(c.quantity, c.unit)}</span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+        <div className="vx-bot">
+          {selItem && (
+            <div className="vx-qq">
+              {(selItem.unit === "kg" ? [0.25, 0.5, 1, 2] : selItem.unit === "l" ? [0.5, 1, 2, 3] : [1, 2, 3, 6]).map((q) => (
+                <button
+                  type="button"
+                  key={q}
+                  className={Math.abs((selItem.quantity ?? 1) - q) < 0.001 ? "on" : ""}
+                  onClick={() => {
+                    patch(selItem.id, { quantity: q, unit: selItem.unit ?? "ks", status: "ok" });
+                    setSelected(null);
+                  }}
+                >
+                  {fmtQty(q, selItem.unit ?? "ks")}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className={`vx-heard${selItem ? " edit" : ""}`} aria-live="polite">
+            <small>
+              {selItem
+                ? t("vx.editing", { name: shown(selItem) })
+                : live || hearing
+                  ? t("vx.hearing")
+                  : refining > 0
+                    ? t("vx.thinking")
+                    : micOn
+                      ? t("vx.listening")
+                      : t("vx.paused")}
+            </small>
+            {blocked ? (
+              <p className="vx-note">
+                <I n="warning-circle" />
+                {engine === "none" ? t("voice.unsupportedText") : isIOS() ? t("voice.blockedTextIos") : t("voice.blockedText")}
+              </p>
+            ) : stalled ? (
+              <span className="dim">{t("voice.tapToStart")}</span>
+            ) : live ? (
+              <span>
+                {live}
+                <i>…</i>
+              </span>
+            ) : selItem ? (
+              <span className="dim">{t("vx.editHint")}</span>
+            ) : hearing || (micOn && !said) ? (
+              <span className="wave">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
+            ) : said ? (
+              <span>{said}</span>
+            ) : (
+              <span className="dim">{t("vx.pausedHint")}</span>
+            )}
+          </div>
+          {engine === "rec" && import.meta.env.MODE === "staging" && <MicDiag diag={rec.diag} />}
+          {typing && (
+            <form className="vx-kbd" onSubmit={send}>
+              <input
+                ref={inp}
+                value={txt}
+                onChange={(e) => setTxt(e.target.value)}
+                placeholder={selItem ? t("vx.kbdPhEdit") : t("vx.kbdPh")}
+                autoComplete="off"
+                enterKeyHint="send"
+                maxLength={300}
+                aria-label={t("vx.kbdAria")}
+              />
+              <button type="submit" disabled={!txt.trim()} aria-label={t("vx.add")}>
+                <I n="arrow-up" w="bold" />
+              </button>
+            </form>
+          )}
+          <div className="vx-ctrl">
+            {selItem ? (
+              <button type="button" className="vx-side" onClick={() => setSelected(null)}>
+                {t("vx.cancelEdit")}
               </button>
             ) : (
-              <span className="grow stack center" style={{ minHeight: 44 }}>
-                <span className="t-h">{t("voice.open")}</span>
-                <span className="t-xs t-2">{t("voice.storeLater")}</span>
-              </span>
+              <button type="button" className={`vx-side${typing ? " on" : ""}`} onClick={() => setTyping((x) => !x)}>
+                <I n="keyboard" />
+                {t("vx.type")}
+              </button>
             )}
             <button
               type="button"
-              className={cx("btn btn-sm", discardArm ? "btn-danger" : "btn-ghost")}
-              onClick={discard}
-              style={{ minWidth: 76, visibility: empty ? "hidden" : undefined }}
-            >
-              {discardArm ? t("voice.discardConfirm") : t("voice.discard")}
-            </button>
-          </div>
-          {restored && n > 0 && (
-            <div className="v-restored row g-8 anim-pop">
-              <History size={16} />
-              <span className="grow t-sm">{tn("voice.restored", n)}</span>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={reset}>
-                {t("voice.startOver")}
+              className={`vx-orb${micOn ? " on" : ""}${selItem ? " edit" : ""}`}
+              disabled={blocked}
+              onClick={() => {
+                if (blocked || stalled) return;
+                haptic(8);
+                setListening((l) => !l);
+              }}
+              aria-label={listening ? t("vx.pause") : t("vx.listen")}
+            />
+            {selItem ? (
+              <button type="button" className="vx-side dng" onClick={() => removeCard(selItem.id)}>
+                <I n="trash" />
+                {t("vx.del")}
               </button>
-            </div>
-          )}
-          {n > 0 && (
-            <div className="row between px" style={{ paddingBottom: 6 }}>
-              <span className="t-sm t-2 fw-6 num">{tn("shop.itemCount", n)}</span>
-              <span className="t-xs t-3">{t("voice.gestureHint")}</span>
-            </div>
-          )}
-          <div
-            className="scroll"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setSelected(null);
-            }}
-          >
-            {empty ? (
-              <div className="stack center g-8" style={{ padding: "48px 32px", textAlign: "center" }}>
-                <span className="t-title">{t("voice.emptyHint")}</span>
-                <span className="t-sm t-2">{t("voice.emptyExample2")}</span>
-              </div>
             ) : (
-              <div ref={cardsBox} className="v-cards" aria-live="polite">
-                {pendingAudio > 0 && <PendingCard count={pendingAudio} />}
-                {openCards.map((c) => (
-                  <RecipeCardView
-                    key={c.id}
-                    card={c}
-                    active={c.id === active?.id}
-                    onPick={(i) => cards.pick(c.id, i)}
-                    onPortions={(p) => cards.update(c.id, (x) => ({ ...x, portions: p }))}
-                    onToggle={(key) => cards.update(c.id, (x) => ({ ...x, off: toggled(x, key) }))}
-                    onAdd={() => addRecipe(c)}
-                    onClose={() => dropRecipe(c.id)}
-                    onRetry={() => cards.retry(c.id)}
-                    onRetryDetail={(o) => cards.retryDetail(c.id, o)}
-                  />
-                ))}
-                {orphanPlans.map((p) => (
-                  <PlanRow
-                    key={p.card}
-                    plan={p}
-                    count={items.filter((i) => i.recipeCard === p.card).length}
-                    onEdit={cards.cards.some((c) => c.id === p.card) ? () => editRecipe(p.card) : undefined}
-                    onRemove={() => dropRecipe(p.card)}
-                  />
-                ))}
-                {items.map((c) => (
-                  <VoiceCard
-                    key={`${c.id}-${flash[c.id] ?? 0}`}
-                    item={c}
-                    selected={selected === c.id}
-                    onSelect={() => setSelected((s) => (s === c.id ? null : c.id))}
-                    onDelta={(d) => delta(c.id, d)}
-                    onRemove={() => removeCard(c.id)}
-                    onSetQty={(q, u) => patch(c.id, { quantity: q, unit: u, status: "ok" })}
-                    onRename={(name) => {
-                      const v = name.trim();
-                      if (!v || v === c.name) return;
-                      patch(c.id, { name: cap(v), categoryId: guessCategory(v), status: c.status === "unclear" ? "ok" : c.status, suggestions: [] });
-                    }}
-                    onResolve={(name) => {
-                      patch(c.id, { name, categoryId: guessCategory(name), status: "ok", suggestions: [] });
-                      haptic(10);
-                    }}
-                  />
-                ))}
-              </div>
+              <button type="button" className="vx-done" onClick={() => create()} disabled={!n || busy}>
+                {busy ? t("voice.saving") : t("vx.done")}
+              </button>
             )}
           </div>
         </div>
 
-        {engine === "rec" && import.meta.env.MODE === "staging" && <MicDiag diag={rec.diag} />}
-        <AssistantPanel
-          blocked={blocked}
-          unsupported={unsupported}
-          ios={isIOS()}
-          listening={listening}
-          hearing={hearing}
-          stalled={stalled}
-          live={live}
-          typing={typing}
-          said={said}
-          thinking={refining > 0 && !live}
-          placeholder={selected ? t("voice.ph.edit") : active ? t("voice.ph.recipe") : t("voice.ph.dictate")}
-          onMic={() => {
-            if (blocked || stalled) return;
-            haptic(8);
-            setListening((l) => !l);
-            setTyping(false);
-          }}
-          onTypingToggle={() => setTyping((x) => !x)}
-          onTyped={(text) => {
-            setSaid(text);
-            apply(text);
-          }}
-          action={
-            <button type="button" className={cx("btn btn-ink v-create", doneHint && "pulse-strong")} disabled={!n || busy} onClick={() => create()}>
-              <Check size={18} />
-              {busy ? t("voice.saving") : `${t("voice.done")} (${n})`}
-            </button>
-          }
-        />
-
-        {modal && (
-          <div className="v-modal-wrap" onClick={() => setModal(null)}>
-            <div className="v-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-              {modal === "recipes" && (
+        {(modal === "where" || modal === "store") && (
+          <WherePanel
+            done={modal === "where"}
+            n={n}
+            lists={openLists}
+            stores={stores}
+            targetListId={targetListId}
+            store={store}
+            date={date}
+            priv={priv}
+            householdName={household.name}
+            busy={busy}
+            onClose={() => setModal(null)}
+            onPick={(c) => {
+              setModal(null);
+              if (c.listId !== null) {
+                setTargetListId(c.listId);
+              } else {
+                setTargetListId(null);
+                setStore(c.store);
+                setDate(c.date);
+                setPriv(c.isPrivate);
+              }
+            }}
+            onCommit={(c) => {
+              if (c.listId !== null) void finish({ listId: c.listId });
+              else {
+                setTargetListId(null);
+                setStore(c.store);
+                setDate(c.date);
+                void finish({ store: c.store, listId: null, date: c.date, isPrivate: c.isPrivate });
+              }
+            }}
+          />
+        )}
+        {(modal === "recipes" || modal === "unsure") && (
+          <div className="vx-panel" role="dialog" aria-modal="true">
+            <div className="vx-scrim" onClick={() => setModal(null)} />
+            <div className="vx-sheet">
+              <span className="grab" onClick={() => setModal(null)} />
+              {modal === "recipes" ? (
                 <>
-                  <span className="t-title">{t("voice.rc.pendingTitle")}</span>
-                  <span className="t-sm t-2">{t("voice.rc.pendingText", { names: pendingRecipes.map((c) => c.options[c.sel!]?.name ?? c.query).join(", ") })}</span>
-                  <div className="row g-8">
-                    <button type="button" className="btn btn-soft grow" onClick={() => create("recipes")}>
-                      {t("voice.rc.withoutThem")}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ink grow"
-                      onClick={() => {
-                        for (const c of pendingRecipes) addRecipe(c);
-                        setModal(null);
-                        timers.current.push(setTimeout(() => createRef.current("recipes")));
-                      }}
-                    >
-                      {t("voice.rc.addThem")}
-                    </button>
-                  </div>
+                  <h2>{t("voice.rc.pendingTitle")}</h2>
+                  <p className="meta">{t("voice.rc.pendingText", { names: pendingRecipes.map((c) => c.options[c.sel!]?.name ?? c.query).join(", ") })}</p>
+                  <Btn cls="pri full big" onClick={() => {
+                    for (const c of pendingRecipes) addRecipe(c);
+                    setModal(null);
+                    timers.current.push(setTimeout(() => createRef.current("recipes")));
+                  }}>
+                    {t("voice.rc.addThem")}
+                  </Btn>
+                  <Btn cls="soft full" onClick={() => create("recipes")}>
+                    {t("voice.rc.withoutThem")}
+                  </Btn>
                 </>
-              )}
-              {modal === "unsure" && (
+              ) : (
                 <>
-                  <span className="t-title">{tn("voice.unsureTitle", unsureCount)}</span>
-                  <span className="t-sm t-2">{t("voice.unsureText")}</span>
-                  <div className="row g-8">
-                    <button
-                      type="button"
-                      className="btn btn-soft grow"
-                      onClick={() => {
-                        setModal(null);
-                        setSelected(items.find((c) => c.status === "unclear")?.id ?? null);
-                      }}
-                    >
-                      {t("voice.refine")}
-                    </button>
-                    <button type="button" className="btn btn-ink grow" onClick={() => create("unsure")}>
-                      {t("voice.createAnyway")}
-                    </button>
-                  </div>
-                </>
-              )}
-              {modal === "where" && (
-                <>
-                  <div className="stack g-4">
-                    <span className="t-title">{t("voice.whereTitle")}</span>
-                    <span className="t-sm t-2">{t("voice.whereText")}</span>
-                  </div>
-                  <div className="row g-8 wrap">
-                    {days.map((d) => (
-                      <button key={d} type="button" className={cx("chip", date === d && "on")} onClick={() => setDate(d)}>
-                        {dayLabel(d)}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="v-store-tiles">
-                    {tileStores.map((s) => (
-                      <button key={s} type="button" className="v-store-tile sm" disabled={busy} onClick={() => void finish({ store: s })}>
-                        <StoreBadge name={s} />
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                  {openLists.length > 0 && (
-                    <div className="stack g-8">
-                      <span className="section-title">{t("voice.orExisting")}</span>
-                      <div className="cells">
-                        {openLists.slice(0, 4).map((l) => (
-                          <button key={l.id} type="button" className="cell" disabled={busy} onClick={() => void finish({ listId: l.id })}>
-                            <span className="cat-ic">
-                              <ListPlus size={18} />
-                            </span>
-                            <span className="grow stack g-2">
-                              <span className="t-body fw-5">{t("voice.addTo", { name: l.name })}</span>
-                              <span className="t-sm t-2">
-                                {l.planned_for ? dayLabel(l.planned_for) : t("trip.noDay")} · {tn("shop.itemCount", stats?.get(l.id)?.open ?? 0)}
-                              </span>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <button type="button" className="btn btn-soft btn-block" disabled={busy} onClick={() => void finish({ store: "" })}>
-                    {t("voice.noStore")}
-                  </button>
-                </>
-              )}
-              {modal === "store" && (
-                <>
-                  <span className="t-title">{t("voice.storeAndDay")}</span>
-                  <div className="v-store-tiles">
-                    {tileStores.map((s) => (
-                      <button key={s} type="button" className={cx("v-store-tile sm", store === s && "on")} onClick={() => setStore(s)}>
-                        <StoreBadge name={s} />
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                  <span className="field-label">{t("voice.when")}</span>
-                  <div className="row g-8 wrap">
-                    {days.map((d) => (
-                      <button key={d} type="button" className={cx("chip lg", date === d && "on")} onClick={() => setDate(d)}>
-                        {dayLabel(d)}
-                      </button>
-                    ))}
-                  </div>
-                  <button type="button" className="btn btn-ink btn-block" onClick={() => setModal(null)}>
-                    {t("voice.done")}
-                  </button>
+                  <h2>{tn("voice.unsureTitle", unsureCount)}</h2>
+                  <p className="meta">{t("voice.unsureText")}</p>
+                  <Btn cls="pri full big" onClick={() => create("unsure")}>
+                    {t("voice.createAnyway")}
+                  </Btn>
+                  <Btn
+                    cls="soft full"
+                    onClick={() => {
+                      setModal(null);
+                      setSelected(items.find((c) => c.status === "unclear")?.id ?? null);
+                    }}
+                  >
+                    {t("voice.refine")}
+                  </Btn>
                 </>
               )}
             </div>
@@ -824,32 +925,107 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   );
 }
 
-/** Zvlnená animácia hlasu (stĺpiky ako v prototype). */
-function Wave({ active, height = 22, bars = 7 }: { active: boolean; height?: number; bars?: number }) {
-  return (
-    <span className="row g-4" style={{ height }} aria-hidden>
-      {Array.from({ length: bars }).map((_, i) => (
-        <span key={i} className={cx("v-bar", active && "on")} style={{ animationDelay: `${i * 0.12}s` }} />
-      ))}
-    </span>
-  );
-}
+type Choice = { listId: string } | { listId: null; store: string; date: string; isPrivate: boolean };
 
-/** Živý prepis – posledné slová výraznejšie, počas reči trojbodka. */
-function Transcript({ text, speaking, placeholder }: { text: string; speaking: boolean; placeholder: string }) {
-  const words = text.split(/\s+/).filter(Boolean);
-  if (!words.length) return <p className="v-transcript t-3">{speaking ? t("voice.hearing") : placeholder}</p>;
+/** „Kam pridať?“ – existujúce zoznamy navrchu, pod nimi nový zoznam (obchod, deň, kto ho uvidí). */
+function WherePanel({
+  done,
+  n,
+  lists,
+  stores,
+  targetListId,
+  store,
+  date,
+  priv,
+  householdName,
+  busy,
+  onClose,
+  onPick,
+  onCommit,
+}: {
+  done: boolean;
+  n: number;
+  lists: ShoppingList[];
+  stores: string[];
+  targetListId: string | null;
+  store: string;
+  date: string;
+  priv: boolean;
+  householdName: string;
+  busy: boolean;
+  onClose: () => void;
+  onPick: (c: Choice) => void;
+  onCommit: (c: Choice) => void;
+}) {
+  const stats = useListStats(lists[0]?.household_id ?? "").data;
+  const days = [0, 1, 2].map((d) => isoDay(addDays(new Date(), d)));
+  const [c, setC] = useState<Choice>(() =>
+    targetListId ? { listId: targetListId } : store ? { listId: null, store, date, isPrivate: priv } : lists[0] ? { listId: lists[0].id } : { listId: null, store: "", date: days[1]!, isPrivate: false },
+  );
+  const isNew = c.listId === null;
+  const nc = (p: Partial<{ store: string; date: string; isPrivate: boolean }>) =>
+    setC((x) => ({ listId: null, store: x.listId === null ? x.store : "", date: x.listId === null ? x.date : days[1]!, isPrivate: x.listId === null ? x.isPrivate : false, ...p }));
+  const L = !isNew ? lists.find((l) => l.id === c.listId) : undefined;
+  const tiles = (store && !stores.includes(store) ? [store, ...stores] : stores).slice(0, 6);
+  const name = c.listId === null ? c.store || t("voice.defaultListName") : (L?.name ?? "");
+  const label = !done ? t("vx.sheetDone") : isNew ? t("vx.createAdd", { name }) : t("vx.addTo", { name });
+  const dayNames = [t("date.today"), t("date.tomorrow"), t("nl.dayAfter")].map((x) => x.charAt(0).toUpperCase() + x.slice(1));
   return (
-    <p className="v-transcript" aria-live="polite">
-      „
-      {words.map((w, i) => (
-        <span key={i} style={{ opacity: i >= words.length - 3 ? 1 : 0.55 }}>
-          {w}
-          {i < words.length - 1 ? " " : ""}
-        </span>
-      ))}
-      {speaking ? "…" : "“"}
-    </p>
+    <div className="vx-panel" role="dialog" aria-label={t("vx.wherePick")}>
+      <div className="vx-scrim" onClick={onClose} />
+      <div className="vx-sheet">
+        <span className="grab" onClick={onClose} />
+        <h2>{done ? tn("vx.whereN", n) : t("vx.wherePick")}</h2>
+        {lists.length > 0 && (
+          <>
+            <span className="k">{t("vx.existing")}</span>
+            <div className="vx-lists">
+              {lists.map((l) => (
+                <button type="button" key={l.id} className={`vx-opt${!isNew && c.listId === l.id ? " on" : ""}`} onClick={() => setC({ listId: l.id })}>
+                  <span className="grow">
+                    <b>{l.name}</b>
+                    <small>
+                      {l.planned_for ? dayLabel(l.planned_for) : t("trip.noDay")} · {tn("li.items", stats?.get(l.id)?.open ?? 0)}
+                    </small>
+                  </span>
+                  {!isNew && c.listId === l.id && <I n="check-circle" />}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        <span className="k">{t("vx.orNew")}</span>
+        <div className={`vx-new${isNew ? " on" : ""}`}>
+          <div className="vx-stores">
+            {tiles.map((s) => (
+              <button type="button" key={s} className={c.listId === null && c.store === s ? "on" : ""} onClick={() => nc({ store: c.listId === null && c.store === s ? "" : s })}>
+                <StoreTile k={storeKeyOf(s)} n={s} s={22} />
+                {s}
+              </button>
+            ))}
+          </div>
+          <div className="vx-days">
+            {days.map((d, i) => (
+              <button type="button" key={d} className={c.listId === null && c.date === d ? "on" : ""} onClick={() => nc({ date: d })}>
+                {dayNames[i]}
+              </button>
+            ))}
+          </div>
+          <div className="vx-days">
+            <span className="vx-who">{t("vx.who")}</span>
+            <button type="button" className={c.listId === null && !c.isPrivate ? "on" : ""} onClick={() => nc({ isPrivate: false })}>
+              {householdName}
+            </button>
+            <button type="button" className={c.listId === null && c.isPrivate ? "on" : ""} onClick={() => nc({ isPrivate: true })}>
+              {t("nl.onlyMe")}
+            </button>
+          </div>
+        </div>
+        <Btn cls="pri full big" disabled={busy || (!isNew && !L)} onClick={() => (done ? onCommit(c) : onPick(c))}>
+          {label}
+        </Btn>
+      </div>
+    </div>
   );
 }
 
@@ -860,146 +1036,5 @@ function MicDiag({ diag }: { diag: { current: string } }) {
     const id = setInterval(() => setText(diag.current), 400);
     return () => clearInterval(id);
   }, [diag]);
-  return <div className="v-diag t-xs t-3 num">{text || "…"}</div>;
-}
-
-/** Kým server spracúva nadiktovanú vetu: jasné „pracujem“ na mieste, kam položky dopadnú. */
-function PendingCard({ count }: { count: number }) {
-  return (
-    <div className="v-card v-pending anim-drop" role="status">
-      <div className="row g-12">
-        <span className="cat-ic v-dots" aria-hidden>
-          <i />
-          <i />
-          <i />
-        </span>
-        <div className="grow stack g-2">
-          <span className="t-h">{tn("voice.pending", count)}</span>
-          <span className="t-xs t-2">{t("voice.pendingSub")}</span>
-        </div>
-      </div>
-      <span className="skel v-pending-bar" aria-hidden />
-    </div>
-  );
-}
-
-/** Spodný panel asistenta: prepis, (písanie), mikrofón s vlnou, klávesnica a hlavná akcia. */
-function AssistantPanel({
-  blocked,
-  unsupported,
-  ios,
-  listening,
-  hearing,
-  stalled,
-  live,
-  typing,
-  said,
-  thinking,
-  placeholder,
-  action,
-  onMic,
-  onTypingToggle,
-  onTyped,
-}: {
-  blocked: boolean;
-  unsupported: boolean;
-  ios: boolean;
-  listening: boolean;
-  hearing: boolean;
-  stalled: boolean;
-  live: string;
-  typing: boolean;
-  said: string;
-  thinking: boolean;
-  placeholder: string;
-  action: ReactNode;
-  onMic: () => void;
-  onTypingToggle: () => void;
-  onTyped: (text: string) => void;
-}) {
-  const [text, setText] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const active = listening && !blocked;
-  const status = blocked
-    ? unsupported
-      ? t("voice.st.unsupported")
-      : t("voice.st.blocked")
-    : stalled
-      ? t("voice.st.tap")
-      : hearing
-      ? t("voice.st.listening")
-      : thinking
-        ? t("voice.st.understanding")
-        : listening
-          ? t("voice.st.listening")
-          : t("voice.st.paused");
-
-  useEffect(() => {
-    if (typing) inputRef.current?.focus();
-  }, [typing]);
-
-  function send(e: FormEvent) {
-    e.preventDefault();
-    const v = text.trim();
-    if (!v) return;
-    setText("");
-    onTyped(v);
-  }
-
-  return (
-    <div className="v-panel">
-      {blocked ? (
-        <div className="v-blocked stack g-6">
-          <span className="t-h">{unsupported ? t("voice.unsupportedTitle") : t("voice.blockedTitle")}</span>
-          <span className="t-sm t-2">{unsupported ? t("voice.unsupportedText") : ios ? t("voice.blockedTextIos") : t("voice.blockedText")}</span>
-          {!typing && (
-            <button type="button" className="btn btn-soft btn-sm" style={{ alignSelf: "flex-start" }} onClick={onTypingToggle}>
-              <Keyboard size={16} /> {t("voice.type")}
-            </button>
-          )}
-        </div>
-      ) : (
-        <Transcript text={stalled ? "" : live || (hearing ? "" : said)} speaking={hearing} placeholder={stalled ? t("voice.tapToStart") : placeholder} />
-      )}
-      {typing && (
-        <form className="row g-6 anim-pop" onSubmit={send}>
-          <input
-            ref={inputRef}
-            className="input"
-            style={{ minHeight: 44, fontSize: 15 }}
-            placeholder={t("voice.typingPlaceholder")}
-            value={text}
-            maxLength={300}
-            enterKeyHint="send"
-            onChange={(e) => setText(e.target.value)}
-            aria-label={t("voice.typeAria")}
-          />
-          <button type="submit" className="ibtn soft" aria-label={t("voice.sendAria")}>
-            <SendHorizontal size={18} />
-          </button>
-        </form>
-      )}
-      <div className="v-controls">
-        <button type="button" className={cx("ibtn soft", typing && "v-on")} onClick={onTypingToggle} aria-label={typing ? t("voice.speak") : t("voice.type")}>
-          {typing ? <Mic size={19} /> : <Keyboard size={19} />}
-        </button>
-        <div className="stack center g-4" style={{ flex: "none" }}>
-          <button
-            type="button"
-            className={cx("v-mic", active && "on")}
-            onClick={onMic}
-            disabled={blocked}
-            aria-label={listening ? t("voice.pauseAria") : t("voice.resumeAria")}
-          >
-            {active && <span className="v-ring" />}
-            {blocked ? <MicOff size={28} /> : listening ? <Wave active={hearing || thinking} height={26} bars={5} /> : <Pause size={26} />}
-          </button>
-          <span className="t-xs t-2 fw-6">{typing ? t("voice.st.typing") : status}</span>
-        </div>
-        <div className="grow row" style={{ justifyContent: "flex-end" }}>
-          {action}
-        </div>
-      </div>
-    </div>
-  );
+  return text ? <div className="v-diag t-xs t-3 num">{text}</div> : null;
 }

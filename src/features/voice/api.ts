@@ -146,22 +146,37 @@ export type SaveResult = { listId: string; added: number; merged: number; reques
 export function useSaveVoiceList(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ store, listId: target, date, items }: { store: string; listId: string | null; date: string; items: DraftItem[] }): Promise<SaveResult> => {
+    mutationFn: async ({
+      store,
+      listId: target,
+      date,
+      items,
+      isPrivate = false,
+    }: {
+      store: string;
+      listId: string | null;
+      date: string;
+      items: DraftItem[];
+      /** Nový zoznam len pre mňa („Iba ja“). */
+      isPrivate?: boolean;
+    }): Promise<SaveResult> => {
       let listId = target ?? undefined;
       if (!listId) {
-        // Rozpracovaný nákup v tej istej predajni na ten istý deň sa použije, inak vznikne nový zoznam.
+        // Rozpracovaný nákup v tej istej predajni na ten istý deň (s rovnakou viditeľnosťou) sa použije, inak vznikne nový zoznam.
         const lists = await supabase
           .from("shopping_lists")
-          .select("id, name, planned_for")
+          .select("id, name, planned_for, is_private")
           .eq("household_id", householdId)
           .eq("is_archived", false)
           .is("completed_at", null);
         if (lists.error) throw lists.error;
-        listId = lists.data.find((l) => normalizeName(l.name) === normalizeName(store) && (l.planned_for ?? "").slice(0, 10) === date)?.id;
+        listId = lists.data.find(
+          (l) => normalizeName(l.name) === normalizeName(store) && (l.planned_for ?? "").slice(0, 10) === date && l.is_private === isPrivate,
+        )?.id;
       }
       const created = !listId;
       if (!listId) {
-        const ins = await supabase.from("shopping_lists").insert({ household_id: householdId, name: store, planned_for: date }).select("id").single();
+        const ins = await supabase.from("shopping_lists").insert({ household_id: householdId, name: store, planned_for: date, is_private: isPrivate }).select("id").single();
         if (ins.error) throw ins.error;
         listId = ins.data.id;
       }
