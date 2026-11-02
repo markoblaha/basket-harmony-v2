@@ -62,9 +62,9 @@ export function MeBtn() {
 }
 
 /** Späť s názvom predchádzajúcej obrazovky (štandard iOS). */
-export function Back({ label, onClick }: { label: string; onClick: () => void }) {
+export function Back({ label, onClick, cls = "" }: { label: string; onClick: () => void; cls?: string }) {
   return (
-    <button type="button" className="back" onClick={onClick} aria-label={`${t("common.back")}: ${label}`}>
+    <button type="button" className={`back ${cls}`} onClick={onClick} aria-label={`${t("common.back")}: ${label}`}>
       <I n="caret-left" w="bold" />
       <span>{label}</span>
     </button>
@@ -72,13 +72,13 @@ export function Back({ label, onClick }: { label: string; onClick: () => void })
 }
 
 /** Pri posúvaní stránky: hlavička dostane sklo a v strede sa ukáže malý nadpis (ako .sc.scrolled v mockupe). */
-export function useScrolled() {
-  const [on, setOn] = useState(() => window.scrollY > 8);
+export function useScrolled(at = 8) {
+  const [on, setOn] = useState(() => window.scrollY > at);
   useEffect(() => {
-    const f = () => setOn(window.scrollY > 8);
+    const f = () => setOn(window.scrollY > at);
     window.addEventListener("scroll", f, { passive: true });
     return () => window.removeEventListener("scroll", f);
-  }, []);
+  }, [at]);
   return on;
 }
 

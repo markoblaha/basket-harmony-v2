@@ -40,7 +40,8 @@ servera, chybové hlásenia, pretekanie, text mimo obrazovky a prekrytia. Fotky 
    Históriu migrácií oboch DB porovnaj (`list_migrations`) – ostrá má niektoré pod inými menami.
    Ďalej `20261102000030_ai_guard` (poistka AI + zamknuté vnútorné funkcie párovania) a `20261102000031_item_catalog`
    (katalóg položiek pre rozpoznanie a odhad ceny v zozname) a `20261102000032_finish_keep_unavailable` (koniec nákupu:
-   „nemali“ pokračuje v zozname, pokračujúci zoznam si nechá pôvodný deň).
+   „nemali“ pokračuje v zozname, pokračujúci zoznam si nechá pôvodný deň), `…033_recipe_week_plan` (deň v pláne
+   týždňa, plánovanie bez zoznamu) a `…034_recipe_likes` (Ochutnávač – „Chcem“ za každého člena).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
    Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v5,
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
@@ -157,6 +158,17 @@ kto ho uvidí – „Iba ja“ = súkromný). Engine ostal (tiché nahrávanie b
 v zariadení). Nové: názvy sa pri uložení riadia katalógom (plzeň → Pilsner Urquell) a z názvu od AI ostanú len slová,
 ktoré zazneli (`keepSaidWords` – „dve mlieka“ ≠ „Mlieko plnotučné“). Mikrofón v poli zoznamu otvorí hlas pre ten zoznam.
 Známe: pri veľmi rýchlych vetách za sebou (bez pauzy) sa môžu výsledky AI premiešať – pri bežnom diktovaní nie.
+**Fáza 6 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** Recepty z mockupu (`cookbook.jsx`, `recipes.jsx`, `book.jsx`):
+`RecipesPage.tsx` (Kniha receptov: hľadanie aj hlasom – tiché nahrávanie, Ochutnávač, kategórie s fotkami, rýchly výber,
+odporúčané, zdroje; Moje: pridať vlastný, obľúbené, pridané vami, naposledy varené; Plán týždňa: 7 dní, chýbajúce suroviny
+do najbližšieho zoznamu), `CollectionPage.tsx` (`/recipes/c/:druh/:id`, triedenie), `RecipePage.tsx` (detail: fotka,
+čas, kcal, cena za porciu z bločkov, porcie, „mám doma“ ťukom – pamätá sa v zariadení `bh.recipeHave`, základné suroviny
+predvolene doma; postup; listovanie; dole Kúpiť N surovín), `sheets.tsx` (Naplánovať, Pridať suroviny – nový zoznam
+alebo existujúci, deň), `CookPage.tsx` (kroky, viac časovačov naraz, Hotové je keď / Tip, suroviny), `TastePage.tsx`
+(`/recipes/taste`, potiahnutie, dvojťuk = Chcem, Zhoda! keď recept chce aj iný člen). Kategórie knihy sú mapované
+na kategórie a druh mäsa receptov appky (`mk.tsx` RCATS). Rozdiely: v knihe nie je sekcia „Na otestovanie AI“
+(obsah knihy je samostatný projekt); pri chýbajúcom recepte appka nesľubuje doplnenie (nemá kam si to zapísať);
+AI otázky počas varenia a starý košík receptov (`/recipes/cart`, `/recipes/check`) z obrazoviek zmizli – súbory ostali.
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

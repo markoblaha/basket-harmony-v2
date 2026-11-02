@@ -1,209 +1,309 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { ChevronDown, ChevronRight, House, Play, ShoppingBasket, Timer, Trash2 } from "lucide-react";
-import { BottomSheet, Empty, ProgressBar, ScreenHeader, Seg, SheetHeader, Stepper, haptic } from "@/components/kit";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router";
+import { ChevronDown } from "lucide-react";
+import { BottomSheet, ProgressBar, Seg as KitSeg, SheetHeader } from "@/components/kit";
 import { Spinner, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
+import { useEstimator } from "@/features/lists/estimate";
 import { errorMessage } from "@/lib/errors";
 import { t, tn, type Key } from "@/i18n";
-import { useDeleteRecipe, useRecipes } from "./api";
-import { cart, useCart } from "./cart";
-import { AiBadge, Cover, FavButton } from "./common";
-import {
-  NUTRIENTS, fmtNutrient, formatAmount, ingName, isStaple, mergeIngredients, recipeMeta, recipeNutrition, renderStep, riPct, scaleIngredients,
-  type NutrientId,
-} from "./logic";
+import { useTheme } from "@/theme/ThemeProvider";
+import { E, I, IB, Back, Seg, Stepper, useScrolled } from "@/mockup/ui";
+import { Sheet } from "@/mockup/Sheet";
+import { Btn, eur } from "@/mockup/kit";
+import { useDeleteRecipe, useFavorites, useRecipes, useToggleFavorite } from "./api";
+import { NUTRIENTS, fmtNutrient, formatAmount, recipeNutrition, renderStep, riPct, scaleIngredients, type NutrientId } from "./logic";
+import { RCATS, art, recipeRows, useHave } from "./mk";
+import { AddRecipeSheet, PlanSheet } from "./sheets";
+import { useCart } from "./cart";
 import type { Recipe } from "./types";
 import { useSetting } from "@/lib/settings";
 
-const PORTION_CHIPS = [2, 4, 6, 8];
-
-/** R4 – detail receptu s prepočtom porcií. */
+/**
+ * Detail receptu – prenesený z mockupu 1:1 (prototyp/src/cookbook.jsx RecipeScreen): fotka, čas, kcal, cena
+ * za porciu, Naplánovať, Variť krok po kroku, porcie, suroviny s „mám doma“ (ťuk prepne), postup,
+ * listovanie medzi receptmi a dole „Kúpiť N surovín“ → Pridať.
+ */
 export function RecipePage() {
   const { id = "" } = useParams();
   const { household } = useHousehold();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
+  const g = useTheme().style === "glass";
   const recipes = useRecipes(household.id);
-  const c = useCart(household.id);
+  const favs = useFavorites(household.id).data;
+  const toggleFav = useToggleFavorite(household.id);
   const del = useDeleteRecipe(household.id);
-  const r = recipes.find(id);
-  const inCart = c.items.find((x) => x.recipeId === id);
-  const [chosen, setPortions] = useState<number | null>(null);
-  const [nutri, setNutri] = useState(false);
+  const est = useEstimator(household.id);
+  const { isHome, toggle } = useHave();
   const [nutritionOn] = useSetting("nutrition");
-  const [confirmDel, setConfirmDel] = useState(false);
+  const scrolled = useScrolled(220);
+  const ids = ((location.state as { ids?: string[] } | null)?.ids ?? [id]).filter(Boolean);
+  const idx = Math.max(0, ids.indexOf(id));
+  const r = recipes.find(id);
+  const [por, setPor] = useState(r?.portions ?? 4);
+  const [tab, setTab] = useState<"ing" | "steps">("ing");
+  const [sheet, setSheet] = useState<null | "add" | "plan" | "nutri" | "del">(null);
+  useEffect(() => {
+    if (r) setPor(r.portions);
+    setTab("ing");
+    window.scrollTo({ top: 0 });
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!r && recipes.isPending) return <Spinner />;
   if (!r) {
     return (
-      <div className="stack">
-        <ScreenHeader onBack={() => navigate("/recipes")} title={t("rc.recipe")} />
-        <Empty title={t("rc.notFoundOne")} />
+      <div className="bhm bhm-list">
+        <div className="sc">
+          <header className="nb">
+            <Back label={t("recipes.title")} onClick={() => navigate("/recipes")} />
+          </header>
+        </div>
+        <div className="empty">
+          <E k="cooking" s={64} />
+          <b>{t("rc.notFoundOne")}</b>
+        </div>
       </div>
     );
   }
-  const portions = chosen ?? inCart?.portions ?? r.portions;
-  const scaled = scaleIngredients(r, portions);
-  const nu = recipeNutrition(r);
-  const p = nu.perPortion;
-  // Výber na nákup s týmto receptom (a jeho porciami) – kvôli počtu receptov a surovín.
-  const selection = [...c.items.filter((x) => x.recipeId !== r.id), { recipeId: r.id, portions }];
-  const nIng = mergeIngredients(selection, recipes.find).length;
-
-  const shop = () => {
-    cart.set(household.id, r.id, portions);
-    haptic();
-    navigate("/recipes/cart");
+  const go = (d: number) => {
+    const n = ids[idx + d];
+    if (n) navigate(`/recipes/r/${encodeURIComponent(n)}`, { replace: true, state: { ids } });
   };
-  const remove = () => {
-    setConfirmDel(false);
-    del.mutate(r.id, {
-      onSuccess: () => {
-        cart.remove(household.id, r.id);
-        toast.show(t("rc.deleted"));
-        navigate("/recipes", { replace: true });
-      },
-      onError: (e) => toast.show(errorMessage(e), "error"),
-    });
+  const a = art(r);
+  const rows = recipeRows(r, por, recipes.find, est, isHome);
+  const missing = rows.filter((x) => !x.home);
+  const mcost = missing.reduce((s, x) => s + x.cost, 0);
+  const perPortion = rows.filter((x) => !x.staple).reduce((s, x) => s + x.cost, 0) / Math.max(1, por);
+  const scaled = scaleIngredients(r, por);
+  const kcal = Math.round(recipeNutrition(r).perPortion.kcal);
+  const fav = !!favs?.has(r.id);
+  const cat = RCATS.find((c) => c.id !== "all" && c.test(r));
+  const prev = ids[idx - 1] ? recipes.find(ids[idx - 1]!) : undefined;
+  const next = ids[idx + 1] ? recipes.find(ids[idx + 1]!) : undefined;
+  const cook = () => navigate(`/recipes/r/${encodeURIComponent(r.id)}/cook?p=${por}`);
+  const share = () => {
+    const txt =
+      `${r.name} (${tn("rk.portions", por)})\n\n${t("rc.ingredients")}:\n` +
+      scaled.map((x) => `• ${rows.find((y) => y.food === x.food)?.name ?? x.food} – ${formatAmount(x.qty, x.unit)}`).join("\n") +
+      `\n\n${t("rc.steps")}:\n` +
+      r.steps.map((st, i) => `${i + 1}. ${renderStep(st.text, scaled)}`).join("\n");
+    try {
+      void navigator.clipboard.writeText(txt).then(
+        () => toast.show(t("rk.copied"), "success"),
+        () => toast.show(t("lm.copyBlocked"), "error"),
+      );
+    } catch {
+      toast.show(t("lm.copyBlocked"), "error");
+    }
   };
+  const swipe = { x: 0 };
 
   return (
-    <div className="stack">
-      <ScreenHeader onBack={() => navigate(-1)} title={r.name} right={<FavButton id={r.id} />} />
-      <div className="stack g-20" style={{ padding: "4px 16px 0" }}>
-        <Cover recipe={r} size="lg" />
-        <div className="stack g-4">
-          <span className="t-big">{r.name}</span>
-          <span className="t-body t-2">
-            {recipeMeta(r)}
-            {r.meat !== "bez" ? ` · ${t(`rc.meat.${r.meat}` as Key)}` : ` · ${t("rc.meat.bez")}`}
-          </span>
-          <span className="row g-6 t-sm t-3">
-            {t("rc.source", { source: r.mine ? r.source || t("rc.mineSource") : t("rc.catalogSource") })}
-            {r.ai && <AiBadge />}
-          </span>
-          {r.sourceUrl && (
-            <a className="t-sm link ellipsis" href={r.sourceUrl} target="_blank" rel="noreferrer noopener">
-              {r.sourceUrl.replace(/^https?:\/\/(www\.)?/, "")}
-            </a>
+    <>
+      <div className="bhm bhm-top bhm-over">
+        <div className={`sc${scrolled ? " scrolled" : ""}`}>
+          <header className="nb over">
+            <Back label={t("recipes.title")} onClick={() => navigate(-1)} cls={g && !scrolled ? "wg" : ""} />
+            <span className="nbt">{r.name}</span>
+            <div className="nbr">
+              <IB n="export" cls={g && !scrolled ? "wg" : ""} label={t("rk.share")} onClick={share} />
+              <IB
+                n="heart"
+                w={fav ? "fill" : "bold"}
+                cls={`${g && !scrolled ? "wg" : ""}${fav ? " faved" : ""}`}
+                label={fav ? t("rc.favRemove") : t("rc.favAdd")}
+                onClick={() => {
+                  toggleFav.mutate({ id: r.id, on: !fav }, { onError: (e) => toast.show(errorMessage(e), "error") });
+                  toast.show(fav ? t("rc.favRemoved") : t("rk.favSaved"));
+                }}
+              />
+            </div>
+          </header>
+        </div>
+      </div>
+      <div className="bhm bhm-list bhm-recipe">
+        <div
+          key={r.id}
+          className={`rhero2${a.pic ? ` pic-${a.pic}` : ` bg-${a.bg}`}`}
+          style={{ touchAction: "pan-y" }}
+          onPointerDown={(e) => (swipe.x = e.clientX)}
+          onPointerUp={(e) => {
+            const d = e.clientX - swipe.x;
+            if (d < -60) go(1);
+            else if (d > 60) go(-1);
+          }}
+        >
+          {!a.pic && <E k={a.e} />}
+          {ids.length > 1 && (
+            <span className="rpos">
+              {idx + 1} / {ids.length}
+            </span>
           )}
         </div>
-
-        <section className="stack g-8">
-          <span className="section-title">{t("rc.portionsLabel")}</span>
-          <div className="row g-8">
-            <div className="row g-6 grow" style={{ overflowX: "auto" }}>
-              {PORTION_CHIPS.map((n) => (
-                <button key={n} type="button" className={cx("chip lg num", portions === n && "on")} onClick={() => setPortions(n)} aria-pressed={portions === n}>
-                  {n}
-                </button>
-              ))}
-            </div>
-            <Stepper value={portions} min={1} onChange={setPortions} />
+        <div className="body rbody" key={`b${r.id}`}>
+          <div>
+            <div className="date">{[cat && t(`rk.cat.${cat.id}` as Key), r.mine ? r.source || t("rk.srcMine") : t("rk.srcBook")].filter(Boolean).join(" · ")}</div>
+            <h1 className="lt rt">{r.name}</h1>
           </div>
-        </section>
-
-        {nutritionOn && <button type="button" className="card rc-nstrip" onClick={() => setNutri(true)} aria-label={t("rc.n.perPortionAria")}>
-          {(["kcal", "protein", "carbs", "fat"] as const).map((k) => (
-            <span key={k} className="stack" style={{ textAlign: "left" }}>
-              <span className="t-h num">{k === "kcal" ? Math.round(p.kcal) : `${Math.round(p[k])} g`}</span>
-              <span className="t-xs t-2">{t(`rc.n.short.${k}`)}</span>
+          <div className="facts">
+            <span>
+              <I n="clock" />
+              {t("rk.minutes", { min: r.minutes })}
             </span>
-          ))}
-          <span className="t-xs t-3" style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
-            {t("rc.n.perPortionApprox")} <span className="grow" /> {t("rc.n.details")} <ChevronRight size={15} />
-          </span>
-        </button>}
-
-        <section className="stack g-8">
-          <div className="section-head">
-            <span className="section-title" style={{ padding: 0 }}>{t("rc.ingredients")}</span>
-            <span className="t-sm t-2">{tn("rc.forPortions", portions)}</span>
+            {kcal > 0 && (
+              <span role={nutritionOn ? "button" : undefined} onClick={() => nutritionOn && setSheet("nutri")}>
+                <I n="flame" />
+                {kcal} kcal
+              </span>
+            )}
+            {perPortion > 0 && <span className="gr">{t("rk.perPortion", { price: eur(perPortion) })}</span>}
           </div>
-          <div className="cells">
-            {scaled.map((ing, i) => {
-              const home = isStaple(ing.food);
-              return (
-                <div key={i} className="cell" style={{ minHeight: 48 }}>
-                  <span className="grow stack">
-                    <span className={cx("t-body", home && "t-2")}>{ingName(ing)}</span>
-                    {(ing.note || home) && (
-                      <span className="t-xs t-3 row g-4">
-                        {home && (
-                          <>
-                            <House size={12} /> {t("rc.usuallyHome")}
-                          </>
-                        )}
-                        {home && ing.note ? " · " : ""}
-                        {ing.note}
-                      </span>
-                    )}
-                  </span>
-                  <span className="t-body num fw-6" style={{ textAlign: "right" }}>{formatAmount(ing.qty, ing.unit)}</span>
-                </div>
-              );
-            })}
+          <div className="acts2">
+            <button type="button" onClick={() => setSheet("plan")}>
+              <I n="calendar-blank" />
+              {t("rk.planBtn")}
+            </button>
+            <button type="button" onClick={cook}>
+              <I n="play" />
+              {t("rc.cookStepByStep")}
+            </button>
           </div>
-        </section>
-
-        <section className="stack g-8">
-          <span className="section-title">{t("rc.steps")}</span>
-          <button type="button" className="btn btn-line btn-block" onClick={() => navigate(`/recipes/r/${r.id}/cook?p=${portions}`)}>
-            <Play size={17} /> {t("rc.cookStepByStep")}
-          </button>
-          <div className="cells">
-            {r.steps.map((st, i) => (
-              <div key={i} className="rc-step">
-                <span className="no num">{i + 1}</span>
-                <span className="grow stack g-6">
-                  <span className="t-body">{renderStep(st.text, scaled)}</span>
-                  {st.timerMin ? (
-                    <span className="row g-4 t-xs t-2">
-                      <Timer size={13} /> {t("rc.minutes", { n: st.timerMin })}
-                    </span>
-                  ) : null}
-                </span>
+          <Seg<"ing" | "steps">
+            items={[
+              ["ing", t("rk.tabIng", { n: rows.length })],
+              ["steps", t("rk.tabSteps", { n: r.steps.length })],
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
+          {tab === "ing" ? (
+            <>
+              <div className="portion">
+                <span className="meta">{t("rk.forHowMany")}</span>
+                <Stepper label={tn("rk.portions", por)} minDisabled={por <= 1} onMinus={() => setPor(Math.max(1, por - 1))} onPlus={() => setPor(Math.min(12, por + 1))} />
               </div>
-            ))}
-          </div>
-        </section>
-
-        {r.mine && (
-          <button type="button" className="btn btn-ghost btn-block" style={{ color: "var(--red)" }} onClick={() => setConfirmDel(true)}>
-            <Trash2 size={17} /> {t("rc.deleteRecipe")}
-          </button>
-        )}
-      </div>
-      <div style={{ height: 190 }} />
-      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl" style={{ bottom: "var(--tabbar-space)" }}>
-        <div className="stack g-8">
-          <div className="rc-sel">
-            <ShoppingBasket size={16} />
-            <span className="grow">
-              {tn("rc.selectionN", selection.length)} · <span className="num">{selection.length}</span>
-            </span>
-            <span className="num t-2">{tn("rc.ingredientCount", nIng)}</span>
-          </div>
-          <button type="button" className="btn btn-ink btn-lg btn-block" onClick={shop}>
-            <ShoppingBasket size={18} /> {t("rc.buyIngredients")}
-          </button>
+              <div className="ings">
+                {rows.map((x) => (
+                  <div key={x.key} className={`ing${x.home ? " home" : ""}${x.staple && !x.home ? " nohome" : ""}`} onClick={() => toggle(r.id, x)} role="button" aria-pressed={x.home}>
+                    <span className="th">
+                      <E k={est.emoji(x.name, x.cat)} />
+                    </span>
+                    <div className="tx">
+                      <b>{x.name}</b>
+                      <span className="sub">
+                        {formatAmount(x.qty, x.unit)}
+                        {x.home ? ` · ${t("rk.haveHome")}` : x.staple ? ` · ${t("rk.noHome")}` : x.cost ? ` · ~${eur(x.cost)}` : ""}
+                      </span>
+                    </div>
+                    <span className={`cbx${x.home ? " on" : ""}`} aria-hidden="true">
+                      <I n="check" w="bold" />
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="hint">{t("rk.haveHint")}</p>
+            </>
+          ) : (
+            <ol className="steps">
+              {r.steps.map((st, i) => (
+                <li key={i}>
+                  <span className="n">{i + 1}</span>
+                  <p>
+                    {renderStep(st.text, scaled)}
+                    {st.timerMin ? <em> · {t("rk.minutes", { min: st.timerMin })}</em> : null}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+          {r.mine && (
+            <Btn cls="danger soft full" onClick={() => setSheet("del")}>
+              <I n="trash" />
+              {t("rc.deleteRecipe")}
+            </Btn>
+          )}
+          {ids.length > 1 && (
+            <div className="pager">
+              <button type="button" onClick={() => go(-1)} disabled={!prev}>
+                <I n="caret-left" w="bold" />
+                <span>
+                  <small>{t("rk.prev")}</small>
+                  {prev?.name ?? ""}
+                </span>
+              </button>
+              <button type="button" onClick={() => go(1)} disabled={!next}>
+                <span>
+                  <small>{t("rk.next")}</small>
+                  {next?.name ?? ""}
+                </span>
+                <I n="caret-right" w="bold" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
-
-      <NutritionSheet open={nutri} onClose={() => setNutri(false)} recipeId={r.id} />
-      <BottomSheet open={confirmDel} onClose={() => setConfirmDel(false)} label={t("rc.deleteRecipe")}>
-        <SheetHeader title={t("rc.deleteConfirm", { name: r.name })} onClose={() => setConfirmDel(false)} />
-        <div className="sheet-body stack g-8">
-          <span className="t-sm t-2">{t("rc.deleteText")}</span>
-          <button type="button" className="btn btn-block" style={{ background: "var(--red)", color: "#fff" }} onClick={remove}>
-            <Trash2 size={17} /> {t("common.delete")}
-          </button>
-          <button type="button" className="btn btn-soft btn-block" onClick={() => setConfirmDel(false)}>{t("common.cancel")}</button>
+      <div className="bhm bhm-dock">
+        <div className="dock">
+          {missing.length ? (
+            <div className={`card dockc${g ? " glass2" : ""}`}>
+              <div className="grow">
+                <div className="t1">{t("rk.buyN", { items: tn("rk.ingredientsAcc", missing.length) })}</div>
+                <div className="meta">{t("rk.buyMeta", { price: eur(mcost) })}</div>
+              </div>
+              <Btn cls={`pri sm${g ? " a" : ""}`} onClick={() => setSheet("add")}>
+                <I n="basket" />
+                {t("rk.add")}
+              </Btn>
+            </div>
+          ) : (
+            <div className={`card dockc allok${g ? " glass2" : ""}`}>
+              <I n="check-circle" />
+              <div className="grow">
+                <div className="t1">{t("rk.allHomeT")}</div>
+                <div className="meta">{t("rk.allHomeS")}</div>
+              </div>
+              <Btn cls={`pri sm${g ? " a" : ""}`} onClick={cook}>
+                <I n="play" />
+                {t("rk.cook")}
+              </Btn>
+            </div>
+          )}
         </div>
-      </BottomSheet>
-    </div>
+      </div>
+      <AddRecipeSheet open={sheet === "add"} onClose={() => setSheet(null)} r={r} portions={por} />
+      <PlanSheet open={sheet === "plan"} onClose={() => setSheet(null)} rid={r.id} />
+      <NutritionSheet open={sheet === "nutri"} onClose={() => setSheet(null)} recipeId={r.id} />
+      <Sheet open={sheet === "del"} onClose={() => setSheet(null)} label={t("rc.deleteRecipe")}>
+        <div className="sh-head">
+          <h2>{t("rc.deleteConfirm", { name: r.name })}</h2>
+        </div>
+        <div className="sh-body">
+          <p className="meta">{t("rc.deleteText")}</p>
+          <div className="sh-act">
+            <Btn cls="soft" onClick={() => setSheet(null)}>
+              {t("common.cancel")}
+            </Btn>
+            <Btn
+              cls="danger"
+              onClick={() =>
+                del.mutate(r.id, {
+                  onSuccess: () => {
+                    toast.show(t("rc.deleted"));
+                    navigate("/recipes?t=mine", { replace: true });
+                  },
+                  onError: (e) => toast.show(errorMessage(e), "error"),
+                })
+              }
+            >
+              {t("common.delete")}
+            </Btn>
+          </div>
+        </div>
+      </Sheet>
+    </>
   );
 }
 
@@ -257,9 +357,9 @@ export function NutritionSheet({ open, onClose, recipeId, cartMode }: { open: bo
       <SheetHeader title={t("rc.n.title")} sub={t("rc.n.sub")} onClose={onClose} />
       <div className="sheet-body stack g-16">
         {showScope && (
-          <Seg options={[{ value: "one", label: t("rc.n.thisRecipe") }, { value: "cart", label: t("rc.n.allInCart", { n: c.items.length }) }]} value={scope} onChange={setScope} />
+          <KitSeg options={[{ value: "one", label: t("rc.n.thisRecipe") }, { value: "cart", label: t("rc.n.allInCart", { n: c.items.length }) }]} value={scope} onChange={setScope} />
         )}
-        <Seg options={[{ value: "portion", label: t("rc.n.perPortion") }, { value: "100", label: t("rc.n.per100") }]} value={mode} onChange={setMode} />
+        <KitSeg options={[{ value: "portion", label: t("rc.n.perPortion") }, { value: "100", label: t("rc.n.per100") }]} value={mode} onChange={setMode} />
 
         {data.map(({ r, nu }) => (
           <section key={r.id} className="stack g-8">

@@ -7,7 +7,7 @@ import {
 import { haptic } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { useSpeech } from "@/features/voice/useSpeech";
+import { useDictation } from "@/features/voice/useDictation";
 import { errorMessage } from "@/lib/errors";
 import { t, tn } from "@/i18n";
 import { useFavorites, useRecipes, useToggleFavorite } from "./api";
@@ -117,7 +117,8 @@ function Wave({ color = "currentColor", height = 18, bars = 7 }: { color?: strin
 
 /** Hľadanie hlasom: mikrofón v prehliadači, výsledok ide do hľadania. */
 export function VoiceSearch({ onResult, onClose }: { onResult: (q: string) => void; onClose: () => void }) {
-  const speech = useSpeech((said) => {
+  // Tiché nahrávanie (bez pípania systému); prehliadačové rozpoznávanie len tam, kde nahrávanie nejde.
+  const speech = useDictation((said) => {
     speech.stop();
     onResult(said.trim());
   });
@@ -127,6 +128,7 @@ export function VoiceSearch({ onResult, onClose }: { onResult: (q: string) => vo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const blocked = !!speech.error || !speech.supported;
+  const busy = speech.busy;
   return (
     <div className="rc-voice" onClick={onClose}>
       <div className="stack g-16" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t("rc.voiceSearch")}>
@@ -144,6 +146,8 @@ export function VoiceSearch({ onResult, onClose }: { onResult: (q: string) => vo
             <span className="t-title" style={{ textAlign: "center" }}>{speech.interim}</span>
           ) : blocked ? (
             <span className="t-sm t-2" style={{ textAlign: "center" }}>{t("ls.micBlocked")}</span>
+          ) : busy ? (
+            <span className="t-sm t-2">{t("ls.processing")}</span>
           ) : (
             <Wave color="var(--text-3)" />
           )}

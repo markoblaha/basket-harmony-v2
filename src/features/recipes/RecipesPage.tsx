@@ -1,338 +1,398 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router";
-import { Camera, ChefHat, Link2, Mic, Repeat, Search, ShoppingBasket, Sparkles, X } from "lucide-react";
-import { haptic } from "@/components/kit";
-import { IB, MkHeader } from "@/mockup/ui";
-import { animateOut, collapseOut } from "@/components/motion";
-import { cx } from "@/components/ui";
+/**
+ * Recepty – prenesené z mockupu 1:1 (prototyp/src/cookbook.jsx Recipes): Kniha receptov (hľadanie, kategórie,
+ * rýchly výber, odporúčané, zdroje), Moje (pridať vlastný, obľúbené, pridané vami, naposledy varené)
+ * a Plán týždňa (7 dní; chýbajúce suroviny jedným ťuknutím do nákupu).
+ */
+import { useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProducts } from "@/features/analytics/api";
 import { useLists } from "@/features/lists/api";
-import { listDay } from "@/features/lists/dates";
+import { addDays, isoDay } from "@/features/lists/dates";
 import { errorMessage } from "@/lib/errors";
-import { formatDateTime, t, tn } from "@/i18n";
-import { useRecipePlans, useRecipes, useSetPlanStatus, type RecipePlan } from "./api";
-import { cart, useCart } from "./cart";
-import { RECIPE_CATEGORIES } from "./catalog";
-import { Cover, RIcon, RecipeRow, VoiceSearch } from "./common";
+import { formatDateTime, t, tn, type Key } from "@/i18n";
+import { useTheme } from "@/theme/ThemeProvider";
+import { E, I, MkHeader, Seg } from "@/mockup/ui";
+import { Btn } from "@/mockup/kit";
+import { useFavorites, usePlanRecipes, useRecipePlans, useRecipes } from "./api";
+import { VoiceSearch } from "./common";
 import { ImportSheet } from "./ImportSheet";
-import { categoryName, mergeIngredients, recipeMeta, recommendations } from "./logic";
+import { interpretQuery, matchesFilters, matchesTerms, recommendations, toListEntry } from "./logic";
+import { CHEAP, RCATS, RCOLS, RCard, art, recipeRows, useRecipeFacts } from "./mk";
+import { PlanSheet } from "./sheets";
 import type { Recipe } from "./types";
-import { useSetting } from "@/lib/settings";
 
-/** R1 – Recepty: hľadanie, import, čakajúce recepty, pre teba, kategórie, moje recepty. */
+type Tab = "discover" | "mine" | "plan";
+
 export function RecipesPage() {
   const { household } = useHousehold();
   const navigate = useNavigate();
-  const [suggestions] = useSetting("recipeSuggestions");
+  const toast = useToast();
+  const g = useTheme().style === "glass";
+  const [params, setParams] = useSearchParams();
+  const sec = (params.get("t") as Tab | null) ?? "discover";
+  const setSec = (v: Tab) => setParams(v === "discover" ? {} : { t: v }, { replace: true });
   const recipes = useRecipes(household.id);
+  const favs = useFavorites(household.id).data ?? new Set<string>();
+  const plans = useRecipePlans(household.id).data ?? [];
+  const lists = useLists(household.id).data ?? [];
+  const products = useProducts(household.id).data;
+  const planRecipes = usePlanRecipes(household.id);
+  const { facts, est, isHome } = useRecipeFacts(household.id, recipes.all, recipes.find);
+  const [q, setQ] = useState(() => params.get("q") ?? "");
+  const [query, setQuery] = useState(() => params.get("q") ?? "");
+  const [more, setMore] = useState(0);
   const [voice, setVoice] = useState(false);
   const [importing, setImporting] = useState<"photo" | "link" | null>(null);
+  const [planDay, setPlanDay] = useState<string | null>(null);
+
+  const open = (r: Recipe, list: Recipe[]) => navigate(`/recipes/r/${encodeURIComponent(r.id)}`, { state: { ids: list.map((x) => x.id) } });
+  const card = (r: Recipe, list: Recipe[], wide?: boolean) => <RCard key={r.id} r={r} wide={wide} fav={favs.has(r.id)} fact={facts.get(r.id)} onOpen={() => open(r, list)} />;
+
+  // Hľadanie v knihe: „niečo rýchle s kuracím“ → filtre + slová. Appka si recepty nevymýšľa.
+  const results = useMemo(() => {
+    if (!query.trim()) return null;
+    const { terms, filters } = interpretQuery(query);
+    const strong = recipes.all.filter((r) => matchesFilters(r, filters) && matchesTerms(r, terms));
+    if (strong.length) return { miss: false, list: strong.slice(0, 4 + more * 4), total: strong.length };
+    const loose = recipes.all.filter((r) => matchesFilters(r, filters) || terms.some((w) => matchesTerms(r, [w])));
+    return { miss: true, list: loose.slice(0, 4), total: loose.length };
+  }, [query, more, recipes.all]);
+  const run = (v: string) => {
+    setQuery(v.trim());
+    setMore(0);
+  };
+
+  // Plán týždňa
+  const today = new Date();
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(today, i);
+    const k = isoDay(d);
+    const p = plans.find((x) => x.status === "PENDING" && x.planned_on === k);
+    return { d, k, i, p, r: p ? recipes.find(p.recipe_key) : undefined };
+  });
+  const target = lists
+    .filter((l) => !l.completed_at)
+    .sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999"))[0];
+  const planned = days.filter((x) => x.r);
+  const missingRows = planned.flatMap((x) => recipeRows(x.r!, x.p!.portions, recipes.find, est, isHome).filter((row) => !row.home));
+  const addPlanned = () => {
+    if (!target) return;
+    planRecipes.mutate(
+      {
+        listId: target.id,
+        newList: null,
+        items: missingRows.map(toListEntry),
+        recipes: planned.map((x) => ({ key: x.r!.id, name: x.r!.name, portions: x.p!.portions, day: x.k })),
+      },
+      {
+        onSuccess: () => {
+          toast.show(t("rk.planAdded", { items: tn("rk.ingredients", missingRows.length), name: target.name }), "success");
+          navigate("/lists", { state: { highlight: target.id } });
+        },
+        onError: (e) => toast.show(errorMessage(e), "error"),
+      },
+    );
+  };
+
+  const recom = useMemo(
+    () => recommendations(recipes.catalog, (products ?? []).slice(0, 80).map((p) => p.name), 6).map((x) => x.recipe),
+    [recipes.catalog, products],
+  );
+  const favList = recipes.all.filter((r) => favs.has(r.id));
+  const cooked = [...new Map(plans.filter((p) => p.status === "COOKED").sort((a, b) => (b.cooked_at ?? "").localeCompare(a.cooked_at ?? "")).map((p) => [p.recipe_key, p])).values()]
+    .map((p) => recipes.find(p.recipe_key))
+    .filter((r): r is Recipe => !!r)
+    .slice(0, 6);
+  const sources = [...new Set(recipes.mine.map((r) => r.source || t("rk.srcMine")))];
+  const count = (test: ((r: Recipe) => boolean) | null) => (test ? recipes.catalog.filter(test).length : recipes.catalog.filter((r) => (facts.get(r.id)?.cost ?? 99) <= CHEAP).length);
 
   return (
     <div className="stack">
-      <MkHeader title={t("recipes.title")} right={<IB n="heart" label={t("rc.favorites")} onClick={() => navigate("/recipes/search?favs=1")} />} />
-      <div className="stack g-24" style={{ padding: "4px 16px 0" }}>
-        <div className="stack g-10">
-          <div className="rc-search">
-            <Search size={20} color="var(--text-3)" />
-            <button type="button" className="grow t-body t-3" style={{ minHeight: 50, textAlign: "left", fontSize: 16 }} onClick={() => navigate("/recipes/search?focus=1")}>
-              {t("rc.searchPlaceholder")}
-            </button>
-            <button type="button" className="ibtn" onClick={() => setVoice(true)} aria-label={t("rc.voiceSearch")}>
-              <Mic size={21} />
-            </button>
-          </div>
-          <div className="row g-8">
-            <button type="button" className="btn btn-line grow" style={{ padding: "0 10px", gap: 6, fontSize: 14 }} onClick={() => setImporting("photo")}>
-              <Camera size={18} /> {t("rc.photoRecipe")}
-            </button>
-            <button type="button" className="btn btn-line grow" style={{ padding: "0 10px", gap: 6, fontSize: 14 }} onClick={() => setImporting("link")}>
-              <Link2 size={18} /> {t("rc.linkOrText")}
-            </button>
-          </div>
-        </div>
-
-        <Waiting />
-        {suggestions && <Featured catalog={recipes.catalog} find={recipes.find} />}
-
-        <section className="stack g-8">
-          <span className="section-title">{t("rc.categories")}</span>
-          <div className="rc-cats">
-            {RECIPE_CATEGORIES.map((c) => (
-              <button key={c.id} type="button" className="rc-cat" onClick={() => navigate(`/recipes/search?cat=${c.id}`)}>
-                <span className="ic" style={{ "--h": c.hue } as React.CSSProperties}>
-                  <RIcon name={c.icon} size={19} strokeWidth={1.8} />
-                </span>
-                {categoryName(c.id)}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="stack g-8">
-          <div className="section-head">
-            <span className="section-title" style={{ padding: 0 }}>
-              {t("rc.mine")}
-            </span>
-            {recipes.mine.length > 0 && <span className="t-sm t-2 num">{recipes.mine.length}</span>}
-          </div>
-          {recipes.mine.length ? (
-            <div className="cells">
-              {recipes.mine.map((r) => (
-                <RecipeRow key={r.id} recipe={r} />
-              ))}
-            </div>
-          ) : (
-            <div className="card stack g-4" style={{ padding: 16 }}>
-              <span className="t-h">{t("rc.mineEmpty")}</span>
-              <span className="t-sm t-2">{t("rc.mineEmptyText")}</span>
-            </div>
+      <MkHeader title={t("recipes.title")}>
+        <Seg<Tab>
+          items={[
+            ["discover", t("rk.book")],
+            ["mine", t("rk.mine")],
+            ["plan", t("rk.plan")],
+          ]}
+          value={sec}
+          onChange={setSec}
+        />
+      </MkHeader>
+      <div className="bhm bhm-list">
+        <div className="body">
+          {sec === "discover" && (
+            <>
+              <form
+                className={`search${g ? " glass2" : ""}`}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  run(q);
+                  e.currentTarget.querySelector("input")?.blur();
+                }}
+              >
+                <I n="magnifying-glass" w="bold" />
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("rk.searchPh")} enterKeyHint="search" autoComplete="off" aria-label={t("rk.searchAria")} />
+                {q ? (
+                  <button
+                    type="button"
+                    className="m soft"
+                    onClick={() => {
+                      setQ("");
+                      run("");
+                    }}
+                    aria-label={t("rk.clear")}
+                  >
+                    <I n="x" w="bold" />
+                  </button>
+                ) : (
+                  <button type="button" className="m" onClick={() => setVoice(true)} aria-label={t("rc.voiceSearch")}>
+                    <I n="microphone" />
+                  </button>
+                )}
+              </form>
+              {results ? (
+                <>
+                  <div className="h2">
+                    {results.miss ? t("rk.similar") : t("rk.results")}
+                    <button
+                      type="button"
+                      className="a"
+                      onClick={() => {
+                        setQ("");
+                        run("");
+                      }}
+                    >
+                      {t("rk.backToBook")}
+                    </button>
+                  </div>
+                  {results.miss && (
+                    <div className="card wish">
+                      <span className="wi">
+                        <I n="book-open-text" />
+                      </span>
+                      <div className="grow">
+                        <div className="t1">{t("rk.missT", { q: query })}</div>
+                        <p className="meta">{t("rk.missText")}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="rgrid2">
+                    {results.list.map((r, i) => (
+                      <div key={r.id} className="rin" style={{ "--d": `${(i % 4) * 90}ms` } as React.CSSProperties}>
+                        {card(r, results.list)}
+                      </div>
+                    ))}
+                  </div>
+                  {!results.miss && results.total > results.list.length && (
+                    <Btn cls="soft full" onClick={() => setMore((m) => m + 1)}>
+                      <I n="magnifying-glass" />
+                      {t("rk.more")}
+                    </Btn>
+                  )}
+                </>
+              ) : (
+                <>
+                  <button type="button" className="tentry" onClick={() => navigate("/recipes/taste")}>
+                    <span className="te-ph">
+                      <i className="pic-gulas_p" />
+                      <i className="pic-palacinky_p" />
+                      <i className="pic-rizoto_p" />
+                    </span>
+                    <span className="te-tx">
+                      <b>{t("rk.tasteT")}</b>
+                      <small>{t("rk.tasteS")}</small>
+                    </span>
+                    <span className="te-go">
+                      <I n="play" />
+                    </span>
+                  </button>
+                  <div className="h2">{t("rk.cats")}</div>
+                  <div className="cgrid">
+                    {RCATS.map((c) => (
+                      <button type="button" key={c.id} className={`ctile pic-${c.pic}`} onClick={() => navigate(`/recipes/c/cat/${c.id}`)}>
+                        <span>
+                          <b>{t(`rk.cat.${c.id}` as Key)}</b>
+                          <small>{tn("rk.recipes", recipes.all.filter(c.test).length)}</small>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="h2">{t("rk.quick")}</div>
+                  <div className="chips">
+                    {RCOLS.map((c) => (
+                      <button type="button" key={c.id} className="chip" onClick={() => navigate(`/recipes/c/col/${c.id}`)}>
+                        <E k={c.e} />
+                        {t(`rk.col.${c.id}` as Key)}
+                        <span className="cn">{count(c.test)}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {recom.length > 0 && (
+                    <>
+                      <div className="h2">{t("rk.recommend")}</div>
+                      <div className="rrow">{recom.map((r) => card(r, recom, true))}</div>
+                    </>
+                  )}
+                  <div className="h2">{t("rk.sources")}</div>
+                  <div className={`lst${g ? " glass2" : ""}`}>
+                    <button type="button" className="row tap" onClick={() => navigate("/recipes/c/cat/all")}>
+                      <span className="th ic">
+                        <I n="books" />
+                      </span>
+                      <div className="tx">
+                        <b>{t("rk.srcBook")}</b>
+                        <span className="sub">{tn("rk.recipes", recipes.catalog.length)}</span>
+                      </div>
+                      <I n="caret-right" w="bold" cls="chev" />
+                    </button>
+                    {sources.map((s) => (
+                      <button type="button" key={s} className="row tap" onClick={() => navigate(`/recipes/c/src/${encodeURIComponent(s)}`)}>
+                        <span className="th ic">
+                          <I n={s.includes(".") ? "globe" : "cooking-pot"} />
+                        </span>
+                        <div className="tx">
+                          <b>{s}</b>
+                          <span className="sub">{tn("rk.recipes", recipes.mine.filter((r) => (r.source || t("rk.srcMine")) === s).length)}</span>
+                        </div>
+                        <I n="caret-right" w="bold" cls="chev" />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
           )}
-        </section>
+
+          {sec === "mine" && (
+            <>
+              <div className={`card addrec${g ? " glass2" : ""}`}>
+                <div className="t1">{t("rk.addOwn")}</div>
+                <div className="ar3">
+                  <button type="button" onClick={() => setImporting("photo")}>
+                    <I n="camera" />
+                    {t("rk.addPhoto")}
+                    <small>{t("rk.addPhotoS")}</small>
+                  </button>
+                  <button type="button" onClick={() => setImporting("link")}>
+                    <I n="link" />
+                    {t("rk.addLink")}
+                    <small>{t("rk.addLinkS")}</small>
+                  </button>
+                  <button type="button" onClick={() => setImporting("link")}>
+                    <I n="microphone" />
+                    {t("rk.addVoice")}
+                    <small>{t("rk.addVoiceS")}</small>
+                  </button>
+                </div>
+              </div>
+              <div className="h2">
+                {t("rk.favs")} <span className="cnt">{favList.length}</span>
+              </div>
+              {favList.length ? (
+                <div className="rgrid2">{favList.map((r) => card(r, favList))}</div>
+              ) : (
+                <p className="vnote">
+                  <I n="heart" />
+                  {t("rk.favsEmpty")}
+                </p>
+              )}
+              <div className="h2">
+                {t("rk.own")} <span className="cnt">{recipes.mine.length}</span>
+              </div>
+              {recipes.mine.length ? (
+                <div className="rgrid2">{recipes.mine.map((r) => card(r, recipes.mine))}</div>
+              ) : (
+                <p className="vnote">
+                  <I n="info" />
+                  {t("rk.ownEmpty")}
+                </p>
+              )}
+              {cooked.length > 0 && (
+                <>
+                  <div className="h2">{t("rk.cooked")}</div>
+                  <div className="rgrid2">{cooked.map((r) => card(r, cooked))}</div>
+                </>
+              )}
+            </>
+          )}
+
+          {sec === "plan" && (
+            <>
+              <p className="meta">{t("rk.planIntro")}</p>
+              <div className={`lst weekl${g ? " glass2" : ""}`}>
+                {days.map((x) => {
+                  const a = x.r ? art(x.r) : null;
+                  const rows = x.r ? recipeRows(x.r, x.p!.portions, recipes.find, est, isHome) : [];
+                  const miss = rows.filter((r) => !r.home).length;
+                  return (
+                    <button
+                      type="button"
+                      key={x.k}
+                      className="row tap"
+                      onClick={() =>
+                        x.r ? navigate(`/recipes/r/${encodeURIComponent(x.r.id)}`, { state: { ids: planned.map((y) => y.r!.id) } }) : setPlanDay(x.k)
+                      }
+                    >
+                      <span className="dayc">
+                        <b>{x.i === 0 ? t("rk.today") : formatDateTime(x.d, { weekday: "short" })}</b>
+                        <small>{x.d.getDate()}.</small>
+                      </span>
+                      {x.r && a ? (
+                        <>
+                          <span className={`th${a.pic ? ` pic-${a.pic}` : ` bg-${a.bg}`}`}>{!a.pic && <E k={a.e} />}</span>
+                          <div className="tx">
+                            <b>{x.r.name}</b>
+                            <span className="sub">{t("rk.dayMeta", { min: x.r.minutes, state: miss ? t("rk.missN", { n: miss }) : t("rk.allHome") })}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="tx">
+                          <span className="sub plan-empty">
+                            <I n="plus" w="bold" />
+                            {t("rk.pick")}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {missingRows.length > 0 && target && (
+                <div className={`card dockc${g ? " glass2" : ""}`}>
+                  <div className="grow">
+                    <div className="t1">{t("rk.planMissing", { items: tn("rk.ingredients", missingRows.length) })}</div>
+                    <div className="meta">{t("rk.planTo", { name: target.name })}</div>
+                  </div>
+                  <Btn cls="pri sm" onClick={addPlanned} disabled={planRecipes.isPending}>
+                    {t("rk.add")}
+                  </Btn>
+                </div>
+              )}
+              {missingRows.length === 0 && planned.length > 0 && (
+                <p className="vnote">
+                  <I n="check-circle" />
+                  {t("rk.planAllHome")}
+                </p>
+              )}
+            </>
+          )}
+        </div>
       </div>
-      <div className="tab-space" />
       {voice && (
         <VoiceSearch
           onClose={() => setVoice(false)}
-          onResult={(q) => {
+          onResult={(v) => {
             setVoice(false);
-            navigate(`/recipes/search?q=${encodeURIComponent(q)}`);
+            setQ(v);
+            run(v);
           }}
         />
       )}
       <ImportSheet open={!!importing} source={importing ?? "photo"} onClose={() => setImporting(null)} />
+      <PlanSheet open={!!planDay} day={planDay} onClose={() => setPlanDay(null)} />
     </div>
-  );
-}
-
-/** Čakajúce recepty: rozpracovaný nákup surovín a recepty, ktoré čakajú na uvarenie. */
-function Waiting() {
-  const { household } = useHousehold();
-  const navigate = useNavigate();
-  const toast = useToast();
-  const recipes = useRecipes(household.id);
-  const c = useCart(household.id);
-  const plans = useRecipePlans(household.id);
-  const lists = useLists(household.id);
-  const setStatus = useSetPlanStatus(household.id);
-  const cartItems = c.items.filter((x) => recipes.find(x.recipeId));
-  // Zrušené ťukom na X zmiznú hneď – server to potvrdí v pozadí (pri chybe sa vrátia).
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
-  const hide = (id: string, on: boolean) =>
-    setHidden((h) => {
-      const n = new Set(h);
-      if (on) n.add(id);
-      else n.delete(id);
-      return n;
-    });
-  const pending = (plans.data ?? []).filter((p) => p.status === "PENDING" && !hidden.has(p.id));
-  const showDraft = cartItems.length > 0 && !hidden.has("draft");
-  if (!showDraft && !pending.length) return null;
-  const nIng = cartItems.length ? mergeIngredients(cartItems, recipes.find).length : 0;
-
-  const fail = (e: unknown) => toast.show(errorMessage(e), "error");
-  /** Karta odíde doprava, medzera sa zavrie (pri poslednej karte celá sekcia aj s nadpisom), až potom ju skryjeme. */
-  const leave = (el: HTMLElement | null, id: string) => {
-    haptic(12);
-    const box = el?.parentElement ?? null;
-    const last = !!box && box.querySelectorAll(".rc-wait").length === 1;
-    animateOut(el, 1, () => collapseOut(last ? box : el, () => hide(id, true)));
-  };
-  const remove = (p: RecipePlan, el: HTMLElement | null) => {
-    leave(el, p.id);
-    setStatus.mutate(
-      { id: p.id, status: "DISMISSED" },
-      {
-        onSuccess: () =>
-          toast.show(t("rc.removedWaiting", { name: p.recipe_name }), "info", {
-            undo: () => {
-              hide(p.id, false);
-              setStatus.mutate({ id: p.id, status: "PENDING" }, { onError: fail });
-            },
-          }),
-        onError: (e) => {
-          // Až po dobehnutí odchodu (inak by ju koniec animácie znova skryl).
-          window.setTimeout(() => hide(p.id, false), 520);
-          fail(e);
-        },
-      },
-    );
-  };
-  const discardDraft = (el: HTMLElement | null) => {
-    const before = cart.get(household.id);
-    leave(el, "draft");
-    window.setTimeout(() => {
-      cart.clear(household.id);
-      hide("draft", false);
-    }, 480);
-    toast.show(t("rc.discardedDraft"), "info", { undo: () => cart.update(household.id, () => before) });
-  };
-
-  return (
-    <section className="stack g-8">
-      <div className="section-head">
-        <span className="t-h">{t("rc.waiting")}</span>
-        <span className="t-sm t-2 num">{(showDraft ? cartItems.length : 0) + pending.length}</span>
-      </div>
-      {showDraft && (
-        <div className="rc-wait draft">
-          <button type="button" className="rc-wait-main" onClick={() => navigate("/recipes/cart")}>
-            <span className="bk">
-              <ShoppingBasket size={20} />
-            </span>
-            <span className="grow stack g-2" style={{ minWidth: 0 }}>
-              <span className="t-xs t-2">
-                {t("rc.draft")} · {tn("rc.ingFor", cartItems.length)} · <span className="num">{nIng}</span>
-              </span>
-              <span className="t-h rc-clamp">{cartItems.map((x) => recipes.find(x.recipeId)!.name).join(" + ")}</span>
-            </span>
-          </button>
-          <div className="rc-wait-side">
-            <button type="button" className="rc-x" aria-label={t("rc.discardDraft")} onClick={(e) => discardDraft(e.currentTarget.closest(".rc-wait"))}>
-              <X size={15} strokeWidth={2.4} />
-            </button>
-            <button type="button" className="btn btn-sm btn-ink" onClick={() => navigate("/recipes/cart")}>
-              {t("rc.continue")}
-            </button>
-          </div>
-        </div>
-      )}
-      {pending.map((p) => {
-        const r = recipes.find(p.recipe_key);
-        const list = lists.data?.find((l) => l.id === p.list_id);
-        const status = list
-          ? list.completed_at
-            ? t("rc.boughtIn", { name: list.name })
-            : t("rc.inList", { name: list.name, day: listDay(list) })
-          : t("rc.bought");
-        return (
-          <div key={p.id} className="rc-wait">
-            <button type="button" className="rc-wait-main" onClick={() => r && navigate(`/recipes/r/${r.id}`)}>
-              {r ? <Cover recipe={r} size="sm" /> : <span className="rc-cover sm"><ChefHat size={24} /></span>}
-              <span className="grow stack g-2" style={{ minWidth: 0 }}>
-                <span className="t-h">{r?.name ?? p.recipe_name}</span>
-                <span className="t-xs t-2 rc-clamp">
-                  {tn("rc.portions", p.portions)} · {status}
-                </span>
-              </span>
-            </button>
-            <div className="rc-wait-side">
-              <button type="button" className="rc-x" aria-label={t("rc.removeWaiting", { name: p.recipe_name })} onClick={(e) => remove(p, e.currentTarget.closest(".rc-wait"))}>
-                <X size={15} strokeWidth={2.4} />
-              </button>
-              {r && (
-                <button type="button" className="btn btn-sm btn-soft" onClick={() => navigate(`/recipes/r/${r.id}/cook?p=${p.portions}`)}>
-                  <ChefHat size={16} /> {t("rc.cook")}
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </section>
-  );
-}
-
-/**
- * „Pre teba“ (podľa nedávnych nákupov) / „Často varíte“ (z uvarených receptov domácnosti) –
- * pás kariet s bodkami na prechod medzi receptami.
- */
-function Featured({ catalog, find }: { catalog: Recipe[]; find: (id: string) => Recipe | undefined }) {
-  const { household } = useHousehold();
-  const navigate = useNavigate();
-  const products = useProducts(household.id);
-  const plans = useRecipePlans(household.id);
-  const [mode, setMode] = useState<"me" | "often">("me");
-  const [idx, setIdx] = useState(0);
-  const rail = useRef<HTMLDivElement>(null);
-
-  // Nové poradie pri každom otvorení obrazovky, nič sa samo neotáča.
-  const recs = useMemo(() => {
-    const since = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10);
-    const recent = (products.data ?? []).filter((p) => p.last_date >= since).map((p) => p.name);
-    return { list: recommendations(catalog, recent), basedOnShopping: recent.length > 0 };
-  }, [catalog, products.data]);
-
-  const often = useMemo(() => {
-    const cooked = new Map<string, { n: number; last: string }>();
-    for (const p of plans.data ?? []) {
-      if (p.status !== "COOKED" || !p.cooked_at) continue;
-      const x = cooked.get(p.recipe_key) ?? { n: 0, last: p.cooked_at };
-      x.n += 1;
-      if (p.cooked_at > x.last) x.last = p.cooked_at;
-      cooked.set(p.recipe_key, x);
-    }
-    return [...cooked.entries()]
-      .map(([id, x]) => ({ recipe: find(id), ...x }))
-      .filter((x): x is { recipe: Recipe; n: number; last: string } => !!x.recipe)
-      .sort((a, b) => b.n - a.n || b.last.localeCompare(a.last))
-      .slice(0, 7);
-  }, [plans.data, find]);
-
-  const items =
-    mode === "me"
-      ? recs.list.map(({ recipe, reason }) => ({ recipe, line: reason, icon: Sparkles }))
-      : often.map((x) => ({ recipe: x.recipe, line: t("rc.cookedTimes", { n: x.n, date: formatDateTime(x.last, { day: "numeric", month: "numeric" }) }), icon: Repeat }));
-
-  useEffect(() => {
-    setIdx(0);
-    rail.current?.scrollTo({ left: 0 });
-  }, [mode]);
-  if (!recs.list.length) return null;
-
-  const goTo = (i: number) => {
-    const el = rail.current;
-    const card = el?.children[i] as HTMLElement | undefined;
-    if (el && card) el.scrollTo({ left: card.offsetLeft - 16, behavior: "smooth" });
-    setIdx(i);
-  };
-  const onScroll = () => {
-    const el = rail.current;
-    if (!el) return;
-    const w = (el.children[0] as HTMLElement | undefined)?.offsetWidth || 1;
-    setIdx(Math.round(el.scrollLeft / (w + 12)));
-  };
-
-  return (
-    <section className="stack g-10">
-      {often.length > 0 ? (
-        <div className="section-head" style={{ paddingRight: 0 }}>
-          <div className="seg rc-feat-seg" role="tablist">
-            <button type="button" role="tab" aria-selected={mode === "me"} className={cx(mode === "me" && "on")} onClick={() => setMode("me")}>
-              <Sparkles size={14} /> {t("rc.forYou")}
-            </button>
-            <button type="button" role="tab" aria-selected={mode === "often"} className={cx(mode === "often" && "on")} onClick={() => setMode("often")}>
-              <Repeat size={14} /> {t("rc.often")}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <span className="section-title">{t("rc.forYou")}</span>
-      )}
-      <span className="t-xs t-2" style={{ marginTop: -4, padding: "0 4px" }}>
-        {mode === "often" ? t("rc.oftenSub") : recs.basedOnShopping ? t("rc.forYouSub") : t("rc.forYouSubNone")}
-      </span>
-      <div className="rc-rail" ref={rail} onScroll={onScroll}>
-        {items.map(({ recipe, line, icon: I }) => (
-          <button key={recipe.id} type="button" className="card rc-card" onClick={() => navigate(`/recipes/r/${recipe.id}`)}>
-            <Cover recipe={recipe} size="md" />
-            <span className="stack g-2" style={{ padding: "0 6px" }}>
-              <span className="t-h">{recipe.name}</span>
-              <span className="t-sm t-2">{recipeMeta(recipe)}</span>
-              <span className="row g-4 t-xs t-accent" style={{ marginTop: 4 }}>
-                <I size={13} /> <span className="ellipsis">{line}</span>
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-      <div className="rc-dots">
-        {items.map((x, i) => (
-          <button key={x.recipe.id} type="button" className={cx(i === idx && "on")} onClick={() => goTo(i)} aria-label={t("rc.recipeN", { n: i + 1 })} />
-        ))}
-      </div>
-    </section>
   );
 }

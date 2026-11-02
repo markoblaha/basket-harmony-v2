@@ -175,3 +175,52 @@ body.kb-typing .bhm-tabs {
   :root .bhm .vx-sheet.where .vx-days button { min-height: 36px; padding: 0 11px; font-size: 14px; }
   :root .bhm .vx-sheet.where .btn.big { height: 50px; }
 }
+
+/* Detail receptu: hlavička nad fotkou (priehľadná, pri posunutí sklo), dole miesto pre pruh „Kúpiť suroviny“. */
+.bhm.bhm-over .nb.over {
+  margin-bottom: calc(-1 * (var(--sat) + 62px));
+}
+.bhm.bhm-recipe .rhero2 {
+  margin-top: calc(-1 * var(--sat));
+}
+.bhm.bhm-recipe .body.rbody {
+  padding-bottom: 150px;
+}
+:root .bhm.bhm-full > .taste {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+/* Recept bez fotky v Ochutnávači: veľká 3D ikona na farebnom pozadí. */
+.bhm .tst-em {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
+/* Varenie: dlhý krok s radami sa posúva (nič sa nestlačí ani neprekryje). */
+.bhm .cbody {
+  justify-content: safe center;
+}
+.bhm .cbody > *,
+.bhm .cbox > .sbx {
+  flex-shrink: 0;
+}
+/* Podrobnosti kroku (ako na to) – neutrálne, nie varovanie. */
+.bhm .sbx.more {
+  background: var(--card2);
+}
+.bhm .sbx.more .ico {
+  color: var(--sec);
+}
+/* „Hotové je, keď“ (.sbx.ok) – v mockupe ho prebíja všeobecné .ok (zelené koliesko 28 px). */
+.bhm .sbx.ok {
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  display: flex;
+}
+.bhm .sbx.ok .ico {
+  width: 17px;
+  height: 17px;
+  color: var(--acc);
+}

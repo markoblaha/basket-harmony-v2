@@ -120,9 +120,17 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      recipe_likes: {
+        Row: { household_id: string; user_id: string; recipe_key: string; created_at: string };
+        Insert: { household_id: string; recipe_key: string };
+        Update: never;
+        Relationships: [];
+      };
       recipe_plans: {
         Row: {
           cook_seconds: number | null;
+          /** Deň v pláne týždňa (nepovinný). */
+          planned_on: string | null;
           cooked_at: string | null;
           cooked_by: string | null;
           created_at: string;

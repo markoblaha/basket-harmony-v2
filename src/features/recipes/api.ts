@@ -187,6 +187,8 @@ export type RecipePlan = {
   created_at: string;
   cooked_at: string | null;
   cook_seconds: number | null;
+  /** Deň v pláne týždňa (RRRR-MM-DD). */
+  planned_on: string | null;
 };
 
 export function useRecipePlans(householdId: string) {
@@ -195,7 +197,7 @@ export function useRecipePlans(householdId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recipe_plans")
-        .select("id, recipe_key, recipe_name, portions, list_id, status, created_at, cooked_at, cook_seconds")
+        .select("id, recipe_key, recipe_name, portions, list_id, status, created_at, cooked_at, cook_seconds, planned_on")
         .eq("household_id", householdId)
         .neq("status", "DISMISSED")
         .order("created_at", { ascending: false })
@@ -211,7 +213,7 @@ export type PlanInput = {
   listId: string | null;
   newList: { name: string; planned_for: string | null; note: string } | null;
   items: PlanItem[];
-  recipes: { key: string; name: string; portions: number }[];
+  recipes: { key: string; name: string; portions: number; /** deň v pláne týždňa */ day?: string | null }[];
 };
 
 /** Suroviny receptov do zoznamu (nového alebo existujúceho) + recepty čakajú na uvarenie. */
@@ -338,4 +340,29 @@ export async function imageToBase64(file: File): Promise<{ mime: string; data: s
   bitmap.close();
   const url = canvas.toDataURL("image/jpeg", 0.85);
   return { mime: "image/jpeg", data: url.slice(url.indexOf(",") + 1) };
+}
+
+/* ------------------------------------------------------------------ Ochutnávač: „Chcem“ za každého člena */
+export function useRecipeLikes(householdId: string) {
+  return useQuery({
+    queryKey: ["recipe-likes", householdId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("recipe_likes").select("user_id, recipe_key").eq("household_id", householdId);
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useToggleLike(householdId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ key, on, me }: { key: string; on: boolean; me: string }) => {
+      const { error } = on
+        ? await supabase.from("recipe_likes").upsert({ household_id: householdId, recipe_key: key }, { ignoreDuplicates: true })
+        : await supabase.from("recipe_likes").delete().eq("household_id", householdId).eq("recipe_key", key).eq("user_id", me);
+      if (error) throw error;
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["recipe-likes", householdId] }),
+  });
 }

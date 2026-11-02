@@ -42,6 +42,8 @@ const StoresPage = page(settings, "StoresPage");
 const TilesPage = page(settings, "TilesPage");
 const HistoryPage = page(() => import("@/features/lists/HistoryScreens"), "HistoryPage");
 const HistoryDetailPage = page(() => import("@/features/lists/HistoryScreens"), "HistoryDetailPage");
+const CollectionPage = page(() => import("@/features/recipes/CollectionPage"), "CollectionPage");
+const TastePage = page(() => import("@/features/recipes/TastePage"), "TastePage");
 const ScanScreen = page(() => import("@/features/lists/ScanScreen"), "ScanScreen");
 const AnalyticsLayout = page(analytics, "AnalyticsLayout");
 const CategoriesTab = page(() => import("@/features/analytics/CategoriesTab"), "CategoriesTab");
@@ -115,6 +117,8 @@ export function App() {
           <Route path="scan" element={<ScanScreen />} />
           <Route path="recipes" element={<RecipesPage />} />
           <Route path="recipes/search" element={<RecipeSearchPage />} />
+          <Route path="recipes/c/:kind/:id" element={<CollectionPage />} />
+          <Route path="recipes/taste" element={<TastePage />} />
           <Route path="recipes/check" element={<RecipeCheckPage />} />
           <Route path="recipes/cart" element={<RecipeCartPage />} />
           <Route path="recipes/r/:id" element={<RecipePage />} />

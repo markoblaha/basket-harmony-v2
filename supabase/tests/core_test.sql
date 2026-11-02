@@ -567,6 +567,21 @@ begin
   begin perform public.reply_request(req_id, '   '); exception when others then err := sqlerrm; end;
   if err = 'INVALID_INPUT' then report := report || E'ok: prázdna odpoveď sa neuloží\n';
   else report := report || 'FAIL: prázdna odpoveď -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  -- Ochutnávač (migrácia 34): „Chcem“ len za seba
+  insert into public.recipe_likes (household_id, recipe_key) values (h, 'segedin');
+  err := null; begin insert into public.recipe_likes (household_id, user_id, recipe_key) values (h, a, 'x'); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: „Chcem“ sa nedá dať za iného člena\n';
+  else report := report || 'FAIL: recipe_likes za iného -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  -- plán týždňa (migrácia 33): naplánovanie bez zoznamu, na jeden deň jedno jedlo, položky bez zoznamu nie
+  res := public.plan_recipes(h, null, null, '[]', jsonb_build_array(jsonb_build_object('key', 'kari', 'name', 'Kuracie na kari', 'portions', 4, 'day', (current_date + 3)::text)));
+  res := public.plan_recipes(h, null, null, '[]', jsonb_build_array(jsonb_build_object('key', 'rizoto', 'name', 'Kuracie rizoto', 'portions', 4, 'day', (current_date + 3)::text)));
+  select count(*) into n from public.recipe_plans where household_id = h and status = 'PENDING' and planned_on = current_date + 3;
+  select recipe_key into txt from public.recipe_plans where household_id = h and status = 'PENDING' and planned_on = current_date + 3;
+  if res->>'list_id' is null and n = 1 and txt = 'rizoto' then report := report || E'ok: plán týždňa – na deň jedno jedlo, bez zoznamu\n';
+  else report := report || 'FAIL: plán dňa ' || res::text || ' ' || n || ' ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.plan_recipes(h, null, null, '[{"name":"Mlieko"}]', '[]'); exception when others then err := sqlerrm; end;
+  if err = 'INVALID_INPUT' then report := report || E'ok: suroviny bez zoznamu sa odmietnu\n';
+  else report := report || 'FAIL: položky bez zoznamu -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
   perform public.end_shopping(s1.id);
 
   execute 'reset role';
