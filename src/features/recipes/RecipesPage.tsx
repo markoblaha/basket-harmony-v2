@@ -14,6 +14,7 @@ import { errorMessage } from "@/lib/errors";
 import { formatDateTime, t, tn, type Key } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, MkHeader, Seg } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { Btn } from "@/mockup/kit";
 import { useFavorites, usePlanRecipes, useRecipePlans, useRecipes } from "./api";
 import { VoiceSearch } from "./common";
@@ -110,7 +111,7 @@ export function RecipesPage() {
 
   return (
     <div className="stack">
-      <MkHeader title={t("recipes.title")}>
+      <MkHeader title={t("recipes.title")} right={<HelpBtn screen="recipes" />}>
         <Seg<Tab>
           items={[
             ["discover", t("rk.book")],

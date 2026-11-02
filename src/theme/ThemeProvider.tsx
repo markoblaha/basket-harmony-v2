@@ -115,6 +115,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.toggle("w", style === "warm");
     root.classList.toggle("g", style === "glass");
     root.classList.toggle("t-d", resolved === "dark");
+    root.classList.toggle("t-l", resolved === "light");
     root.style.colorScheme = resolved;
     setStatusBarColor(STATUS_BAR[style][resolved]);
   }, [resolved, style]);

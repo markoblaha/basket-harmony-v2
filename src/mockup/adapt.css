@@ -227,3 +227,66 @@ body.kb-typing .bhm-tabs {
 .bhm .mebtn {
   position: relative;
 }
+
+/* Uvítanie a nápovedy (src/features/help): cez celú plochu, nad appkou aj nad lištou. */
+:root .bhm.bhm-help {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+}
+:root .bhm.bhm-help > * {
+  pointer-events: auto;
+}
+:root .bhm.bhm-help #tx {
+  pointer-events: none;
+}
+:root .bhm.bhm-help #tx .tx-full,
+:root .bhm.bhm-help #tx .tx-sheet {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+/* Ukážka: mockup v rámčeku cez celú plochu, v bezpečnej oblasti displeja. */
+:root .bhm.bhm-demo {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: var(--bg);
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+:root .bhm.bhm-demo iframe {
+  display: block;
+  width: 100%;
+  max-width: 40rem;
+  height: 100%;
+  margin: 0 auto;
+  border: 0;
+  transition: opacity var(--dur-3);
+}
+:root .bhm .bhm-demo-load {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-weight: 650;
+  color: var(--fg);
+}
+:root .bhm .bhm-demo-load .tx-skip {
+  border: 0;
+  background: none;
+  color: var(--sec);
+  font: inherit;
+  padding: 10px 16px;
+  min-height: 44px;
+}
+/* Hotový riadok Prvých krokov (.tx-fs.ok) – všeobecné .ok (zelené koliesko 28 px) ho nesmie zmenšiť. */
+.bhm .tx-fs.ok {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  display: flex;
+}

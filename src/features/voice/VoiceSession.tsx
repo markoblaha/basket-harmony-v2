@@ -8,6 +8,7 @@ import { useEstimator } from "@/features/lists/estimate";
 import { fmtQty } from "@/features/lists/ListParts";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { useKeyboardHeight } from "@/mockup/Sheet";
 import { Btn, StoreTile, eur, storeKeyOf } from "@/mockup/kit";
 import { addDays, dayLabel, isoDay } from "@/features/lists/dates";
@@ -602,7 +603,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
             {t("vx.to")} {tLabel ? <b>{tLabel}</b> : <em>{t("vx.newList")}</em>}
             <I n="caret-down" w="bold" />
           </button>
-          <span className="ibs" />
+          <HelpBtn screen="m-voice" cls="vx-ib" />
         </div>
         {restored && n > 0 && (
           <div className="vx-rest">

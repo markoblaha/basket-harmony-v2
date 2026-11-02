@@ -11,6 +11,7 @@ import { errorMessage } from "@/lib/errors";
 import { formatDateTime, t, tn } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, Toggle } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { Sheet } from "@/mockup/Sheet";
 import { CATS } from "@/mockup/catalog";
 import { Av, Btn, StoreTile, eur, storeName } from "@/mockup/kit";
@@ -238,6 +239,7 @@ export function ShopScreen({
                   <I n="sun" />
                 </span>
               )}
+              <HelpBtn screen="m-shop" />
             </div>
             <div className="snb-seg" role="progressbar" aria-valuemin={0} aria-valuemax={n} aria-valuenow={done.length} aria-label={t("sp.progress", { done: done.length, n })}>
               <span className="segs" style={{ gap: n > 40 ? 1.5 : n > 20 ? 2 : 3 }}>
@@ -592,7 +594,7 @@ export function FollowScreen({
           <header className="nb">
             <IB n="caret-left" label={t("sp.back")} onClick={onBack} />
             <span className="nbt sh">{t("sp.shopping", { name: shopper })}</span>
-            <span className="ibs" />
+            <HelpBtn screen="m-follow" />
           </header>
           <div className="body">
             <div className={`card ${g ? "glass2" : "live"}`}>

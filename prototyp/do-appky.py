@@ -20,7 +20,7 @@ OUT = os.path.join(ROOT, 'src', 'mockup')
 PUB = os.path.join(ROOT, 'public', 'mk')
 os.makedirs(OUT, exist_ok=True)
 
-THEME = {'w', 'g', 't-d'}
+THEME = {'w', 'g', 't-d', 't-l'}
 # Rám telefónu a panel vedľa neho (shell.css) do appky nepatria.
 SKIP = re.compile(r'^(html|body|#root|:root|\.boot|\.desk|\.phone-|\.dev\b|\.sbar|\.panel|\.p-[a-z])')
 

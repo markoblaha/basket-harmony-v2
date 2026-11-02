@@ -8,6 +8,7 @@ import { errorMessage } from "@/lib/errors";
 import { t } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { Btn } from "@/mockup/kit";
 import { useCookRecipe, useRecipes } from "./api";
 import { STEP_DETAILS } from "./catalog";
@@ -115,6 +116,7 @@ export function CookPage() {
           <IB n="x" label={t("ck.close")} cls={g ? "glass2" : ""} onClick={() => navigate(-1)} />
           <span className="nbt sh">{t("rc.stepOf", { i: i + 1, n: steps.length })}</span>
           <div className="nbr">
+            <HelpBtn screen="m-cook" cls={g ? "glass2" : ""} />
             <IB n="list" label={t("rc.ingredients")} cls={g ? "glass2" : ""} onClick={() => setShowIng(!showIng)} />
           </div>
         </header>

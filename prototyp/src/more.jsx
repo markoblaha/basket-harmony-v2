@@ -3,7 +3,7 @@ import { PRODUCTS, PANTRY, MEMBERS } from './data.js';
 import { eur0 } from './logic.js';
 import { PHOTO_CREDITS } from './credits.js';
 import { COACH, HelpBtn } from './coach.jsx';
-import { HelpSection } from './tour.jsx';
+import { HelpSection, EMBED } from './tour.jsx';
 import { notifItems, notifSig, runGo } from './notif.js';
 
 /* icons: link info paper-plane-right caret-left caret-right copy users user-plus target sparkle translate arrow-counter-clockwise info check map-trifold lightbulb */
@@ -72,7 +72,7 @@ export function More({ p = {}, top }) {
             {inv && <div className="invite"><span className="link">{link}</span><Btn cls={'pri sm' + (g ? ' a' : '')} onClick={send}><I n="paper-plane-right" />Poslať</Btn><p className="meta sm">Pošlite odkaz SMS-kou, WhatsAppom alebo e-mailom. Kto ho otvorí, len potvrdí pridanie do domácnosti. Odkaz platí 7 dní.</p></div>}
           </div>
 
-          <HelpSection g={g} />
+          {!EMBED && <HelpSection g={g} />}
 
           <div className="h2 sm">Nastavenia</div>
           <div className={'lst menu-l' + (g ? ' glass2' : '')}>
@@ -85,12 +85,14 @@ export function More({ p = {}, top }) {
             <div className="row"><span className="th ic"><I n="translate" /></span><div className="tx"><b>Jazyk</b><span className="sub">Slovenčina</span></div></div>
           </div>
 
+          {!EMBED && <>
           <div className="h2 sm">Prototyp</div>
           <div className={'card' + (g ? ' glass2' : '')}>
             <p className="meta">Toto je klikací prototyp. Zoznamy, nákupy, recepty a bločky sa ukladajú len v tomto prehliadači. Ceny a výdavky sú z testovacej databázy (66 bločkov). Do skutočnej appky sa nič neposiela.</p>
             {confirm ? <div className="sh-act"><Btn cls="soft" onClick={() => setConfirm(false)}>Nie</Btn><Btn cls="danger" onClick={() => { reset(); setConfirm(false); pop(); }}>Áno, začať odznova</Btn></div>
               : <Btn cls="soft full" onClick={() => setConfirm(true)}><I n="arrow-counter-clockwise" w="bold" />Začať od uvítania</Btn>}
           </div>
+          </>}
           <details className={'card credits' + (g ? ' glass2' : '')}>
             <summary>Zdroje fotiek jedál</summary>
             <p className="meta">Fotky v receptoch sú z Openverse s voľnou licenciou (CC0 alebo CC BY). Recepty označené „Recept od AI“ majú 3 ilustračné fotky vytvorené AI (Gemini) v jednotnom štýle appky.</p>

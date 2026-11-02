@@ -11,6 +11,7 @@ import { errorMessage } from "@/lib/errors";
 import { t, tn } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, MkHeader, Seg } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { Btn, StoreTile, eur, eur0, storeKeyOf } from "@/mockup/kit";
 import { useOverview, type Overview } from "./api";
 import { BudgetSheet, CatRows, Donut, MissingReceipts, cat, perTitle, prevTitle, usePer, type Per } from "./money";
@@ -162,7 +163,12 @@ export function MoneyPage() {
   const header = (
     <MkHeader
       title={g ? t("mn.titleG", { per: title }) : t("mn.title")}
-      right={<IB n="camera" label={t("sp.photo")} onClick={() => navigate("/scan")} />}
+      right={
+        <>
+          <IB n="camera" label={t("sp.photo")} onClick={() => navigate("/scan")} />
+          <HelpBtn screen="money" />
+        </>
+      }
       style={g ? { display: "none" } : undefined}
     >
       {null}

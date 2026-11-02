@@ -10,6 +10,7 @@ import { errorMessage } from "@/lib/errors";
 import { t, tn, type Key } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, Back, Seg, Stepper, useScrolled } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { Sheet } from "@/mockup/Sheet";
 import { Btn, eur } from "@/mockup/kit";
 import { useDeleteRecipe, useFavorites, useRecipes, useToggleFavorite } from "./api";
@@ -109,6 +110,7 @@ export function RecipePage() {
             <Back label={t("recipes.title")} onClick={() => navigate(-1)} cls={g && !scrolled ? "wg" : ""} />
             <span className="nbt">{r.name}</span>
             <div className="nbr">
+              <HelpBtn screen="recipe" cls={g && !scrolled ? "wg" : ""} />
               <IB n="export" cls={g && !scrolled ? "wg" : ""} label={t("rk.share")} onClick={share} />
               <IB
                 n="heart"

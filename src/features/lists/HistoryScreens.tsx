@@ -12,6 +12,7 @@ import { errorMessage } from "@/lib/errors";
 import { t, tn } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
 import { Back, E, I, MkHeader, Seg } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { Btn, StoreTile, emojiFor, eur, relDay, storeKeyOf } from "@/mockup/kit";
 import { useAddItem, useCreateList, useListStats, useLists, useTripItems, type ShoppingList } from "./api";
 import { isoDay } from "./dates";
@@ -39,7 +40,7 @@ export function HistoryPage() {
 
   return (
     <div className="stack">
-      <MkHeader title={t("ls.history")} back={<Back label={t("nav.shopping")} onClick={() => navigate("/lists")} />}>
+      <MkHeader title={t("ls.history")} back={<Back label={t("nav.shopping")} onClick={() => navigate("/lists")} />} right={<HelpBtn screen="history" />}>
         <p className="meta">{t("hist.intro")}</p>
         {missing.length > 0 && (
           <Seg

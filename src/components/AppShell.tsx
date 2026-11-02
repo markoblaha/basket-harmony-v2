@@ -16,6 +16,9 @@ import { OfflineBanner } from "./ui";
 import { primeAudio } from "@/features/voice/useRecorder";
 import { VOICE_EVENT } from "@/features/voice/open";
 import { useTheme } from "@/theme/ThemeProvider";
+import { Coach } from "@/features/help/Coach";
+import { Demo, HelpMenu, Welcome } from "@/features/help/Help";
+import { useHelp, useHelpUi } from "@/features/help/state";
 
 const VoiceSession = lazy(() => import("@/features/voice/VoiceSession").then((m) => ({ default: m.VoiceSession })));
 
@@ -100,6 +103,8 @@ export function AppShell() {
   const screen = useRef<HTMLDivElement>(null);
   const motion = useScreenMotion(pathname);
   const { style } = useTheme();
+  const help = useHelp();
+  const helpUi = useHelpUi();
   useEffect(() => {
     document.body.classList.toggle("no-tabs", !showTabs);
   }, [showTabs]);
@@ -160,6 +165,11 @@ export function AppShell() {
           />
         </Suspense>
       )}
+      {/* Pomoc: nápovedy („?“), ponuka pomoci, ukážka a uvítanie pri prvom spustení. */}
+      <Coach blocked={!!helpUi.demo || !help.started} />
+      <HelpMenu />
+      <Demo />
+      <Welcome />
     </div>
   );
 }

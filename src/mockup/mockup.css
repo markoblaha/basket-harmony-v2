@@ -1277,7 +1277,7 @@
 .g .bhm .match.mg { background: color-mix(in srgb, var(--fg) 6%, transparent); box-shadow: none; }
 .g .bhm .scan.res .dock { z-index: 5; }
 .g .bhm .sky { position: absolute; inset: 0; }
-.g .bhm .t-l .sky { background: linear-gradient(180deg, #ffb48a 0%, #ffd2ab 30%, #f6e6d4 60%, #f3f2f0 100%); }
+.g.t-l .bhm .sky { background: linear-gradient(180deg, #ffb48a 0%, #ffd2ab 30%, #f6e6d4 60%, #f3f2f0 100%); }
 .g.t-d .bhm .sky { background: linear-gradient(180deg, #2b1a40 0%, #3f2239 34%, #1c1420 68%, #050506 100%); }
 .g .bhm .sky.soft { opacity: .6; }
 .g .bhm .s-money .sc, .g .bhm .s-receipts .sc, .g .bhm .s-category .sc, .g .bhm .s-product .sc, .g .bhm .s-store .sc, .g .bhm .s-receipt .sc { background: none; }
@@ -2019,9 +2019,9 @@
 .t-d .bhm { --gs-bg: #fbf8f2; --gs-fg: #1c1a17; --gs-sec: rgb(28 26 23 / .68); --gs-ter: rgb(28 26 23 / .42); --gs-line: rgb(28 26 23 / .1); --gs-out: rgb(0 0 0 / .55); }
 .g.t-d .bhm { --gs-acc: #d9531a; --gs-btn: linear-gradient(160deg, #ff8a4c, #e9571a); --gs-onbtn: #fff; }
 .w.t-d .bhm { --gs-acc: #2f6b4a; --gs-btn: #2f6b4a; --gs-onbtn: #fff; }
-.bhm.t-l { --gs-fg: #fff; --gs-sec: rgb(255 255 255 / .74); --gs-ter: rgb(255 255 255 / .45); --gs-line: rgb(255 255 255 / .12); --gs-out: rgb(20 16 10 / .35); }
-.g .bhm.t-l { --gs-bg: #221e1a; --gs-acc: #ff9a63; --gs-btn: linear-gradient(160deg, #ff8a4c, #f2601f); --gs-onbtn: #fff; }
-.w .bhm.t-l { --gs-bg: #1d2a22; --gs-acc: #8fd4a7; --gs-btn: #8fd4a7; --gs-onbtn: #0f1a13; }
+.t-l .bhm { --gs-fg: #fff; --gs-sec: rgb(255 255 255 / .74); --gs-ter: rgb(255 255 255 / .45); --gs-line: rgb(255 255 255 / .12); --gs-out: rgb(20 16 10 / .35); }
+.g.t-l .bhm { --gs-bg: #221e1a; --gs-acc: #ff9a63; --gs-btn: linear-gradient(160deg, #ff8a4c, #f2601f); --gs-onbtn: #fff; }
+.w.t-l .bhm { --gs-bg: #1d2a22; --gs-acc: #8fd4a7; --gs-btn: #8fd4a7; --gs-onbtn: #0f1a13; }
 .bhm #tx .tx-card, .bhm #tx .tx-chcard, .bhm #tx .tx-dlg, .bhm #tx .tx-sheet, .bhm #tx .tx-paused, .bhm #tx .tx-label, .bhm .coach .co-bub, .bhm .co-wel .co-wcard {
   --fg: var(--gs-fg); --sec: var(--gs-sec); --ter: var(--gs-ter); --line: var(--gs-line); --acc: var(--gs-acc); --pri: var(--gs-btn); --onpri: var(--gs-onbtn); --mat-thick: var(--gs-bg);
   background: var(--gs-bg) !important; color: var(--gs-fg); -webkit-backdrop-filter: none !important; backdrop-filter: none !important;

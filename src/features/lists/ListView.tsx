@@ -12,6 +12,7 @@ import { t } from "@/i18n";
 import { useSetting } from "@/lib/settings";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, Back, useScrolled } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { Avatars, Btn, eur, eur0, recipeArt, relDay, storeName } from "@/mockup/kit";
 import { openVoice } from "@/features/voice/open";
 import type { RecipePlan } from "@/features/recipes/api";
@@ -216,6 +217,7 @@ export function ListView({
             <span className="nbt">{list.name}</span>
             <div className="nbr">
               <Avatars people={avatars.slice(0, 3)} sm />
+              <HelpBtn screen="list" />
               <IB n="dots-three" label={t("li.options")} onClick={() => setMenuOpen(true)} />
             </div>
           </header>

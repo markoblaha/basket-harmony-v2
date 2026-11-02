@@ -9,7 +9,7 @@ import { Voice } from './voice.jsx';
 import { Cook, PlanSheet, ImportSheet, AddRecipeSheet } from './recipes.jsx';
 import { Taste, BookMap } from './book.jsx';
 import { Coach, coachScreens } from './coach.jsx';
-import { Tour, Welcome, HelpSheet, startTour, CHAPTERS } from './tour.jsx';
+import { Tour, Welcome, HelpSheet, startTour, CHAPTERS, EMBED, embedState } from './tour.jsx';
 import { Recipes, RecipeScreen, RecipeCollection } from './cookbook.jsx';
 import { Scan, Receipts, ReceiptDetail } from './receipt.jsx';
 import { Money, CategoryScreen, KindScreen, VariantScreen, ProductScreen, StoreScreen, BudgetSheet } from './money.jsx';
@@ -117,8 +117,9 @@ function Toasts({ t, close }) {
 }
 
 export function App() {
-  const [S, setS] = useState(load);
-  const frame = useMedia('(min-width: 860px) and (min-height: 640px)');
+  const [S, setS] = useState(EMBED ? embedState : load);
+  const wide = useMedia('(min-width: 860px) and (min-height: 640px)');
+  const frame = !EMBED && wide; // ukážka v appke je vždy na celú plochu
   const hostDark = useHostDark();
   const theme = S.theme || 'w';
   const dark = S.mode === 'dark' || (S.mode === 'system' && hostDark);
@@ -129,7 +130,7 @@ export function App() {
   const [ovl, setOvl] = useState(null);
   const appRef = useRef(null);
 
-  useEffect(() => { const t = setTimeout(() => save(S), 250); return () => clearTimeout(t); }, [S]);
+  useEffect(() => { if (EMBED) return; const t = setTimeout(() => save(S), 250); return () => clearTimeout(t); }, [S]);
   useEffect(() => { aiAvailable().then(setAi); }, []);
   // Nápovedy sa samy neukazujú: po prvom spustení len na požiadanie („?“ alebo Viac → Pomoc a ukážka).
   // Staršie uložené stavy (pred týmto pravidlom) sa raz prepnú na vypnuté.

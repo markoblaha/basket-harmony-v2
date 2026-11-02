@@ -12,6 +12,7 @@ import { useProfiles } from "@/features/household/api";
 import { errorMessage } from "@/lib/errors";
 import { t, tn } from "@/i18n";
 import { E, I, IB } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { Av, Btn, eur } from "@/mockup/kit";
 import { useRecipeLikes, useRecipes, useToggleLike } from "./api";
 import { art, useRecipeFacts } from "./mk";
@@ -107,6 +108,7 @@ export function TastePage() {
             <I n="heart" />
             {liked.length}
           </span>
+          <HelpBtn screen="m-taste" />
         </div>
         <div className="tst-feed" ref={ref} onScroll={onScroll}>
           {ids.map((id, k) => {

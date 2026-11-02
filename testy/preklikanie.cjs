@@ -61,6 +61,7 @@ async function ids() {
 function screens(id) {
   return [
     ["domov", "/"],
+    ["uvitanie", "/?uvitanie=1"],
     ["nakupy", "/lists"],
     id.list && ["zoznam", `/lists/${id.list}`],
     ["historia", "/history"],
@@ -150,7 +151,7 @@ const CHECK = () => {
       colorScheme: look.scheme, locale: "sk-SK",
     });
     await ctx.addInitScript(([theme, style]) => {
-      try { localStorage.setItem("bh.theme", theme); localStorage.setItem("bh.style", style); localStorage.setItem("bh.locale", "sk"); } catch { /* */ }
+      try { localStorage.setItem("bh.theme", theme); localStorage.setItem("bh.style", style); localStorage.setItem("bh.locale", "sk"); /* uvítanie len na obrazovke „uvitanie“, inak by prekrylo všetky */ if (location.search.includes("uvitanie")) localStorage.removeItem("bh.help"); else localStorage.setItem("bh.help", JSON.stringify({ started: true, off: true, firstHidden: true })); } catch { /* */ }
     }, [look.theme, look.style]);
     const page = await ctx.newPage();
     const errs = [];

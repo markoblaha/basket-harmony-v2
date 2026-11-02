@@ -19,6 +19,7 @@ import { shortName } from "@/lib/shortName";
 import { t, tn } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, MkHeader } from "@/mockup/ui";
+import { FirstSteps, HelpBtn } from "@/features/help/Help";
 import { Btn, StoreTile, eur0, recipeArt, relDay, storeKeyOf } from "@/mockup/kit";
 
 const MONTH_MS = 30 * 86_400_000;
@@ -120,7 +121,8 @@ export function HomePage() {
 
   return (
     <div className="stack">
-      <MkHeader title={t("nav.home")} bodyClass="home-a">
+      <MkHeader title={t("nav.home")} bodyClass="home-a" right={<HelpBtn screen="home" />}>
+          <FirstSteps g={g} />
           {missing.length > 0 && (
             <HSec title={t("home.todo")} link={missing.length > 2 ? t("home.allCount", { n: missing.length }) : undefined} onLink={() => navigate("/history?filter=missing")}>
               {missing.slice(0, 2).map((l) => (

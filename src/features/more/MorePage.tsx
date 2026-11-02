@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   Download, type LucideIcon,
 } from "lucide-react";
@@ -27,6 +27,8 @@ import { useTheme } from "@/theme/ThemeProvider";
 import { FOODS } from "@/features/recipes/foods";
 import { usePantry } from "@/features/recipes/mk";
 import { markSeen, signature, useNotifications } from "./notif";
+import { HelpBtn, HelpSection } from "@/features/help/Help";
+import { setHelp } from "@/features/help/state";
 
 /** Prepínače zobrazovania (uložené v zariadení, src/lib/settings.ts). Hlavné sú vždy vidno, ostatné pod „Rozšírené“. */
 type Toggle = [keyof Settings & string, Key, Key];
@@ -100,6 +102,13 @@ export function MorePage() {
   useEffect(() => {
     markSeen(sig);
   }, [sig]);
+  // Prvé kroky → „Pozvať“ otvorí rovno pozvánku (/more?pozvat=1).
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    if (params.get("pozvat") !== "1") return;
+    setParams({}, { replace: true });
+    void invite();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const myName = profiles.data?.get(me) ?? "";
   const email = user?.email ?? "";
@@ -120,6 +129,7 @@ export function MorePage() {
   };
   const send = async () => {
     if (!inv) return;
+    setHelp(() => ({ invited: true }));
     try {
       if (navigator.share) {
         await navigator.share({ title: t("mo.inviteTitle"), text: t("mo.inviteText", { name: household.name }), url: inv.url });
@@ -162,7 +172,7 @@ export function MorePage() {
 
   return (
     <div className="stack">
-      <MkHeader title={t("more.title")} back={<Back label={t("common.back")} onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/"))} />} style={{ display: "none" }} />
+      <MkHeader title={t("more.title")} back={<Back label={t("common.back")} onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/"))} />} right={<HelpBtn screen="more" />} style={{ display: "none" }} />
       <div className="bhm bhm-list">
         <div className="body">
           <button type="button" className="lhead" onClick={() => setSheet("profile")} style={{ textAlign: "left" }}>
@@ -237,6 +247,8 @@ export function MorePage() {
             )}
             {row("plus", t("more.newHousehold"), undefined, () => setSheet("new"))}
           </div>
+
+          <HelpSection g={g} />
 
           <div className="h2 sm">{t("mo.settings")}</div>
           <div className={`lst menu-l${gl}`}>

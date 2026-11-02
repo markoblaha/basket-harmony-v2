@@ -117,6 +117,23 @@ export function emptyData() {
   return { lists: [], history: [], missingReceipts: [], week: {}, requests: [], sentRequests: [], shopping: null, live: null, receipts: [], priceLog: {}, favorites: [], aiRecipes: [], cooked: {}, recipeHave: {}, voiceDraft: null,
     have: [...PANTRY], budget: 1000, noReal: true, solo: true, first: { invited: false } };
 }
+// Ukážka vložená do skutočnej appky: …/prototyp/?ukazka=zaklady|vsetko|k0…k7&tema=w|g&vzhlad=light|dark[&z=pomoc]
+// Beží len v pamäti (nič sa neukladá ani neposiela); koniec ukážky oznámi appke správou „bh-demo-end“.
+export const EMBED = (() => {
+  try {
+    const q = new URLSearchParams(location.search); const u = q.get('ukazka');
+    return u ? { list: u, theme: q.get('tema') === 'g' ? 'g' : 'w', mode: q.get('vzhlad') === 'dark' ? 'dark' : 'light', help: q.get('z') === 'pomoc' } : null;
+  } catch (e) { return null; }
+})();
+export function embedState() {
+  const E = EMBED; const base = initialState();
+  const only = /^k[0-7]$/.test(E.list) ? +E.list.slice(1) : null;
+  const list = only != null ? ['c' + only] : E.list === 'zaklady' ? ['b0', 'b1', 'b2'] : ALL;
+  return { ...base, ...demoData(base), theme: E.theme, mode: E.mode, onb: { started: true }, coach: { welcomed: true, off: true, v: 2 },
+    tour: { on: true, list, basics: E.list === 'zaklady', ch: 0, st: 0, phase: only != null ? 'step' : 'chapter', only: only != null ? only : undefined, backup: null, fromHelp: E.help, k: Date.now() } };
+}
+const embedEnd = () => { try { window.parent.postMessage({ type: 'bh-demo-end' }, location.origin); } catch (e) { /* mimo appky */ } };
+
 export const startTour = (act, nav, o = {}) => act((s) => {
   const backup = o.fromHelp ? strip(s) : null;
   const list = o.only != null ? ['c' + o.only] : o.list || ALL;
@@ -134,7 +151,7 @@ export function Tour({ appRef, where }) {
   const [nudge, setNudge] = useState(0);
   const [play, setPlay] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const [resume, setResume] = useState(() => !!(S.tour && S.tour.on && S.tour.phase === 'step'));
+  const [resume, setResume] = useState(() => !EMBED && !!(S.tour && S.tour.on && S.tour.phase === 'step'));
   const [cleaning, setCleaning] = useState(false);
   const [waited, setWaited] = useState(false);
   const cardRef = useRef(null);
@@ -247,6 +264,7 @@ export function Tour({ appRef, where }) {
     // kapitola hotová
     const doneCh = { ...((S.onb && S.onb.ch) || {}), ...Object.fromEntries(marksOf(listOfT(T)[T.ch]).map((x) => [x, true])) };
     act((s) => ({ ...s, onb: { ...(s.onb || {}), ch: doneCh } }));
+    if (EMBED) { try { window.parent.postMessage({ type: 'bh-demo-ch', ch: marksOf(listOfT(T)[T.ch]) }, location.origin); } catch (e) { /* mimo appky */ } }
     if (T.only != null) { finish(false); return; }
     if (T.ch + 1 < L.length) set({ phase: 'done', k: Date.now() }); else set({ phase: 'end', k: Date.now() });
   }
@@ -255,6 +273,7 @@ export function Tour({ appRef, where }) {
   // koniec ukážky: z „?“ sa vrátia vlastné údaje, po prvom spustení prázdna appka
   function finish(fromEnd) {
     stopShow();
+    if (EMBED) { embedEnd(); return; }
     const T0 = S.tour;
     if (T0.fromHelp && T0.backup) {
       act((s) => ({ ...s, ...T0.backup, tour: null, onb: { ...(s.onb || {}), started: true } }));
@@ -378,7 +397,7 @@ export function Tour({ appRef, where }) {
         <p>{rich(okS === 'ok' ? step.ok : step.x)}</p>
         {nudge > 0 && !okS && <div className="tx-nudge"><I n="hand-tap" />{nudge > 1 ? 'Ťuknite na zvýraznené miesto – alebo nechajte appku, nech to ukáže.' : 'Ťuknite na zvýraznené miesto.'}</div>}
         {play ? <div className="tx-act"><span className="tx-play"><span className="bars"><i /><i /><i /><i /></span><span>Prehrávam…</span></span><button type="button" className="tx-ghost" onClick={stopShow}><I n="pause" />Zastaviť</button></div>
-          : okS === 'ok' || step.kind === 'info' ? <div className="tx-act"><span /><button type="button" className="tx-ok" onClick={() => { if (step.next) { set({ phase: 'end', k: Date.now() }); act((s) => ({ ...s, onb: { ...(s.onb || {}), ch: { ...((s.onb && s.onb.ch) || {}), [T.ch]: true } } })); } else next(); }} autoFocus>{step.next || 'Ďalej'}{!step.next && <I n="arrow-right" w="bold" />}</button></div>
+          : okS === 'ok' || step.kind === 'info' ? <div className="tx-act"><span /><button type="button" className="tx-ok" onClick={() => { if (step.next) { set({ phase: 'end', k: Date.now() }); act((s) => ({ ...s, onb: { ...(s.onb || {}), ch: { ...((s.onb && s.onb.ch) || {}), [T.ch]: true } } })); if (EMBED) { try { window.parent.postMessage({ type: 'bh-demo-ch', ch: marksOf(listOfT(T)[T.ch]) }, location.origin); } catch (e) { /* mimo appky */ } } } else next(); }} autoFocus>{step.next || 'Ďalej'}{!step.next && <I n="arrow-right" w="bold" />}</button></div>
           : okS === 'flash' ? <div className="tx-act"><span /></div>
           : <div className="tx-act"><button type="button" className="tx-skip" onClick={skipStep}>Preskočiť</button><button type="button" className={'tx-ghost' + (nudge > 1 ? ' hot' : '')} onClick={showMe} disabled={!box}><I n="play" />Ukáž mi to</button></div>}
         {prog(T.ch, part)}

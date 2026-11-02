@@ -9,7 +9,7 @@ Aktualizované 2. 11. 2026 (Fáza 0 prestavby). Pred prácou si prečítaj celé
 | Ostrá appka | vetva `main` → Cloudflare Worker `basket-harmony-v2`, DB `kjadeylctafnmgembgev` |
 | Testovacia appka | vetva `design/v2-mobile-redesign` → https://design-v2-mobile-redesign-basket-harmony-v2.markoblaha.workers.dev, DB `esftqxrdrlldvpmwirrx` (režim „staging“, `.env.staging`) |
 | Nasadenie | každý `push` – Cloudflare postaví vetvu sám (1–3 min). Overenie: zmení sa `assets/index-*.js` v HTML testovacej adresy. |
-| Prototyp v telefóne | https://design-v2-mobile-redesign-basket-harmony-v2.markoblaha.workers.dev/prototyp/ – súbor `public/prototyp/` (vytvorí `python3 prototyp/build.py && python3 prototyp/web.py`). Pred zlúčením do `main` rozhodnúť, či má ísť aj do ostrej appky. |
+| Prototyp v telefóne | https://design-v2-mobile-redesign-basket-harmony-v2.markoblaha.workers.dev/prototyp/ – súbor `public/prototyp/` (vytvorí `python3 prototyp/build.py && python3 prototyp/web.py`). Od Fázy 9 je to aj **ukážka v appke** (`/prototyp/?ukazka=…`), takže musí ísť aj do `main`. |
 | Starý repozitár | `markoblaha/basket-harmony` (pôvodná appka z Lovable) – s v2 nesúvisí |
 
 Majiteľ nechce: push do `main` ani Pull Request bez výslovného pokynu. Do ostrej DB len pri zlúčení.
@@ -189,6 +189,18 @@ obchody, upozornenia, prepínače, rozšírené, jazyk, export, pomoc), Odhlási
 zmeny. Chýbajúce ikony Phosphor (bell, sign-out, download-simple) v `src/mockup/icons-extra.ts`. Podstránky
 `/more/household`, `/more/notifications`, `/more/stores`, `/more/tiles` ostali v pôvodnom rozložení (mockup ich nemá).
 Upozornenia do telefónu (push) sú samostatný krok.
+**Fáza 9 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** Uvítanie, ukážka a nápovedy (`src/features/help/`, mockup
+`coach.jsx`, `tour.jsx`). Stav v zariadení `bh.help` (uvítanie prebehlo, nápovedy zap./vyp., videné, prejdené kapitoly,
+Prvé kroky). Vitajte pri prvom spustení v zariadení: „Prezrieť si ukážku“ (Zoznámte sa → Základy, 3 kapitoly) alebo
+„Začať naprázdno“ (prehrajú sa nápovedy Domova, na Domove karta Prvé kroky: prvý zoznam / pozvať / prvý bloček). Potom
+nič samo – „?“ vpravo hore na Domove, Nákupoch, zozname, Histórii, Receptoch, recepte, Výdavkoch, Viac, v nákupe,
+sledovaní, hlase, varení a Ochutnávači ponúkne nápovedy obrazovky / kapitolu / celú ukážku; Viac → Pomoc a ukážka
+(8 kapitol, nápovedy zap./vyp., ukázať znova). Nápovedy (`hints.ts`, 35 tipov, texty `co.*`) ukazujú na skutočné prvky.
+**Ukážka beží v mockupe** cez celú plochu (`Demo` → `/prototyp/?ukazka=zaklady|vsetko|k0…k7&tema&vzhlad[&z=pomoc]`):
+mockup v tomto režime nič neukladá ani neposiela, koniec a prejdené kapitoly oznámi appke správou (`bh-demo-end`,
+`bh-demo-ch`). Overené: celé Základy v appke až po koniec, do DB počas ukážky žiadny zápis. Oprava prevodu štýlov:
+trieda svetlého režimu `t-l` (okná nápovedy mali priehľadné pozadie). Pred vydaním (Fáza 10): ukážka je len po
+slovensky, má 4,7 MB a výdavky v nej sú zo snímky testovacej DB (pred zverejnením nahradiť vymyslenými).
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

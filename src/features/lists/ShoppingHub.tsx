@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ErrorState, Spinner } from "@/components/ui";
 import { useLongPress, type Person } from "@/components/kit";
 import { E, I, IB, MkHeader } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { Avatars, eur0, recipeArt } from "@/mockup/kit";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useToast } from "@/components/toast";
@@ -86,7 +87,13 @@ export function ShoppingHub() {
 
   return (
     <div className="stack">
-      <MkHeader title={t("nav.shopping")} right={<IB n="plus" cls="addb" label={t("ls.newList")} onClick={() => setCreating(true)} />}>
+      <MkHeader title={t("nav.shopping")} right={
+          <>
+            <IB n="plus" cls="addb" label={t("ls.newList")} onClick={() => setCreating(true)} />
+            <HelpBtn screen="lists" />
+          </>
+        }
+      >
         {live && liveList && <LiveMini session={live} list={liveList} g={g} mine={live.shopper_id === me} shopper={shortName(nameOf(live.shopper_id))} />}
         {open.map((l) => (
           <ListCard
