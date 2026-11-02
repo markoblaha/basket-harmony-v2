@@ -95,12 +95,12 @@ export function Money() {
   if (g) return (
     <>
       <div className="sc">
-        <header className="nb"><MeBtn /><span className="nbt">Výdavky · {P.title}</span><HelpBtn screen="money" /></header>
+        <header className="nb"><MeBtn /><span className="nbt">Výdavky · {P.title}</span><div className="nbr"><IB n="camera" label="Odfotiť bloček" onClick={() => modal('scan', {})} /><HelpBtn screen="money" /></div></header>
         <div className="body">
           <div className="wx">
             <span className="place">{P.title}</span>
             <span className="temp">{eur0(P.total).replace(' €', '')}<small>€</small></span>
-            {diff != null && <span className="cond">o {Math.abs(Math.round(diff * 100))} % {diff > 0 ? 'viac' : 'menej'} ako september</span>}
+            {diff != null && <span className="cond">{Math.abs(diff) > 1 ? `${diff > 0 ? 'viac' : 'menej'} ako september` : `o ${Math.abs(Math.round(diff * 100))} % ${diff > 0 ? 'viac' : 'menej'} ako september`}</span>}
             {P.note && <span className="cond">{P.note}</span>}
             {used != null && <button type="button" className="cond bud" onClick={() => sheet('budget')}>Rozpočet {eur0(budget)} · {budget - P.total >= 0 ? `zostáva ${eur0(budget - P.total)}` : `prekročený o ${eur0(P.total - budget)}`}</button>}
           </div>
@@ -122,7 +122,7 @@ export function Money() {
   );
   return (
     <div className="sc">
-      <header className="nb"><MeBtn /><span className="nbt">Výdavky</span><HelpBtn screen="money" /></header>
+      <header className="nb"><MeBtn /><span className="nbt">Výdavky</span><div className="nbr"><IB n="camera" label="Odfotiť bloček" onClick={() => modal('scan', {})} /><HelpBtn screen="money" /></div></header>
       <div className="body">
         <h1 className="lt">Výdavky</h1>
         <MissingReceipts />
@@ -157,7 +157,7 @@ export function CategoryScreen({ p }) {
         <header className="nb"><Back /><span className="nbt">{c.n}</span><span className="ibs" /></header>
         <div className="body">
           <div className="lhead"><span className="tile lg" style={{ '--tc': c.col }}><E k={c.e} s={40} /></span><div className="grow"><h1 className="lt">{c.n}</h1><div className="meta">Október 2026 · {plural(kinds.length, 'druh', 'druhy', 'druhov')}</div></div></div>
-          <div className={'card match' + (g ? ' mg' : '')}><div><div className="k">Október</div><div className="price">{eur(v)}</div></div><div className="ra"><div className="k">September</div><div className="price mut">{eur(prev)}</div>{prev > 0 && <div className={'trend sm ' + (v > prev ? 'up' : 'dn')}><I n={v > prev ? 'trend-up' : 'trend-down'} w="bold" />{Math.abs(Math.round((v - prev) / prev * 100))} %</div>}</div></div>
+          <div className={'card match' + (g ? ' mg' : '')}><div><div className="k">Október</div><div className="price">{eur(v)}</div></div><div className="ra"><div className="k">September</div><div className="price mut">{eur(prev)}</div>{prev > 0 && <div className={'trend sm ' + (v > prev ? 'up' : 'dn')}><I n={v > prev ? 'trend-up' : 'trend-down'} w="bold" />v októbri o {eur(Math.abs(v - prev))} {v > prev ? 'viac' : 'menej'}</div>}</div></div>
           <div className="h2 sm">Čo ste kúpili</div>
           <div className={'lst' + (g ? ' glass2' : '')}>
             {kinds.map((x) => (

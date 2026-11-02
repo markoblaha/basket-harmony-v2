@@ -2,6 +2,7 @@ import { useApp, useState, useEffect, useRef, useMemo, Fragment, I, E, IB, Btn, 
 import { PRODUCTS, CATS, ROUTE, MEMBERS } from './data.js';
 import { itemUnit, listTotals, estimate, eur, eur0, fmtQty, storeName, ago, unitPrice, parseChunk } from './logic.js';
 import { itemName, PriceLine } from './lists.jsx';
+import { HelpBtn } from './coach.jsx';
 
 /* icons: x sun sun-dim check check-circle arrow-counter-clockwise prohibit camera paper-plane-right */
 
@@ -79,7 +80,7 @@ export function Shop({ p }) {
         <header className="nb shopnb">
           <div className="snb-row"><IB n="x" label="Zavrieť nákup" onClick={close} />
             <div className="grow snb-t"><div className="t1">Nakupuješ · {list.store ? storeName(list.store) : list.name}</div><div className="snb-s">od {hhmm(started)} · v košíku {eur(t.doneV)} · zostáva {open.length}</div></div>
-            {wake ? <span className="snb-wake" title="Obrazovka počas nákupu ostáva zapnutá" aria-label="Obrazovka ostáva zapnutá"><I n="sun" /></span> : <span className="ibs" />}</div>
+            {wake && <span className="snb-wake" title="Obrazovka počas nákupu ostáva zapnutá" aria-label="Obrazovka ostáva zapnutá"><I n="sun" /></span>}<HelpBtn screen="m-shop" /></div>
           <div className="snb-seg" role="progressbar" aria-valuemin={0} aria-valuemax={t.n} aria-valuenow={t.done} aria-label={`V košíku ${t.done} z ${t.n}`}>
             <span className="segs" style={{ gap: t.n > 40 ? 1.5 : t.n > 20 ? 2 : 3 }}>{Array.from({ length: t.n }, (_, k) => <i key={k} className={k < t.done ? (k === t.done - 1 && lastFill.current === t.done ? 'd n' : 'd') : ''} />)}</span>
             <b>{t.done}<small>/{t.n}</small></b>
@@ -187,7 +188,7 @@ export function Follow() {
     <div className="scr follow">
       {g && <div className="bgl"><div className="bgb pic-trh_p" /><div className="veil" /></div>}
       <div className="sc">
-        <header className="nb"><IB n="caret-left" label="Späť" onClick={closeModal} /><span className="nbt sh">Nakupuje: Lucia</span><span className="ibs" /></header>
+        <header className="nb"><IB n="caret-left" label="Späť" onClick={closeModal} /><span className="nbt sh">Nakupuje: Lucia</span><HelpBtn screen="m-follow" /></header>
         <div className="body">
           <div className={'card ' + (g ? 'glass2' : 'live')}>
             <div className="rowc"><StoreTile k={list.store} s={48} /><div className="grow"><div className={g ? 't1' : 't'}>{storeName(list.store)}</div><div className={g ? 't2' : 's'}>{fin ? 'Hotovo' : 'Nakupuje ' + ago(S.live.started).replace('pred ', '')} · <span className="nw">{t.done} z {t.n}</span></div></div><div className="ra"><div className={g ? 'num' : 'sv'}>{eur(t.doneV)}</div><div className={g ? 't2' : 's'}>v košíku</div></div></div>
@@ -199,7 +200,7 @@ export function Follow() {
               <div key={it.id} className={'row' + (it.done ? ' done' : '') + (it.doneAt && Date.now() - it.doneAt < 4000 ? ' flash' : '')}>
                 <span className="th"><E k={pe(it.pid)} /></span>
                 <div className="tx"><b>{itemName(it)}</b><span className="sub">{fmtQty(it.q, unitOf(it))}{it.done && it.doneAt ? ' · v košíku ' + ago(it.doneAt) : it.by === 'm' ? ' · pridali ste vy' : ''}</span></div>
-                <Check on={it.done} label={it.done ? 'V košíku' : 'Ešte nie'} />
+                {it.done ? <span className="fstat" role="img" aria-label="V košíku"><I n="check" w="bold" /></span> : <span className="fstat no" role="img" aria-label="Ešte nie v košíku" />}
               </div>
             ))}
           </div>

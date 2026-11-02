@@ -1,6 +1,7 @@
 import { ICONS } from '../gen/icons.js';
 import { STORES, MEMBERS, PRODUCTS } from './data.js';
 import { fmtQty, bump, minQty } from './logic.js';
+import { notifItems, notifSig } from './notif.js';
 
 export const { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext, useLayoutEffect, Fragment } = React;
 
@@ -133,6 +134,7 @@ export function Back({ w }) {
 }
 // Profil a nastavenia – rovnaké miesto na každej hlavnej záložke
 export function MeBtn() {
-  const { push } = useApp();
-  return <button type="button" className="mebtn" onClick={() => push('more')} aria-label="Profil, domácnosť a nastavenia">M</button>;
+  const { push, S } = useApp();
+  const sig = notifSig(notifItems(S)); const unread = !!sig && sig !== S.notifSeen;
+  return <button type="button" className="mebtn" onClick={() => push('more')} aria-label={unread ? 'Domácnosť a upozornenia – nové upozornenia' : 'Domácnosť, upozornenia a nastavenia'}>M{unread && <i className="mdot" aria-hidden="true" />}</button>;
 }

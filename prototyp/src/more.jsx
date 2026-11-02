@@ -2,8 +2,9 @@ import { useApp, Back, MeBtn, useState, useEffect, I, E, IB, Btn, Av, Seg, Toggl
 import { PRODUCTS, PANTRY, MEMBERS } from './data.js';
 import { eur0 } from './logic.js';
 import { PHOTO_CREDITS } from './credits.js';
-import { COACH } from './coach.jsx';
+import { COACH, HelpBtn } from './coach.jsx';
 import { HelpSection } from './tour.jsx';
+import { notifItems, notifSig, runGo } from './notif.js';
 
 /* icons: link info paper-plane-right caret-left caret-right copy users user-plus target sparkle translate arrow-counter-clockwise info check map-trifold lightbulb */
 
@@ -27,8 +28,10 @@ export function ThemePicker({ value, onPick, big }) {
   );
 }
 
-export function More({ p = {} }) {
-  const { S, act, pop, push, theme, toast, sheet, ai, reset, frame } = useApp();
+export function More({ p = {}, top }) {
+  const { S, act, pop, push, theme, toast, sheet, ai, reset, frame, modal, jump } = useApp();
+  const N = notifItems(S); const sig = notifSig(N);
+  useEffect(() => { if (top && sig !== S.notifSeen) act((s) => ({ ...s, notifSeen: sig })); }, [sig, top]);
   const g = theme === 'g';
   const [inv, setInv0] = useState(!!p.invite);
   const setInv = (v) => { setInv0(v); if (v && S.first && !S.first.invited) act((s) => (s.first ? { ...s, first: { ...s.first, invited: true } } : s)); };
@@ -47,9 +50,15 @@ export function More({ p = {} }) {
     <>
       
       <div className="sc">
-        <header className="nb"><Back /><span className="nbt">Viac</span><span className="ibs" /></header>
+        <header className="nb"><Back /><span className="nbt">Viac</span><HelpBtn screen="more" /></header>
         <div className="body">
           <div className="lhead"><Av id="m" s={60} /><div className="grow"><h1 className="lt">Marek</h1><div className="meta">{S.solo ? 'Vaša domácnosť · zatiaľ len vy' : 'Domácnosť Blahovci · 2 členovia'}</div></div></div>
+
+          <div className="h2 sm">Upozornenia</div>
+          <div className={'lst notifsec' + (g ? ' glass2' : '')}>
+            {N.length ? N.map((n) => <button type="button" key={n.id} className="row tap" onClick={() => runGo(n.go, { modal, jump })}>{n.av ? <Av id={n.av} s={40} /> : <span className="th ic"><E k={n.e} /></span>}<div className="tx"><b>{n.t}</b><span className="sub">{n.d}</span></div><I n="caret-right" w="bold" cls="chev" /></button>)
+              : <div className="row"><span className="th ic"><I n="check-circle" /></span><div className="tx"><b>Nič nové</b><span className="sub">Keď niekto z domácnosti niečo pridá alebo nakupuje, uvidíte to tu.</span></div></div>}
+          </div>
 
           <div className="h2 sm">Téma prototypu</div>
           <ThemePicker value={theme} onPick={(t) => { act((s) => ({ ...s, theme: t })); toast(t === 'w' ? 'Téma: Teplá kuchyňa' : 'Téma: Fotky a sklo', { icon: 'paint-brush' }); }} />
@@ -84,7 +93,7 @@ export function More({ p = {} }) {
           </div>
           <details className={'card credits' + (g ? ' glass2' : '')}>
             <summary>Zdroje fotiek jedál</summary>
-            <p className="meta">Fotky v receptoch sú z Openverse s voľnou licenciou (CC0 alebo CC BY). Recepty označené „AI recept · test“ majú 3 ilustračné fotky vytvorené AI (Gemini) v jednotnom štýle appky.</p>
+            <p className="meta">Fotky v receptoch sú z Openverse s voľnou licenciou (CC0 alebo CC BY). Recepty označené „Recept od AI“ majú 3 ilustračné fotky vytvorené AI (Gemini) v jednotnom štýle appky.</p>
             <ul>{PHOTO_CREDITS.map(([t, a, l, u], i) => <li key={i}>{t}{a ? ` – ${a}` : ''} <em>({l})</em></li>)}</ul>
           </details>
         </div>

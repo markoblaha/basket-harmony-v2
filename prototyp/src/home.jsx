@@ -1,7 +1,7 @@
 import { MissingReceipts } from './receipt.jsx';
 import { HelpBtn } from './coach.jsx';
 import { FirstSteps } from './tour.jsx';
-import { useApp, I, E, IB, Btn, StoreTile, Avatars, Av, pe, useMemo, Sheet } from './ui.jsx';
+import { useApp, I, E, IB, Btn, StoreTile, Avatars, Av, pe, useMemo, Sheet, MeBtn } from './ui.jsx';
 import { RECIPES } from './data.js';
 import { longDate, greeting, listTotals, eur, eur0, rangeText, relDay, dkey, addDays, dayShort, dayName, storeName, recipeById, haveCount, ago } from './logic.js';
 import { nextOpenList } from './store.js';
@@ -144,7 +144,7 @@ export function Home() {
   ];
   return (
     <div className="sc">
-      <header className="nb"><button type="button" className="avbtn" onClick={() => push('more')} aria-label="Domácnosť a nastavenia"><Avatars /></button><span className="nbt">Domov</span><div className="nbr"><HelpBtn screen="home" /><IB n="gear-six" w="fill" label="Nastavenia" onClick={() => push('more')} /></div></header>
+      <header className="nb"><MeBtn /><span className="nbt">Domov</span><HelpBtn screen="home" /></header>
       <div className="body home-a">
         <h1 className="lt">Domov</h1>
         <FirstSteps g={g} />

@@ -5,6 +5,7 @@ import { aiRecipes, aiRecipeFromImage, aiErrorText } from './ai.js';
 import { nextOpenList } from './store.js';
 import { hasHome } from './logic.js';
 import { StepBoxes, scaleLabel } from './book.jsx';
+import { HelpBtn } from './coach.jsx';
 /* icons: x list timer pause check caret-left caret-right play plus camera link microphone warning-circle check-circle */
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -33,7 +34,7 @@ export function Cook({ p }) {
   return (
     <div className="scr cook">
       {g && r.pic && <div className="bgl"><div className={'bgb pic-' + r.pic} /><div className="veil dk" /></div>}
-      <header className="nb"><IB n="x" label="Ukončiť varenie" cls={g ? 'glass2' : ''} onClick={closeModal} /><span className="nbt sh">Krok {i + 1} z {r.steps.length}</span><IB n="list" label="Suroviny" cls={g ? 'glass2' : ''} onClick={() => setShowIng(!showIng)} /></header>
+      <header className="nb"><IB n="x" label="Ukončiť varenie" cls={g ? 'glass2' : ''} onClick={closeModal} /><span className="nbt sh">Krok {i + 1} z {r.steps.length}</span><div className="nbr"><HelpBtn screen="m-cook" /><IB n="list" label="Suroviny" cls={g ? 'glass2' : ''} onClick={() => setShowIng(!showIng)} /></div></header>
       <div className="dots">{r.steps.map((_, k) => <i key={k} className={k < i ? 'd' : k === i ? 'c' : ''} />)}</div>
       {running.map(([k, e]) => <button type="button" key={k} className="runt" onClick={() => setI(+k)}><I n="timer" />Krok {+k + 1} · {mmss((e - Date.now()) / 1000)}</button>)}
       <div className="cbody">

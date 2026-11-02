@@ -3,6 +3,7 @@ import { PRODUCTS, RECIPES, RCATS, MEMBERS } from './data.js';
 import { BOOK, PLAN } from './book.js';
 import { plural, recipeById, recipeCost, haveCount, eur, norm, hasHome, homeDefault, toggleRecipeHave } from './logic.js';
 import { nextOpenList } from './store.js';
+import { HelpBtn } from './coach.jsx';
 /* icons: heart x thumbs-up thumbs-down flag images sparkle timer flame fire check-circle warning lightbulb info caret-right caret-up hand-swipe-left hand-tap shopping-cart book-open-text map-trifold magnifying-glass knife arrow-right play users-three chef-hat */
 
 // ---------- množstvá pri inom počte porcií ----------
@@ -25,7 +26,7 @@ export function scaleLabel(label, k) {
 }
 
 // ---------- AI odznak (na otestovanie) ----------
-export const AiBadge = ({ sm }) => <span className={'aib' + (sm ? ' sm' : '')}><I n="sparkle" />AI recept · test</span>;
+export const AiBadge = ({ sm }) => <span className={'aib' + (sm ? ' sm' : '')}><I n="sparkle" />Recept od AI</span>;
 
 // ---------- galéria 3 fotiek ----------
 export function Gallery({ r, cls = '', onPhoto }) {
@@ -140,7 +141,7 @@ export function Taste() {
   const [cur, setCur] = useState(0);
   const [burst, setBurst] = useState(null);
   const [match, setMatch] = useState(null);
-  const [hint, setHint] = useState(!(S.tips && S.tips.taste));
+  const [hint, setHint] = useState(false); // návod je v nápovede „?“
   const ref = useRef(null);
   const tap = useRef(0);
   const likes = (S.taste && S.taste.likes) || [];
@@ -163,6 +164,7 @@ export function Taste() {
         <IB n="x" label="Zavrieť Ochutnávač" cls="glass2" onClick={closeModal} />
         <div className="tst-prog" aria-label={`Recept ${Math.min(cur + 1, ids.length)} z ${ids.length}`}>{ids.map((_, k) => <i key={k} className={k < cur ? 'd' : k === cur ? 'c' : ''} />)}</div>
         <span className="tst-cnt"><I n="heart" w="fill" />{liked.length}</span>
+        <HelpBtn screen="m-taste" />
       </div>
       <div className="tst-feed" ref={ref} onScroll={onScroll}>
         {ids.map((id, k) => {

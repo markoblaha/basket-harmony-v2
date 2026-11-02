@@ -34,7 +34,7 @@ export function Lists() {
     <>
       
       <div className="sc">
-        <header className="nb"><MeBtn /><span className="nbt">Nákupy</span><div className="nbr"><HelpBtn screen="lists" /><IB n="plus" cls="addb" label="Nový zoznam" onClick={() => sheet('newList')} /></div></header>
+        <header className="nb"><MeBtn /><span className="nbt">Nákupy</span><div className="nbr"><IB n="plus" cls="addb" label="Nový zoznam" onClick={() => sheet('newList')} /><HelpBtn screen="lists" /></div></header>
         <div className="body">
           <h1 className="lt">Nákupy</h1>
           {live && lt.done < lt.n && (
@@ -179,7 +179,7 @@ function ItemRow({ it, list, sel, setSel }) {
 }
 
 export function ListScreen({ p }) {
-  const { S, act, pop, modal, sheet, theme, push } = useApp();
+  const { S, act, pop, modal, sheet, theme, push, toast } = useApp();
   const g = theme === 'g';
   const list = S.lists.find((l) => l.id === p.id);
   const [sel, setSel] = useState(null);
@@ -204,7 +204,7 @@ export function ListScreen({ p }) {
             <div className="grow estc"><div className="k">Odhad nákupu</div><div className="price nw">{t.priced ? '~' + eur0(t.v) : '–'}</div><div className="estm">{t.priced ? <span className="nw">rozpätie {rangeText(t)}</span> : null}<span className="nw sm">{t.priced === t.n ? 'všetky ceny z bločkov' : `${t.priced} z ${t.n} položiek s cenou`}</span></div></div>
             <Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => modal('shop', { listId: list.id })} disabled={!open.length}><I n="basket" />Nakupovať</Btn>
           </div>
-          {open.length > 0 && !(S.tips && S.tips.swipe) && <div className="tip"><I n="hand-swipe-right" /><div className="grow"><b>Rýchla úprava množstva</b><span>Potiahnite položku doprava = +1, doľava = −1. Ťuknutím otvoríte detail.</span></div><button type="button" className="tipx" onClick={() => act((s) => ({ ...s, tips: { ...(s.tips || {}), swipe: true } }))}>Rozumiem</button></div>}
+          {/* Rýchla úprava množstva je v nápovede „?“ – nič sa neukazuje samo */}
           {!open.length && !done.length && <Empty e="basket" t="Zoznam je prázdny" d="Pridajte položky dole, ťuknite na časté položky alebo použite mikrofón." />}
           {loose.length > 0 && <div className={'lst' + (g ? ' glass2' : '')}>{loose.map((it) => <ItemRow key={it.id} it={it} list={list} sel={sel === it.id} setSel={setSel} />)}</div>}
           {Object.values(groups).map(({ g: gr, items }) => {
@@ -217,7 +217,7 @@ export function ListScreen({ p }) {
             );
           })}
           {done.length > 0 && <>
-            <div className="group plain"><I n="check-circle" /><span className="gl">Kúpené</span><button type="button" className="tag lnk" onClick={() => act('clearDone', list.id)}>Vymazať</button></div>
+            <div className="group plain"><I n="check-circle" /><span className="gl">V košíku</span><button type="button" className="tag lnk" onClick={() => { const snap = list.items; act('clearDone', list.id); toast('Odškrtnuté položky odstránené', { icon: 'trash', action: { label: 'Vrátiť', fn: () => act('patchList', list.id, { items: snap }) } }); }}>Odstrániť</button></div>
             <div className={'lst done-lst' + (g ? ' glass2' : '')}>{done.map((it) => (
               <div className="row done" key={it.id}><span className="th"><E k={pe(it.pid)} /></span><div className="tx"><b>{itemName(it)}</b><PriceLine it={it} S={S} store={list.store} /></div><button type="button" className="qty" onClick={() => act('toggleDone', list.id, it.id)} aria-label="Vrátiť do zoznamu"><I n="arrow-counter-clockwise" w="bold" /></button></div>
             ))}</div>
@@ -344,7 +344,7 @@ export function ListMenuSheet({ open, close, id }) {
             <button type="button" onClick={() => setMode('name')}><I n="pencil-simple" />Premenovať</button>
             <button type="button" onClick={() => setMode('store')}><I n="storefront" />Zmeniť obchod<span className="mv">{l.store ? storeName(l.store) : 'nezvolený'}</span></button>
             <button type="button" onClick={share}><I n="share-network" />Skopírovať ako text</button>
-            <button type="button" onClick={() => { act('clearDone', id); toast('Kúpené položky odstránené'); close(); }} disabled={!l.items.some((i) => i.done)}><I n="broom" />Vymazať kúpené</button>
+            <button type="button" onClick={() => { const snap = l.items; act('clearDone', id); toast('Odškrtnuté položky odstránené', { icon: 'trash', action: { label: 'Vrátiť', fn: () => act('patchList', id, { items: snap }) } }); close(); }} disabled={!l.items.some((i) => i.done)}><I n="broom" />Odstrániť odškrtnuté</button>
             <button type="button" className="dng" onClick={() => setMode('del')}><I n="trash" />Zmazať zoznam</button>
           </div>}
       </div>
@@ -364,7 +364,7 @@ export function History() {
   const hs = S.history || [];
   return (
     <div className="sc">
-      <header className="nb"><Back /><span className="nbt">História nákupov</span><span className="ibs" /></header>
+      <header className="nb"><Back /><span className="nbt">História nákupov</span><HelpBtn screen="history" /></header>
       <div className="body">
         <div><h1 className="lt">História nákupov</h1><p className="meta">Ukončené nákupy. Ťuknutím pozriete, čo ste kúpili, alebo nakúpite znova.</p></div>
         {!hs.length ? <Empty e="bags" t="Zatiaľ žiadny ukončený nákup" d="Keď nákup dokončíte, nájdete ho tu." /> : (

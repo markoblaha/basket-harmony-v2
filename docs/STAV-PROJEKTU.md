@@ -159,7 +159,12 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   pozývanie je odkazom, ktorý hlavný člen pošle z appky a pozvaný ho len potvrdí (Viac → Pozvať do domácnosti → Poslať).
   Revízia rozhrania (`prototyp/revizia-rozhrania.html`, 2. 11.): 6 kritických a 10 dôležitých nálezov (kontrast tlačidiel
   v téme Fotky a sklo, ťukacie plochy < 44, písmo < 13 px, 2 tipy sa ukazujú samy, upozornenia bez vstupu, 2 chybné texty),
-  návrh systému pohybu (5 dĺžok, 3 krivky), písma (8 veľkostí), upozornení a plán Fáza 1 (prototyp) / Fáza 2 (appka). Čaká na súhlas.
+  návrh systému pohybu (5 dĺžok, 3 krivky), písma (8 veľkostí), upozornení a plán Fáza 1 (prototyp) / Fáza 2 (appka).
+  Fáza 1 v prototype HOTOVÁ (2. 11.): tokeny pohybu `--dur-1…5`, `--ease-out/in/spring` (polish.css), písmo 12,5–34 + veľké sumy,
+  rohy 8/12/16/22/28/plné, kontrast (--sec/--ter, tlačidlá #DC5A1C→#BF440D), ťukacie plochy 44, avatar s bodkou → Viac → Upozornenia
+  (`src/notif.js`), „?“ aj v nákupe, hlase, sledovaní, varení, Ochutnávači, Histórii a Viac (+14 nápoved), žiadne samé tipy,
+  sledovanie bez falošných tlačidiel, hlas do najbližšieho zoznamu, porovnanie v €, „Vrátiť“ pri odstránení odškrtnutých,
+  slovník „V košíku“, „Recept od AI“, sprievodca pri prvom spustení „Základy“ (3 kapitoly, ~2 min) + „Ukážte mi aj zvyšok“.
   Návrh jednej témy „Teplé sklo“ (`prototyp/tema-teple-sklo-navrh.html`) – spojenie Teplej kuchyne a Fotiek a skla:
   sklo nad fotkou trhu s teplým závojom, Fraunces + DM Sans, paprika = akcia, bazalka = hotovo, med = pozor, 3 hrúbky skla,
   overený kontrast. Čaká na súhlas; nič nie je implementované.

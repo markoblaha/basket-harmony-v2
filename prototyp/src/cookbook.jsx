@@ -23,7 +23,7 @@ export function RCard({ r, onOpen, wide }) {
   const meta = `${r.min} min · ${eur(recipeCost(r, S))} / porcia`;
   return (
     <button type="button" className={'rcard' + (wide ? ' wide' : '')} onClick={onOpen}>
-      <span className={'rimg' + (r.pic ? ' pic-' + r.pic : ' bg-' + (r.bg || 'peach'))}>{!r.pic && <E k={r.e} />}{fav && <span className="rfav"><I n="heart" /></span>}{h.all && h.have === h.all && <span className="rok">Máte všetko</span>}{r.aiTest && <span className="raib"><I n="sparkle" />AI test</span>}</span>
+      <span className={'rimg' + (r.pic ? ' pic-' + r.pic : ' bg-' + (r.bg || 'peach'))}>{!r.pic && <E k={r.e} />}{fav && <span className="rfav"><I n="heart" /></span>}{h.all && h.have === h.all && <span className="rok">Máte všetko</span>}{r.aiTest && <span className="raib"><I n="sparkle" />Od AI</span>}</span>
       <span className="rtxt"><b>{r.n}</b><small>{meta}</small></span>
     </button>
   );
@@ -214,7 +214,7 @@ export function RecipeScreen({ p }) {
   return (
     <>
       <div className="sc rsc" ref={sc} onScroll={(e) => e.currentTarget.classList.toggle('scrolled', e.currentTarget.scrollTop > 220)}>
-        <header className="nb over"><Back w={g} /><span className="nbt">{r.n}</span><div className="nbr"><IB n="export" cls={g ? 'wg' : ''} label="Zdieľať" onClick={share} /><IB n="heart" w={fav ? 'fill' : 'bold'} cls={(g ? 'wg' : '') + (fav ? ' faved' : '')} label={fav ? 'Odobrať z obľúbených' : 'Uložiť medzi obľúbené'} onClick={() => { act('toggleFav', r.id); toast(fav ? 'Odobrané z obľúbených' : 'Uložené v Moje → Obľúbené', { icon: 'heart' }); }} /></div></header>
+        <header className="nb over"><Back w={g} /><span className="nbt">{r.n}</span><div className="nbr"><HelpBtn screen="recipe" /><IB n="export" cls={g ? 'wg' : ''} label="Zdieľať" onClick={share} /><IB n="heart" w={fav ? 'fill' : 'bold'} cls={(g ? 'wg' : '') + (fav ? ' faved' : '')} label={fav ? 'Odobrať z obľúbených' : 'Uložiť medzi obľúbené'} onClick={() => { act('toggleFav', r.id); toast(fav ? 'Odobrané z obľúbených' : 'Uložené v Moje → Obľúbené', { icon: 'heart' }); }} /></div></header>
         {r.pics ? <div key={r.id} className="rhero2 rgal"><Gallery r={r} />{ids.length > 1 && <span className="rpos">{idx + 1} / {ids.length}</span>}</div>
           : <div key={r.id} className={'rhero2' + (r.pic ? ' pic-' + r.pic : ' bg-' + r.bg)} onPointerDown={down} onPointerUp={up} style={{ touchAction: 'pan-y' }}>{!r.pic && <E k={r.e} />}{ids.length > 1 && <span className="rpos">{idx + 1} / {ids.length}</span>}</div>}
         <div className="body rbody" key={'b' + r.id}>

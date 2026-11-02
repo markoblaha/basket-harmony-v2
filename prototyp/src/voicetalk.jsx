@@ -1,5 +1,9 @@
 import { useApp, useState, useEffect, useRef, I, E, IB, Btn, StoreTile, pe } from './ui.jsx';
 import { PRODUCTS } from './data.js';
+import { HelpBtn } from './coach.jsx';
+import { nextOpenList } from './store.js';
+// predvolený cieľ hlasu: najbližší otvorený zoznam (nie nový zoznam)
+const defTarget = (S) => { const n = nextOpenList(S); return n ? { kind: 'list', id: n.id } : null; };
 import { plural, parseLocal, parseChunk, estimate, eur, fmtQty, storeName, norm, frequentStores, withStore, dkey, addDays } from './logic.js';
 /* icons: x keyboard caret-down check-circle trash warning-circle pencil-simple arrow-up arrow-counter-clockwise */
 
@@ -41,7 +45,7 @@ export function VoiceTalk({ p }) {
   const lists = S.lists.filter((l) => !l.live);
   const draft = S.voiceDraft && S.voiceDraft.items && S.voiceDraft.items.length ? S.voiceDraft : null;
   const [items, setItems] = useState(() => (draft ? draft.items : []));
-  const [target, setTarget] = useState(() => (p.listId ? { kind: 'list', id: p.listId } : draft ? draft.target : null));
+  const [target, setTarget] = useState(() => (p.listId ? { kind: 'list', id: p.listId } : draft ? draft.target : defTarget(S)));
   const [restored, setRestored] = useState(!!draft);
   const [phase, setPhase] = useState('listening'); // listening | paused
   const [tr, setTr] = useState('');
@@ -185,8 +189,9 @@ export function VoiceTalk({ p }) {
       <div className="vx-top">
         <IB n="x" cls="vx-ib" label="Zavrieť (položky ostanú uložené)" onClick={() => { closeModal(); if (items.length) toast('Rozdiktované položky ostali uložené', { icon: 'check-circle' }); }} />
         <button type="button" className="vx-target" onClick={() => setPanel('pick')} aria-label="Kam pridávať">Do: {tLabel ? <b>{tLabel}</b> : <em>nový zoznam</em>}<I n="caret-down" w="bold" /></button>
+        <HelpBtn screen="m-voice" />
       </div>
-      {restored && items.length > 0 && <div className="vx-rest"><I n="arrow-counter-clockwise" w="bold" /><span className="grow">Pokračujete v rozdiktovanom zozname ({items.length})</span><button type="button" onClick={() => { setItems([]); setTarget(p.listId ? { kind: 'list', id: p.listId } : null); setRestored(false); }}>Začať odznova</button></div>}
+      {restored && items.length > 0 && <div className="vx-rest"><I n="arrow-counter-clockwise" w="bold" /><span className="grow">Pokračujete v rozdiktovanom zozname ({items.length})</span><button type="button" onClick={() => { setItems([]); setTarget(p.listId ? { kind: 'list', id: p.listId } : defTarget(S)); setRestored(false); }}>Začať odznova</button></div>}
       <div className="vx-list" onClick={(e) => { if (e.target === e.currentTarget) setSel(null); }}>
         {!items.length ? (
           <div className="vx-empty">
