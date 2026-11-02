@@ -102,7 +102,7 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
   </div>
 
   <div class="col"><h2>Kde sme (2. 11. 2026)</h2>
-    <div class="state"><span class="pill ok">Fáza 0 hotová</span><span class="pill ok">Fáza 1 hotová</span><span class="pill ok">Fáza 2 hotová a nasadená</span><span class="pill fix">čaká na vaše „OK“</span><span class="pill fix">ďalej: Fáza 3</span></div>
+    <div class="state"><span class="pill ok">Fáza 0 hotová</span><span class="pill ok">Fáza 1 hotová</span><span class="pill ok">Fáza 2 hotová</span><span class="pill ok">Fáza 3 hotová a nasadená</span><span class="pill fix">čaká na vaše „OK“</span><span class="pill fix">ďalej: Fáza 4</span></div>
     <p><b>Postup (pokyn 2. 11.):</b> appka má byť 1:1 ako interaktívny mockup. Vzhľad sa preto nekreslí nanovo – preberá sa priamo kód mockupu (štýly, ikony, 3D obrázky, rozloženie obrazoviek) a len sa napojí na skutočné dáta. Obrazovka vyzerá ako mockup vždy od fázy, v ktorej sa prenesie.</p>
     <p>Rozhodnutia sú zapísané nižšie. Otvorené: súhlas so spustením celého kontrolného testu <code>core_test.sql</code> (obsahuje <code>delete</code> len vlastných testovacích riadkov, celý blok sa vráti späť).</p>
   </div>
@@ -158,16 +158,17 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
       <div class="check"><b>Vyskúšate:</b> Domov s vašimi skutočnými zoznamami, spustenie nákupu z karty, História.</div>
       <div class="done-note"><b>Výsledok:</b> Domov, Nákupy, História a detail nákupu prenesené z kódu mockupu a napojené na testovaciu databázu (zoznamy, prebiehajúci nákup, nákupy bez bločku, naplánované recepty, Nakúpiť znova). Appka sa otvára na Domove. Preklikanie 4 vzhľady × 24 obrazoviek: 0 nálezov.</div></div></div>
 
-    <div class="ph now"><span class="no">3</span><div class="card"><h3>Zoznam a pridávanie položiek <small>2 relácie</small></h3>
+    <div class="ph done"><span class="no">3</span><div class="card"><h3>Zoznam a pridávanie položiek <small>hotová 2. 11.</small></h3>
       <p class="goal">Pravidlo „appka nič nedomýšľa“: všeobecná položka · druh · značka, s cenou podľa toho.</p>
       <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
         <li>Rozpoznanie pri písaní: „pivo“ → Pivo (priemer všetkých pív), „kyslá smotana“ → druh, „plzeň“ → značka.</li>
         <li>Návrhy nad poľom ako zoznam riadkov, oprava preklepu, spresnenie v detaile položky.</li>
         <li>Detail položky: množstvo, cena z bločkov, presun, poznámka.</li></ul></div>
       <div><div class="lab">Databáza</div><ul><li>Položka môže odkazovať na druh (<code>products.kind</code> už existuje) alebo značku.</li><li>Nový výpočet ceny v <code>list_price_hints</code> (priemer druhu / len značka) – zároveň oprava chyby „Mlieko → telové mlieko“.</li></ul></div></div>
-      <div class="check"><b>Vyskúšate:</b> smotana, pivo, plzeň, chleba, 2 mlieka – názvy a ceny ako v mockupe.</div></div></div>
+      <div class="check"><b>Vyskúšate:</b> smotana, pivo, plzeň, chleba, 2 mlieka – názvy a ceny ako v mockupe.</div>
+      <div class="done-note"><b>Výsledok:</b> obrazovka zoznamu prenesená z kódu mockupu (odhad nákupu, potiahnutie +1/−1/zmazať, − / + pri množstve, skupiny receptov, V košíku, pole s návrhmi a Často kupujete, detail položky so spresnením, poznámkou a presunom). Rozpoznanie a ceny z bločkov domácnosti cez novú DB funkciu <code>item_catalog</code> (namiesto zmeny <code>list_price_hints</code>); telové mlieko už nie je mlieko. Rovnaký odhad v Nákupoch aj na Domove. Preklikanie 4 vzhľady × 24 obrazoviek: 0 nálezov.</div></div></div>
 
-    <div class="ph"><span class="no">4</span><div class="card"><h3>Nákup v obchode a bloček <small>1–2 relácie</small></h3>
+    <div class="ph now"><span class="no">4</span><div class="card"><h3>Nákup v obchode a bloček <small>1–2 relácie</small></h3>
       <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
         <li>Pripnutá hlavička s pásikom, odškrtnutie v ikone, žiadosť od člena zvýraznená.</li>
         <li>Po poslednej položke „Nákup dokončený?“, Teraz nie → chýbajúci bloček (číslo na lište, karta na Domove).</li>
