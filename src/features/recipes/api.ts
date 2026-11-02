@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLocale } from "@/i18n";
 import { supabase } from "@/lib/supabase";
+import { currentHouseholdId } from "@/features/household/current";
 import type { Json } from "@/lib/database.types";
 import { CATALOG } from "./catalog";
 import { FOODS } from "./foods";
@@ -273,7 +274,7 @@ export function useSetPlanStatus(householdId: string) {
 const FOOD_LIST = Object.entries(FOODS).map(([k, f]) => `${k}=${f.name}`).join("; ");
 
 async function invoke<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("recipe-ai", { body: { ...body, locale: getLocale(), foods: FOOD_LIST } });
+  const { data, error } = await supabase.functions.invoke("recipe-ai", { body: { ...body, household_id: currentHouseholdId(), locale: getLocale(), foods: FOOD_LIST } });
   if (error) {
     // Kód chyby je v tele odpovede ({ error: "LINK_UNREADABLE" } …) – preložíme ho cez error.*.
     const ctx = (error as { context?: Response }).context;

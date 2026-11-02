@@ -1,7 +1,7 @@
 // Rozbor nadiktovanej vety pre hlasový nákupný zoznam.
 //
-// Tok: aplikácia pošle {text | audio, items, target}. Funkcia (1) overí prihláseného
-// používateľa, (2) pošle vetu (alebo krátky zvukový úsek) a aktuálne položky Gemini,
+// Tok: aplikácia pošle {household_id, text | audio, items, target}. Funkcia (1) overí prihláseného
+// používateľa, členstvo v domácnosti a limit volaní (ai_allow v databáze), (2) pošle vetu (alebo krátky zvukový úsek) a aktuálne položky Gemini,
 // (3) vráti prepis, operácie (pridať / zmeniť / zmazať / hotovo), jedlá, ktoré chce
 // človek uvariť („chcem uvariť hovädzí guláš“ → cook), a obchod, ak ho povedal.
 // Zvuk posiela appka tam, kde rozpoznávanie reči v prehliadači nefunguje (iPhone,
@@ -9,7 +9,8 @@
 // Nič neukladá – ukladá až aplikácia po „Hotovo“ cez add_item (pravidlá ostávajú
 // v databáze). Pri texte appka medzitým ukáže okamžitý lokálny rozbor; táto odpoveď ho
 // do sekundy spresní (rozdelí vety bez čiarok, opraví tvary slov, doplní kategóriu).
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { callGemini, GeminiError, isGlobalError, type ThinkingLevel } from "../_shared/gemini.ts";
+import { guardAi, type Guarded } from "../_shared/guard.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -118,32 +119,22 @@ const preferredFor: { text: Cfg | null; audio: Cfg | null } = { text: null, audi
 type Part = Record<string, unknown>;
 type Result = { transcript?: string; ops: Record<string, unknown>[]; cook?: unknown[]; store?: unknown };
 
-async function call(cfg: Cfg, parts: Part[], timeoutMs: number): Promise<Result> {
-  const key = Deno.env.get("GEMINI_API_KEY");
-  if (!key) throw new Error("GEMINI_API_KEY_MISSING");
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent`, {
-    method: "POST",
-    headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: {
-        temperature: 0,
-        responseMimeType: "application/json",
-        responseSchema: SCHEMA,
-        ...(cfg.thinking ? { thinkingConfig: cfg.thinking } : {}),
-      },
-    }),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!res.ok) throw new Error(`GEMINI_${res.status}: ${(await res.text()).slice(0, 160)}`);
-  const data = await res.json();
-  const out = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("");
-  const parsed = JSON.parse(out ?? "");
-  if (!Array.isArray(parsed?.ops)) throw new Error("GEMINI_BAD_JSON");
-  return parsed;
+async function call(cfg: Cfg, parts: Part[], timeoutMs: number, g: Guarded): Promise<Result> {
+  try {
+    const res = await callGemini({
+      model: cfg.model, parts, schema: SCHEMA,
+      thinking: cfg.thinking?.thinkingLevel as ThinkingLevel | undefined, timeoutMs,
+    });
+    g.log(cfg.model, res.usage, true);
+    if (!Array.isArray(res.json?.ops)) throw new Error("GEMINI_BAD_JSON");
+    return res.json as Result;
+  } catch (e) {
+    if (e instanceof GeminiError) g.log(cfg.model, e.usage, false);
+    throw e;
+  }
 }
 
-async function askGemini(parts: Part[], audio: boolean): Promise<Result & { model: string }> {
+async function askGemini(parts: Part[], audio: boolean, g: Guarded): Promise<Result & { model: string }> {
   // Zvuk trvá dlhšie (prepis + rozbor), text má byť do pár sekúnd.
   const deadline = Date.now() + (audio ? 14_000 : 7_000);
   const base = audio ? AUDIO_CANDIDATES : CANDIDATES;
@@ -154,12 +145,12 @@ async function askGemini(parts: Part[], audio: boolean): Promise<Result & { mode
     const left = deadline - Date.now();
     if (left < 800) break;
     try {
-      const r = await call(cfg, parts, Math.min(audio ? 9_000 : 3_500, left));
+      const r = await call(cfg, parts, Math.min(audio ? 9_000 : 3_500, left), g);
       preferredFor[audio ? "audio" : "text"] = cfg;
       return { ...r, model: cfg.model + (cfg.thinking ? "+min" : "") };
     } catch (e) {
       lastError = e instanceof Error ? e.message : String(e);
-      if (/^GEMINI_(401|402|403)|GEMINI_API_KEY_MISSING/.test(lastError)) throw new Error(lastError);
+      if (isGlobalError(lastError)) throw new Error(lastError);
     }
   }
   throw new Error(lastError);
@@ -173,18 +164,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "METHOD" }, 405);
 
-  let body: { text?: unknown; audio?: unknown; items?: unknown; target?: unknown; vocab?: unknown } = {};
+  let body: { household_id?: unknown; text?: unknown; audio?: unknown; items?: unknown; target?: unknown; vocab?: unknown } = {};
   try {
     body = await req.json();
   } catch { /* prázdne telo */ }
 
-  const url = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (!token) return json({ error: "NOT_AUTHENTICATED" }, 401);
-  const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
-  const { data: userData, error: userError } = await admin.auth.getUser(token);
-  if (userError || !userData.user) return json({ error: "NOT_AUTHENTICATED" }, 401);
+  const g = await guardAi(req, body.household_id, "parse-voice");
+  if ("error" in g) return json({ error: g.error }, g.status);
 
   const text = str(body.text, 400);
   const audio = body.audio && typeof body.audio === "object" ? (body.audio as { mime?: unknown; data?: unknown }) : null;
@@ -211,7 +197,7 @@ Deno.serve(async (req) => {
 
   const t0 = Date.now();
   try {
-    const result = await askGemini(parts, !!audioData);
+    const result = await askGemini(parts, !!audioData, g);
     const ops = result.ops.slice(0, 20).map((o) => ({
       op: ["add", "change", "remove", "done"].includes(String(o.op)) ? o.op : "add",
       name: str(o.name),

@@ -13,15 +13,15 @@ export function Dock({ children }: { children: ReactNode }) {
   );
 }
 
-/** Kompaktná karta s priebehom. Počas čítania sa dá pokojne odísť inam v aplikácii – nahrávanie beží ďalej. */
+/**
+ * Kompaktná karta s priebehom nahrávania. Čítanie dokladov robí server na pozadí,
+ * takže po nahratí sa dá aplikácia pokojne zavrieť.
+ */
 export function UploadStatus({ progress, running, onClose }: { progress: Progress; running: boolean; onClose: () => void }) {
   const c = progress.counts;
-  const problems = c.FAILED + c.ERROR;
+  const problems = c.ERROR;
   const parts = [
-    c.OK > 0 && t("upload.ok", { n: c.OK }),
-    c.NEEDS_REVIEW > 0 && t("upload.review", { n: c.NEEDS_REVIEW }),
     c.DUPLICATE > 0 && t("upload.duplicate", { n: c.DUPLICATE }),
-    c.NOT_A_RECEIPT > 0 && t("upload.notReceipt", { n: c.NOT_A_RECEIPT }),
     problems > 0 && t("upload.failed", { n: problems }),
   ].filter(Boolean);
   const warn = progress.stopped || problems > 0;
@@ -46,12 +46,16 @@ export function UploadStatus({ progress, running, onClose }: { progress: Progres
         <div className="min-w-0 flex-1 text-sm">
           <p className="font-semibold">
             {running
-              ? t("upload.reading", { current: Math.min(progress.done + 1, progress.total), total: progress.total })
+              ? t("upload.uploading", { current: Math.min(progress.done + 1, progress.total), total: progress.total })
               : progress.stopped
                 ? t("upload.stoppedAfter", { done: progress.done, total: progress.total })
-                : tn("upload.doneCount", progress.total)}
+                : c.QUEUED > 0
+                  ? tn("upload.queuedCount", c.QUEUED)
+                  : t("upload.nothingNew")}
           </p>
-          {running && <p className="text-text-2">{t("upload.leaveHint")}</p>}
+          {(running || c.QUEUED > 0) && (
+            <p className="text-text-2">{running ? t("upload.leaveHint") : t("upload.readingInBackground")}</p>
+          )}
           {progress.stopped && (
             <p className="mt-0.5 text-text-2">
               {progress.stopReason ?? t("upload.stoppedDefault")} {t("upload.stoppedHelp")}

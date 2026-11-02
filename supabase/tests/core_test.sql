@@ -817,6 +817,92 @@ begin
   if n = 0 then report := report || E'ok: cudzí nevidí istý nákup inej domácnosti\n';
   else report := report || E'FAIL: cudzí vidí staple_items\n'; fails := fails + 1; end if;
 
+  -- ---------------------------------------------------------------- fronta čítania dokladov
+  -- (Boris je stále prihlásený.) Cudzí nezaradí cudzí doklad ani si ho „nezoberie“.
+  err := null; begin perform public.queue_receipt(rc1); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nezaradí cudzí doklad na čítanie\n';
+  else report := report || 'FAIL: cudzí queue_receipt -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.claim_receipt(rc1); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: z prehliadača sa doklad nedá „zobrať“ na čítanie\n';
+  else report := report || 'FAIL: claim_receipt z prehliadača -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.worker_secret(); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: tajný kľúč fronty nie je dostupný z prehliadača\n';
+  else report := report || 'FAIL: worker_secret z prehliadača -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin insert into public.ai_usage (household_id, fn, model) values (hb, 'x', 'x'); exception when others then err := sqlerrm; end;
+  if err is not null then report := report || E'ok: z prehliadača sa náklady na AI nedajú zapisovať\n';
+  else report := report || E'FAIL: insert ai_usage z prehliadača\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  insert into public.ai_usage (household_id, receipt_id, fn, model, cost_usd) values (h, rc1, 'extract-receipt', 'test', 0.004);
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.ai_usage where household_id = h;
+  if n = 0 then report := report || E'ok: cudzí nevidí náklady na AI inej domácnosti\n';
+  else report := report || E'FAIL: cudzí vidí ai_usage\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.ai_usage where household_id = h;
+  if n = 1 then report := report || E'ok: člen vidí náklady na AI svojej domácnosti\n';
+  else report := report || E'FAIL: člen nevidí ai_usage\n'; fails := fails + 1; end if;
+  perform public.queue_receipt(rc1);
+  select * into rrec from public.receipts where id = rc1;
+  if rrec.status = 'PROCESSING' and rrec.queued_at is not null and rrec.read_attempts = 0 then
+    report := report || E'ok: člen zaradí doklad na čítanie na pozadí\n';
+  else report := report || E'FAIL: queue_receipt nezaradil doklad\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  if public.claim_receipt(rc1) and not public.claim_receipt(rc1) then
+    report := report || E'ok: doklad sa nikdy nečíta dvakrát naraz\n';
+  else report := report || E'FAIL: claim_receipt dvakrát\n'; fails := fails + 1; end if;
+  update public.receipts set read_started_at = now() - interval '5 minutes' where id = rc1;
+  select count(*) into n from net.http_request_queue;
+  perform public.dispatch_stuck_receipts();
+  select count(*) into n2 from net.http_request_queue;
+  if n2 > n then report := report || E'ok: zaseknuté čítanie plánovač pošle znova\n';
+  else report := report || E'FAIL: plánovač neposlal zaseknutý doklad\n'; fails := fails + 1; end if;
+  update public.receipts set read_attempts = 3, read_started_at = now() - interval '10 minutes' where id = rc1;
+  perform public.dispatch_stuck_receipts();
+  select * into rrec from public.receipts where id = rc1;
+  if rrec.status = 'FAILED' and rrec.error_text = 'READ_TIMEOUT' then
+    report := report || E'ok: po 3 neúspešných pokusoch sa doklad označí ako chyba\n';
+  else report := report || 'FAIL: zaseknutý doklad -> ' || rrec.status || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- poistka AI (migrácia 30)
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepoužije AI na účet inej domácnosti\n';
+  else report := report || 'FAIL: cudzí ai_allow -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public._receipt_list_score(rc1, ls); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: vnútorné skóre párovania nie je dostupné z prehliadača\n';
+  else report := report || 'FAIL: _receipt_list_score z prehliadača -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public._auto_match_receipt(rc1); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: vnútorné párovanie nie je dostupné z prehliadača\n';
+  else report := report || 'FAIL: _auto_match_receipt z prehliadača -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
+  if err is null then report := report || E'ok: člen domácnosti môže použiť AI\n';
+  else report := report || 'FAIL: člen ai_allow -> ' || err || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.ai_allow(h, 'iná-funkcia'); exception when others then err := sqlerrm; end;
+  if err = 'INVALID_INPUT' then report := report || E'ok: neznáma AI funkcia sa nepovolí\n';
+  else report := report || 'FAIL: ai_allow neznáma -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  insert into public.ai_usage (household_id, fn, model) select h, 'recipe-ai', 'test' from generate_series(1, 40);
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.ai_allow(h, 'recipe-ai'); exception when others then err := sqlerrm; end;
+  if err = 'AI_LIMIT' then report := report || E'ok: po 40 receptoch za hodinu AI počká (limit)\n';
+  else report := report || 'FAIL: limit recipe-ai -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
+  if err is null then report := report || E'ok: limit receptov neblokuje hlas\n';
+  else report := report || 'FAIL: hlas po limite receptov -> ' || err || E'\n'; fails := fails + 1; end if;
+
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
@@ -829,6 +915,10 @@ begin
   begin perform public.create_household('x'); exception when others then err := sqlerrm; end;
   if err like 'permission denied%' then report := report || E'ok: neprihlásený nevolá funkcie\n';
   else report := report || 'FAIL: anonym funkcia -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: neprihlásený nepoužije AI\n';
+  else report := report || 'FAIL: anonym ai_allow -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
 
   execute 'reset role';
   raise exception E'TEST_REPORT fails=%\n%', fails, report;

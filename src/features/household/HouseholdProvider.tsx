@@ -7,6 +7,7 @@ import { Navigate, useLocation } from "react-router";
 import { errorMessage } from "@/lib/errors";
 import { ErrorState, Spinner } from "@/components/ui";
 import { useHouseholds, type Household } from "./api";
+import { setCurrentHouseholdId } from "./current";
 
 const STORAGE_KEY = "bh.householdId";
 
@@ -44,6 +45,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     return list.find((h) => h.id === selected) ?? list[0] ?? null;
   }, [households.data, selected]);
 
+  setCurrentHouseholdId(household?.id ?? null);
   useEffect(() => {
     if (household) rememberHousehold(household.id);
   }, [household]);

@@ -21,6 +21,8 @@ export const enErrors: Record<keyof typeof skErrors, string> = {
   "error.LINK_INVALID": "This isn't a valid web page link.",
   "error.LINK_UNREADABLE": "The page couldn't be loaded. Try a screenshot or paste the recipe text.",
   "error.NOT_A_RECIPE": "No recipe was found in it. Try another photo, link or text.",
+  "error.AI_LIMIT": "Your household has reached the AI limit. Try again later.",
+  "error.AI_GUARD_FAILED": "AI can't be verified right now. Try again in a moment.",
   "error.RECIPE_AI_FAILED": "Gemini couldn't process the recipe right now. Try again in a moment.",
   // Supabase Auth
   "error.invalid_credentials": "Incorrect email or password.",

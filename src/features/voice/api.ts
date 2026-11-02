@@ -4,6 +4,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { currentHouseholdId } from "@/features/household/current";
 import { guessCategory, normalizeName } from "@/lib/categories";
 import { listKeys } from "@/features/lists/api";
 import { countOf, isCountable, qtyLabel, sameProduct } from "@/features/lists/qty";
@@ -102,7 +103,7 @@ const draftItems = (items: DraftItem[]) => items.map((i) => ({ name: i.name, qty
 
 async function callParse(body: Record<string, unknown>, ms: number): Promise<Interpretation | null> {
   try {
-    const call = supabase.functions.invoke("parse-voice", { body });
+    const call = supabase.functions.invoke("parse-voice", { body: { ...body, household_id: currentHouseholdId() } });
     const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), ms));
     const { data, error } = await Promise.race([call, timeout]);
     if (error || !Array.isArray(data?.ops)) return null;

@@ -3,10 +3,11 @@
 //
 // Tok: aplikácia zavolá funkciu s {household_id}. Funkcia (1) overí používateľa,
 // (2) cez jeho oprávnenia (RLS) načíta nezjednotené produkty – cudzí nič nevidí,
-// (3) pošle ich názvy Gemini (iba text, žiadne fotky – je to lacné),
+// (3) pošle ich názvy Gemini (iba text, žiadne fotky, obmedzené premýšľanie – je to lacné),
 // (4) výsledok odovzdá databázovej funkcii apply_product_normalization, ktorá produkty
 // upraví a rovnaké spojí. Spracuje jednu dávku; aplikácia volá znova, kým niečo zostáva.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { callGemini, GeminiError, isGlobalError, logUsage, type ThinkingLevel, type Usage } from "../_shared/gemini.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -109,46 +110,39 @@ ${known.length > 0 ? known.join("\n") : "(zatiaľ žiadne)"}
 Produkty (product_id | názov | značka | kategória):
 ${rows}`;
 
-async function askGemini(text: string, deadline: number, schema: unknown = SCHEMA): Promise<{ products: Record<string, unknown>[] }> {
-  const key = Deno.env.get("GEMINI_API_KEY");
-  if (!key) throw new Error("GEMINI_API_KEY_MISSING");
-  const models = [...new Set([Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash", "gemini-3.6-flash"])];
+// Text bez fotiek – stačí model s obmedzeným premýšľaním. Ďalšie sú záloha pri výpadku.
+const MODELS: { model: string; thinking: ThinkingLevel }[] = [
+  { model: Deno.env.get("GEMINI_NORMALIZE_MODEL") ?? "gemini-3.8-flash", thinking: "low" },
+  { model: "gemini-3.6-flash", thinking: "low" },
+  { model: "gemini-3.5-flash-lite", thinking: "minimal" },
+];
+
+async function askGemini(
+  text: string,
+  deadline: number,
+  log: (model: string, usage: Usage | null, ok: boolean) => Promise<void>,
+  schema: unknown = SCHEMA,
+): Promise<{ products: Record<string, unknown>[] }> {
   let lastError = "GEMINI_UNKNOWN";
-  for (const model of models) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 2000 * attempt));
+  for (const cfg of MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
       const remaining = deadline - Date.now();
       if (remaining < 15_000) throw new Error(`GEMINI_TIMEOUT: ${lastError.slice(0, 120)}`);
-      let res: Response;
       try {
-        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-          method: "POST",
-          headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text }] }],
-            generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: schema },
-          }),
-          signal: AbortSignal.timeout(Math.min(60_000, remaining - 5_000)),
+        const res = await callGemini({
+          model: cfg.model, thinking: cfg.thinking, parts: [{ text }], schema,
+          timeoutMs: Math.min(60_000, remaining - 5_000),
         });
+        await log(cfg.model, res.usage, true);
+        if (Array.isArray(res.json?.products)) return res.json as { products: Record<string, unknown>[] };
+        lastError = "GEMINI_BAD_JSON";
       } catch (e) {
-        lastError = `GEMINI_NETWORK: ${e instanceof Error ? e.message : String(e)}`;
-        continue;
+        lastError = e instanceof Error ? e.message : String(e);
+        if (e instanceof GeminiError) await log(cfg.model, e.usage, false);
+        if (isGlobalError(lastError)) throw new Error(lastError);
+        if (!/^GEMINI_(429|5\d\d|EMPTY|BAD_JSON)|TimeoutError/i.test(lastError)) break; // ďalší model
       }
-      if (res.ok) {
-        const data = await res.json();
-        const out = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("");
-        try {
-          const parsed = JSON.parse(out ?? "");
-          if (Array.isArray(parsed?.products)) return parsed;
-          lastError = "GEMINI_BAD_JSON";
-        } catch {
-          lastError = "GEMINI_BAD_JSON";
-        }
-        continue;
-      }
-      lastError = `GEMINI_${res.status}: ${(await res.text()).slice(0, 300)}`;
-      if (/^GEMINI_(401|402|403)/.test(lastError)) throw new Error(lastError);
-      if (res.status !== 429 && res.status < 500) break; // ďalší model
     }
   }
   throw new Error(lastError);
@@ -161,11 +155,7 @@ Deno.serve(async (req) => {
 
   const url = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (!token) return json({ error: "NOT_AUTHENTICATED" }, 401);
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
-  const { data: userData, error: userError } = await admin.auth.getUser(token);
-  if (userError || !userData.user) return json({ error: "NOT_AUTHENTICATED" }, 401);
 
   let householdId: string | undefined;
   try {
@@ -173,13 +163,29 @@ Deno.serve(async (req) => {
   } catch { /* prázdne telo */ }
   if (!householdId || !/^[0-9a-f-]{36}$/i.test(householdId)) return json({ error: "VALIDATION" }, 400);
 
-  // Všetko čítame s oprávneniami používateľa: nečlen domácnosti nič neuvidí.
-  const asUser = createClient(url, serviceKey, {
-    auth: { persistSession: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const member = await asUser.from("households").select("id").eq("id", householdId).maybeSingle();
-  if (member.error || !member.data) return json({ error: "NOT_FOUND" }, 404);
+  // Dva spôsoby volania: (a) po prečítaní dokladu na pozadí (tajný kľúč z databázy),
+  // (b) z aplikácie (Prehľady) s prihláseným používateľom – vtedy čítame cez jeho oprávnenia (RLS).
+  // deno-lint-ignore no-explicit-any
+  let asUser: any;
+  const secret = req.headers.get("x-worker-secret");
+  if (secret) {
+    const ok = await admin.rpc("check_worker_secret", { p_secret: secret });
+    if (ok.error || ok.data !== true) return json({ error: "FORBIDDEN" }, 403);
+    asUser = admin;
+  } else {
+    const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    if (!token) return json({ error: "NOT_AUTHENTICATED" }, 401);
+    const { data: userData, error: userError } = await admin.auth.getUser(token);
+    if (userError || !userData.user) return json({ error: "NOT_AUTHENTICATED" }, 401);
+    asUser = createClient(url, serviceKey, {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const member = await asUser.from("households").select("id").eq("id", householdId).maybeSingle();
+    if (member.error || !member.data) return json({ error: "NOT_FOUND" }, 404);
+  }
+  const log = (model: string, usage: Usage | null, ok: boolean) =>
+    logUsage(admin, { fn: "normalize-products", model, usage, household_id: householdId, ok });
 
   try {
     const todo = await asUser
@@ -197,17 +203,18 @@ Deno.serve(async (req) => {
       if (!kindless.data || kindless.data.length === 0) return json({ processed: 0, remaining: 0 });
       const used = await asUser
         .from("products").select("kind").eq("household_id", householdId).is("merged_into", null).not("kind", "is", null).limit(400);
-      const knownKinds = [...new Set((used.data ?? []).map((k) => String(k.kind)))].slice(0, 200);
+      const knownKinds = [...new Set(((used.data ?? []) as { kind: string }[]).map((k) => String(k.kind)))].slice(0, 200);
       const cleanK = (v: string) => v.replace(/[|\n]/g, " ").trim();
-      const rowsK = kindless.data.map((p) => `${p.id} | ${cleanK(p.name)} | ${p.brand ? cleanK(p.brand) : "-"} | ${p.category_id}`).join("\n");
-      const resK = await askGemini(kindPrompt(knownKinds, rowsK), deadline, KIND_SCHEMA);
-      const allowedK = new Set(kindless.data.map((p) => p.id));
+      const kindRows = kindless.data as { id: string; name: string; brand: string | null; category_id: string }[];
+      const rowsK = kindRows.map((p) => `${p.id} | ${cleanK(p.name)} | ${p.brand ? cleanK(p.brand) : "-"} | ${p.category_id}`).join("\n");
+      const resK = await askGemini(kindPrompt(knownKinds, rowsK), deadline, log, KIND_SCHEMA);
+      const allowedK = new Set(kindRows.map((p) => p.id));
       const payloadK = resK.products
         .filter((x) => typeof x.product_id === "string" && allowedK.has(x.product_id))
         .map((x) => ({ product_id: x.product_id, kind: typeof x.kind === "string" ? x.kind.trim().slice(0, 60) : null }));
       // Vynechané dostanú druh podľa názvu, aby sa dávka neopakovala.
       const gotK = new Set(payloadK.map((x) => x.product_id));
-      for (const p of kindless.data) if (!gotK.has(p.id)) payloadK.push({ product_id: p.id, kind: null });
+      for (const p of kindRows) if (!gotK.has(p.id)) payloadK.push({ product_id: p.id, kind: null });
       const appliedK = await admin.rpc("apply_product_kinds", { p_household_id: householdId, p_items: payloadK });
       if (appliedK.error) throw new Error("SAVE_FAILED: " + appliedK.error.message);
       const leftK = await asUser
@@ -215,8 +222,9 @@ Deno.serve(async (req) => {
         .eq("household_id", householdId).is("merged_into", null).is("kind", null);
       return json({ processed: appliedK.data ?? 0, remaining: leftK.count ?? 0 });
     }
+    const todoRows = todo.data as { id: string; name: string; category_id: string }[];
 
-    const ids = todo.data.map((p) => p.id);
+    const ids = todoRows.map((p) => p.id);
     const items = await asUser
       .from("receipt_items").select("product_id, raw_name, receipts(store_name)")
       .in("product_id", ids).limit(BATCH * 6);
@@ -233,17 +241,17 @@ Deno.serve(async (req) => {
       byProduct.set(it.product_id, entry);
     }
     const clean = (s: string) => s.replace(/[|\n]/g, " ").trim();
-    const rows = todo.data.map((p) => {
+    const rows = todoRows.map((p) => {
       const e = byProduct.get(p.id);
       const others = [...(e?.names ?? [])].filter((n) => n !== p.name).slice(0, 3).map(clean).join(" ; ");
       const stores = [...(e?.stores ?? [])].slice(0, 2).map(clean).join(", ");
       return `${p.id} | ${clean(p.name)} | ${others || "-"} | ${stores || "-"} | ${p.category_id}`;
     }).join("\n");
-    const knownLines = (known.data ?? []).map((k) =>
+    const knownLines = ((known.data ?? []) as { name: string; brand: string | null; size_value: number | null; size_unit: string | null; kind: string | null }[]).map((k) =>
       `${clean(k.name)} | ${k.brand ?? "-"} | ${k.size_value ? `${Number(k.size_value)} ${k.size_unit}` : "-"} | ${k.kind ?? "-"}`
     );
 
-    const result = await askGemini(prompt(knownLines, rows), deadline);
+    const result = await askGemini(prompt(knownLines, rows), deadline, log);
     const allowed = new Set(ids);
     const payload = result.products
       .filter((x) => typeof x.product_id === "string" && allowed.has(x.product_id) && typeof x.name === "string")
@@ -259,7 +267,7 @@ Deno.serve(async (req) => {
     // Produkty, ktoré model vynechal, označíme ako spracované s pôvodným názvom –
     // inak by sa dávka opakovala donekonečna.
     const returned = new Set(payload.map((p) => p.product_id));
-    for (const p of todo.data) {
+    for (const p of todoRows) {
       if (!returned.has(p.id)) payload.push({ product_id: p.id, name: p.name, brand: null, size_value: null, size_unit: null, category_id: p.category_id, kind: null });
     }
 

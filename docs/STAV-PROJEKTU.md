@@ -1,6 +1,6 @@
 # Stav projektu (odovzdanie pre ďalšiu reláciu)
 
-Aktualizované 23. 10. 2026. Pred prácou si prečítaj celé – je to krátke.
+Aktualizované 2. 11. 2026 (Fáza 0 prestavby). Pred prácou si prečítaj celé – je to krátke.
 
 ## Kde čo beží
 
@@ -17,19 +17,34 @@ Majiteľ nechce: push do `main` ani Pull Request bez výslovného pokynu. Do ost
 Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026: 66 dokladov, 523 položiek,
 416 produktov + aliasy; všetky doklady pripísané Markovi). Fotky dokladov ani `receipt_pages` sa nekopírovali.
 
+**Testovací účet (len testovacia DB, 2. 11. 2026, so súhlasom majiteľa):** `e2e-test@basket-harmony.invalid`, heslo je v trezore
+testovacej DB (`select decrypted_secret from vault.decrypted_secrets where name in ('e2e_test_email','e2e_test_password')`),
+nie v repozitári. Má vlastnú domácnosť „Testovacia domácnosť (kópia)“ s kópiou údajov Blahovcov (doklady, položky, produkty,
+aliasy, zoznamy, rozpočty) + jeden skúšobný bloček „Lidl 5,01 €“ z overenia čítania na pozadí. Blahovci ani Marko ho nevidia.
+Starší účet `claude-test-recepty@example.com` (heslo neznáme) ostal nepoužitý.
+
+**Automatické preklikanie appky:** `testy/preklikanie.cjs` – prihlási testovací účet cez obrazovku, prejde 22 obrazoviek
+v telefónovej veľkosti v každom vzhľade (zatiaľ svetlý/tmavý; témy pribudnú vo Fáze 1) a hľadá chyby JS, neúspešné volania
+servera, chybové hlásenia, pretekanie, text mimo obrazovky a prekrytia. Fotky + `report.json` do `testy/vysledky/` (mimo gitu).
+`E2E_EMAIL=… E2E_PASSWORD=… node testy/preklikanie.cjs [adresa]` – bez adresy ide na nasadenú testovaciu appku.
+
 ## Pred zlúčením testovacej vetvy do `main` (nedokončené)
 
-1. **`main` má 1 zmenu navyše** (`9aba9fb` – doklady sa čítajú na pozadí, migrácie
-   `20261020000024_receipt_queue`, `20261020000025_worker_secret`, funkcia `ai-eval`).
-   Najprv ju zlúč do testovacej vetvy a nasaď tie migrácie do testovacej DB.
+1. ~~`main` má 1 zmenu navyše (`9aba9fb`)~~ – HOTOVO 2. 11.: zlúčená do testovacej vetvy, migrácie `receipt_queue`
+   a `worker_secret` nasadené v testovacej DB, v trezore testovacej DB je `project_url`. Čítanie bločku na pozadí overené
+   (nahratie → databáza → extract-receipt → zjednotenie produktov za ~10 s, náklady v `ai_usage`).
 2. Do ostrej DB chýbajú migrácie testovacej vetvy: `20261021000024_item_unavailable`,
    `…025_shopping_time_finish`, `…026_receipt_match`, `…027_recipes`, `20261022000028_staple_items`,
    `20261030000029_product_kinds` (v testovacej DB nasadená ako 3 kroky: product_kinds, product_kinds_units,
    product_kinds_by_name – súbor v repozitári je ich súčet). Funkciu `normalize-products` v3 (druh) nasadiť aj do ostrej.
    Históriu migrácií oboch DB porovnaj (`list_migrations`) – ostrá má niektoré pod inými menami.
-3. Edge funkcie len v testovacej DB: `recipe-ai` (recepty), `parse-voice` v4 (zvuk cez
-   gemini-3.6-flash + slovník domácnosti). Pri zlúčení nasadiť aj do ostrej.
-4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` → treba súhlas majiteľa).
+   Ďalej `20261102000030_ai_guard` (poistka AI + zamknuté vnútorné funkcie párovania).
+3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
+   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v5,
+   recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
+   read-statement v3. Funkciu `proto-images` (vypnutá, 410) možno zmazať.
+4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` testovacích riadkov vo vnútri bloku, ktorý sa celý vráti
+   späť → treba súhlas majiteľa). Nové časti (fronta dokladov, poistka AI) overené samostatným blokom: fails=0.
 
 ## Čo je hotové v testovacej vetve (oproti `main`)
 
@@ -62,13 +77,24 @@ Testovacia DB má kópiu dokladov domácnosti Blahovci z ostrej DB (23. 10. 2026
   vibrácie na iPhone cez systémový prepínač (`haptic()` v `components/kit.tsx`).
 - Systémová lišta iPhonu vo farbe témy, plynulejšie animácie (`components/motion.ts`: FLIP, animateOut, collapseOut).
 
-## Prestavba testovacej appky podľa mockupu (plán 3. 11. 2026, čaká na súhlas)
+## Prestavba testovacej appky podľa mockupu (plán schválený 2. 11. 2026)
 
 Plán `prototyp/plan-prestavby.html`: fázy 0 (poistky, bezpečnostné opravy, testovací účet) → 1 vzhľad a kostra → 2 Domov,
 Nákupy, História → 3 zoznam a pridávanie (všeobecná/druh/značka) → 4 nákup a bloček → 5 hlas 2.0 → 6 recepty → 7 výdavky →
 8 upozornenia a Viac → 9 uvítanie a nápovedy (ukážka bez zápisu do DB) → 10 pred obchodmi. Každá fáza: súpis, migrácia do
 testovacej DB + core_test, kód + sk/en, `npm run check`, prekliknutie testovacej adresy, push, odskúšanie majiteľom.
-Pred začatím rozhodnúť rozpory mockupu so staršími rozhodnutiami nižšie (kategórie v zozname, 6 bublín, dok, záložky, témy).
+Rozhodnutia majiteľa (2. 11.): vo všetkých piatich rozporoch ide appka podľa mockupu (kategórie v zozname, návrhy pri písaní
+ako zoznam riadkov, rad často kupovaných namiesto doku, záložky Domov · Nákupy · mikrofón · Recepty · Výdavky s Viac pod
+avatarom, témy Teplá kuchyňa a Fotky a sklo – obe, každá svetlá a tmavá). Pravidlo: vždy len jedna fáza, ďalšia až po „OK“
+majiteľa; žiadny Pull Request bez pokynu.
+
+**Fáza 0 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** zlúčená zmena z `main` (čítanie dokladov na pozadí, meranie nákladov AI);
+poistka AI – `parse-voice` a `recipe-ai` pred volaním Gemini overia v DB (`ai_allow`), že volajúci je členom domácnosti a
+domácnosť neprekročila limit (hlas 300/h a 1500/deň, recepty 40/h a 200/deň; počíta sa z `ai_usage`), spotreba sa zapisuje;
+appka posiela `household_id` (`features/household/current.ts`); chyba `error.AI_LIMIT`. Zamknuté vnútorné funkcie
+`_auto_match_receipt`, `_receipt_list_score` (a spúšťače). Testovací účet + `testy/preklikanie.cjs` (0 nálezov, 2 vzhľady × 22 obrazoviek).
+Hlas pri prekročení limitu ukáže len všeobecné „nerozumel som / nepodarilo sa“ (konkrétny text príde s Hlasom 2.0 vo Fáze 5).
+Ďalej: Fáza 1 (vzhľad a kostra).
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:
@@ -76,8 +102,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
 
 ## Rozhodnutia majiteľa (nemeniť bez opýtania)
 
-- Plánovanie bez kategórií; kategórie až v nákupe. Kategória sa priraďuje pri pridaní. Poradie trasy je všeobecné, nie podľa obchodu.
-- Ťuk = +1, pridanie po 2 s, položka v doku sa nahradí ďalšou. V režime písania presne 6 bublín (3×2), bez posúvania.
+- ~~Plánovanie bez kategórií~~ a ~~6 bublín / dok~~ – 2. 11. nahradené mockupom (pozri Prestavba). Kategória sa priraďuje
+  pri pridaní. Poradie trasy je všeobecné, nie podľa obchodu.
+- Pridávanie: appka nič nedomýšľa – „smotana“ = Smotana (priemer druhov), „kyslá smotana“ = druh, „plzeň“ = značka (cena len z nej).
+- Nápovedy a ukážka sa samy ukážu len pri prvom spustení, potom len cez „?“. Ukážka nesmie zapisovať do DB.
 - Hlas nesmie vydávať žiadne zvuky. Pásik ˄ ˅ ✓ nad klávesnicou iPhonu z webu skryť nejde (len natívna appka).
 - Texty po slovensky, jednoduché, bez skloňovania mien („Nakupuje: Lucia“).
 

@@ -12,7 +12,9 @@
 // aby fungovala výživa a návrh balení; v krokoch sú množstvá ako {kľúč}, takže sa
 // prepočítajú na zvolený počet porcií. Neisté miesta vráti v poli "uncertain".
 // Chyby vracia ako kódy ({ error: "LINK_UNREADABLE" }), texty má aplikácia (error.*).
-import { createClient } from "npm:@supabase/supabase-js@2";
+// Pred volaním AI overí členstvo v domácnosti a limit (ai_allow v databáze), spotrebu zapíše do ai_usage.
+import { callGemini, GeminiError, isGlobalError, type ThinkingLevel } from "../_shared/gemini.ts";
+import { guardAi, type Guarded } from "../_shared/guard.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -179,31 +181,21 @@ ${recipeRules(locale, foods)}
 
 type Part = Record<string, unknown>;
 
-async function gemini(parts: Part[], schema: unknown, deadline: number, temperature = 0.2, models = MODELS(), thinking = "low"): Promise<Record<string, unknown>> {
-  const key = Deno.env.get("GEMINI_API_KEY");
-  if (!key) throw new Error("GEMINI_API_KEY_MISSING");
+/** g = overená domácnosť; spotreba tokenov sa zapíše jej. */
+async function gemini(g: Guarded, parts: Part[], schema: unknown, deadline: number, temperature = 0.2, models = MODELS(), thinking: ThinkingLevel = "low"): Promise<Record<string, unknown>> {
   let last = "GEMINI_UNKNOWN";
   for (const model of models) {
     const left = deadline - Date.now();
     if (left < 3000) break;
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts }],
-          generationConfig: { temperature, responseMimeType: "application/json", responseSchema: schema, thinkingConfig: { thinkingLevel: thinking } },
-        }),
-        signal: AbortSignal.timeout(Math.min(left, 90_000)),
-      });
-      if (!res.ok) throw new Error(`GEMINI_${res.status}: ${(await res.text()).slice(0, 200)}`);
-      const data = await res.json();
-      const out = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("");
-      return JSON.parse(out ?? "");
+      const res = await callGemini({ model, parts, schema, temperature, thinking, timeoutMs: Math.min(left, 90_000) });
+      g.log(model, res.usage, true);
+      return res.json;
     } catch (e) {
+      if (e instanceof GeminiError) g.log(model, e.usage, false);
       last = e instanceof Error ? e.message : String(e);
       console.error("recipe-ai", model, last);
-      if (/^GEMINI_(401|402|403)|GEMINI_API_KEY_MISSING/.test(last)) break;
+      if (isGlobalError(last)) break;
     }
   }
   throw new Error(last);
@@ -305,18 +297,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "METHOD" }, 405);
 
-  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (!token) return json({ error: "NOT_AUTHENTICATED" }, 401);
-  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-  const { data: userData, error: userError } = await admin.auth.getUser(token);
-  if (userError || !userData.user) return json({ error: "NOT_AUTHENTICATED" }, 401);
-
   let body: Record<string, unknown> = {};
   try {
     body = await req.json();
   } catch {
     return json({ error: "VALIDATION" }, 400);
   }
+  const g = await guardAi(req, body.household_id, "recipe-ai");
+  if ("error" in g) return json({ error: g.error }, g.status);
   const locale = body.locale === "en" ? "en" : "sk";
   const foods = typeof body.foods === "string" ? body.foods : "";
   const deadline = Date.now() + 120_000;
@@ -330,7 +318,7 @@ Deno.serve(async (req) => {
           { text: readPrompt(locale, foods, images.length > 1 ? `${images.length} fotky strán – jeden recept` : "fotka alebo snímka obrazovky") },
           ...images.map((x) => ({ inline_data: { mime_type: /^image\/(jpeg|png|webp|heic)$/.test(String(x.mime)) ? x.mime : "image/jpeg", data: x.data } })),
         ];
-        const raw = await gemini(parts, RECIPE_SCHEMA, deadline, 0);
+        const raw = await gemini(g, parts, RECIPE_SCHEMA, deadline, 0);
         return json({ recipe: clean(raw, locale === "en" ? "Photo" : "Fotka", null, false) });
       }
       if (body.kind === "link") {
@@ -338,13 +326,13 @@ Deno.serve(async (req) => {
         const parts: Part[] = isYoutube(u)
           ? [{ text: readPrompt(locale, foods, "video") }, { file_data: { file_uri: u.href, mime_type: "video/*" } }]
           : [{ text: readPrompt(locale, foods, "webová stránka") }, { text: await pageText(u) }];
-        const raw = await gemini(parts, RECIPE_SCHEMA, deadline, 0);
+        const raw = await gemini(g, parts, RECIPE_SCHEMA, deadline, 0);
         return json({ recipe: clean(raw, u.hostname.replace(/^www\./, ""), u.href, false) });
       }
       if (body.kind === "text") {
         const text = str(body.text, 30_000);
         if (text.length < 20) return json({ error: "NOT_A_RECIPE" }, 422);
-        const raw = await gemini([{ text: readPrompt(locale, foods, "vložený text") }, { text }], RECIPE_SCHEMA, deadline, 0);
+        const raw = await gemini(g, [{ text: readPrompt(locale, foods, "vložený text") }, { text }], RECIPE_SCHEMA, deadline, 0);
         return json({ recipe: clean(raw, locale === "en" ? "Text" : "Text", null, false) });
       }
       return json({ error: "VALIDATION" }, 400);
@@ -353,7 +341,7 @@ Deno.serve(async (req) => {
     if (body.action === "create") {
       const query = str(body.query, 200);
       if (!query) return json({ error: "VALIDATION" }, 400);
-      const raw = await gemini([{ text: createPrompt(locale, foods, query) }], RECIPE_SCHEMA, deadline, 0.6);
+      const raw = await gemini(g, [{ text: createPrompt(locale, foods, query) }], RECIPE_SCHEMA, deadline, 0.6);
       return json({ recipe: clean(raw, "Gemini", null, true) });
     }
 
@@ -362,7 +350,7 @@ Deno.serve(async (req) => {
       const count = int(body.count, 1, 4, 4);
       const exclude = (Array.isArray(body.exclude) ? body.exclude : []).map((x) => str(x, 80)).filter(Boolean);
       if (!query) return json({ error: "VALIDATION" }, 400);
-      const raw = await gemini([{ text: variantsPrompt(locale, query, count, exclude) }], VARIANTS_SCHEMA, Date.now() + 12_000, 0.7, FAST_MODELS(), "minimal");
+      const raw = await gemini(g, [{ text: variantsPrompt(locale, query, count, exclude) }], VARIANTS_SCHEMA, Date.now() + 12_000, 0.7, FAST_MODELS(), "minimal");
       if (raw.is_food === false) return json({ error: "NOT_A_RECIPE" }, 422);
       const variants = (Array.isArray(raw.variants) ? raw.variants : []).slice(0, count).map((v: Record<string, unknown>) => ({
         name: str(v.name, 100),
@@ -379,7 +367,7 @@ Deno.serve(async (req) => {
       const name = str(body.name, 100);
       if (!name) return json({ error: "VALIDATION" }, 400);
       const variant = str(body.variant, 80);
-      const raw = await gemini([{ text: suggestPrompt(locale, foods, name, variant) }], SUGGEST_RECIPE_SCHEMA, Date.now() + 25_000, 0.4, FAST_MODELS(), "minimal");
+      const raw = await gemini(g, [{ text: suggestPrompt(locale, foods, name, variant) }], SUGGEST_RECIPE_SCHEMA, Date.now() + 25_000, 0.4, FAST_MODELS(), "minimal");
       if (raw.is_food === false) return json({ error: "NOT_A_RECIPE" }, 422);
       return json({ recipe: { ...clean({ ...raw, is_recipe: true }, "Gemini", null, true), name, variant } });
     }
@@ -395,7 +383,7 @@ Odpovedaj stručne (najviac 3 vety), prakticky, jazyk: ${lang(locale)}.
 Recept: ${JSON.stringify(recipe).slice(0, 8000)}
 Varí sa na ${int(body.portions, 1, 50, 4)} porcií, práve krok ${int(body.step, 0, 100, 0) + 1}.
 ${history.length ? `Predchádzajúce otázky:\n${history.map((h) => `- ${str(h.q, 300)} → ${str(h.a, 600)}`).join("\n")}\n` : ""}Otázka: "${question}"`;
-      const raw = await gemini([{ text: prompt }], ASK_SCHEMA, Date.now() + 30_000, 0.3);
+      const raw = await gemini(g, [{ text: prompt }], ASK_SCHEMA, Date.now() + 30_000, 0.3);
       return json({ answer: str(raw.answer, 1200), off_topic: raw.off_topic === true });
     }
 

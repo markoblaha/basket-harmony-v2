@@ -176,10 +176,9 @@ export function AddReceiptSheet({ list, onClose }: { list: ShoppingList | null; 
       { listId: list.id, files },
       {
         onSuccess: (outcome) => {
-          if (outcome === "OK") toast.show(t("ls.receiptRead", { name }), "success");
-          else if (outcome === "NEEDS_REVIEW") toast.show(t("ls.receiptReview", { name }), "info");
-          else if (outcome === "DUPLICATE") toast.show(t("ls.receiptDuplicate"), "info");
-          else if (outcome === "FAILED" || outcome === "NOT_A_RECEIPT") toast.show(t("ls.receiptFailed"), "error");
+          // Doklad sa číta na pozadí na serveri – appka nečaká (výsledok uvidíš v Dokladoch).
+          if (outcome === "QUEUED") toast.show(t("ls.receiptQueued", { name }), "success");
+          else toast.show(t("ls.receiptDuplicate"), "info");
         },
         onError: (err) => toast.show(readErrorMessage(err), "error"),
       },
