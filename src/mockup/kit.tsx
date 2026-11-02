@@ -4,7 +4,14 @@
  */
 import type { ReactNode } from "react";
 import { formatDateTime, formatEuro, formatNumber, t } from "@/i18n";
-import { CATS, PRODUCTS, RECIPES, STORES } from "./catalog";
+import { CATS, PRODUCTS, RECIPES, STORES as MOCK_STORES } from "./catalog";
+
+/** Obchody z mockupu + ďalšie, ktoré domácnosti bežne používajú (rovnaký tvar dlaždice). */
+export const STORES: Record<string, { n: string; s: string; c1: string; c2: string }> = {
+  ...MOCK_STORES,
+  teta: { n: "Teta", s: "T", c1: "#3fa36b", c2: "#1f7046" },
+  coop: { n: "Coop Jednota", s: "C", c1: "#e5583f", c2: "#a8301d" },
+};
 
 /** Text bez diakritiky, malými písmenami. */
 export const norm = (s: string) =>

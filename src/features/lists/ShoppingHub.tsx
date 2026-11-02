@@ -17,7 +17,7 @@ import { useRecipePlans } from "@/features/recipes/api";
 import { useHubSessions, useItems, useListStats, useLists, useStartShopping, type ListStats, type Session, type ShoppingList } from "./api";
 import { listDay } from "./dates";
 import { ListActionsSheet } from "./ListActionsSheet";
-import { ListSheet } from "./ListSheet";
+import { NewListSheet } from "./NewListSheet";
 import { useSetting } from "@/lib/settings";
 
 /**
@@ -125,13 +125,11 @@ export function ShoppingHub() {
       </MkHeader>
       <div className="tab-space" />
 
-      <ListSheet
-        key={creating ? "new-open" : "new"}
+      <NewListSheet
         open={creating}
         onClose={() => setCreating(false)}
         householdId={household.id}
         householdName={household.name}
-        me={me}
         lists={lists.data ?? []}
         onCreated={(id) => navigate(`/lists/${id}`)}
       />

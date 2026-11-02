@@ -61,3 +61,19 @@ body.kb-typing .bhm-tabs {
 :root.g body {
   background: transparent;
 }
+
+/* Spodné panely (Sheet z mockupu): nad celou appkou, pevne k oknu. */
+:root .bhm.bhm-ovl {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+:root .bhm.bhm-ovl .sheetw {
+  position: absolute;
+  inset: 0;
+}
+:root .bhm.bhm-ovl .sheet {
+  max-height: calc(100dvh - var(--sat) - 12px - var(--kb, 0px));
+  max-width: 40rem;
+  margin: 0 auto;
+}
