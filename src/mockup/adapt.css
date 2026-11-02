@@ -224,3 +224,6 @@ body.kb-typing .bhm-tabs {
   height: 17px;
   color: var(--acc);
 }
+.bhm .mebtn {
+  position: relative;
+}

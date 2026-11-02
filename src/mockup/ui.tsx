@@ -9,10 +9,12 @@ import { useAuth, useUserId } from "@/features/auth/AuthProvider";
 import { useProfiles } from "@/features/household/api";
 import { t } from "@/i18n";
 import { ICONS } from "./icons";
+import { EXTRA_ICONS } from "./icons-extra";
+import { useUnread } from "@/features/more/notif";
 
 /** Ikona Phosphor. w = fill | bold | regular (ako v mockupe). */
 export function I({ n, w = "fill", s, cls = "" }: { n: string; w?: "fill" | "bold" | "regular"; s?: number; cls?: string }) {
-  const svg = ICONS[w === "fill" ? n : `${n}:${w}`] ?? ICONS[n] ?? "";
+  const svg = ICONS[w === "fill" ? n : `${n}:${w}`] ?? ICONS[n] ?? EXTRA_ICONS[n] ?? "";
   return (
     <span className={`ico ${cls}`} style={s ? { width: s, height: s } : undefined} aria-hidden="true">
       <svg viewBox="0 0 256 256" dangerouslySetInnerHTML={{ __html: svg }} />
@@ -54,9 +56,11 @@ export function MeBtn() {
   const { user } = useAuth();
   const profiles = useProfiles();
   const name = profiles.data?.get(me) || user?.email?.split("@")[0] || "?";
+  const unread = useUnread();
   return (
-    <button type="button" className="mebtn" onClick={() => navigate("/more")} aria-label={t("nav.me")}>
+    <button type="button" className="mebtn" onClick={() => navigate("/more")} aria-label={unread ? t("nt.meUnread") : t("nav.me")}>
       {name.trim().charAt(0).toUpperCase()}
+      {unread && <i className="mdot" aria-hidden="true" />}
     </button>
   );
 }

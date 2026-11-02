@@ -8,6 +8,7 @@ import { E, I } from "@/mockup/ui";
 import { eur, recipeArt } from "@/mockup/kit";
 import { useEstimator, type Estimator } from "@/features/lists/estimate";
 import { buyPlan, mergeIngredients, type Row } from "./logic";
+import { STAPLE_KEYS } from "./foods";
 import type { Recipe } from "./types";
 
 /** Kategórie knihy (ako v mockupe) – nad kategóriami a druhom mäsa receptov z appky. */
@@ -50,12 +51,39 @@ const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
 };
-/** Čo mám pri recepte doma (ťuk prepne). Bez ťuknutia: základné suroviny (soľ, olej…) doma, ostatné nie. */
+/* ------------------------------------------------------------------ Čo mám doma (Viac → Nastavenia) */
+const PANTRY = "bh.pantry";
+let pantry: string[] = (() => {
+  try {
+    const v = JSON.parse(localStorage.getItem(PANTRY) ?? "null") as string[] | null;
+    return Array.isArray(v) ? v : [...STAPLE_KEYS];
+  } catch {
+    return [...STAPLE_KEYS];
+  }
+})();
+/** Suroviny, ktoré doma bežne máte – recepty ich predvolene nekúpia (v recepte sa dajú prepnúť). */
+export function usePantry() {
+  const keys = useSyncExternalStore(subscribe, () => pantry);
+  const toggle = useCallback((food: string) => {
+    pantry = pantry.includes(food) ? pantry.filter((x) => x !== food) : [...pantry, food];
+    try {
+      localStorage.setItem(PANTRY, JSON.stringify(pantry));
+    } catch {
+      /* súkromné okno */
+    }
+    listeners.forEach((l) => l());
+  }, []);
+  return { keys, toggle };
+}
+const homeDefault = (row: Row) => (row.food ? pantry.includes(row.food) : false);
+
+/** Čo mám pri recepte doma (ťuk prepne). Bez ťuknutia podľa „Čo mám doma“ (predvolene soľ, olej, korenie…). */
 export function useHave() {
   const map = useSyncExternalStore(subscribe, () => have);
-  const isHome = useCallback((rid: string, row: Row) => map[rid]?.[row.key] ?? row.staple, [map]);
+  const pk = useSyncExternalStore(subscribe, () => pantry);
+  const isHome = useCallback((rid: string, row: Row) => map[rid]?.[row.key] ?? homeDefault(row), [map, pk]); // eslint-disable-line react-hooks/exhaustive-deps
   const toggle = useCallback((rid: string, row: Row) => {
-    const cur = have[rid]?.[row.key] ?? row.staple;
+    const cur = have[rid]?.[row.key] ?? homeDefault(row);
     have = { ...have, [rid]: { ...have[rid], [row.key]: !cur } };
     try {
       localStorage.setItem(KEY, JSON.stringify(have));
