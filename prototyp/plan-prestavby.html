@@ -102,7 +102,7 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
   </div>
 
   <div class="col"><h2>Kde sme (2. 11. 2026)</h2>
-    <div class="state"><span class="pill ok">Fáza 0 hotová a nasadená</span><span class="pill fix">čaká na vaše „OK“</span><span class="pill fix">ďalej: Fáza 1</span></div>
+    <div class="state"><span class="pill ok">Fáza 0 hotová</span><span class="pill ok">Fáza 1 hotová a nasadená</span><span class="pill fix">čaká na vaše „OK“</span><span class="pill fix">ďalej: Fáza 2</span></div>
     <p>Rozhodnutia sú zapísané nižšie. Otvorené: súhlas so spustením celého kontrolného testu <code>core_test.sql</code> (obsahuje <code>delete</code> len vlastných testovacích riadkov, celý blok sa vráti späť).</p>
   </div>
 
@@ -135,7 +135,7 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
       <div class="check"><b>Vyskúšate:</b> appka funguje ako doteraz (prihlásenie, zoznam, bloček).</div>
       <div class="done-note"><b>Výsledok:</b> zmena z <code>main</code> zlúčená, bločky sa čítajú na pozadí (overené: ~9 s). Hlas a recepty s AI overia v databáze členstvo v domácnosti a limit (hlas 300/h · 1500/deň, recepty 40/h · 200/deň), náklady sa zapisujú. Vnútorné funkcie párovania zamknuté. Testovací účet s kópiou údajov (len pridanie). Skript <code>testy/preklikanie.cjs</code>: 22 obrazoviek × svetlý/tmavý, 0 nálezov. <code>npm run check</code> prešiel.</div></div></div>
 
-    <div class="ph now"><span class="no">1</span><div class="card"><h3>Vzhľad a kostra <small>1–2 relácie</small></h3>
+    <div class="ph done"><span class="no">1</span><div class="card"><h3>Vzhľad a kostra <small>hotová 2. 11.</small></h3>
       <p class="goal">Appka vyzerá ako mockup: témy, sklo, písmo, lišta, hlavičky – zatiaľ so starým obsahom obrazoviek.</p>
       <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
         <li>Farby, písmo, rohy a pohyb z mockupu ako tokeny v <code>styles.css</code> (jediný zdroj), obe témy × svetlý/tmavý/podľa systému.</li>
@@ -144,9 +144,10 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
         <li>Písma priamo v appke (nie z Google), bezpečné okraje iPhonu.</li></ul></div>
       <div><div class="lab">Databáza</div><ul><li>Nič.</li></ul></div></div>
       <div class="check"><b>Vyskúšate:</b> prepínanie tém a režimov vo Viac, všetky staré obrazovky čitateľné v novom vzhľade.</div>
-      <div class="risk">Najväčší zásah do štýlov – staré obrazovky sa v tejto fáze len „prefarbia“, prestavba ich obsahu príde v ďalších fázach.</div></div></div>
+      <div class="risk">Najväčší zásah do štýlov – staré obrazovky sa v tejto fáze len „prefarbia“, prestavba ich obsahu príde v ďalších fázach.</div>
+      <div class="done-note"><b>Výsledok:</b> obe témy × svetlý/tmavý/podľa systému (Viac → Vzhľad), písma v appke, nová lišta Domov · Nákupy · mikrofón · Recepty · Výdavky, Viac pod avatarom, prechody a návrat potiahnutím z okraja (v appke z plochy). Domov je zatiaľ rozcestník. Preklikanie: 4 vzhľady × 23 obrazoviek, 0 nálezov.</div></div></div>
 
-    <div class="ph"><span class="no">2</span><div class="card"><h3>Domov, Nákupy a História <small>1–2 relácie</small></h3>
+    <div class="ph now"><span class="no">2</span><div class="card"><h3>Domov, Nákupy a História <small>1–2 relácie</small></h3>
       <p class="goal">Nová úvodná obrazovka a prehľad zoznamov podľa mockupu.</p>
       <div class="cols"><div><div class="lab">Čo sa urobí</div><ul>
         <li>Domov: Treba vybaviť · Nákupy (kto nakupuje naživo, najbližší zoznam) · Naplánované recepty · Rýchlo.</li>
