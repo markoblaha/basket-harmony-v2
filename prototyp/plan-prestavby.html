@@ -102,7 +102,7 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
   </div>
 
   <div class="col"><h2>Kde sme (2. 11. 2026)</h2>
-    <div class="state"><span class="pill ok">Fáza 0 hotová</span><span class="pill ok">Fáza 1 hotová</span><span class="pill ok">Fáza 2 hotová</span><span class="pill ok">Fáza 3 hotová</span><span class="pill ok">Fáza 4 hotová</span><span class="pill ok">Fáza 5 hotová a nasadená</span><span class="pill fix">čaká na vaše „OK“</span><span class="pill fix">ďalej: Fáza 6</span></div>
+    <div class="state"><span class="pill ok">Fáza 0 hotová</span><span class="pill ok">Fáza 1 hotová</span><span class="pill ok">Fáza 2 hotová</span><span class="pill ok">Fáza 3 hotová</span><span class="pill ok">Fáza 4 hotová</span><span class="pill ok">Fáza 5 hotová</span><span class="pill ok">Fáza 6 hotová a nasadená</span><span class="pill fix">čaká na vaše „OK“</span><span class="pill fix">ďalej: Fáza 7</span></div>
     <p><b>Postup (pokyn 2. 11.):</b> appka má byť 1:1 ako interaktívny mockup. Vzhľad sa preto nekreslí nanovo – preberá sa priamo kód mockupu (štýly, ikony, 3D obrázky, rozloženie obrazoviek) a len sa napojí na skutočné dáta. Obrazovka vyzerá ako mockup vždy od fázy, v ktorej sa prenesie.</p>
     <p>Rozhodnutia sú zapísané nižšie. Otvorené: súhlas so spustením celého kontrolného testu <code>core_test.sql</code> (obsahuje <code>delete</code> len vlastných testovacích riadkov, celý blok sa vráti späť).</p>
   </div>
@@ -183,12 +183,13 @@ td .new { display: block; margin-top: 4px; color: var(--ok); }
       <div class="check"><b>Vyskúšate:</b> na iPhone – diktovanie, oprava, uloženie.</div>
       <div class="done-note"><b>Výsledok:</b> hlasový režim má vzhľad a ovládanie z mockupu (cieľ hore, padajúce položky s cenou a viditeľnou opravou, úprava ťuknutím, „Kam pridať?“ s novým zoznamom aj „Iba ja“). Tiché nahrávanie bez pípania ostalo. Nové: názvy podľa katalógu domácnosti a AI už nedopĺňa slová, ktoré nezazneli. Preklikanie 4 vzhľady × 25 obrazoviek: 0 nálezov.</div></div></div>
 
-    <div class="ph now"><span class="no">6</span><div class="card"><h3>Recepty <small>2 relácie</small></h3>
+    <div class="ph done"><span class="no">6</span><div class="card"><h3>Recepty <small>hotová 2. 11.</small></h3>
       <ul><li>Kniha, Moje, Plán týždňa; detail s „mám doma“ pre každú surovinu; varenie krok po kroku; Ochutnávač.</li>
         <li>Obsah knihy (1 000 receptov) je samostatný projekt podľa už schváleného plánu Recepty 2.0 – táto fáza stavia obrazovky.</li></ul>
-      <div class="check"><b>Vyskúšate:</b> recept do nákupu, plán týždňa, varenie.</div></div></div>
+      <div class="check"><b>Vyskúšate:</b> recept do nákupu, plán týždňa, varenie.</div>
+      <div class="done-note"><b>Výsledok:</b> Kniha receptov, Moje, Plán týždňa, zoznam kategórie, detail s „mám doma“ a cenou za porciu, Pridať suroviny, Naplánovať, varenie krok po kroku a Ochutnávač so Zhodou – z mockupu, napojené na testovaciu databázu (migrácie 33 a 34). Preklikanie 4 vzhľady × 30 obrazoviek: 0 nálezov.</div></div></div>
 
-    <div class="ph"><span class="no">7</span><div class="card"><h3>Výdavky <small>1 relácia</small></h3>
+    <div class="ph now"><span class="no">7</span><div class="card"><h3>Výdavky <small>1 relácia</small></h3>
       <ul><li>Súčet mesiaca, kategórie → druh → výrobok (už v DB), obchody, „Oplatí sa vedieť“, porovnanie v eurách, chýbajúce bločky.</li></ul></div></div>
 
     <div class="ph"><span class="no">8</span><div class="card"><h3>Upozornenia, domácnosť, Viac <small>1 relácia</small></h3>
