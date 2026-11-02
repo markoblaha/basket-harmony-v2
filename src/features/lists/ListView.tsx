@@ -12,14 +12,13 @@ import { t } from "@/i18n";
 import { useSetting } from "@/lib/settings";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, Back, useScrolled } from "@/mockup/ui";
-import { Avatars, Btn, emojiFor, eur, eur0, recipeArt, relDay, storeName } from "@/mockup/kit";
+import { Avatars, Btn, eur, eur0, recipeArt, relDay, storeName } from "@/mockup/kit";
 import { openVoice } from "@/features/voice/open";
 import type { RecipePlan } from "@/features/recipes/api";
 import { useDeleteItem, useUpdateItem, type Item, type ShoppingList } from "./api";
-import { useKeyboardEdge } from "./Composer";
 import { listTotals, useEstimator } from "./estimate";
-import { Composer, ItemRow, ItemSheet, PriceLine } from "./ListParts";
-import { useRestoreItem } from "./PlanList";
+import { Composer, ItemRow, ItemSheet, PriceLine, useKeyboardEdge, useRestoreItem } from "./ListParts";
+import { ListMenuSheet } from "./ListMenuSheet";
 import type { AddOutcome } from "./useSmartAdd";
 
 type SmartAdd = (input: { name: string; quantity?: number | null; unit?: string | null; note?: string | null; categoryId?: string | null }) => Promise<AddOutcome>;
@@ -47,8 +46,6 @@ export function ListView({
   smartAdd,
   landed,
   otherLists,
-  onActions,
-  actionsSheet,
 }: {
   list: ShoppingList;
   items: Item[];
@@ -72,8 +69,6 @@ export function ListView({
   smartAdd: SmartAdd;
   landed: { id: string; n: number } | null;
   otherLists: ShoppingList[];
-  onActions: () => void;
-  actionsSheet: ReactNode;
 }) {
   const navigate = useNavigate();
   const toast = useToast();
@@ -95,6 +90,7 @@ export function ListView({
     return () => clearTimeout(tm);
   }, [sel, items]);
   const [sheet, setSheet] = useState<{ id: string; open: boolean } | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Pole pri písaní sa drží nad klávesnicou; spodný okraj zoznamu podľa výšky doku.
   const [typing, setTyping] = useState(false);
@@ -190,6 +186,7 @@ export function ListView({
       key={it.id}
       it={it}
       label={labelOf(it)}
+      em={estimator.emoji(it.name, it.category_id)}
       e={showEstimate ? estimator.est(it, storeKey) : null}
       kinds={kindsOf(it)}
       listStore={storeKey}
@@ -219,7 +216,7 @@ export function ListView({
             <span className="nbt">{list.name}</span>
             <div className="nbr">
               <Avatars people={avatars.slice(0, 3)} sm />
-              <IB n="dots-three" label={t("li.options")} onClick={onActions} />
+              <IB n="dots-three" label={t("li.options")} onClick={() => setMenuOpen(true)} />
             </div>
           </header>
         </div>
@@ -307,7 +304,7 @@ export function ListView({
                     {done.map((it) => (
                       <div className="row done" key={it.id}>
                         <span className="th">
-                          <E k={emojiFor(it.name, it.category_id)} />
+                          <E k={estimator.emoji(it.name, it.category_id)} />
                         </span>
                         <div className="tx">
                           <b>{it.name}</b>
@@ -371,7 +368,7 @@ export function ListView({
           setTimeout(() => setSheet((s) => (s && !s.open ? null : s)), 300);
         }}
       />
-      {actionsSheet}
+      <ListMenuSheet list={menuOpen ? list : null} onClose={() => setMenuOpen(false)} onDeleted={() => navigate("/lists")} onClearDone={clearDone} />
     </>
   );
 }

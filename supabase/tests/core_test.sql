@@ -672,6 +672,9 @@ begin
   select count(*) into n from public.shopping_list_items where list_id = ls and name = 'Chlieb' and status = 'UNAVAILABLE';
   if n = 1 then report := report || E'ok: položka „Nemali“ ostane v histórii nákupu\n';
   else report := report || E'FAIL: Nemali sa stratilo\n'; fails := fails + 1; end if;
+  select count(*) into n from public.shopping_list_items where list_id = nl and name = 'Chlieb' and status = 'OPEN';
+  if n = 1 then report := report || E'ok: „Nemali“ pokračuje aj v zozname na budúce (migrácia 32)\n';
+  else report := report || E'FAIL: Nemali nie je v pokračujúcom zozname\n'; fails := fails + 1; end if;
   select id into it2 from public.shopping_list_items where list_id = nl and name = 'Maslo';
   nl2 := public.move_item(it2, null, 'Na neskôr');
   select count(*) into n from public.shopping_list_items where id = it2 and list_id = nl2;

@@ -64,6 +64,7 @@ function screens(id) {
     ["nakupy", "/lists"],
     id.list && ["zoznam", `/lists/${id.list}`],
     ["historia", "/history"],
+    ["blocek", "/scan"],
     id.trip && ["nakup-detail", `/history/${id.trip}`],
     ["recepty", "/recipes"],
     ["recepty-hladat", "/recipes/search"],

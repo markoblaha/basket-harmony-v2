@@ -122,3 +122,18 @@ body.kb-typing .bhm-tabs {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Celoobrazovkové okná mockupu (nákup, sledovanie, bloček): nad appkou, v stĺpci appky, s vlastným posúvaním. */
+:root .bhm.bhm-full {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+}
+:root .bhm.bhm-full > .scr {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+/* Riadok ceny vnútri iného riadku („1 ks · ~1,09 € Lidl“): pokračuje v ňom, nezačína nový riadok. */
+.bhm .sub-in {
+  display: contents;
+}

@@ -36,7 +36,7 @@ const ROOTS = ["/", "/lists", "/recipes", "/analytics", "/analytics/categories",
  * Obrazovky bez spodnej lišty (v prototype tabBar: false / celá plocha): kontrola surovín,
  * košík receptov, varenie. Hlášky (toast) sa na nich ukazujú hore (pozri toast.tsx).
  */
-const NO_TABBAR = [/^\/recipes\/check\/?$/, /^\/recipes\/cart\/?$/, /^\/recipes\/r\/[^/]+\/cook\/?$/, /^\/lists\/[^/]+\/?$/];
+const NO_TABBAR = [/^\/recipes\/check\/?$/, /^\/recipes\/cart\/?$/, /^\/recipes\/r\/[^/]+\/cook\/?$/, /^\/lists\/[^/]+\/?$/, /^\/scan\/?$/];
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 

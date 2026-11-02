@@ -225,3 +225,12 @@ export function SwipeRow({
     </div>
   );
 }
+
+/** Prepínač áno/nie (mockup Toggle). */
+export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} className={`tgl${on ? " on" : ""}`} onClick={() => onChange(!on)}>
+      <i />
+    </button>
+  );
+}

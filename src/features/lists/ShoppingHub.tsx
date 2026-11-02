@@ -16,7 +16,7 @@ import { useListEstimate } from "./estimate";
 import { useRecipePlans } from "@/features/recipes/api";
 import { useHubSessions, useItems, useListStats, useLists, useStartShopping, type ListStats, type Session, type ShoppingList } from "./api";
 import { listDay } from "./dates";
-import { ListActionsSheet } from "./ListActionsSheet";
+import { ListMenuSheet } from "./ListMenuSheet";
 import { NewListSheet } from "./NewListSheet";
 import { useSetting } from "@/lib/settings";
 
@@ -133,7 +133,7 @@ export function ShoppingHub() {
         lists={lists.data ?? []}
         onCreated={(id) => navigate(`/lists/${id}`)}
       />
-      <ListActionsSheet list={actionsFor} onClose={() => setActionsFor(null)} />
+      <ListMenuSheet list={actionsFor} onClose={() => setActionsFor(null)} />
     </div>
   );
 }

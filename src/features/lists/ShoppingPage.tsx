@@ -1,43 +1,26 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
-import { Camera, Check, ChevronLeft, Receipt, ShoppingCart } from "lucide-react";
+import { Camera, Check, Receipt } from "lucide-react";
 import { ErrorState, Spinner } from "@/components/ui";
-import { Empty, type Person } from "@/components/kit";
+import type { Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
 import { errorMessage } from "@/lib/errors";
 import { t } from "@/i18n";
-import { useListPriceHints } from "@/features/analytics/api";
 import { useRecipePlans } from "@/features/recipes/api";
 import { storeKeyOf } from "@/mockup/kit";
 import { useActiveSession, useHubSessions, useItems, useLists, useRequests, useStartShopping, type ShoppingList } from "./api";
 import type { FeedEntry } from "./useSmartAdd";
-import { ListActionsSheet } from "./ListActionsSheet";
 import { ListView } from "./ListView";
 import { dayLabel } from "./dates";
-import { MyRequests, PendingRequests } from "./Requests";
-import { ShoppingMode } from "./ShoppingMode";
+import { MyRequests } from "./Requests";
+import { FollowScreen, ShopScreen } from "./ShopScreen";
+import { useEstimator } from "./estimate";
+import { E, IB } from "@/mockup/ui";
+import { Btn } from "@/mockup/kit";
 import { useSmartAdd } from "./useSmartAdd";
-
-/** Prerušený nákup si pamätáme v tomto okne prehliadača (po zatvorení aplikácie sa obnoví režim nákupu). */
-const interruptKey = (sessionId: string) => `bh.interrupted.${sessionId}`;
-function readFlag(key: string): boolean {
-  try {
-    return sessionStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
-}
-function writeFlag(key: string, on: boolean) {
-  try {
-    if (on) sessionStorage.setItem(key, "1");
-    else sessionStorage.removeItem(key);
-  } catch {
-    /* súkromné okno – nevadí */
-  }
-}
 
 /**
  * Zoznam. Dva stavy jednej obrazovky:
@@ -57,13 +40,12 @@ export function ShoppingPage() {
   const list = lists.data?.find((l) => l.id === listId);
 
   const items = useItems(listId);
-  const hints = useListPriceHints(listId);
+  const estimator = useEstimator(household.id);
   const session = useActiveSession(listId);
   const requests = useRequests(listId, session.data?.id);
   const names = useProfiles().data;
   const start = useStartShopping(listId ?? "none");
 
-  const [actionsOpen, setActionsOpen] = useState(false);
   const [search, setSearch] = useSearchParams();
   const watching = search.get("sledovat") === "1";
   const plans = useRecipePlans(household.id);
@@ -79,18 +61,6 @@ export function ShoppingPage() {
   const someoneElse = !!active && !iAmShopping;
   const shopperName = active ? (names?.get(active.shopper_id) ?? t("household.fallbackName")) : null;
 
-  const [interrupted, setInterrupted] = useState(false);
-  useEffect(() => {
-    setInterrupted(active ? readFlag(interruptKey(active.id)) : false);
-  }, [active?.id]);
-  const interrupt = useCallback(() => {
-    if (active) writeFlag(interruptKey(active.id), true);
-    setInterrupted(true);
-  }, [active]);
-  const resume = useCallback(() => {
-    if (active) writeFlag(interruptKey(active.id), false);
-    setInterrupted(false);
-  }, [active]);
 
   const all = items.data ?? [];
   const pendingForMe = (requests.data ?? []).filter((r) => r.status === "PENDING" && r.requested_for === me);
@@ -101,10 +71,7 @@ export function ShoppingPage() {
   const smartAdd = useSmartAdd({ listId: listId ?? "none", items: all, someoneElseShopping: someoneElse, onFeed: feedPush, onLanded });
 
   async function startShopping() {
-    if (iAmShopping) {
-      resume();
-      return;
-    }
+    if (iAmShopping) return;
     try {
       await start.mutateAsync();
     } catch (err) {
@@ -118,28 +85,7 @@ export function ShoppingPage() {
   // Zoznam zmizol (dokončený alebo zmazaný niekým iným) – prototyp ukáže prázdny stav s cestou späť.
   if (!list || !listId) {
     if (!params.listId) return <Navigate to="/lists" replace />;
-    return (
-      <div className="stack">
-        <header className="hdr with-back">
-          <button type="button" className="ibtn" onClick={() => navigate("/lists")} aria-label={t("trip.backAria")}>
-            <ChevronLeft size={24} />
-          </button>
-          <div className="grow stack" style={{ minWidth: 0 }}>
-            <span className="ttl ellipsis">{t("ls.listTitle")}</span>
-          </div>
-        </header>
-        <Empty
-          icon={ShoppingCart}
-          title={t("ls.listGone")}
-          text={t("ls.listGoneText")}
-          action={
-            <button type="button" className="btn btn-soft" onClick={() => navigate("/lists")}>
-              {t("ls.toLists")}
-            </button>
-          }
-        />
-      </div>
-    );
+    return <EmptyScreen title={t("ls.listGone")} text={t("ls.listGoneText")} action={t("ls.toLists")} onBack={() => navigate("/lists")} onAction={() => navigate("/lists")} />;
   }
 
   const people: Person[] = names ? [...names.entries()].map(([id, name]) => ({ id, name })) : [];
@@ -150,54 +96,51 @@ export function ShoppingPage() {
   const mySessionElsewhere = (hubSessions.data ?? []).find((s) => s.shopper_id === me && s.list_id !== list.id);
   const elsewhereList = mySessionElsewhere ? lists.data?.find((l) => l.id === mySessionElsewhere.list_id) : undefined;
 
-  if (active && ((iAmShopping && !interrupted) || (someoneElse && watching))) {
+  const storeKey = storeKeyOf(list.name);
+  if (active && iAmShopping) {
     return (
-      <ShoppingMode
+      <ShopScreen
         list={list}
         items={all}
         session={active}
-        shopper={iAmShopping}
-        me={me}
         names={names}
-        people={people}
-        hints={hints.data}
-        pending={pendingForMe}
-        myRequests={myRequests}
-        openLists={openLists}
         householdId={household.id}
-        onBack={iAmShopping ? interrupt : () => setSearch({}, { replace: true })}
-        onAdd={smartAdd}
+        storeKey={storeKey}
+        estimator={estimator}
+        pending={pendingForMe}
+        onClosed={() => undefined}
+      />
+    );
+  }
+  if (active && someoneElse && watching) {
+    return (
+      <FollowScreen
+        list={list}
+        items={all}
+        session={active}
+        names={names}
+        me={me}
+        storeKey={storeKey}
+        estimator={estimator}
+        onBack={() => setSearch({}, { replace: true })}
+        onAsk={smartAdd}
       />
     );
   }
 
-  // Sledovaný nákup medzitým skončil → prázdny stav s cestou do histórie (prototyp N4).
+  // Sledovaný nákup medzitým skončil → prázdny stav s cestou do histórie.
   if (watching && !active && !session.isPending) {
     return (
-      <div className="stack">
-        <header className="hdr with-back">
-          <button type="button" className="ibtn" onClick={() => setSearch({}, { replace: true })} aria-label={t("trip.backAria")}>
-            <ChevronLeft size={24} />
-          </button>
-          <div className="grow stack" style={{ minWidth: 0 }}>
-            <span className="ttl ellipsis">{t("ls.shopTitle")}</span>
-          </div>
-        </header>
-        <Empty
-          icon={ShoppingCart}
-          title={t("ls.shopEnded")}
-          text={t("ls.shopEndedText")}
-          action={
-            <button type="button" className="btn btn-soft" onClick={() => navigate("/history")}>
-              {t("ls.history")}
-            </button>
-          }
-        />
-      </div>
+      <EmptyScreen
+        title={t("sp.ended")}
+        text={t("ls.shopEndedText")}
+        action={t("sp.history")}
+        onBack={() => setSearch({}, { replace: true })}
+        onAction={() => navigate("/history")}
+      />
     );
   }
 
-  const storeKey = storeKeyOf(list.name);
   const others = openLists.filter((l) => l.id !== list.id);
   return (
     <ListView
@@ -220,7 +163,6 @@ export function ShoppingPage() {
       requestsTop={
         <>
           {list.completed_at && !active && <CompletedCard list={list} />}
-          {iAmShopping && interrupted && <PendingRequests requests={pendingForMe} names={names} listId={listId} />}
           {someoneElse && <MyRequests requests={myRequests} shopperName={shopperName ?? ""} />}
         </>
       }
@@ -229,8 +171,6 @@ export function ShoppingPage() {
       smartAdd={smartAdd}
       landed={landed}
       otherLists={others}
-      onActions={() => setActionsOpen(true)}
-      actionsSheet={<ListActionsSheet list={actionsOpen ? list : null} onClose={() => setActionsOpen(false)} onDeleted={() => navigate("/lists")} />}
     />
   );
 }
@@ -252,10 +192,34 @@ function CompletedCard({ list }: { list: ShoppingList }) {
           <Receipt size={15} /> {t("trip.receipt")}
         </button>
       ) : (
-        <button type="button" className="btn btn-sm btn-soft" onClick={() => navigate(`/receipts?pridat=1&nakup=${list.id}`)}>
+        <button type="button" className="btn btn-sm btn-soft" onClick={() => navigate(`/scan?nakup=${list.id}`)}>
           <Camera size={15} /> {list.receipt_state === "LATER" ? t("trip.completeReceipt") : t("trip.addReceipt")}
         </button>
       )}
+    </div>
+  );
+}
+
+/** Prázdna obrazovka z mockupu (Empty): zoznam zmizol, sledovaný nákup skončil. */
+function EmptyScreen({ title, text, action, onBack, onAction }: { title: string; text: string; action: string; onBack: () => void; onAction: () => void }) {
+  return (
+    <div className="bhm bhm-full">
+      <div className="scr">
+        <div className="sc">
+          <header className="nb">
+            <IB n="caret-left" label={t("sp.back")} onClick={onBack} />
+            <span className="ibs" />
+          </header>
+          <div className="empty">
+            <E k="basket" s={64} />
+            <b>{title}</b>
+            <p>{text}</p>
+            <Btn cls="soft" onClick={onAction}>
+              {action}
+            </Btn>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

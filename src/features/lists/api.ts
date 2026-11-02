@@ -530,11 +530,13 @@ export function useTripItems(listId: string | undefined) {
 export function useUploadTripReceipt(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ listId, files }: { listId: string; files: File[] }) => uploadReceipt(householdId, files, listId),
+    mutationFn: ({ listId, files, onRegistered }: { listId: string | null; files: File[]; onRegistered?: (receiptId: string) => void }) =>
+      uploadReceipt(householdId, files, listId, onRegistered),
     onMutate: () => qc.invalidateQueries({ queryKey: ["receipts"] }),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["receipts"] });
       qc.invalidateQueries({ queryKey: listKeys.lists(householdId) });
+      qc.invalidateQueries({ queryKey: ["trip-items"] });
     },
   });
 }

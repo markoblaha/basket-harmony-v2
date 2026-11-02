@@ -39,14 +39,16 @@ servera, chybové hlásenia, pretekanie, text mimo obrazovky a prekrytia. Fotky 
    product_kinds_by_name – súbor v repozitári je ich súčet). Funkciu `normalize-products` v3 (druh) nasadiť aj do ostrej.
    Históriu migrácií oboch DB porovnaj (`list_migrations`) – ostrá má niektoré pod inými menami.
    Ďalej `20261102000030_ai_guard` (poistka AI + zamknuté vnútorné funkcie párovania) a `20261102000031_item_catalog`
-   (katalóg položiek pre rozpoznanie a odhad ceny v zozname).
+   (katalóg položiek pre rozpoznanie a odhad ceny v zozname) a `20261102000032_finish_keep_unavailable` (koniec nákupu:
+   „nemali“ pokračuje v zozname, pokračujúci zoznam si nechá pôvodný deň).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
    Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v5,
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
    read-statement v3. Funkciu `proto-images` (vypnutá, 410) možno zmazať.
 4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` testovacích riadkov vo vnútri bloku, ktorý sa celý vráti
    späť → treba súhlas majiteľa). Nové časti (fronta dokladov, poistka AI, katalóg položiek) overené samostatným blokom:
-   všetko ok (katalóg: člen vidí, cudzí NOT_FOUND, neprihlásený nemá prístup).
+   všetko ok (katalóg: člen vidí, cudzí NOT_FOUND, neprihlásený nemá prístup; koniec nákupu MOVE: nákup v histórii,
+   nekúpené aj „nemali“ v pokračujúcom zozname, deň zachovaný).
 
 ## Čo je hotové v testovacej vetve (oproti `main`)
 
@@ -134,6 +136,18 @@ posledných 3 nákupov za 120 dní (prednostne v obchode zoznamu), všeobecná =
 v kusoch = cena za kg × bežne kupovaná váha (pri 3+ kusoch váha kusu). Rovnaký odhad je na kartách v Nákupoch a na Domove
 (`estimate.ts`). Starý `PlanList`/`Composer`/`QuickDock`/`EditItemSheet` sa už na zozname nepoužívajú (Composer ešte
 v nákupnom režime). Menu ⋯ je zatiaľ starý panel – prenesie sa s Fázou 4.
+**Fáza 4 – HOTOVÁ 2. 11. (čaká na „OK“ majiteľa):** z mockupu (`shop.jsx`, `receipt.jsx`, menu ⋯) prenesené:
+nákup v obchode (`ShopScreen.tsx`: hlavička s časom, sumou v košíku a pásikom, obrazovka ostáva zapnutá, položky podľa
+trasy v obchode s „Teraz: …“, odškrtnutie fajkou v ikone, ⋯ → Nemali, žiadosť člena s Pridať/Odmietnuť, Dokončiť),
+„Nákup dokončený?“ (nechať nekúpené na budúce = `finish_shopping` MOVE, inak sa odstránia; Odfotiť bloček / Teraz nie),
+bloček (`ScanScreen.tsx`, `/scan?nakup=<id>`: odfotiť / z galérie → „Čítam bloček“ (server) → výsledok so
+spárovaním riadkov s kúpenými položkami, zaplatené vs. odhad, navyše, čo chýba), sledovanie nákupu iného člena
+(`FollowScreen`, „Poprosiť o…“ = žiadosť), menu ⋯ (`ListMenuSheet.tsx`: premenovať, zmeniť obchod = názov, skopírovať
+ako text, odstrániť odškrtnuté, zmazať = archivovať s Vrátiť). Odfotiť bloček z Domova a z detailu nákupu ide na `/scan`.
+Starý nákupný režim a staré časti zoznamu zmazané (ShoppingMode, PlanList, Composer, QuickDock, EditItemSheet,
+ListSheet, ListActionsSheet). Rozdiely od mockupu: prepínač „Zapísať ceny“ vo výsledku bločku nie je (appka ceny
+z bločku zapisuje vždy), tlačidlo je „Hotovo“ (bloček je už uložený). Sledovanie (Follow) sa nedalo preklikať –
+testovací účet je v domácnosti sám.
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

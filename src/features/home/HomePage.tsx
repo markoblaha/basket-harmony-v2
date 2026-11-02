@@ -4,7 +4,7 @@
  * Naplánované recepty · Rýchlo. Každý riadok má jednu hlavnú akciu vpravo.
  * Dáta: zoznamy, nákupy a bločky z features/lists/api, recepty z features/recipes/api.
  */
-import { Fragment, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useMemo, type KeyboardEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { ErrorState, Spinner } from "@/components/ui";
 import { useToast } from "@/components/toast";
@@ -14,7 +14,6 @@ import { useProfiles } from "@/features/household/api";
 import { useListEstimate } from "@/features/lists/estimate";
 import { useRecipePlans, useRecipes } from "@/features/recipes/api";
 import { useHubSessions, useItems, useListStats, useLists, useStartShopping, type Session, type ShoppingList } from "@/features/lists/api";
-import { AddReceiptSheet } from "@/features/lists/HistoryPage";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
 import { t, tn } from "@/i18n";
@@ -91,7 +90,6 @@ export function HomePage() {
   const plans = useRecipePlans(household.id);
   const recipes = useRecipes(household.id);
   const names = useProfiles().data;
-  const [scanFor, setScanFor] = useState<ShoppingList | null>(null);
 
   const { open, missing } = useMemo(() => {
     const all = lists.data ?? [];
@@ -116,7 +114,7 @@ export function HomePage() {
 
   const quick: [string, string, () => void][] = [
     ["plus", t("home.qaAdd"), () => (next ? navigate(`/lists/${next.id}`) : navigate("/lists?novy=1"))],
-    ["camera", t("home.qaScan"), () => navigate("/receipts?pridat=1")],
+    ["camera", t("home.qaScan"), () => navigate("/scan")],
     ["cooking-pot", t("home.qaCook"), () => navigate("/recipes")],
   ];
 
@@ -134,7 +132,7 @@ export function HomePage() {
                   title={t("home.missingTitle")}
                   sub={`${l.name} · ${relDay(l.completed_at!)}`}
                   action={
-                    <Btn cls={`pri sm${g ? " a" : ""}`} onClick={stopThen(() => setScanFor(l))}>
+                    <Btn cls={`pri sm${g ? " a" : ""}`} onClick={stopThen(() => navigate(`/scan?nakup=${l.id}`))}>
                       <I n="camera" />
                       {t("home.photo")}
                     </Btn>
@@ -225,7 +223,6 @@ export function HomePage() {
           </HSec>
       </MkHeader>
       <div className="tab-space" />
-      <AddReceiptSheet list={scanFor} onClose={() => setScanFor(null)} />
     </div>
   );
 }

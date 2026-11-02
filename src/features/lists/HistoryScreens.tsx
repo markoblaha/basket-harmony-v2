@@ -14,7 +14,6 @@ import { useTheme } from "@/theme/ThemeProvider";
 import { Back, E, I, MkHeader, Seg } from "@/mockup/ui";
 import { Btn, StoreTile, emojiFor, eur, relDay, storeKeyOf } from "@/mockup/kit";
 import { useAddItem, useCreateList, useListStats, useLists, useTripItems, type ShoppingList } from "./api";
-import { AddReceiptSheet } from "./HistoryPage";
 import { isoDay } from "./dates";
 import { qtyLabel } from "./qty";
 
@@ -116,7 +115,6 @@ export function HistoryDetailPage() {
   const create = useCreateList(household.id);
   const add = useAddItem();
   const g = useTheme().style === "glass";
-  const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const list = (lists.data ?? []).find((l) => l.id === id);
   const back = <Back label={t("ls.history")} onClick={() => navigate("/history")} />;
@@ -170,7 +168,7 @@ export function HistoryDetailPage() {
             <RcptPill list={list} receipt={receipt} />
           </div>
           {list.receipt_state === "LATER" && (
-            <Btn cls={`pri full${g ? " a" : ""}`} onClick={() => setAdding(true)}>
+            <Btn cls={`pri full${g ? " a" : ""}`} onClick={() => navigate(`/scan?nakup=${list.id}`)}>
               <I n="camera" />
               {t("hist.photo")}
             </Btn>
@@ -211,7 +209,6 @@ export function HistoryDetailPage() {
         )}
       </MkHeader>
       <div className="tab-space" />
-      <AddReceiptSheet list={adding ? list : null} onClose={() => setAdding(false)} />
     </div>
   );
 }

@@ -3,7 +3,7 @@
  * v Nákupoch aj na Domove. Názov položky sa rozpozná raz (resolveName) a výsledok sa pamätá.
  */
 import { useCallback, useMemo } from "react";
-import { storeKeyOf } from "@/mockup/kit";
+import { emojiFor, storeKeyOf } from "@/mockup/kit";
 import { useItemCatalog, useItems, type Item } from "./api";
 import { estimate, resolveName, type Estimate, type ItemCatalog, type Resolved } from "./itemCatalog";
 
@@ -11,6 +11,8 @@ export type Estimator = {
   catalog: ItemCatalog | undefined;
   resolve: (name: string) => Resolved | null;
   est: (item: Pick<Item, "name" | "quantity" | "unit">, storeKey: string | null) => Estimate | null;
+  /** 3D ikona položky; pri značke podľa jej druhu („Pilsner Urquell“ → pivo). */
+  emoji: (name: string, categoryId?: string | null) => string;
 };
 
 export function useEstimator(householdId: string): Estimator {
@@ -28,7 +30,15 @@ export function useEstimator(householdId: string): Estimator {
     (item: Pick<Item, "name" | "quantity" | "unit">, storeKey: string | null) => estimate(resolve(item.name), item.quantity, item.unit, storeKey, storeKeyOf),
     [resolve],
   );
-  return { catalog, resolve, est };
+  const emoji = useCallback(
+    (name: string, categoryId?: string | null) => {
+      const r = resolve(name);
+      const kind = r?.level === "brand" ? (r.members[0]?.kind ?? r.members[0]?.name) : null;
+      return emojiFor(kind ? `${kind} ${name}` : name, categoryId ?? r?.category);
+    },
+    [resolve],
+  );
+  return { catalog, resolve, est, emoji };
 }
 
 export type Totals = { v: number; lo: number; hi: number; priced: number; n: number };

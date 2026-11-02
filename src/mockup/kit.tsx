@@ -127,3 +127,12 @@ export function recipeArt(key: string, name: string): { e: string; pic: string |
   const r = RECIPES.find((x) => x.id === key) ?? RECIPES.find((x) => norm(x.n) === n) ?? RECIPES.find((x) => n.includes(norm(x.n).split(" ").pop()!));
   return r ? { e: r.e, pic: r.pic, bg: r.bg } : { e: "pot", pic: null, bg: "peach" };
 }
+
+/** Avatar jedného člena (mockup Av). */
+export function Av({ id, name, s = 28 }: { id: string; name: string; s?: number }) {
+  return (
+    <span className="av1" style={{ width: s, height: s, fontSize: s * 0.42, background: memberColor(id) }}>
+      {name.trim().charAt(0).toUpperCase() || "?"}
+    </span>
+  );
+}

@@ -208,7 +208,8 @@ export async function queueReceipt(receiptId: string): Promise<void> {
  * Po návrate z tejto funkcie môže človek aplikáciu zavrieť – čítanie beží na serveri.
  * Strana, ktorá v domácnosti už je, sa preskočí.
  */
-export async function uploadReceipt(householdId: string, files: File[], listId?: string | null): Promise<UploadOutcome> {
+/** onRegistered: id dokladu hneď po zaevidovaní (aj pri duplicite) – obrazovka bločku podľa neho sleduje čítanie. */
+export async function uploadReceipt(householdId: string, files: File[], listId?: string | null, onRegistered?: (receiptId: string) => void): Promise<UploadOutcome> {
   const first = files[0];
   if (!first) throw new Error("VALIDATION");
   if (files.length > MAX_PAGES) throw new Error("TOO_MANY_PAGES");
@@ -221,6 +222,7 @@ export async function uploadReceipt(householdId: string, files: File[], listId?:
   });
   if (error) throw error;
   const reg = data[0]!;
+  onRegistered?.(reg.receipt_id);
   if (reg.already_exists) return "DUPLICATE";
 
   const uploaded: string[] = [];

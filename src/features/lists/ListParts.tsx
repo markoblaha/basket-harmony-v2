@@ -11,11 +11,10 @@ import { parseItemInput, unitLabel } from "@/lib/parseItem";
 import { formatDateTime, formatNumber, t, tn } from "@/i18n";
 import { E, I, Seg, Stepper, SwipeRow } from "@/mockup/ui";
 import { Sheet } from "@/mockup/Sheet";
-import { Btn, STORES, StoreTile, emojiFor, eur, memberColor, storeKeyOf, storeName } from "@/mockup/kit";
-import { useDeleteItem, useFrequentItems, useMoveItem, useStapleItems, useUpdateItem, type Item, type ShoppingList } from "./api";
+import { Btn, STORES, StoreTile, eur, memberColor, storeKeyOf, storeName } from "@/mockup/kit";
+import { useAddItem, useDeleteItem, useFrequentItems, useMoveItem, useStapleItems, useUpdateItem, type Item, type ShoppingList } from "./api";
 import type { Estimator } from "./estimate";
 import { refinements, resolveName, searchNames, typoFix, type Estimate, type Resolved } from "./itemCatalog";
-import { useRestoreItem } from "./PlanList";
 import { sameProduct } from "./qty";
 import type { AddOutcome } from "./useSmartAdd";
 
@@ -57,9 +56,9 @@ function StoreMark({ store }: { store: string }) {
 }
 
 /** ~cena, „priemer N druhov“ alebo obchod, poznámka, kto pridal (mockup PriceLine). */
-export function PriceLine({ e, kinds, listStore, note, by }: { e: Estimate | null; kinds: number; listStore: string | null; note?: string | null; by?: { id: string; name: string } }) {
+export function PriceLine({ e, kinds, listStore, note, by, bare }: { e: Estimate | null; kinds: number; listStore: string | null; note?: string | null; by?: { id: string; name: string }; /** Bez obalu – časť iného riadku („1 ks · ~1,09 €“). */ bare?: boolean }) {
   return (
-    <span className="sub">
+    <span className={bare ? "sub-in" : "sub"}>
       {!e ? (
         <span className="noprice">{t("li.noPrice")}</span>
       ) : (
@@ -89,6 +88,7 @@ export function PriceLine({ e, kinds, listStore, note, by }: { e: Estimate | nul
 export function ItemRow({
   it,
   label,
+  em,
   e,
   kinds,
   listStore,
@@ -103,6 +103,8 @@ export function ItemRow({
 }: {
   it: Item;
   label: string;
+  /** 3D ikona (Estimator.emoji). */
+  em: string;
   e: Estimate | null;
   kinds: number;
   listStore: string | null;
@@ -126,7 +128,7 @@ export function ItemRow({
     <SwipeRow atMin={atMin} onPlus={() => onQty(bump(q, u, 1))} onMinus={() => onQty(bump(q, u, -1))} onDelete={onDelete} cls={`${sel ? "sel " : ""}${flash ? "flash" : ""}`} onTap={onOpen}>
       <div className="row" ref={ref}>
         <span className="th">
-          <E k={emojiFor(label, it.category_id)} />
+          <E k={em} />
         </span>
         <div className="tx">
           <b>{label}</b>
@@ -334,7 +336,7 @@ export function Composer({
                 <button type="button" className="sgr ent" onPointerDown={keep} onClick={() => submit()}>
                   {head ? (
                     <span className="sgi">
-                      <E k={emojiFor(head.label, head.category)} s={30} />
+                      <E k={estimator.emoji(head.label, head.category)} s={30} />
                     </span>
                   ) : (
                     <span className="sgi nwi">
@@ -359,7 +361,7 @@ export function Composer({
             return (
               <button type="button" key={`${r.level}:${r.label}`} className={`sgr${isT ? " typo" : ""}`} onPointerDown={keep} onClick={() => add(r)}>
                 <span className="sgi">
-                  <E k={emojiFor(r.label, r.category)} s={30} />
+                  <E k={estimator.emoji(r.label, r.category)} s={30} />
                 </span>
                 <span className="sgt">
                   <b>{isT ? `${r.label}?` : r.label}</b>
@@ -377,7 +379,7 @@ export function Composer({
               const pd = pend[p.name];
               return (
                 <button type="button" key={p.name} className={`chip${pd ? " pend" : ""}${glass ? " glass2" : ""}`} onPointerDown={typing ? keep : undefined} onClick={() => tapStaple(p)}>
-                  <E k={emojiFor(p.name, p.cat)} />
+                  <E k={estimator.emoji(p.name, p.cat)} />
                   {p.name}
                   {pd ? (
                     <span className="cnt" key={pd.k}>
@@ -497,7 +499,7 @@ export function ItemSheet({
     <Sheet open={open} onClose={save} label={label}>
       <div className="sh-head">
         <span className="th lg">
-          <E k={emojiFor(label, it.category_id)} s={44} />
+          <E k={estimator.emoji(label, it.category_id)} s={44} />
         </span>
         <div className="grow">
           <h2>{label}</h2>
@@ -592,7 +594,7 @@ export function ItemSheet({
                     toast.show(t("li.refined", { name: x.label }), "success", { undo: () => update.mutate({ id: it.id, patch: prev }, { onError: fail }) });
                   }}
                 >
-                  <E k={emojiFor(x.label, x.category)} />
+                  <E k={estimator.emoji(x.label, x.category)} />
                   {x.label}
                 </button>
               ))}
@@ -636,4 +638,40 @@ export function ItemSheet({
       </div>
     </Sheet>
   );
+}
+
+/* ------------------------------------------------------------------ pomocníci */
+/**
+ * Kde začína klávesnica (horný okraj viditeľnej časti stránky). iPhone kreslí klávesnicu cez stránku
+ * a výšku okna pritom hlási rôzne, preto sa meria priamo viditeľná oblasť – nie rozdiel výšok.
+ * Na Androide sa stránka zmenší sama, vtedy je to spodok obrazovky. Mimo písania null.
+ */
+export function useKeyboardEdge(active: boolean) {
+  const [edge, setEdge] = useState<number | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!active || !vv) {
+      setEdge(null);
+      return;
+    }
+    const update = () => setEdge(Math.round(vv.offsetTop + vv.height));
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [active]);
+  return edge;
+}
+
+/** „Vrátiť“ po odstránení: položka sa pridá znova s rovnakým množstvom, upresnením a kategóriou. */
+export function useRestoreItem() {
+  const add = useAddItem();
+  const toast = useToast();
+  return (item: Item) =>
+    add
+      .mutateAsync({ listId: item.list_id, name: item.name, quantity: item.quantity, unit: item.unit, note: item.note, categoryId: item.category_id })
+      .catch((err) => toast.show(errorMessage(err), "error"));
 }
