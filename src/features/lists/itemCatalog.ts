@@ -213,21 +213,28 @@ export function refinements(c: ItemCatalog, r: Resolved | null, n = 6): Resolved
   return out.slice(0, n);
 }
 
+/** Kategórie jedla a pitia – pri rovnakej zhode idú pred drogériou („mlie“ → mlieko pred telovým mliekom). */
+const FOOD = new Set(["alcohol", "bakery", "beverages", "breakfast", "dairy_eggs", "deli_chilled", "frozen", "groceries", "meat_fish", "pantry", "produce", "snacks_sweets"]);
+
 /** Iné položky podľa začiatku písaného slova („smot“ → Smotana, Kyslá smotana…). */
 export function searchNames(c: ItemCatalog, text: string, n = 5): Resolved[] {
   const t = norm(text).replace(/\b\d+([.,]\d+)?\b/g, "").trim();
   if (t.length < 2) return [];
   const ws = t.split(" ").filter(Boolean);
-  return c.names
+  const found = c.names
     .map((g) => {
-      const nn = norm(g.label);
-      const s = nn.startsWith(t) ? 10 : ws.every((w) => g.toks.some((x) => x.startsWith(w))) ? 6 : 0;
-      return [s + Math.min(g.count, 9) / 10, g] as const;
+      const base = norm(g.label).startsWith(t) ? 10 : ws.every((w) => g.toks.some((x) => x.startsWith(w))) ? 6 : 0;
+      return { g, s: base && base + (FOOD.has(g.category) ? 1 : 0) + Math.min(g.count, 9) / 10 };
     })
-    .filter(([s]) => s > 1)
-    .sort((a, b) => b[0] - a[0])
+    .filter((x) => x.s > 0);
+  if (!found.length) return [];
+  // iná kategória ako najlepšia zhoda ide nižšie – hľadá sa tá istá vec, nie len rovnaké slovo
+  const best = found.reduce((a, b) => (b.s > a.s ? b : a));
+  return found
+    .map((x) => ({ g: x.g, s: x.g.category === best.g.category ? x.s : x.s - 3 }))
+    .sort((a, b) => b.s - a.s)
     .slice(0, n)
-    .map(([, g]) => ({ level: "kind" as const, label: g.label, category: g.category, members: g.members, kinds: 1 }));
+    .map(({ g }) => ({ level: "kind" as const, label: g.label, category: g.category, members: g.members, kinds: 1 }));
 }
 
 /** Preklep v jednom slove („zemaky“ → Zemiaky?) – ponúkne sa, nič sa nemení samo. */
@@ -235,12 +242,15 @@ export function typoFix(c: ItemCatalog, text: string): Resolved | null {
   const ws = typedWords(text);
   if (ws.length !== 1 || ws[0]!.length < 4 || BROAD.has(ws[0]!) || resolveName(c, text)) return null;
   const w = ws[0]!;
-  let best: { g: Group; d: number } | null = null;
+  // pri rovnakej vzdialenosti vyhrá kratší (všeobecnejší) názov: „mleko“ → Mlieko, nie Telové mlieko
+  let best: { g: Group; d: number; len: number } | null = null;
   for (const g of c.kinds) {
+    const len = qual(g.toks).length;
     for (const t of qual(g.toks)) {
       if (Math.abs(t.length - w.length) > 2) continue;
       const d = editDist(w, t);
-      if (d > 0 && d <= (w.length > 6 ? 2 : 1) && (!best || d < best.d || (d === best.d && g.count > best.g.count))) best = { g, d };
+      if (d > 0 && d <= (w.length > 6 ? 2 : 1) && (!best || d < best.d || (d === best.d && (len < best.len || (len === best.len && g.count > best.g.count)))))
+        best = { g, d, len };
     }
   }
   return best ? resolveName(c, best.g.label) : null;

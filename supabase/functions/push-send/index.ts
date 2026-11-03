@@ -57,7 +57,7 @@ async function plan(admin: SupabaseClient, event: string, id: string, actor: str
       users, kind: "end", quiet: true,
       msg: (l) => ({
         title: l === "sk" ? `Nákup skončil: ${list.name}` : `Shopping finished: ${list.name}`,
-        body: l === "sk" ? `Nakupoval/a: ${who} · kúpené: ${count ?? 0}` : `Shopper: ${who} · bought: ${count ?? 0}`,
+        body: l === "sk" ? `Kúpené: ${count ?? 0} · ${who}` : `Bought: ${count ?? 0} · ${who}`,
         url: `/lists/${s.list_id}`, tag: `shop-${s.id}`,
       }),
     };

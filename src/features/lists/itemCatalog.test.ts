@@ -23,7 +23,8 @@ const cat = buildCatalog([
   P("Smotana na šľahanie 33 %", "Smotana na šľahanie", "Tatra", "dairy_eggs", [[4, 1.49]]),
   P("Smotanová nátierka", "Nátierka", null, "dairy_eggs", [[6, 1.1]]),
   P("Mlieko polotučné", "Mlieko", "Rajo", "dairy_eggs", [[1, 0.99], [8, 0.95]]),
-  P("Spevňujúce telové mlieko", "Telové mlieko", "Lactovit", "personal_care", [[9, 2.99]]),
+  P("Spevňujúce telové mlieko", "Telové mlieko", "Lactovit", "personal_care", [[9, 2.99], [30, 2.99], [60, 2.99]]),
+  P("Trvanlivé mlieko 3,5 %", "Mlieko", null, "dairy_eggs"),
   P("Toastový chlieb", "Chlieb", "Ölz", "bakery", [[3, 1.25]]),
   P("Bochník viaczrnný", "Chlieb", null, "bakery", [[4, 1.9]]),
 ]);
@@ -88,6 +89,11 @@ describe("rozpoznanie položky (appka nič nedomýšľa)", () => {
 
   it("hľadanie podľa začiatku slova", () => {
     expect(searchNames(cat, "smot").map((x) => x.label)).toContain("Kyslá smotana 16 %");
+  });
+
+  it("pri písaní ide jedlo pred drogériou s rovnakým slovom", () => {
+    expect(searchNames(cat, "mlie").map((x) => x.label)).toEqual(["Mlieko polotučné", "Trvanlivé mlieko 3,5 %", "Spevňujúce telové mlieko"]);
+    expect(searchNames(cat, "telo").map((x) => x.label)).toEqual(["Spevňujúce telové mlieko"]);
   });
 });
 

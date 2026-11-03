@@ -406,3 +406,18 @@ body.kb-typing .bhm-tabs {
 .bhm .legal-sec { display: flex; flex-direction: column; gap: 10px; }
 .bhm .legal-p, .bhm .legal-ul { margin: 0; font-size: 16px; line-height: 1.5; color: var(--sec); }
 .bhm .legal-ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+
+/* Zvyšné staré obrazovky (výpis z banky, párovanie bločku, hľadanie výrobkov, košík receptov) vo vzhľade tém
+ * (etapa 6): rovnaké karty, zoznamy, nadpisy sekcií a hlavička so Späť ako mockup. Platí len mimo obalu .bhm
+ * (pravidlá mockupu .bhm .card majú vyššiu prioritu). */
+.hdr { background: transparent; min-height: 60px; gap: 10px; }
+.hdr.sticky { background: var(--navbg); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); }
+.hdr.with-back { padding-left: 12px; }
+.hdr.with-back > .ibtn:first-child { width: 44px; height: 44px; border-radius: 99px; background: var(--ibg); box-shadow: var(--ish); color: var(--acc); }
+.hdr .ttl { font-size: 20px; line-height: 1.2; font-weight: 750; letter-spacing: -0.4px; color: var(--fg); }
+.w .hdr .ttl { font-family: var(--serif); font-weight: 560; letter-spacing: -0.3px; }
+.section-title { font-size: 12.5px; line-height: 16px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--sec); padding: 0 4px; }
+.card, .cells { background: var(--card); border-radius: var(--rl, 24px); box-shadow: var(--sh); color: var(--fg); }
+.g .card, .g .cells { background-image: var(--mat-spec); -webkit-backdrop-filter: blur(30px) saturate(1.9); backdrop-filter: blur(30px) saturate(1.9); }
+.cells > * + * { box-shadow: inset 0 1px 0 var(--line); }
+.cell { min-height: 56px; }

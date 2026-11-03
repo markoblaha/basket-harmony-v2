@@ -863,3 +863,6 @@ button.group { min-height: 44px; }
 .w .vx-exl p { font-family: var(--serif); font-size: 17px; }
 .vx-done { white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .vx-heard small::before { animation: none !important; } }
+/* Nákupy: skupiny zoznamov podľa dňa (Dnes · Tento týždeň · Neskôr) a zbalené prázdne zoznamy. */
+.hub-g { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 4px -4px; font-size: 12.5px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--sec); text-align: left; width: calc(100% - 8px); }
+button.hub-g { min-height: 44px; margin-top: 2px; }

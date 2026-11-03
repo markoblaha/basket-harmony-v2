@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ErrorState, Spinner } from "@/components/ui";
 import { useLongPress, type Person } from "@/components/kit";
@@ -12,11 +12,11 @@ import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
-import { t, tn } from "@/i18n";
+import { t, tn, type Key } from "@/i18n";
 import { useListEstimate } from "./estimate";
 import { useRecipePlans } from "@/features/recipes/api";
 import { useHubSessions, useItems, useListStats, useLists, useStartShopping, type ListStats, type Session, type ShoppingList } from "./api";
-import { listDay } from "./dates";
+import { isoDay, listDay } from "./dates";
 import { ListMenuSheet } from "./ListMenuSheet";
 import { NewListSheet } from "./NewListSheet";
 import { useSetting } from "@/lib/settings";
@@ -54,6 +54,7 @@ export function ShoppingHub() {
   const plans = useRecipePlans(household.id);
   const g = useTheme().style === "glass";
   const [actionsFor, setActionsFor] = useState<ShoppingList | null>(null);
+  const [showEmpty, setShowEmpty] = useState(false);
 
   const people: Person[] = useMemo(() => {
     const all = names ? [...names.entries()].map(([id, name]) => ({ id, name })) : [];
@@ -82,6 +83,27 @@ export function ShoppingHub() {
   // Recepty, na ktoré sa nakupuje (čakajú na uvarenie) – štítok „Z receptu“ na karte.
   const recipesOf = (listId: string) => [...new Set((plans.data ?? []).filter((p) => p.list_id === listId && p.status === "PENDING").map((p) => p.recipe_name))];
 
+  // Skupiny podľa dňa nákupu: Dnes (aj zmeškané) · Tento týždeň · Neskôr; prázdne zoznamy zbalené na konci.
+  const today = isoDay(new Date());
+  const week = isoDay(new Date(Date.now() + 6 * 86_400_000));
+  const isEmpty = (l: ShoppingList) => !sessionByList.get(l.id) && stats.data?.get(l.id)?.open === 0;
+  const bucket = (l: ShoppingList) => (isEmpty(l) ? "empty" : !l.planned_for ? "later" : l.planned_for <= today ? "today" : l.planned_for <= week ? "week" : "later");
+  const groups: [string, ShoppingList[]][] = (["today", "week", "later", "empty"] as const).map((k) => [k, open.filter((l) => bucket(l) === k)]);
+  const multi = groups.filter(([k, v]) => k !== "empty" && v.length).length > 1;
+  const card = (l: ShoppingList) => (
+    <ListCard
+      key={fresh?.id === l.id ? `${l.id}-${fresh.at}` : l.id}
+      list={l}
+      g={g}
+      stats={stats.data?.get(l.id)}
+      session={sessionByList.get(l.id)}
+      people={participants(l, stats.data?.get(l.id)?.adders ?? [], people)}
+      recipes={recipesOf(l.id)}
+      fresh={fresh?.id === l.id && Date.now() - fresh.at < 7000}
+      onActions={() => setActionsFor(l)}
+    />
+  );
+
   if (lists.isPending) return <Spinner />;
   if (lists.isError) return <ErrorState error={errorMessage(lists.error)} onRetry={() => lists.refetch()} />;
 
@@ -95,19 +117,21 @@ export function ShoppingHub() {
         }
       >
         {live && liveList && <LiveMini session={live} list={liveList} g={g} mine={live.shopper_id === me} shopper={shortName(nameOf(live.shopper_id))} />}
-        {open.map((l) => (
-          <ListCard
-            key={fresh?.id === l.id ? `${l.id}-${fresh.at}` : l.id}
-            list={l}
-            g={g}
-            stats={stats.data?.get(l.id)}
-            session={sessionByList.get(l.id)}
-            people={participants(l, stats.data?.get(l.id)?.adders ?? [], people)}
-            recipes={recipesOf(l.id)}
-            fresh={fresh?.id === l.id && Date.now() - fresh.at < 7000}
-            onActions={() => setActionsFor(l)}
-          />
-        ))}
+        {groups.map(([key, items]) =>
+          items.length ? (
+            <Fragment key={key}>
+              {key === "empty" ? (
+                <button type="button" className="hub-g tap" onClick={() => setShowEmpty((v) => !v)} aria-expanded={showEmpty}>
+                  {tn("hub.gEmpty", items.length)}
+                  <I n={showEmpty ? "caret-up" : "caret-down"} w="bold" cls="chev" />
+                </button>
+              ) : (
+                multi && <div className="hub-g">{t(`hub.g.${key}` as Key)}</div>
+              )}
+              {(key !== "empty" || showEmpty) && items.map(card)}
+            </Fragment>
+          ) : null,
+        )}
         <button type="button" className={`card addcard tapc${g ? " glass2" : ""}`} onClick={() => setCreating(true)}>
           <span className="pl">
             <I n="plus" w="bold" />

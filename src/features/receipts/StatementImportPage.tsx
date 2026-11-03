@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { ArrowLeft, Check, ChevronDown, ChevronRight, FileUp, Loader2, ShieldCheck } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, FileUp, Loader2, ShieldCheck } from "lucide-react";
 import { Banner, Button, Group, Section, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { CATEGORIES } from "@/lib/categories";
 import { t, tn } from "@/i18n";
+import { Back, MkHeader } from "@/mockup/ui";
 import { readStatement, useImportBankPayments, type StatementMatch, type StatementRow } from "./api";
 import { formatMoney, formatShortDate, readErrorMessage } from "./format";
 
@@ -140,12 +141,7 @@ export function StatementImportPage() {
 
   return (
     <div className="pb-40">
-      <header className="flex items-center gap-1 px-2 pt-3">
-        <Link to="/receipts" aria-label={t("stmt.back")} className="flex size-11 items-center justify-center rounded-full active:bg-pressed">
-          <ArrowLeft className="size-5" />
-        </Link>
-        <h1 className="text-xl font-semibold">{t("stmt.title")}</h1>
-      </header>
+      <MkHeader title={t("stmt.title")} back={<Back label={t("nav.receipts")} onClick={() => navigate("/receipts")} />} />
 
       <div className="mt-2 flex flex-col gap-6">
         {!data && !reading && (
