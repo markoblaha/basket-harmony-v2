@@ -11,7 +11,6 @@
  * Zhodu anglických textov (rovnaké kľúče aj parametre) stráži test i18n.test.ts.
  */
 import { sk } from "./sk";
-import { en } from "./en";
 
 export type Locale = "sk" | "en";
 export const LOCALES: readonly Locale[] = ["sk", "en"];
@@ -31,7 +30,13 @@ type Args<K extends Key> = K extends Key
 /** "plural.items" ak existuje kľúč "plural.items.other" */
 export type PluralBase = { [K in Key]: K extends `${infer B}.other` ? B : never }[Key];
 
-const DICTS: Record<Locale, Record<string, string>> = { sk, en };
+// Angličtina sa stiahne až keď ju niekto používa (loadLocale) – slovenský štart je o ~40 kB menší.
+const DICTS: Partial<Record<Locale, Record<string, string>>> & { sk: Record<string, string> } = { sk };
+
+/** Pripraví slovník jazyka (anglický sa stiahne zvlášť). Pri chybe ostane slovenčina. */
+export async function loadLocale(locale: Locale): Promise<void> {
+  if (locale === "en" && !DICTS.en) DICTS.en = (await import("./en")).en;
+}
 const STORAGE_KEY = "bh.locale";
 
 /** Jazyk, v ktorom sa práve vykresľuje (nastavuje ho I18nProvider). */
@@ -59,7 +64,7 @@ export function setActiveLocale(locale: Locale) {
 }
 
 function lookup(key: string, locale: Locale = current): string {
-  return DICTS[locale][key] ?? DICTS.sk[key] ?? key;
+  return DICTS[locale]?.[key] ?? DICTS.sk[key] ?? key;
 }
 
 function interpolate(text: string, params?: Record<string, string | number>): string {
@@ -89,7 +94,7 @@ function pluralCategory(n: number): Intl.LDMLPluralRule {
  * chýbajúci tvar spadne na `.other`. V texte je počet ako {n}.
  */
 export function tn(base: PluralBase, n: number, params?: Record<string, string | number>): string {
-  const dict = DICTS[current];
+  const dict = DICTS[current] ?? DICTS.sk;
   const specific = `${base}.${pluralCategory(n)}`;
   const key = specific in dict ? specific : `${base}.other`;
   return interpolate(lookup(key), { n: formatNumber(n), ...params });

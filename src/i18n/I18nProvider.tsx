@@ -6,7 +6,7 @@
  * načítané údaje sa pritom nestratia – tie žijú nad týmto prvkom.
  */
 import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { getLocale, persistLocale, setActiveLocale, t, type Locale } from "./core";
+import { getLocale, loadLocale, persistLocale, setActiveLocale, t, type Locale } from "./core";
 
 type I18nState = { locale: Locale; setLocale: (locale: Locale) => void };
 const I18nContext = createContext<I18nState | null>(null);
@@ -15,9 +15,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(getLocale);
 
   const setLocale = useCallback((next: Locale) => {
-    setActiveLocale(next); // najprv modul, aby novo vykreslené komponenty čítali už nový jazyk
     persistLocale(next);
-    setLocaleState(next);
+    // slovník sa najprv stiahne (anglický je zvlášť), potom sa appka prekreslí; bez siete ostane pôvodný jazyk
+    void loadLocale(next).then(
+      () => {
+        setActiveLocale(next); // najprv modul, aby novo vykreslené komponenty čítali už nový jazyk
+        setLocaleState(next);
+      },
+      () => persistLocale(getLocale()),
+    );
   }, []);
 
   useEffect(() => {

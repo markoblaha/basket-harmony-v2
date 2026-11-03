@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { setActiveLocale } from "@/i18n/core";
+import { beforeAll, describe, expect, it } from "vitest";
+import { loadLocale, setActiveLocale } from "@/i18n/core";
+
+beforeAll(() => loadLocale("en"));
 import { category, categoryOrder, guessCategory, normalizeName } from "./categories";
 
 describe("normalizeName", () => {

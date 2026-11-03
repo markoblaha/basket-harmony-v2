@@ -11,9 +11,11 @@ import { JoinPage } from "@/features/household/JoinPage";
 import { OnboardingPage } from "@/features/household/OnboardingPage";
 import { ShoppingPage } from "@/features/lists/ShoppingPage";
 import { ShoppingHub } from "@/features/lists/ShoppingHub";
+// Domov je úvodná obrazovka – v hlavnom balíku, aby sa po štarte nečakalo na ďalší súbor.
+import { HomePage } from "@/features/home/HomePage";
 
 /*
- * Zoznamy (úvodná obrazovka) sú v hlavnom balíku. Ostatné časti appky sa načítajú zvlášť,
+ * Domov a zoznamy sú v hlavnom balíku. Ostatné časti appky sa načítajú zvlášť,
  * aby sa appka spustila rýchlejšie – a hneď potom, keď je telefón voľný, sa potichu stiahnu
  * všetky, takže prepnutie záložky už na nič nečaká.
  */
@@ -40,7 +42,6 @@ function usePreloadPages() {
 const more = () => import("@/features/more/MorePage");
 const settings = () => import("@/features/more/SettingsPages");
 const MorePage = page(more, "MorePage");
-const HomePage = page(() => import("@/features/home/HomePage"), "HomePage");
 const HouseholdPage = page(() => import("@/features/more/HouseholdPage"), "HouseholdPage");
 const NotificationsPage = page(settings, "NotificationsPage");
 const StoresPage = page(settings, "StoresPage");

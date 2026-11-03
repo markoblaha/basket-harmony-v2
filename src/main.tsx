@@ -5,7 +5,8 @@ import { App } from "./App";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { ToastProvider } from "./components/toast";
 import { TestEnvBadge } from "./components/ui";
-import { I18nProvider } from "./i18n";
+import { I18nProvider, getLocale } from "./i18n";
+import { loadLocale, setActiveLocale } from "./i18n/core";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { isNetworkError, persistCache, restoreCache } from "./lib/offlineCache";
 import "./styles.css";
@@ -53,7 +54,14 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => void navigator.serviceWorker.register("/sw.js").catch(() => undefined));
 }
 
-createRoot(document.getElementById("root")!).render(
+// Anglický slovník sa stiahne pred prvým vykreslením len vtedy, keď je zvolená angličtina.
+// Keď sa nestiahne (napr. prvé spustenie bez signálu), appka sa ukáže po slovensky.
+void loadLocale(getLocale())
+  .catch(() => setActiveLocale("sk"))
+  .then(render);
+
+function render() {
+  createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
@@ -68,4 +76,5 @@ createRoot(document.getElementById("root")!).render(
       </QueryClientProvider>
     </ThemeProvider>
   </StrictMode>,
-);
+  );
+}
