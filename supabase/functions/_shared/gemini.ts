@@ -13,6 +13,8 @@ const PRICES: Record<string, { input: number; output: number }> = {
   "gemini-3.6-flash": { input: 0.75, output: 3.75 },
   "gemini-3.8-flash": { input: 0.75, output: 3.75 },
   "gemini-3.1-pro-preview": { input: 2, output: 12 },
+  // Živý prepis (Live API): zvuk 3,50 $/M (25 tokenov/s ≈ 0,5 c/min), text 21 $/M (~175 tokenov/min ≈ 0,4 c/min).
+  "gemini-3.5-transcribe-live": { input: 3.5, output: 21 },
 };
 /** Ohlásené zmeny cien: od dátumu (UTC) platí nová cena. Google: 3.6 a 3.8 Flash od 1. 1. 2027 dvojnásobok. */
 const PRICE_CHANGES: Record<string, { from: string; input: number; output: number }[]> = {

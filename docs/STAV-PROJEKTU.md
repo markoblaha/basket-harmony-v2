@@ -277,6 +277,20 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Oprava: písaný text v hlase už neposiela AI zoznam „často kupujete“ (pokyn „podobne znejúce = ten produkt“ patrí
     k nahrávke) – AI inak menila „chlieb“ na „Rožky“/„Toastový chlieb“. Neurobené: B (Silero VAD – ~2 MB model +
     onnxruntime ~10 MB, treba overiť na iPhone) a C (Gemini Live, živý prepis) – navrhnuté ako pokus s majiteľom.
+  - **Hlas 2.0 – živý prepis (Gemini Live) HOTOVÝ 3. 11. (čaká na skúšku na iPhone):** model `gemini-3.5-transcribe-live`
+    (sk-SK, ~0,9 c/min reči: zvuk 0,5 + text 0,4; cenník overený 3. 11.). Edge funkcia `voice-live-token` v3 (testovacia DB,
+    `verify_jwt`): ai_allow `voice-live` (30/h, 120/deň, mesačný strop), slovník domácnosti (často kupované + značky,
+    max 100 → `customVocabulary`), jednorazový token cez `POST v1beta/auth_tokens` s `bidiGenerateContentSetup` (pole
+    `liveConnectConstraints` REST nepozná), 1 min na pripojenie, 6 min relácia; do `ai_usage` odhad 1 min na token.
+    Appka: `features/voice/live.ts` (WebSocket `…v1beta.GenerativeService.BidiGenerateContentConstrained?access_token=`,
+    16 kHz PCM po 100 ms, priebežné zosilnenie), `useRecorder(onSegment, sink)` posiela len reč (aj začiatok vety, keď sa
+    spojenie otvorí uprostred), na konci vety `audioStreamEnd` → hotová veta ~0,25 s → rovnaký rozbor ako písaný text.
+    Miestny rozbor sa ukáže hneď len keď každú položku pozná katalóg; inak „Spracúvam vetu…“ do odpovede AI (žiadne
+    „Mletého“/„Mäsa“). Pri chybe spojenia pôvodné posielanie viet (parse-voice audio), pri výpadku uprostred vety sa
+    čakajúce vety pošlú ako WAV. Overené zo sandboxu (USA): token ~1 s, prvý text ~1 s od začiatku reči, „Dve mlieka,
+    chlieb, pol kila mletého mäsa a jeden Radegast“ presne; v prehliadači s nahrávkou ako mikrofónom správne položky.
+    Neoverené: skutočný iPhone (zvuk bez pípania, appka z plochy). Migrácia `20261103000036_voice_live` (testovacia DB).
+    Pred zlúčením: nasadiť `voice-live-token` aj do ostrej (kľúč Gemini musí byť platený – inak Google údaje použije).
   - Ďalšie etapy: 5 offline a push · 6 doladenie kariet (aj výpis a párovanie) a texty (tykanie/vykanie)
     · 7 pred obchodmi.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –

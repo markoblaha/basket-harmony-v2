@@ -116,7 +116,18 @@ function toWav(chunks: Float32Array[], fromRate: number): string {
 
 export type RecorderError = "denied" | "unavailable" | null;
 
-export function useRecorder(onSegment: (wavBase64: string) => void) {
+/**
+ * Živý prepis (Hlas 2.0): keď je prúd zapnutý, reč ide priebežne doň (aj s krátkym úvodom pred
+ * začiatkom reči) a na konci vety príde end() – WAV úsek sa vtedy neposiela.
+ */
+export type StreamSink = {
+  active: () => boolean;
+  push: (data: Float32Array, rate: number) => void;
+  /** Koniec vety; wav() vyrobí záložný WAV úsek, keby živý prepis vetu nevrátil (výpadok spojenia). */
+  end: (wav: () => string) => void;
+};
+
+export function useRecorder(onSegment: (wavBase64: string) => void, sink?: { current: StreamSink | null }) {
   const supported = recorderSupported();
   const [listening, setListening] = useState(false);
   const [hearing, setHearing] = useState(false);
@@ -204,11 +215,21 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     let sent = 0;
     let peak = 0;
     let peakAt = 0;
+    let streamed = false;
+    const live = () => !!sink?.current?.active();
     const flush = () => {
-      if (speaking && speechMs >= MIN_SPEECH_MS) {
+      if (streamed) {
+        // Živý prepis: veta je už na serveri, stačí povedať, že skončila (prepis príde hneď).
+        const chunks = seg;
+        if (speaking && speechMs >= MIN_SPEECH_MS) {
+          sent++;
+          sink?.current?.end(() => toWav(chunks, rate));
+        } else sink?.current?.end(() => "");
+      } else if (speaking && speechMs >= MIN_SPEECH_MS) {
         sent++;
         cb.current(toWav(seg, rate));
       }
+      streamed = false;
       seg = [];
       speaking = false;
       speechMs = 0;
@@ -250,11 +271,21 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
           speechMs = msPer;
           segMs = seg.length * msPer;
           setHearing(true);
+          if (live()) {
+            streamed = true;
+            for (const c of seg) sink!.current!.push(c, rate);
+          }
         }
         return;
       }
       seg.push(data);
       segMs += msPer;
+      if (streamed && live()) sink!.current!.push(data, rate);
+      else if (!streamed && live()) {
+        // Živé spojenie sa otvorilo uprostred vety: pošle sa celá doterajšia veta a ďalej priebežne.
+        streamed = true;
+        for (const c of seg) sink!.current!.push(c, rate);
+      }
       if (loud) {
         speechMs += msPer;
         silenceMs = 0;

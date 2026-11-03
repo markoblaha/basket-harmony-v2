@@ -36,7 +36,8 @@ const asSaid = (ops: VoiceOp[], text: string): VoiceOp[] => (text ? ops.map((o) 
 import { applyOps, diff, findItem, reconcile, type Effect } from "./engine";
 import { recipeCommand, splitCook } from "./recipeVoice";
 import { useSpeech } from "./useSpeech";
-import { recorderSupported, useRecorder } from "./useRecorder";
+import { recorderSupported, useRecorder, type StreamSink } from "./useRecorder";
+import { LiveTranscriber } from "./live";
 import { PlanRow, RecipeCardView, cardItems, cardPlan, cardRows, toggled, useRecipeCards, type Card } from "./VoiceRecipe";
 
 
@@ -384,10 +385,15 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       for (const m of missing) toast.show(t("voice.notInList", { name: m.target }));
       const local = applyOps(before, ops);
       if (local.done) setDoneHint(true);
-      if (local.understood) {
+      // Miestny rozbor sa ukáže hneď len vtedy, keď každú novú položku pozná katalóg domácnosti.
+      // Inak („pol kila mletého mäsa“ → „Mletého“, „Mäsa“) sa počká na AI (~1 s) – žiadne preblikávanie zlých položiek.
+      const sure = ops.every((o) => o.op !== "add" || (!!estRef.current.resolve(o.name) && o.name.trim().split(/\s+/).length <= 3));
+      const held = local.understood && !sure;
+      if (local.understood && !held) {
         present(local.items);
         haptic(10);
       }
+      if (held) setPendingAudio((p) => p + 1);
       showRemoved(local);
       if (sel && target && local.understood) setSelected(null);
       if (local.done && !local.added.length && !local.merged.length && !local.removed.length) return;
@@ -399,12 +405,22 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       // slovo môže zle počuť. Pri texte sa nič zle počuť nedá – inak AI zmenila „chlieb“ na „Rožky“.
       void interpretAI(sp.rest, before, target, []).then((ai) => {
         setRefining((r) => r - 1);
+        if (held) setPendingAudio((p) => p - 1);
         if (!ai) {
+          // AI neodpovedala: zadržaný miestny rozbor sa ukáže aspoň takto.
+          if (held) present(applyOps(itemsRef.current, ops).items);
           if (!local.understood && !cook.cook.length && seq.current === mine) toast.show(t("voice.notUnderstood"));
           return;
         }
         if (ai.store && !targetListId) setStore((s) => s || ai.store!);
         cards.confirmCook(mine, ai.cook);
+        if (held) {
+          const eff = applyOps(itemsRef.current, asSaid(ai.ops.length ? ai.ops : ops, sp.rest));
+          present(eff.items);
+          haptic(10);
+          if (eff.done) setDoneHint(true);
+          return;
+        }
         if (!ai.ops.length && local.understood) return;
         const r = reconcile(itemsRef.current, local, asSaid(ai.ops, sp.rest));
         present(r.items);
@@ -477,7 +493,49 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   );
 
   const speech = useSpeech(onFinal);
-  const rec = useRecorder(onSegment);
+
+  // Živý prepis (Gemini Live): reč ide priebežne na server, text sa ukazuje počas hovorenia a hotová veta
+  // prejde rovnakým rozborom ako písaný text. Keď sa spojenie nepodarí, nahrávanie posiela vety po kúskoch.
+  const [liveText, setLiveText] = useState("");
+  const [liveOk, setLiveOk] = useState(true);
+  const finalRef = useRef(onFinal);
+  finalRef.current = onFinal;
+  const lt = useRef<LiveTranscriber | null>(null);
+  const segRef = useRef(onSegment);
+  segRef.current = onSegment;
+  // Vety odoslané živo, na ktorých prepis ešte čakáme: pri výpadku spojenia pôjdu ako nahrávka (nič sa nestratí).
+  const waiting = useRef<{ at: number; wav: () => string }[]>([]);
+  if (!lt.current)
+    lt.current = new LiveTranscriber({
+      onInterim: (x) => setLiveText(x),
+      onFinal: (x) => {
+        setLiveText("");
+        waiting.current.shift();
+        finalRef.current(x);
+      },
+      onDown: () => {
+        setLiveText("");
+        const lost = waiting.current.filter((w) => Date.now() - w.at < 8000);
+        waiting.current = [];
+        for (const w of lost) {
+          const wav = w.wav();
+          if (wav) segRef.current(wav);
+        }
+      },
+    });
+  const sink = useRef<StreamSink | null>(null);
+  sink.current = liveOk
+    ? {
+        active: () => !!lt.current?.open,
+        push: (d, r) => lt.current?.push(d, r),
+        end: (wav) => {
+          lt.current?.end();
+          // Šum bez slov server neprepíše – staré čakajúce vety (bez prepisu do 8 s) sa zahodia.
+          waiting.current = [...waiting.current.filter((w) => Date.now() - w.at < 8000), { at: Date.now(), wav }];
+        },
+      }
+    : null;
+  const rec = useRecorder(onSegment, sink);
 
   // Prehliadač reč zakázal (napr. appka z plochy) → prepneme na nahrávanie, ak sa dá.
   useEffect(() => {
@@ -496,8 +554,18 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       else speech.stop();
     } else if (engine === "rec") {
       speech.stop();
-      if (on) rec.start();
-      else rec.stop();
+      if (on) {
+        rec.start();
+        if (liveOk)
+          lt.current?.connect().catch(() => {
+            // Bez živého prepisu ďalej (pôvodné posielanie viet) – hlas nesmie prestať fungovať.
+            setLiveOk(false);
+          });
+      } else {
+        rec.stop();
+        lt.current?.close();
+        setLiveText("");
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, listening, busy, blocked]);
@@ -506,11 +574,19 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
     if (blocked) setTyping(true);
   }, [blocked]);
 
+  // Medzi vetami: spojenie sa obnoví (token platí 6 minút, po výpadku signálu sa pripojí znova).
+  useEffect(() => {
+    if (engine !== "rec" || !liveOk || !listening || busy || rec.hearing) return;
+    lt.current?.connect().catch(() => undefined);
+  }, [engine, liveOk, listening, busy, rec.hearing]);
+  useEffect(() => () => lt.current?.close(), []);
+
   // ---------------------------------------------------------------- zatvorenie, zahodenie
 
   function close() {
     speech.stop();
     rec.stop();
+    lt.current?.close();
     if (itemsRef.current.length) toast.show(t("voice.draftSaved"));
     onClose();
   }
@@ -556,7 +632,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   const pendingRecipes = cards.cards.filter((c) => c.status !== "added" && c.sel != null);
 
   const hearing = engine === "rec" ? rec.hearing : !!speech.interim;
-  const live = engine === "speech" ? speech.interim : "";
+  const live = engine === "speech" ? speech.interim : liveText;
   // iPhone mikrofón zapol, ale zvuk appky pustí až po ťuknutí – ťuk kamkoľvek ho rozbehne.
   const stalled = engine === "rec" && listening && rec.stalled;
   const kb = useKeyboardHeight(true);

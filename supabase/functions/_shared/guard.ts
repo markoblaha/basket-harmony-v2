@@ -19,7 +19,7 @@ export type Guarded = {
 export async function guardAi(
   req: Request,
   householdId: unknown,
-  fn: "parse-voice" | "recipe-ai",
+  fn: "parse-voice" | "recipe-ai" | "voice-live",
 ): Promise<Guarded | { error: string; status: number }> {
   const url = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
