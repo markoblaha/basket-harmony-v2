@@ -264,9 +264,14 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     od januára ukáže polovičné náklady; doplniť prevádzkovateľa (`legal.operator`); overiť platený plán Gemini API;
     Supabase Pro (zálohy + ochrana uniknutých hesiel: Authentication → Sign In / Providers → Email → Prevent use of
     leaked passwords – je len v Pro). Funkciu `delete-account` nasadiť aj do ostrej.
-  - Ďalšie etapy: 3 staré obrazovky
-    do nového vzhľadu (prihlásenie, domácnosť, nastavenia, výpis, párovanie; jednotné avatary) · 4 Hlas 2.0 · 5 offline
-    a push · 6 doladenie kariet a texty (tykanie/vykanie) · 7 pred obchodmi.
+  - **Etapa 3 – HOTOVÁ 3. 11. (čaká na „OK“):** prihlásenie, nové heslo, prvé spustenie, pozvánka a zásady majú spoločný
+    obal `src/features/auth/shell.tsx` (AuthShell, AuthLogo, Field, Note; CSS v `adapt.css` `.auth-pg`) s triedami mockupu,
+    v Skle aj fotka v pozadí; Google s logom. Domácnosť, Upozornenia a Moje obchody vo vzhľade tém (MkHeader, .lst/.row,
+    Toggle, StoreTile). Podstránka `/more/tiles` zrušená (nič na ňu neviedlo). Avatary všade `memberColor(id)` (aj MeBtn,
+    PersonAvatar). Mimo vzhľadu tém ostali len výpis z banky (`/receipts/statement`) a párovanie bločku (`/receipts/:id/match`)
+    – prídu s doladením kariet.
+  - Ďalšie etapy: 4 Hlas 2.0 · 5 offline a push · 6 doladenie kariet (aj výpis a párovanie) a texty (tykanie/vykanie)
+    · 7 pred obchodmi.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
