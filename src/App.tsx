@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, type ComponentType, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { MotionRouter } from "@/components/navMotion";
 import { AppShell } from "@/components/AppShell";
 import { Spinner } from "@/components/ui";
@@ -16,7 +17,7 @@ import { HomePage } from "@/features/home/HomePage";
 
 /*
  * Domov a zoznamy sú v hlavnom balíku. Ostatné časti appky sa načítajú zvlášť,
- * aby sa appka spustila rýchlejšie – a hneď potom, keď je telefón voľný, sa potichu stiahnu
+ * aby sa appka spustila rýchlejšie – a keď sa načítajú prvé údaje, potichu sa stiahnu
  * všetky, takže prepnutie záložky už na nič nečaká.
  */
 const loaders: (() => Promise<unknown>)[] = [];
@@ -30,13 +31,37 @@ function page<M extends Record<string, any>>(load: () => Promise<M>, name: keyof
   type Lazy = Promise<{ default: ComponentType }>;
   return lazy(() => (mod ? ({ then: (ok: (v: { default: ComponentType }) => void) => ok({ default: mod![name] as ComponentType }) } as unknown as Lazy) : keep().then((m) => ({ default: m[name] as ComponentType }))));
 }
+/**
+ * Ostatné obrazovky sa stiahnu až po prvých údajoch (domácnosť, zoznamy) a po troch naraz –
+ * na pomalej sieti by inak ~40 súborov naraz brzdilo načítanie toho, čo človek práve čaká.
+ */
 function usePreloadPages() {
+  const qc = useQueryClient();
   useEffect(() => {
-    const run = () => loaders.forEach((l) => void l().catch(() => undefined));
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
-    if (w.requestIdleCallback) w.requestIdleCallback(run, { timeout: 2500 });
-    else setTimeout(run, 1200);
-  }, []);
+    let stop = false;
+    const t0 = Date.now();
+    const queue = [...loaders];
+    const worker = async () => {
+      while (!stop && queue.length) await queue.shift()!().catch(() => undefined);
+    };
+    const run = () => void Promise.all([worker(), worker(), worker()]);
+    let timer = 0;
+    const wait = () => {
+      if (stop) return;
+      if (qc.isFetching() > 0 && Date.now() - t0 < 8000) {
+        timer = window.setTimeout(wait, 300);
+        return;
+      }
+      const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+      if (w.requestIdleCallback) w.requestIdleCallback(run, { timeout: 1500 });
+      else run();
+    };
+    timer = window.setTimeout(wait, 800);
+    return () => {
+      stop = true;
+      clearTimeout(timer);
+    };
+  }, [qc]);
 }
 
 const more = () => import("@/features/more/MorePage");
