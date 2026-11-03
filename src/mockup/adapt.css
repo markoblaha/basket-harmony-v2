@@ -320,3 +320,17 @@ body.kb-typing .bhm-tabs {
 /* Recept: prechod obrazovky už obsah posúva – vlastné vynorenie fotky a textu by ho ukázalo druhýkrát. */
 :root.has-vt .bhm .rhero2,
 :root.has-vt .bhm .rbody { animation: none; }
+
+/* Výdavky: listovanie obdobím (‹ November 2026 ›) a mesiace roka ako ťukateľné riadky – v oboch témach. */
+.bhm .pernav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 2px; }
+.bhm .pernav b { font-size: 17px; font-weight: 750; text-align: center; flex: 1; font-variant-numeric: tabular-nums; }
+.bhm .pernav .ib:disabled { opacity: 0.3; cursor: default; }
+.bhm .wk { display: flex; flex-direction: column; }
+.bhm .wk > div,
+.bhm .wk > .wkrow { display: grid; grid-template-columns: 62px 1fr 64px; gap: 10px; align-items: center; padding: 9px 0; font-size: 15px; font-weight: 650; }
+.bhm .wk > .wkrow { width: 100%; min-height: 44px; border: 0; background: none; color: inherit; font: inherit; font-size: 15px; font-weight: 650; text-align: left; cursor: pointer; }
+.bhm .wk > * + * { border-top: 1px solid var(--line); }
+.bhm .wk .tr { height: 5px; border-radius: 99px; background: var(--line); position: relative; display: block; }
+.bhm .wk .tr i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 99px; background: var(--acc); }
+.g .bhm .wk .tr i { background: linear-gradient(90deg, #ffcf5a, #ff7a3d); }
+.bhm .wk em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; }

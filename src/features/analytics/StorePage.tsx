@@ -11,7 +11,7 @@ import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, Back, useScrolled } from "@/mockup/ui";
 import { StoreTile, eur, storeKeyOf } from "@/mockup/kit";
 import { useStoreDetail } from "./api";
-import { cat, perTitle, usePer } from "./money";
+import { cat, usePer } from "./money";
 
 export function StorePage() {
   const { key = "_none" } = useParams();
@@ -20,7 +20,7 @@ export function StorePage() {
   const navigate = useNavigate();
   const g = useTheme().style === "glass";
   const scrolled = useScrolled();
-  const { per, period, qs } = usePer();
+  const { period, qs, title } = usePer();
   const q = useStoreDetail(household.id, storeKey, period);
   const d = q.data;
   const name = d?.name || storeKey;
@@ -43,7 +43,7 @@ export function StorePage() {
             <StoreTile k={storeKeyOf(name)} n={name} s={60} />
             <div className="grow">
               <h1 className="lt">{name}</h1>
-              <div className="meta">{perTitle(per)}</div>
+              <div className="meta">{title}</div>
             </div>
           </div>
           {q.isPending ? (

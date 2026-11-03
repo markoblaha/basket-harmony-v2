@@ -12,7 +12,7 @@ import { E, I, Back, useScrolled } from "@/mockup/ui";
 import { eur, emojiFor } from "@/mockup/kit";
 import { useCategoryDetail } from "./api";
 import { perUnit, qtyLabel } from "./bits";
-import { cat, perTitle, prevTitle, usePer } from "./money";
+import { cat, usePer } from "./money";
 
 export function CategoryPage() {
   const { id = "other" } = useParams();
@@ -20,7 +20,7 @@ export function CategoryPage() {
   const navigate = useNavigate();
   const g = useTheme().style === "glass";
   const scrolled = useScrolled();
-  const { per, period, qs } = usePer();
+  const { period, qs, title, prevTitle } = usePer();
   const q = useCategoryDetail(household.id, id, period);
   const c = cat(id);
   const d = q.data;
@@ -46,7 +46,7 @@ export function CategoryPage() {
             <div className="grow">
               <h1 className="lt">{c.name}</h1>
               <div className="meta">
-                {perTitle(per)} · {tn("mn.kinds", kinds.length)}
+                {title} · {tn("mn.kinds", kinds.length)}
               </div>
             </div>
           </div>
@@ -58,11 +58,11 @@ export function CategoryPage() {
             <>
               <div className={`card match${g ? " mg" : ""}`}>
                 <div>
-                  <div className="k">{perTitle(per)}</div>
+                  <div className="k">{title}</div>
                   <div className="price">{eur(d.amount)}</div>
                 </div>
                 <div className="ra">
-                  <div className="k">{prevTitle(per)}</div>
+                  <div className="k">{prevTitle}</div>
                   <div className="price mut">{eur(d.prev_amount)}</div>
                   {d.prev_amount > 0 && (
                     <div className={`trend sm ${d.amount > d.prev_amount ? "up" : "dn"}`}>

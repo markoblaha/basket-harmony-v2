@@ -16,7 +16,7 @@ import { CATS } from "@/mockup/catalog";
 import { Btn, StoreTile, eur, eur0, storeKeyOf } from "@/mockup/kit";
 import { useSetBudget } from "./api";
 import { categoryInfo } from "./bits";
-import { computePeriod, customPeriod, monthName, thisMonth, todayIso, type Period } from "./period";
+import { computePeriod, customPeriod, monthName, shiftMonth, thisMonth, todayIso, type Period } from "./period";
 
 /* ------------------------------------------------------------------ obdobie */
 export type Per = "week" | "month" | "year";
@@ -25,27 +25,68 @@ const addIso = (iso: string, d: number) => {
   x.setUTCDate(x.getUTCDate() + d);
   return x.toISOString().slice(0, 10);
 };
-export function periodOf(per: Per): Period {
-  if (per === "week") return customPeriod(addIso(todayIso(), -6), todayIso(), "all");
-  if (per === "year") return computePeriod("year", thisMonth(), "all", "year");
-  return computePeriod("month", thisMonth(), "all", "month");
+/** Obdobie posunuté o `off` dozadu (0 = aktuálne, −1 = predchádzajúce…). */
+export function periodOf(per: Per, off = 0): Period {
+  if (per === "week") {
+    const to = addIso(todayIso(), 7 * off);
+    return customPeriod(addIso(to, -6), to, "all");
+  }
+  if (per === "year") return computePeriod("year", `${Number(thisMonth().slice(0, 4)) + off}${thisMonth().slice(4)}`, "all", "year");
+  return computePeriod("month", shiftMonth(thisMonth(), off), "all", "month");
 }
-/** Obdobie je v adrese (?per=week|month|year) – platí aj na detailoch a Späť ho zachová. */
+const query = (per: Per, off: number) => {
+  const q = new URLSearchParams();
+  if (per !== "month") q.set("per", per);
+  if (off) q.set("o", String(off));
+  const s = q.toString();
+  return s ? `?${s}` : "";
+};
+/**
+ * Obdobie je v adrese (?per=week|month|year a ?o=−1 o koľko dozadu) – platí aj na detailoch a Späť ho zachová.
+ * go(−1) = predchádzajúce obdobie, go(1) = späť k novšiemu (najďalej po aktuálne).
+ */
 export function usePer() {
   const [params, setParams] = useSearchParams();
   const v = params.get("per");
   const per: Per = v === "week" || v === "year" ? v : "month";
-  const set = (p: Per) => {
+  const o = Number(params.get("o"));
+  const off = Number.isInteger(o) && o < 0 ? o : 0;
+  const show = (p: Per, to = 0) => {
     const next = new URLSearchParams(params);
     if (p === "month") next.delete("per");
     else next.set("per", p);
+    if (to < 0) next.set("o", String(to));
+    else next.delete("o");
     setParams(next, { replace: true });
   };
-  return { per, set, period: periodOf(per), qs: per === "month" ? "" : `?per=${per}` };
+  return {
+    per,
+    off,
+    set: (p: Per) => show(p, 0),
+    go: (d: number) => show(per, Math.min(0, off + d)),
+    show,
+    period: periodOf(per, off),
+    title: perTitle(per, off),
+    prevTitle: prevTitle(per, off),
+    qs: query(per, off),
+  };
 }
-export const perTitle = (per: Per) =>
-  per === "week" ? t("mn.week") : per === "year" ? t("mn.yearN", { y: thisMonth().slice(0, 4) }) : cap(monthName(Number(thisMonth().slice(5))));
-export const prevTitle = (per: Per) => (per === "month" ? monthName(((Number(thisMonth().slice(5)) + 10) % 12) + 1) : per === "year" ? String(Number(thisMonth().slice(0, 4)) - 1) : t("mn.prevWeek"));
+const dm = (iso: string) => formatDateTime(`${iso}T12:00:00`, { day: "numeric", month: "numeric" });
+/** Názov obdobia: „November“, „December 2025“, „Týždeň“ / „26. 10. – 1. 11.“, „Rok 2025“. */
+export function perTitle(per: Per, off = 0) {
+  const p = periodOf(per, off);
+  if (per === "week") return off ? `${dm(p.from)} – ${dm(p.to)}` : t("mn.week");
+  if (per === "year") return t("mn.yearN", { y: p.from.slice(0, 4) });
+  const m = cap(monthName(Number(p.month.slice(5))));
+  return p.month.slice(0, 4) === thisMonth().slice(0, 4) ? m : `${m} ${p.month.slice(0, 4)}`;
+}
+/** Názov obdobia, s ktorým sa porovnáva. */
+export function prevTitle(per: Per, off = 0) {
+  const p = periodOf(per, off);
+  if (per === "month") return monthName(Number(p.prevFrom.slice(5, 7)));
+  if (per === "year") return p.prevFrom.slice(0, 4);
+  return off ? t("mn.weekBefore") : t("mn.prevWeek");
+}
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /* ------------------------------------------------------------------ kategórie */

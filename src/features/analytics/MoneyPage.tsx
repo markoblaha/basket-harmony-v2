@@ -14,8 +14,15 @@ import { E, I, IB, MkHeader, Seg } from "@/mockup/ui";
 import { HelpBtn } from "@/features/help/Help";
 import { Btn, StoreTile, eur, eur0, storeKeyOf } from "@/mockup/kit";
 import { useOverview, type Overview } from "./api";
-import { BudgetSheet, CatRows, Donut, MissingReceipts, cat, perTitle, prevTitle, usePer, type Per } from "./money";
-import { monthShort } from "./period";
+import { BudgetSheet, CatRows, Donut, MissingReceipts, cat, perTitle, usePer, type Per } from "./money";
+import { monthName, monthShort, thisMonth } from "./period";
+
+/** O koľko mesiacov dozadu je daný mesiac („2026-09“ v novembri = −2). */
+const monthsBack = (m: string) => {
+  const [y, mo] = m.split("-").map(Number) as [number, number];
+  const [cy, cm] = thisMonth().split("-").map(Number) as [number, number];
+  return Math.min(0, (y - cy) * 12 + (mo - cm));
+};
 
 /** Súčty po týždňoch mesiaca (1.–7., 8.–14. …) z denných súm. */
 function weeks(daily: { d: string; a: number }[]) {
@@ -54,11 +61,10 @@ export function MoneyPage() {
   const { household } = useHousehold();
   const navigate = useNavigate();
   const g = useTheme().style === "glass";
-  const { per, set, period, qs } = usePer();
+  const { per, off, set, go, show, period, qs, title, prevTitle } = usePer();
   const ov = useOverview(household.id, period);
   const [budgetOpen, setBudgetOpen] = useState(false);
   const o = ov.data;
-  const title = perTitle(per);
   const cats = (o?.categories ?? []).filter((c) => !c.id.startsWith("_")).map((c) => ({ id: c.id, amount: c.amount }));
   const total = o?.total ?? 0;
   const budget = o?.budgets.find((b) => b.category_id === null)?.amount ?? null;
@@ -74,7 +80,7 @@ export function MoneyPage() {
   const months = (o?.months ?? []).filter((m) => m.amount > 0);
   const mmax = Math.max(1, ...months.map((m) => m.amount));
   const ins = o ? insights(o) : [];
-  const trendTxt = diff == null ? null : t(diff > 0 ? "mn.more" : "mn.less", { pct: Math.abs(Math.round(diff * 100)), prev: prevTitle(per) });
+  const trendTxt = diff == null ? null : t(diff > 0 ? "mn.more" : "mn.less", { pct: Math.abs(Math.round(diff * 100)), prev: prevTitle });
 
   const rbtns = (
     <div className="rbtns">
@@ -92,12 +98,24 @@ export function MoneyPage() {
     <Seg<Per>
       items={[
         ["week", t("mn.week")],
-        ["month", perTitle("month")],
+        ["month", perTitle("month", per === "month" ? off : 0)],
         ["year", t("mn.year")],
       ]}
       value={per}
       onChange={set}
     />
+  );
+  // Listovanie obdobím: ‹ predchádzajúci mesiac / týždeň / rok · › späť k novšiemu (najďalej po aktuálne).
+  const perNav = (
+    <div className="pernav">
+      <button type="button" className="ib" onClick={() => go(-1)} aria-label={t("mn.prevPer")}>
+        <I n="caret-left" w="bold" />
+      </button>
+      <b aria-live="polite">{title}</b>
+      <button type="button" className="ib" onClick={() => go(1)} disabled={off === 0} aria-label={t("mn.nextPer")}>
+        <I n="caret-right" w="bold" />
+      </button>
+    </div>
   );
   const empty = o && !total && (
     <div className="empty">
@@ -199,6 +217,7 @@ export function MoneyPage() {
           <MissingReceipts g={g} />
           {rbtns}
           {seg}
+          {perNav}
           {!g && total > 0 && (
             <button type="button" className="card sum tapc" onClick={() => per === "month" && setBudgetOpen(true)}>
               <Donut cats={cats} center={used != null ? `${Math.round(used * 100)} %` : eur0(total)} sub={used != null ? t("mn.ofBudget", { budget: eur0(budget!) }) : title.toLowerCase()} />
@@ -263,13 +282,14 @@ export function MoneyPage() {
               </span>
               <div className="wk">
                 {months.map((m) => (
-                  <div key={m.month}>
+                  // ťuk na mesiac ho otvorí
+                  <button type="button" key={m.month} className="wkrow" onClick={() => show("month", monthsBack(m.month))} aria-label={t("mn.openMonth", { month: monthName(Number(m.month.slice(5, 7))) })}>
                     <span>{monthShort(Number(m.month.slice(5, 7)))}</span>
                     <span className="tr">
                       <i style={{ width: `${Math.max(2, (m.amount / mmax) * 100)}%` }} />
                     </span>
                     <em>{eur0(m.amount)}</em>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
