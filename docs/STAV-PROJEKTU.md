@@ -346,6 +346,21 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     suroviny overené vo viacerých nezávislých zdrojoch (nič vymyslené, nič navyše, nič nechýba), presné množstvá na počet
     porcií, skutočné výživové hodnoty, podrobný postup aj pre začiatočníkov (na čo si dať pozor, čo nerobiť), aspoň
     3 fotorealistické fotky na recept v jednom jednotnom štýle pre celú knihu (Ochutnávač ako TikTok má lákať).
+    **Etapa 1 – návrh HOTOVÝ 3. 11. (vetva `claude/relaxed-cori-ubcp6x`, čaká na „OK“ a 5 rozhodnutí):**
+    https://claude.ai/artifact/8nRqJTgePNe4wGs8wtZ44H (kópia `prototyp/recepty-vyroba-navrh.html`). Linka: ≥4 nezávislé
+    zdroje (len suroviny + množstvá + URL; z jedného webu max 1 na recept a max 5 % zdrojov knihy; zakázané weby v DB) →
+    tabuľka surovina × zdroj (3–4/4 povinná, 2/4 → +2 zdroje, ≤1/4 von; hlavné suroviny ±30 % od mediánu, korenie v rozpätí)
+    → recept podľa štandardu (g/ml + domáca miera, 4 porcie alebo forma, pravidlá prepočtu, bezpečné teploty USDA FSIS)
+    → `book_check` (SQL, bez AI) → kritik Gemini 3.1 Pro → 3 zábery × 2 návrhy fotiek 4:5 2K s kotviacimi fotkami
+    a kontrolou Gemini 3.8 Flash → správa → schválenie → `book_publish` (odmietne bez 0 chýb, fotiek a schválenia).
+    Výživa a 14 alergénov len výpočtom (USDA FoodData Central, CC0). Tabuľky `book_recipes`, `book_ingredients`,
+    `book_steps`, `book_foods`, `usda_foods`, `book_sources` (+ pohľad `book_consensus`), `book_sites`, `book_checks`,
+    `book_photos`, `book_reports`. Cena 0,26–1,21 $ na recept podľa obrázkového modelu (~310–1 450 $ za 1 000 s rezervou),
+    pokus 5 receptov ~5–7 $. Ručný prechod 5 skúšobných receptov našiel: lasagne bez alergénu siričitany (víno), kulajda
+    bez upozornenia na tekutý žĺtok, paprikáš „číra šťava“ namiesto 74 °C, cukor v postupe segedína mimo surovín,
+    vňať na fotkách segedína, ktorá v recepte nie je. Otvorené rozhodnutia: tretí obrázkový model (GPT Image 2 s kľúčom
+    OpenAI, alebo Nano Banana 2.1), kritik, zdroje v appke len „Porovnané so 4 zdrojmi“, teploty USDA, fotky bez rúk.
+    Ďalej: Etapa 2 = pokus na 5 receptoch (migrácia len do testovacej DB).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
