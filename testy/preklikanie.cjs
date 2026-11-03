@@ -67,6 +67,7 @@ function screens(id) {
     ["historia", "/history"],
     ["blocek", "/scan"],
     id.trip && ["nakup-detail", `/history/${id.trip}`],
+    id.trip && ["zoznam-kupeny", `/lists/${id.trip}`],
     ["recepty", "/recipes"],
     ["recepty-moje", "/recipes?t=mine"],
     ["recepty-plan", "/recipes?t=plan"],

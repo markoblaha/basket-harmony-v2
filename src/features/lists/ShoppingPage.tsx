@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
-import { Camera, Check, Receipt } from "lucide-react";
 import { ErrorState, Spinner } from "@/components/ui";
 import type { Person } from "@/components/kit";
 import { useToast } from "@/components/toast";
@@ -18,7 +17,7 @@ import { dayLabel } from "./dates";
 import { MyRequests } from "./Requests";
 import { FollowScreen, ShopScreen } from "./ShopScreen";
 import { useEstimator } from "./estimate";
-import { E, IB } from "@/mockup/ui";
+import { E, I, IB } from "@/mockup/ui";
 import { Btn } from "@/mockup/kit";
 import { useSmartAdd } from "./useSmartAdd";
 
@@ -181,27 +180,30 @@ export function ShoppingPage() {
   );
 }
 
-/** Kúpený zoznam (otvorený z histórie): kedy a bloček. */
+/** Kúpený zoznam (otvorený z histórie): kedy a bloček – riadok vo vzhľade tém. */
 function CompletedCard({ list }: { list: ShoppingList }) {
   const navigate = useNavigate();
+  const attached = list.receipt_state === "ATTACHED" && list.receipt_id;
   return (
-    <div className="card row g-12 anim-rise" style={{ padding: 12 }}>
-      <span className="cat-ic" style={{ background: "var(--accent-soft)", color: "var(--accent-text)" }}>
-        <Check size={18} strokeWidth={2.4} />
-      </span>
-      <span className="grow stack g-2">
-        <span className="t-h">{t("trip.boughtOn", { day: dayLabel(list.completed_at!) })}</span>
-        <span className="t-xs t-2">{t("trip.reopenHint")}</span>
-      </span>
-      {list.receipt_state === "ATTACHED" && list.receipt_id ? (
-        <button type="button" className="btn btn-sm btn-accent" onClick={() => navigate(`/receipts/${list.receipt_id}`)}>
-          <Receipt size={15} /> {t("trip.receipt")}
-        </button>
-      ) : (
-        <button type="button" className="btn btn-sm btn-soft" onClick={() => navigate(`/scan?nakup=${list.id}`)}>
-          <Camera size={15} /> {list.receipt_state === "LATER" ? t("trip.completeReceipt") : t("trip.addReceipt")}
-        </button>
-      )}
+    <div className="lst anim-rise">
+      <div className="row">
+        <span className="th ic">
+          <I n="check-circle" />
+        </span>
+        <div className="tx">
+          <b>{t("trip.boughtOn", { day: dayLabel(list.completed_at!) })}</b>
+          <span className="sub">{t("trip.reopenHint")}</span>
+        </div>
+      </div>
+      <button type="button" className="row tap" onClick={() => navigate(attached ? `/receipts/${list.receipt_id}` : `/scan?nakup=${list.id}`)}>
+        <span className="th ic">
+          <I n={attached ? "receipt" : "camera"} />
+        </span>
+        <div className="tx">
+          <b>{attached ? t("trip.receipt") : list.receipt_state === "LATER" ? t("trip.completeReceipt") : t("trip.addReceipt")}</b>
+        </div>
+        <I n="caret-right" w="bold" cls="chev" />
+      </button>
     </div>
   );
 }

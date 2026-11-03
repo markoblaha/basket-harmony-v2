@@ -23,10 +23,13 @@ nie v repozitári. Má vlastnú domácnosť „Testovacia domácnosť (kópia)�
 aliasy, zoznamy, rozpočty) + jeden skúšobný bloček „Lidl 5,01 €“ z overenia čítania na pozadí. Blahovci ani Marko ho nevidia.
 Starší účet `claude-test-recepty@example.com` (heslo neznáme) ostal nepoužitý.
 
-**Automatické preklikanie appky:** `testy/preklikanie.cjs` – prihlási testovací účet cez obrazovku, prejde 31 obrazoviek
-v telefónovej veľkosti v každom vzhľade (zatiaľ svetlý/tmavý; témy pribudnú vo Fáze 1) a hľadá chyby JS, neúspešné volania
+**Automatické preklikanie appky:** `testy/preklikanie.cjs` – prihlási testovací účet cez obrazovku, prejde 32 obrazoviek
+v telefónovej veľkosti v 4 vzhľadoch (Teplá a Sklo, svetlý aj tmavý) a hľadá chyby JS, neúspešné volania
 servera, chybové hlásenia, pretekanie, text mimo obrazovky a prekrytia. Fotky + `report.json` do `testy/vysledky/` (mimo gitu).
 `E2E_EMAIL=… E2E_PASSWORD=… node testy/preklikanie.cjs [adresa]` – bez adresy ide na nasadenú testovaciu appku; `ONLY=nakupy,parovanie` preklikne len vybrané obrazovky.
+**Test toku nákupu:** `testy/nakup.cjs` (rovnaké premenné) – nový zoznam → 3 položky písaním → Nakupovať → všetko do košíka →
+Dokončiť nákup → Teraz nie → zoznam je v Histórii. Zapisuje do testovacej DB (zoznam „Tok nákupu …“); rozbehnutý nákup
+z prerušeného behu na začiatku ukončí (`end_shopping`).
 
 ## Pred zlúčením testovacej vetvy do `main` (nedokončené)
 
@@ -199,8 +202,8 @@ sledovaní, hlase, varení a Ochutnávači ponúkne nápovedy obrazovky / kapito
 **Ukážka beží v mockupe** cez celú plochu (`Demo` → `/prototyp/?ukazka=zaklady|vsetko|k0…k7&tema&vzhlad[&z=pomoc]`):
 mockup v tomto režime nič neukladá ani neposiela, koniec a prejdené kapitoly oznámi appke správou (`bh-demo-end`,
 `bh-demo-ch`). Overené: celé Základy v appke až po koniec, do DB počas ukážky žiadny zápis. Oprava prevodu štýlov:
-trieda svetlého režimu `t-l` (okná nápovedy mali priehľadné pozadie). Pred vydaním (Fáza 10): ukážka je len po
-slovensky, má 4,7 MB a výdavky v nej sú zo snímky testovacej DB (pred zverejnením nahradiť vymyslenými).
+trieda svetlého režimu `t-l` (okná nápovedy mali priehľadné pozadie). Od Etapy 7 (3. 11.) má ukážka vymyslené údaje,
+tyká a v appke má 0,7 MB; je stále len po slovensky.
 **Plynulosť animácií – 2. 11. (na žiadosť majiteľa):** meranie so 4× spomaleným procesorom ukázalo: pole dole počas
 prechodu odskočilo (posun obrazovky z nej urobil kontajner pre pevné prvky), poloha posúvania skákala a nevracala sa,
 stará obrazovka zmizla naraz, pri prvom otvorení obrazovky prebehla prázdna stránka, rad návrhov v zozname pribudol
@@ -319,8 +322,25 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Mlieko, Trvanlivé mlieko, až potom Telové mlieko); oprava preklepu volí všeobecnejší názov („mleko“ → Mlieko).
     Párovanie bločku a výpis z banky vo vzhľade tém; spodné tlačidlá nad lištou majú plné (v Skle rozmazané) pozadie
     až pod lištu – obsah pod nimi už nepresvitá. Preklikanie 4 vzhľady × 31 obrazoviek (pribudlo párovanie), 0 nálezov. Ukážka (prototyp) má stále vykanie a skutočné dáta – Etapa 7.
-  - Ďalšia etapa: 7 pred obchodmi (ukážka s vymyslenými dátami a angličtinou, kniha receptov v5, testy tokov,
-    rýchlosť na staršom iPhone).
+  - **Etapa 7 – časť 1 HOTOVÁ 3. 11. (čaká na „OK“):**
+    *Rýchlosť* (meranie `Playwright`, procesor 6× pomalší, sieť 4G 150 ms): prihlásenie ~2,0 s, prvé otvorenie Domova
+    ~3,0 s (zo sandboxu v USA; každá požiadavka do DB tu má +200 ms, zo Slovenska odhad ~2–2,5 s), ďalšie otvorenie
+    ~1,0–1,4 s (offline kópia). Zmeny: anglický slovník sa stiahne len pri angličtine (`loadLocale`, hlavný balík
+    781 → 665 kB, zbalený 252 → 216 kB), Domov v hlavnom balíku, ostatné obrazovky sa sťahujú až po prvých údajoch
+    a po troch (predtým ~40 súborov naraz brzdilo načítanie domácnosti). CSS (322 kB, z toho `mockup.css` 219 kB)
+    ostalo – orezanie by bolo riskantné pre obe témy.
+    *Ukážka:* vymyslené bločky domácnosti Kováčovci (`prototyp/src/realdata.js`, 65 bločkov 17. 8. – 21. 10., Lidl,
+    Kaufland, Tesco, Billa, dm, Dr.Max, Pepco, Slovnaft, Alza, vymyslená Pizzeria Basilico; značky piva pre
+    „plzeň“/„Radegast“), zmazané nepoužívané súhrny skutočných výdavkov v `data.js` (boli v nich aj poisťovňa
+    a meno súkromného predajcu), priezvisko „Blahovci“ → „Kováčovci“ (mená Marek a Lucia ostali). Všetky texty
+    ukážky tykajú, bez rodu pri kupujúcom („Čo sa kúpilo“, „Minuté“). V appke berie obrázky zo súborov `/mk/`
+    (`web.py`): 4,7 MB → 0,7 MB. Testy prototypu: pridávanie, celá ukážka, nápovedy bez chýb; rozloženie 237 nálezov
+    (predtým 261, rovnaký druh – lepiaca hlavička nad posunutým obsahom, zámerne prekryté avatary).
+    *Testy tokov:* `testy/nakup.cjs` prešiel na nasadenej appke. Našiel chybu: karta kúpeného zoznamu („Nakúpené dnes“,
+    Pridať bloček) sa rozpadala – prerobená na riadky vo vzhľade tém; preklikanie má novú obrazovku `zoznam-kupeny`.
+    Otvorené: ukážka v angličtine (prototyp má texty natvrdo po slovensky – preklad je väčšia práca, alebo ju
+    v angličtine skryť), žiadosť počas nákupu a bloček ako test toku (žiadosť potrebuje druhý testovací účet),
+    skúška na skutočnom staršom iPhone, kniha receptov v5 (4 rozhodnutia v kap. 12).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
