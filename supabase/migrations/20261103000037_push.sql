@@ -5,7 +5,7 @@
 -- (save_push_subscription). Pri udalosti v DB spúšťač pošle funkcii push-send krátku
 -- správu (udalosť + id) s tajným kľúčom databázy; funkcia zistí, komu a čo poslať,
 -- podľa nastavení na účte (prefs), nikdy nie tomu, kto akciu urobil.
--- Kľúče VAPID sú v trezore (vapid_public, vapid_private_jwk) – vkladajú sa mimo migrácie.
+-- Bez mazania: vypnutý odber dostane disabled_at. Kľúče VAPID sú v trezore (vapid_public, vapid_private_jwk) – vkladajú sa mimo migrácie.
 -- =============================================================================
 
 create table public.push_subscriptions (
@@ -17,7 +17,9 @@ create table public.push_subscriptions (
   locale      text not null default 'sk',
   prefs       jsonb not null default '{}'::jsonb,
   created_at  timestamptz not null default now(),
-  last_ok_at  timestamptz
+  last_ok_at  timestamptz,
+  -- vypnutý odber (človek ho vypol alebo ho push služba už nepozná) – nič sa nemaže, len sa neposiela
+  disabled_at timestamptz
 );
 create index push_subscriptions_user_idx on public.push_subscriptions (user_id);
 alter table public.push_subscriptions enable row level security;
@@ -37,16 +39,13 @@ begin
   values (uid, p_endpoint, p_p256dh, p_auth, case when p_locale = 'en' then 'en' else 'sk' end, coalesce(p_prefs, '{}'))
   on conflict (endpoint) do update
     set user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth,
-        locale = excluded.locale, prefs = excluded.prefs;
-  -- najviac 10 zariadení na človeka (najstaršie preč)
-  delete from public.push_subscriptions where id in (
-    select id from public.push_subscriptions where user_id = uid order by created_at desc offset 10);
+        locale = excluded.locale, prefs = excluded.prefs, disabled_at = null;
 end $$;
 
 create function public.remove_push_subscription(p_endpoint text) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  delete from public.push_subscriptions where endpoint = p_endpoint and user_id = public._require_uid();
+  update public.push_subscriptions set disabled_at = now() where endpoint = p_endpoint and user_id = public._require_uid();
 end $$;
 
 -- Ktoré upozornenia chcem (rovnaké voľby ako Viac → Upozornenia) – na všetkých mojich zariadeniach.
