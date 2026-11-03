@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { Check, Eye, EyeOff, ShoppingBasket } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
@@ -221,6 +221,18 @@ export function AuthPage() {
             </Button>
           </form>
 
+          {mode === "signup" && (
+            <p className="mt-4 text-center text-sm text-text-3">
+              {t("legal.signupNote")}{" "}
+              <Link to="/terms" className="font-strong text-accent-text underline underline-offset-4">
+                {t("legal.linkTerms")}
+              </Link>
+              {" · "}
+              <Link to="/privacy" className="font-strong text-accent-text underline underline-offset-4">
+                {t("legal.linkPrivacy")}
+              </Link>
+            </p>
+          )}
           <div className="mt-4 flex justify-center">
             {mode === "signin" && (
               <Button variant="ghost" onClick={() => switchMode("forgot")}>

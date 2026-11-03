@@ -936,6 +936,31 @@ begin
   if err = 'NOT_FOUND' then report := report || E'ok: cudzí nevidí katalóg a ceny inej domácnosti\n';
   else report := report || 'FAIL: cudzí item_catalog -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
 
+  -- ---------------------------------------------------------------- limity AI a bločkov (etapa 2, 3. 11. 2026)
+  execute 'reset role';
+  insert into public.ai_usage (household_id, fn, model, cost_usd) select h, 'parse-voice', 'gemini-3.6-flash', 0 from generate_series(1, 120);
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
+  if err = 'AI_LIMIT' then report := report || E'ok: 120 hlasových viet za hodinu = limit\n';
+  else report := report || 'FAIL: limit hlasu -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.ai_allow(h, 'recipe-ai'); exception when others then err := sqlerrm; end;
+  if err is null then report := report || E'ok: limit hlasu nezastaví recepty\n';
+  else report := report || 'FAIL: recepty po limite hlasu -> ' || err || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  insert into public.ai_usage (household_id, fn, model, cost_usd) values (h, 'extract-receipt', 'gemini-3.8-flash', 5);
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.ai_allow(h, 'recipe-ai'); exception when others then err := sqlerrm; end;
+  if err = 'AI_LIMIT' then report := report || E'ok: mesačný strop 5 $ zastaví AI\n';
+  else report := report || 'FAIL: mesačný strop AI -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.register_receipt(h, repeat('b', 64), 'jpg', 'APP'); exception when others then err := sqlerrm; end;
+  if err = 'RECEIPT_LIMIT' then report := report || E'ok: mesačný strop zastaví aj nové bločky\n';
+  else report := report || 'FAIL: strop bločkov -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public._ai_month_cost(h); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: vnútorný súčet nákladov AI nie je verejný\n';
+  else report := report || 'FAIL: _ai_month_cost -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
@@ -956,6 +981,10 @@ begin
   begin perform public.item_catalog(h); exception when others then err := sqlerrm; end;
   if err like 'permission denied%' then report := report || E'ok: neprihlásený nevidí katalóg položiek\n';
   else report := report || 'FAIL: anonym item_catalog -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.prepare_account_deletion(); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: neprihlásený nespustí zmazanie účtu\n';
+  else report := report || 'FAIL: anonym prepare_account_deletion -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
 
   execute 'reset role';
   raise exception E'TEST_REPORT fails=%\n%', fails, report;

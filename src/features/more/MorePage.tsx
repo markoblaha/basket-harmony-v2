@@ -11,6 +11,7 @@ import { BottomSheet, ConfirmDialog, PersonAvatar, Seg, SheetHeader, hapticsSupp
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useAuth, useUserId } from "@/features/auth/AuthProvider";
+import { deleteAccount } from "@/features/auth/api";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useCreateHousehold, useCreateInvitation, useMembers, useMonthlyBudget, useProfiles, useUpdateDisplayName } from "@/features/household/api";
 import { useOverview } from "@/features/analytics/api";
@@ -92,6 +93,7 @@ export function MorePage() {
   const pantry = usePantry();
   const [sheet, setSheet] = useState<SheetName>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [inv, setInv] = useState<{ url: string; expires: string } | null>(null);
   const [invOpen, setInvOpen] = useState(false);
@@ -286,6 +288,7 @@ export function MorePage() {
             {row("translate", t("more.language.label"), undefined, undefined, <LanguagePicker />)}
             {row("download-simple", t("more.export"), t("more.exportSub"), () => setSheet("export"))}
             {row("question", t("more.help"), t("more.helpSub", { date: build }), () => setSheet("help"))}
+            {row("lock-simple", t("legal.moreRow"), t("legal.moreRowSub"), () => navigate("/privacy"))}
           </div>
 
           <div className={`lst${gl}`}>
@@ -389,11 +392,19 @@ export function MorePage() {
         body={t("more.deleteBody")}
         confirmLabel={t("common.delete")}
         danger
+        busy={deleting}
         onCancel={() => setConfirmDelete(false)}
-        onConfirm={() => {
-          setConfirmDelete(false);
-          // Zmazanie účtu potrebuje funkciu na serveri (zatiaľ nie je) – povieme to otvorene.
-          toast.show(t("more.deleteUnavailable"));
+        onConfirm={async () => {
+          setDeleting(true);
+          try {
+            await deleteAccount();
+            // Po odhlásení appka sama prejde na prihlásenie.
+            toast.show(t("more.deleted"), "success");
+          } catch (err) {
+            setDeleting(false);
+            setConfirmDelete(false);
+            toast.show(errorMessage(err), "error");
+          }
         }}
       />
     </div>

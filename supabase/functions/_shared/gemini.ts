@@ -6,15 +6,26 @@
 // Premýšľanie sa účtuje ako výstup – preto ho všade obmedzujeme (thinkingLevel).
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
-/** USD za 1 milión tokenov (štandardná cena, ai.google.dev/gemini-api/docs/pricing, 20. 10. 2026). */
+/** USD za 1 milión tokenov (štandardná cena, aistudio.google.com/docs/pricing, overené 3. 11. 2026). */
 const PRICES: Record<string, { input: number; output: number }> = {
   "gemini-3.1-flash-lite": { input: 0.25, output: 1.5 },
   "gemini-3.5-flash-lite": { input: 0.3, output: 2.5 },
-  // Ceny 3.6/3.8 Flash sa 1. 1. 2027 zdvojnásobia (1,50 / 7,50).
   "gemini-3.6-flash": { input: 0.75, output: 3.75 },
   "gemini-3.8-flash": { input: 0.75, output: 3.75 },
   "gemini-3.1-pro-preview": { input: 2, output: 12 },
 };
+/** Ohlásené zmeny cien: od dátumu (UTC) platí nová cena. Google: 3.6 a 3.8 Flash od 1. 1. 2027 dvojnásobok. */
+const PRICE_CHANGES: Record<string, { from: string; input: number; output: number }[]> = {
+  "gemini-3.6-flash": [{ from: "2027-01-01", input: 1.5, output: 7.5 }],
+  "gemini-3.8-flash": [{ from: "2027-01-01", input: 1.5, output: 7.5 }],
+};
+
+/** Cena modelu v daný deň (predvolene dnes). Neznámy model = cena Flash, aby náklady neboli podhodnotené. */
+export function priceFor(model: string, at: Date = new Date()): { input: number; output: number } {
+  const day = at.toISOString().slice(0, 10);
+  const later = (PRICE_CHANGES[model] ?? []).filter((c) => c.from <= day).sort((a, b) => (a.from < b.from ? 1 : -1))[0];
+  return later ?? PRICES[model] ?? (day >= "2027-01-01" ? { input: 1.5, output: 7.5 } : { input: 0.75, output: 3.75 });
+}
 
 export type Usage = { input: number; output: number; thinking: number };
 export type ThinkingLevel = "minimal" | "low" | "medium" | "high";
@@ -33,8 +44,8 @@ export type GeminiCall = {
 
 export type GeminiResult = { json: Record<string, unknown>; usage: Usage; model: string };
 
-export function costUsd(model: string, u: Usage): number {
-  const p = PRICES[model] ?? { input: 0.75, output: 3.75 };
+export function costUsd(model: string, u: Usage, at: Date = new Date()): number {
+  const p = priceFor(model, at);
   return (u.input * p.input + (u.output + u.thinking) * p.output) / 1_000_000;
 }
 

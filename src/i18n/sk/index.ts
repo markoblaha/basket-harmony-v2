@@ -16,8 +16,9 @@ import { skRecipes } from "./recipes";
 import { skLs } from "./ls";
 import { skAn } from "./an";
 import { skHelp } from "./help";
+import { skLegal } from "./legal";
 
-export const skModules = [skCommon, skMore, skVoice, skTrips, skAnalytics, skLists, skAuth, skReceipts, skRecipes, skLs, skAn, skHelp, skErrors, skCategories] as const;
+export const skModules = [skCommon, skMore, skVoice, skTrips, skAnalytics, skLists, skAuth, skReceipts, skRecipes, skLs, skAn, skHelp, skLegal, skErrors, skCategories] as const;
 
 export const sk = {
   ...skCommon,
@@ -32,6 +33,7 @@ export const sk = {
   ...skLs,
   ...skAn,
   ...skHelp,
+  ...skLegal,
   ...skErrors,
   ...skCategories,
 } as const;

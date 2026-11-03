@@ -1,4 +1,4 @@
-import { lazy, useEffect, type ComponentType, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ComponentType, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
 import { MotionRouter } from "@/components/navMotion";
 import { AppShell } from "@/components/AppShell";
@@ -66,6 +66,8 @@ const RecipeCheckPage = page(() => import("@/features/recipes/CheckPage"), "Chec
 const RecipePage = page(() => import("@/features/recipes/RecipePage"), "RecipePage");
 const RecipeCartPage = page(() => import("@/features/recipes/CartPage"), "CartPage");
 const CookPage = page(() => import("@/features/recipes/CookPage"), "CookPage");
+const PrivacyPage = page(() => import("@/features/legal/LegalPage"), "PrivacyPage");
+const TermsPage = page(() => import("@/features/legal/LegalPage"), "TermsPage");
 
 /** Stránky dostupné iba po prihlásení. Neprihláseného pošle na prihlásenie a potom späť. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -99,6 +101,9 @@ export function App() {
       <Routes>
         <Route path="/auth" element={<PublicOnly><AuthPage /></PublicOnly>} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        {/* Zásady a podmienky: aj bez prihlásenia (odkaz pri registrácii). */}
+        <Route path="/privacy" element={<Suspense fallback={<Spinner />}><PrivacyPage /></Suspense>} />
+        <Route path="/terms" element={<Suspense fallback={<Spinner />}><TermsPage /></Suspense>} />
         <Route path="/join/:token" element={<RequireAuth><JoinPage /></RequireAuth>} />
         <Route path="/onboarding" element={<RequireAuth><OnboardingPage /></RequireAuth>} />
         <Route

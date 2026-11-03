@@ -23,6 +23,8 @@ export const skErrors = {
   "error.LINK_INVALID": "Toto nie je platný odkaz na webovú stránku.",
   "error.LINK_UNREADABLE": "Stránku sa nepodarilo načítať. Skús snímku obrazovky alebo vlož text receptu.",
   "error.NOT_A_RECIPE": "V tom sa nenašiel recept. Skús inú fotku, odkaz alebo text.",
+  "error.RECEIPT_LIMIT": "Dnes ste už nahrali priveľa bločkov. Skús to zajtra.",
+  "error.DELETE_FAILED": "Účet sa nepodarilo zmazať. Skús to znova o chvíľu.",
   "error.AI_LIMIT": "Domácnosť už použila AI priveľakrát. Skús to neskôr.",
   "error.AI_GUARD_FAILED": "AI sa teraz nedá overiť. Skús to o chvíľu znova.",
   "error.RECIPE_AI_FAILED": "Gemini teraz recept nespracoval. Skús to o chvíľu znova.",
