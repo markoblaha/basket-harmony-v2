@@ -10,8 +10,6 @@ import { useUserId } from "@/features/auth/AuthProvider";
 import { haptic } from "./kit";
 import { useInAppNotices } from "./useInAppNotices";
 import { needsAttention, useReceipts } from "@/features/receipts/api";
-import { useRecipePlans } from "@/features/recipes/api";
-import { useCart } from "@/features/recipes/cart";
 import { t, tn, type Key } from "@/i18n";
 import { OfflineBanner } from "./ui";
 import { primeAudio } from "@/features/voice/useRecorder";
@@ -23,12 +21,12 @@ import { useHelp, useHelpUi } from "@/features/help/state";
 
 const VoiceSession = lazy(() => import("@/features/voice/VoiceSession").then((m) => ({ default: m.VoiceSession })));
 
-type Badge = "recipes" | "analytics" | "lists";
+type Badge = "analytics" | "lists";
 /** Spodná lišta ako v mockupe: Domov · Nákupy · (mikrofón) · Recepty · Výdavky. Viac je pod avatarom vľavo hore. */
 const TABS: { to: string; label: Key; icon: string; match: (p: string) => boolean; badge?: Badge }[] = [
   { to: "/", label: "nav.home", icon: "house", match: (p) => p === "/" },
   { to: "/lists", label: "nav.lists", icon: "basket", match: (p) => p.startsWith("/lists") || p.startsWith("/history"), badge: "lists" },
-  { to: "/recipes", label: "nav.recipes", icon: "cooking-pot", match: (p) => p.startsWith("/recipes"), badge: "recipes" },
+  { to: "/recipes", label: "nav.recipes", icon: "cooking-pot", match: (p) => p.startsWith("/recipes") },
   // Doklady sú časťou Výdavkov (záložka Doklady).
   { to: "/analytics", label: "nav.analytics", icon: "wallet", match: (p) => p.startsWith("/analytics") || p.startsWith("/receipts"), badge: "analytics" },
 ];
@@ -47,7 +45,7 @@ const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 /**
  * Počet vecí, ktoré čakajú na používateľa – číslo na ikone lišty.
  * Analytika: nákupy bez dokladu za posledných 30 dní + bločky na kontrolu.
- * Recepty: recepty čakajúce na uvarenie + rozpracovaný košík receptov (počíta sa ako jeden).
+ * Recepty číslo nemajú (ako v mockupe) – naplánované recepty sú v Pláne týždňa a na Domove.
  */
 function useBadges(householdId: string): Record<Badge, number> {
   // Zoznamy: fialová bodka, keď nakupujem a čaká na mňa žiadosť o pridanie.
@@ -62,10 +60,7 @@ function useBadges(householdId: string): Record<Badge, number> {
     (l) => l.completed_at && l.receipt_state === "LATER" && now - new Date(l.completed_at).getTime() <= MONTH_MS,
   ).length;
   const review = (receipts.data ?? []).filter(needsAttention).length;
-  const plans = useRecipePlans(householdId);
-  const cart = useCart(householdId);
-  const waiting = (plans.data ?? []).filter((p) => p.status === "PENDING").length + (cart.items.length ? 1 : 0);
-  return { recipes: waiting, analytics: missing + review, lists: pendingReq };
+  return { analytics: missing + review, lists: pendingReq };
 }
 
 function useOnline() {
