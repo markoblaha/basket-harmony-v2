@@ -232,9 +232,9 @@ export function VoiceTalk({ p }) {
         <div className="vx-ctrl">
           {selItem ? <button type="button" className="vx-side" onClick={() => setSel(null)}>Zrušiť<br />úpravu</button>
             : <button type="button" className={'vx-side' + (kbd ? ' on' : '')} onClick={() => { setKbd(!kbd); setTimeout(() => inp.current && inp.current.focus(), 0); }}><I n="keyboard" />Písať</button>}
-          <button type="button" className={'vx-orb' + (phase === 'listening' ? ' on' : '') + (selItem ? ' edit' : '')} onClick={toggleMic} aria-label={phase === 'listening' ? 'Pozastaviť počúvanie' : 'Počúvať'} />
+          <button type="button" className={'vx-orb' + (phase === 'listening' ? ' on' : '') + (selItem ? ' edit' : '')} onClick={toggleMic} aria-label={phase === 'listening' ? 'Pozastaviť počúvanie' : 'Počúvať'}><I n={phase === 'listening' ? 'microphone' : 'pause'} /></button>
           {selItem ? <button type="button" className="vx-side dng" onClick={() => { setItems((xs) => xs.filter((i) => i.key !== sel)); setSel(null); }}><I n="trash" />Zmazať</button>
-            : <button type="button" className="vx-done" onClick={finish} disabled={!items.length}>Hotovo</button>}
+            : <button type="button" className="vx-done" onClick={finish} disabled={!items.length}>{items.length ? `Hotovo · ${items.length}` : 'Hotovo'}</button>}
         </div>
       </div>
       {panel && <WherePanel mode={panel} n={items.length} target={target} lists={lists} onClose={() => setPanel(null)}

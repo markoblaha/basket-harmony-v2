@@ -125,6 +125,8 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
   const [stalled, setStalled] = useState(false);
   /** Stav mikrofónu pre kontrolný riadok v testovacej appke (mení sa často – preto ref, nie stav). */
   const diag = useRef("");
+  /** Hlasitosť reči nad hlukom pozadia 0–1 (pre prstenec mikrofónu; bez prekresľovania Reactu). */
+  const level = useRef(0);
   const cb = useRef(onSegment);
   cb.current = onSegment;
   const stopRef = useRef<(() => void) | null>(null);
@@ -230,6 +232,7 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
         peak = rms;
         peakAt = frames;
       }
+      level.current = Math.min(1, Math.max(0, (rms - floor * 1.2) / Math.max(0.02, floor * 10)));
       diag.current = `${ctx.state} · ${Math.round(rate / 1000)} kHz · ▲${peak.toFixed(4)} / ${Math.max(0.004, floor * 3).toFixed(4)} · ↑${sent}`;
       // Prah reči sa prispôsobí hluku v miestnosti. Začiatok reči chce hlasnejší zvuk ako jej pokračovanie,
       // aby sa slovo neprerušilo pri tichšej slabike.
@@ -293,5 +296,5 @@ export function useRecorder(onSegment: (wavBase64: string) => void) {
     void start();
   }, [start]);
 
-  return { supported, listening, hearing, stalled, error, diag, start: () => void start(), stop, wake };
+  return { supported, listening, hearing, stalled, error, diag, level, start: () => void start(), stop, wake };
 }

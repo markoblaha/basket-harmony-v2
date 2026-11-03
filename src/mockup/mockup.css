@@ -2164,3 +2164,27 @@
 .bhm .tx > b.dng, .bhm .th.ic.dng { color: var(--danger); }
 .bhm .th.ic.dng { background: var(--dangers); }
 .bhm .tx > b.acc { color: var(--acc); }
+.bhm .vx-orb, .w .bhm .vx-orb { width: 78px; height: 78px; display: grid; place-items: center; background: var(--pri); color: var(--onpri);
+  box-shadow: 0 0 0 calc(7px + var(--lvl, 0) * 20px) color-mix(in srgb, var(--acc) 18%, transparent), 0 14px 30px -12px rgb(0 0 0 / .45);
+  transition: transform var(--dur-2), box-shadow 90ms linear, background-color var(--dur-3), color var(--dur-3); }
+.bhm .vx-orb .ico { width: 32px; height: 32px; }
+.bhm .vx-orb:not(.on), .w .bhm .vx-orb:not(.on) { filter: none; background: var(--card); color: var(--sec); box-shadow: inset 0 0 0 1.5px var(--line2), var(--sh); }
+.bhm .vx-orb.on::after { inset: -12px; border-color: color-mix(in srgb, var(--acc) 30%, transparent); }
+.bhm .vx-orb.hear::after { animation: none; opacity: 0; }
+.bhm .vx-orb.edit, .w .bhm .vx-orb.edit { background: var(--honey); color: #fff; }
+.bhm .vx-heard small { display: inline-flex; align-items: center; gap: 7px; }
+.bhm .vx-heard small::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: var(--ter); flex: none; }
+.bhm .vx-heard.st-listen small::before { background: var(--ok); }
+.bhm .vx-heard.st-hear small { color: var(--fg); }
+.bhm .vx-heard.st-hear small::before { background: var(--danger); animation: mk-pulse 1.2s ease-in-out infinite; }
+.bhm .vx-heard.st-think small::before { background: var(--honey); animation: mk-pulse 1.2s ease-in-out infinite; }
+.bhm .vx-heard.st-edit small::before { background: var(--acc); }
+.bhm .vx-cap { margin: -2px 0 0; text-align: center; font-size: 13px; line-height: 1.35; color: var(--sec); }
+.bhm .vx-exl { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; align-items: center; }
+.bhm .vx-exl small { font-size: 12.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--ter); }
+.bhm .vx-exl p { margin: 0; font-size: 16px; line-height: 1.35; color: var(--sec); font-style: italic; }
+.w .bhm .vx-exl p { font-family: var(--serif); font-size: 17px; }
+.bhm .vx-done { white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) {
+.bhm .vx-heard small::before { animation: none !important; }
+}

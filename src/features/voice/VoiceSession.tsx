@@ -578,6 +578,26 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
     apply(v);
   };
   const micOn = listening && !blocked;
+  // Prstenec mikrofónu dýcha podľa skutočnej hlasitosti (premenná --lvl priamo na prvku, bez prekresľovania).
+  const orb = useRef<HTMLButtonElement>(null);
+  const level = rec.level;
+  useEffect(() => {
+    const el = orb.current;
+    if (!el) return;
+    if (!micOn || engine !== "rec" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.style.setProperty("--lvl", "0");
+      return;
+    }
+    let raf = 0;
+    let v = 0;
+    const tick = () => {
+      v = v * 0.7 + level.current * 0.3;
+      el.style.setProperty("--lvl", v.toFixed(3));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [micOn, engine, level]);
 
   return (
     <div className="bhm bhm-full bhm-voice" style={{ "--kb": `${kb}px` } as CSSProperties}>
@@ -626,18 +646,11 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
             <div className="vx-empty">
               <b>{t("vx.emptyT")}</b>
               <span>{t("vx.emptyS")}</span>
-              <div className="vx-ex">
+              {/* Príklady sú len text – ťuk na ne nič nepridá (predtým sa omylom pridávali do zoznamu). */}
+              <div className="vx-exl">
+                <small>{t("vx.tryLabel")}</small>
                 {[t("vx.ex1"), t("vx.ex2"), t("vx.ex3")].map((x) => (
-                  <button
-                    type="button"
-                    key={x}
-                    onClick={() => {
-                      setSaid(x);
-                      apply(x);
-                    }}
-                  >
-                    {x}
-                  </button>
+                  <p key={x}>„{x}“</p>
                 ))}
               </div>
             </div>
@@ -752,7 +765,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
               ))}
             </div>
           )}
-          <div className={`vx-heard${selItem ? " edit" : ""}`} aria-live="polite">
+          <div className={`vx-heard${selItem ? " edit" : ""} st-${selItem ? "edit" : live || hearing ? "hear" : refining > 0 ? "think" : micOn ? "listen" : "pause"}`} aria-live="polite">
             <small>
               {selItem
                 ? t("vx.editing", { name: shown(selItem) })
@@ -823,7 +836,8 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
             )}
             <button
               type="button"
-              className={`vx-orb${micOn ? " on" : ""}${selItem ? " edit" : ""}`}
+              ref={orb}
+              className={`vx-orb${micOn ? " on" : ""}${selItem ? " edit" : ""}${hearing ? " hear" : ""}`}
               disabled={blocked}
               onClick={() => {
                 if (blocked || stalled) return;
@@ -831,7 +845,10 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
                 setListening((l) => !l);
               }}
               aria-label={listening ? t("vx.pause") : t("vx.listen")}
-            />
+              aria-pressed={micOn}
+            >
+              <I n={micOn ? "microphone" : "pause"} />
+            </button>
             {selItem ? (
               <button type="button" className="vx-side dng" onClick={() => removeCard(selItem.id)}>
                 <I n="trash" />
@@ -839,10 +856,11 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
               </button>
             ) : (
               <button type="button" className="vx-done" onClick={() => create()} disabled={!n || busy}>
-                {busy ? t("voice.saving") : t("vx.done")}
+                {busy ? t("voice.saving") : n ? t("vx.doneN", { n }) : t("vx.done")}
               </button>
             )}
           </div>
+          {!blocked && <p className="vx-cap">{selItem ? t("vx.capEdit") : micOn ? (n ? t("vx.capOnItems") : t("vx.capOn")) : t("vx.capOff")}</p>}
         </div>
 
         {(modal === "where" || modal === "store") && (
