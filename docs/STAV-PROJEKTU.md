@@ -372,6 +372,21 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     recipeInstructions) → gramy na porciu → spojenie (Claude) → kontrola → fotky; DuckDuckGo z kontajnera nejde (202),
     USDA API ide (DEMO_KEY s limitom). Úložisko receptov a fotiek sa rozhodne po pokuse (návrh: DB `book_recipes`,
     fotky Cloudflare R2).
+    **Plán v4 (3. 11., rovnaký odkaz):** majiteľ chce overovať aj podľa Varechy, Chefkochu, Allrecipes atď. a chce
+    realistické fotky, pri ktorých sú všetky 3 fotky receptu to isté jedlo. Varecha má AI Content Policy (od 25. 5. 2026,
+    varecha.pravda.sk/info/ai-content-policy/): bez licencie zakazuje „validáciu, evaluáciu“ a „vytvorenie konkurenčného
+    … aplikácie alebo databázy“, výhrada TDM podľa čl. 4 ods. 3 smernice 2019/790, meta `noai` a `tdm-reservation: 1`;
+    robots.txt blokuje ClaudeBot (povoľuje Claude-SearchBot len na odpovede s odkazom); licenciu ponúka (varecha@ourmedia.sk,
+    info@varecha.sk). Rozhodnutie: weby, ktoré blokujú Claude alebo AI použitie zakazujú, program nečíta (skupina C).
+    Majiteľ ich porovná ručne cez odkazy „Porovnaj na…“ v galérii várky a môže požiadať Varechu o licenciu (e-mail pripravený
+    v čete). Späť povolené (blokujú len GPTBot/CCBot, nie Claude): BBC Good Food, rohlik.cz, lecker.de, mexicoinmykitchen.com,
+    pred použitím prečítať podmienky. Na povolených weboch (vzorka 22) nie sú hlavičky `tdm-reservation` ani `noai`.
+    Fotky: jedno fotenie = hlavná fotka, potom 2 zábery s hlavnou ako predlohou (rovnaký tanier a jedlo), kontrola Claudom
+    (navzájom, voči receptu, voči fotkám skutočného jedla zo zdrojov – len porovnanie). Ukážka segedínu: Nano Banana 2.1
+    (`gemini-nano-banana-2.1`), 1K, 928×1152, ~13 s na fotku, 6 fotiek ~0,20 $; prvá hlavná mala bledú omáčku → prerobená.
+    Dostupné obrázkové modely na kľúči testovacieho projektu: gemini-nano-banana-2.1, gemini-3.1-flash-lite-image,
+    gemini-3.1-flash-image, gemini-3-pro-image (+ preview). Funkcia `proto-images` bola na ukážku dočasne nasadená
+    (v3, token len v scratchpade) a hneď znova vypnutá (v4, 410, verify_jwt).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
