@@ -346,24 +346,32 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     suroviny overené vo viacerých nezávislých zdrojoch (nič vymyslené, nič navyše, nič nechýba), presné množstvá na počet
     porcií, skutočné výživové hodnoty, podrobný postup aj pre začiatočníkov (na čo si dať pozor, čo nerobiť), aspoň
     3 fotorealistické fotky na recept v jednom jednotnom štýle pre celú knihu (Ochutnávač ako TikTok má lákať).
-    **Etapa 1 – návrh v2 HOTOVÝ 3. 11. (vetva `claude/relaxed-cori-ubcp6x`, čaká na „OK“ a 3 rozhodnutia):**
-    https://claude.ai/artifact/8nRqJTgePNe4wGs8wtZ44H (kópia `prototyp/recepty-vyroba-navrh.html`). Majiteľ v1 zamietol
-    (drahé, neprepracované); chce tisíce receptov čo najlacnejšie cez predplatné Claude Max (100 €), plné kategórie,
-    „Navrhni recept“ pre chýbajúce. v2: platia sa len fotky (~0,07 $/recept: hlavná 2K + 2× 1K, Gemini Batch, Nano Banana
-    2.1, rezerva 15 % → 1 000 ≈ 70 $, 3 000 ≈ 205 $). Zdroje programom: sitemap ~20 povolených webov (robots.txt s
-    AI zákazom sa vyradí – chefkoch, allrecipes, giallozafferano, receptyonline.cz; Varecha podľa podmienok) + schema.org
-    Recipe (JSON-LD) → gramy na porciu → zhoda (≥60 % povinná, 35–59 % voliteľná, <35 % von, hlavné ±30 % od mediánu).
-    Píše Claude (Sonnet, nový pomocník na 5 receptov), kritik Claude Opus s čistým kontextom, kontrola fotiek Claude.
-    Recepty ako súbory `kniha/recepty/*.json` v gite (slovník `kniha/potraviny.json` s USDA CC0 a alergénmi, zdroje
-    `kniha/zdroje/`), validátor v `npm run check`, zverejnené do Supabase `book_recipes` (len prihlásení) + `recipe_ideas`,
-    `recipe_reports`; fotky do Cloudflare R2. Schvaľovanie: slovník raz, pokus + 2 várky celé, potom galéria várky + vzorka.
-    Test 3. 11. (skript v scratchpade, nie v repozitári): sitemap toprecepty.cz 104 tis. adries, labuznik.cz 52 tis.,
-    apetitonline.cz 12 tis., kucharkaprodceru.cz 2 tis. (spolu 160 so „segedin“); 7 receptov s JSON-LD → segedín
-    z prototypu: cibuľa −44 %, smotana +45 %, paprika nad maximom zdrojov, bobkový list len 1/7. USDA API dostupné
-    (DEMO_KEY má limit – použiť hromadné stiahnutie). DuckDuckGo z kontajnera nejde (202). Slovenských webov s JSON-LD
-    je málo (recepty.sk, dobruchut bez sitemap) – overiť v pokuse.
-    Ďalej: Etapa 2 = pokus na 10 receptoch (5 pôvodných + 5 z iných kategórií), 90 fotiek z 3 modelov Google naslepo,
-    zmerať spotrebu limitu na recept; ~5 $; bez zmeny DB a appky.
+    **Plán v3 HOTOVÝ 3. 11. (vetva `claude/relaxed-cori-ubcp6x`, čaká na „OK“ na pokus s 20 receptmi):**
+    https://claude.ai/artifact/8nRqJTgePNe4wGs8wtZ44H (kópia `prototyp/recepty-vyroba-navrh.html`). Majiteľ v1 aj v2 zamietol
+    (komplikované, drahé, neprehľadné). Chce: každý recept = **spojenie 3–5 skutočných receptov** z najlepších webov (nič
+    vymyslené), podrobný postup, reálne množstvá, 3 fotky v jednom štýle, tisíce receptov – najprv SK/CZ, potom aj
+    exotické kuchyne; čo najlacnejšie cez predplatné Claude Max (100 €).
+    Plán v3: 6 500 receptov v 3 vlnách – Vlna 1 SK/CZ 2 500 (21 kategórií z plánu v5, ciele v pláne), Vlna 2 Európa 2 000,
+    Vlna 3 Svet 2 000 + „Navrhni recept“ priebežne. Pravidlá spájania: 3–5 zdrojov z rôznych webov (kópie = 1 zdroj, napr.
+    SITA.sk = preklad toprecepty.cz 1495), surovina len ak ju má > polovica zdrojov (2/5 = tip, 1/5 von), množstvo = medián
+    zaokrúhlený na mieru a bežné balenie, každý krok a rada má zdroj (písmeno), text vlastnými slovami. Ukážka: segedín
+    z A toprecepty.cz 1495, B apetitonline.cz tradiční, C kucharkaprodceru.cz, D cooklikeczechs.com, E thepeasantsdaughter.net.
+    Fotky: 3 × 1K dávkovo (Nano Banana 2.1 alebo 3.1 Flash-Lite Image, 0,0168 $/ks) + 10 % = ~0,055 $/recept
+    (2 500 ≈ 140 $, 6 500 ≈ 360 $); drahší 3.1 Flash Image ~0,20 $/recept ako záloha. Pokus: 20 receptov × 3 fotky
+    × 3 modely naslepo, ~8 $, bez zmeny DB a appky.
+    Preverenie 45 webov (3. 11., skript na robots.txt + sitemap): pravidlo „web, ktorý zakazuje akýkoľvek AI robot
+    v robots.txt, nepoužijeme“. Povolené A (redakčné): apetitonline.cz (~13 tis.), kucharkaprodceru.cz (~190, bez JSON-LD –
+    čítať text), kuchynalidla.sk (~3 tis.), tesco.sk (~900), kingarthurbaking.com, justonecookbook.com, hot-thai-kitchen.com.
+    B (komunitné): toprecepty.cz (~86 tis., JSON-LD), vareni.cz (~50 tis.), labuznik.cz (~73 tis., aj články/diskusie),
+    fitrecepty.sk, coop.sk, ichkoche.at (~131 tis.), gutekueche.at (~54 tis.), nosalty.hu (~80 tis.), marmiton.org (~31 tis.).
+    Vyradené (AI zákaz): zena.sme.sk, prozeny.cz, receptyonline.cz, rohlik.cz (CCBot), chefkoch.de, essen-und-trinken.de,
+    lecker.de, giallozafferano.it, allrecipes, bbcgoodfood (GPTBot, CCBot), bonappetit, epicurious, seriouseats,
+    recipetineats, thewoksoflife, maangchi, simplyrecipes, mexicoinmykitchen; Varecha podľa podmienok. recepty.sk
+    a dobruchut.aktuality.sk nemajú sitemap. Chýba redakčný taliansky a ázijský zdroj – doplniť.
+    Technika (pre pokus): zoznam receptov zo sitemap → schema.org Recipe (JSON-LD: recipeIngredient, recipeYield,
+    recipeInstructions) → gramy na porciu → spojenie (Claude) → kontrola → fotky; DuckDuckGo z kontajnera nejde (202),
+    USDA API ide (DEMO_KEY s limitom). Úložisko receptov a fotiek sa rozhodne po pokuse (návrh: DB `book_recipes`,
+    fotky Cloudflare R2).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
