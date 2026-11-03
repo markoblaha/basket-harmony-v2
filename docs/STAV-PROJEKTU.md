@@ -213,6 +213,8 @@ v relácii). Stiahnuté obrazovky sa vykreslia hneď (`page()` v `App.tsx`), ča
 Potiahnutie späť z okraja: pevné prvky dostanú vyrovnanie, návrat len prelínaním. Panel: ťah bez prekresľovania,
 švih nadol zavrie. Nákup/sledovanie začaté na zozname vyjde zdola, hlas sa zatvorí zasunutím nadol, hlášky plynulo
 odídu. Bez podpory View Transitions (iOS < 18) len krátke prelínanie. Pri „obmedziť pohyb“ v telefóne bez animácií.
+3. 11.: Recepty bez čísla na lište (počítalo aj recepty bez dňa, ktoré v Receptoch nevidno; mockup číslo nemá).
+Výdavky: listovanie obdobím ‹ › (mesiac, týždeň, rok) – `?o=-1` v adrese, platí aj na detailoch; v Roku ťuk na mesiac.
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:
