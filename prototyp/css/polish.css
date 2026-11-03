@@ -866,3 +866,7 @@ button.group { min-height: 44px; }
 /* Nákupy: skupiny zoznamov podľa dňa (Dnes · Tento týždeň · Neskôr) a zbalené prázdne zoznamy. */
 .hub-g { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 4px -4px; font-size: 12.5px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--sec); text-align: left; width: calc(100% - 8px); }
 button.hub-g { min-height: 44px; margin-top: 2px; }
+
+/* Domov: dlhý úsek podnadpisu (napr. názov zoznamu) sa skráti tromi bodkami, nepretečie cez tlačidlo vpravo. */
+.hrow .grow { min-width: 0; }
+.hrow small .nw { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }

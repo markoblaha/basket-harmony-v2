@@ -338,6 +338,7 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     (predtým 261, rovnaký druh – lepiaca hlavička nad posunutým obsahom, zámerne prekryté avatary).
     *Testy tokov:* `testy/nakup.cjs` prešiel na nasadenej appke. Našiel chybu: karta kúpeného zoznamu („Nakúpené dnes“,
     Pridať bloček) sa rozpadala – prerobená na riadky vo vzhľade tém; preklikanie má novú obrazovku `zoznam-kupeny`.
+    Dlhý názov zoznamu v riadku „Chýbajú bločky“ na Domove pretekal cez „Odfotiť“ – úseky podnadpisu sa skracujú (…).
     Otvorené: ukážka v angličtine (prototyp má texty natvrdo po slovensky – preklad je väčšia práca, alebo ju
     v angličtine skryť), žiadosť počas nákupu a bloček ako test toku (žiadosť potrebuje druhý testovací účet),
     skúška na skutočnom staršom iPhone, kniha receptov v5 (4 rozhodnutia v kap. 12).

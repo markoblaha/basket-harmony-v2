@@ -2190,3 +2190,5 @@
 }
 .bhm .hub-g { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 4px -4px; font-size: 12.5px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--sec); text-align: left; width: calc(100% - 8px); }
 .bhm button.hub-g { min-height: 44px; margin-top: 2px; }
+.bhm .hrow .grow { min-width: 0; }
+.bhm .hrow small .nw { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
