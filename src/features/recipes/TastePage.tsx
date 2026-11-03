@@ -248,7 +248,7 @@ export function TastePage() {
                 key={`${id}-${k}`}
                 k={k}
                 r={r}
-                active={k === cur}
+                active={k === cur && !hint && !sheet && !match}
                 near={near <= 1}
                 visible={near <= WINDOW}
                 on={mine.has(id)}
