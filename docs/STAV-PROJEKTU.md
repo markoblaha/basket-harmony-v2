@@ -342,6 +342,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Otvorené: ukážka v angličtine (prototyp má texty natvrdo po slovensky – preklad je väčšia práca, alebo ju
     v angličtine skryť), žiadosť počas nákupu a bloček ako test toku (žiadosť potrebuje druhý testovací účet),
     skúška na skutočnom staršom iPhone, kniha receptov v5 (4 rozhodnutia v kap. 12).
+  - **Recepty – rozhodnutie majiteľa 3. 11.:** robia sa ako samostatná úloha v novom čete. Požiadavky: bez jedinej chyby,
+    suroviny overené vo viacerých nezávislých zdrojoch (nič vymyslené, nič navyše, nič nechýba), presné množstvá na počet
+    porcií, skutočné výživové hodnoty, podrobný postup aj pre začiatočníkov (na čo si dať pozor, čo nerobiť), aspoň
+    3 fotorealistické fotky na recept v jednom jednotnom štýle pre celú knihu (Ochutnávač ako TikTok má lákať).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
