@@ -61,7 +61,7 @@ export const skCommon = {
   "kit.less": "Menej",
   "kit.more": "Viac",
 
-  "status.offline": "Si offline – zmeny sa neuložia, kým sa nepripojíš.",
+  "status.offline": "Bez signálu – zoznam funguje ďalej, zmeny sa odošlú samy po pripojení.",
   "status.reconnecting": "Obnovujem živé spojenie…",
   "status.testEnv": "Testovacie prostredie",
   "unit.ks": "ks",

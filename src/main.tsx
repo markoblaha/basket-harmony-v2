@@ -7,6 +7,7 @@ import { ToastProvider } from "./components/toast";
 import { TestEnvBadge } from "./components/ui";
 import { I18nProvider } from "./i18n";
 import { ThemeProvider } from "./theme/ThemeProvider";
+import { isNetworkError, persistCache, restoreCache } from "./lib/offlineCache";
 import "./styles.css";
 import "./design.css";
 import "./styles/shell.css";
@@ -36,8 +37,21 @@ const queryClient = new QueryClient({
         return count < 2;
       },
     },
+    mutations: {
+      // Slabý signál v obchode: úprava sa skúsi znova (s odstupom), kým sa nepodarí. Bez signálu čaká
+      // a odošle sa sama po pripojení. Opakovanie je bezpečné: odškrtnutie nastavuje stav a pridanie má
+      // jedinečné ID požiadavky (server ho nevytvorí dvakrát).
+      retry: (count, error) => isNetworkError(error) && count < 8,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15_000),
+    },
   },
 });
+// Posledné údaje z telefónu (zoznamy, položky…) – appka sa ukáže hneď, aj bez signálu.
+restoreCache(queryClient);
+persistCache(queryClient);
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => void navigator.serviceWorker.register("/sw.js").catch(() => undefined));
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

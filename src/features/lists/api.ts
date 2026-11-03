@@ -113,6 +113,8 @@ export type AddItemInput = {
   unit?: string | null;
   note?: string | null;
   categoryId?: string | null;
+  /** Vyplní sa samo pri prvom pokuse; pri opakovaní ostane rovnaké. */
+  opId?: string;
 };
 export type AddItemResult = { kind: "ITEM" | "REQUEST"; id: string; shopper_id?: string };
 
@@ -128,13 +130,28 @@ export function useAddItem() {
         p_note: input.note ?? undefined,
         p_category_id: input.categoryId ?? undefined,
         p_category_guess: guessCategory(input.name),
-        // Jedinečné ID požiadavky: ak sa odošle dvakrát, server vytvorí len jednu položku.
-        p_client_op_id: crypto.randomUUID(),
+        // Jedinečné ID požiadavky: rovnaké aj pri opakovaní (slabý signál) – server vytvorí len jednu položku.
+        p_client_op_id: (input.opId ??= crypto.randomUUID()),
       });
       if (error) throw error;
       return data as AddItemResult;
     },
-    onSuccess: (_r, input) => {
+    // Bez signálu sa položka ukáže hneď (dočasne) a odošle sa po pripojení; potom ju nahradí tá zo servera.
+    onMutate: (input) => {
+      if (typeof navigator === "undefined" || navigator.onLine) return;
+      input.opId ??= crypto.randomUUID();
+      const key = listKeys.items(input.listId);
+      const items = qc.getQueryData<Item[]>(key);
+      if (!items) return;
+      const now = new Date().toISOString();
+      const temp: Item = {
+        id: `tmp-${input.opId}`, list_id: input.listId, household_id: items[0]?.household_id ?? "", name: input.name.trim(),
+        quantity: input.quantity ?? null, unit: input.unit ?? null, note: input.note ?? null, category_id: input.categoryId ?? guessCategory(input.name) ?? "other",
+        status: "OPEN", added_by: null, purchased_at: null, purchased_by: null, client_op_id: input.opId, created_at: now, updated_at: now,
+      };
+      qc.setQueryData<Item[]>(key, [temp, ...items]);
+    },
+    onSettled: (_r, _e, input) => {
       qc.invalidateQueries({ queryKey: listKeys.items(input.listId) });
       qc.invalidateQueries({ queryKey: listKeys.requests(input.listId) });
       qc.invalidateQueries({ queryKey: ["frequent"] });

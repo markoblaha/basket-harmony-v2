@@ -62,7 +62,7 @@ export const enCommon: Record<keyof typeof skCommon, string> = {
   "kit.less": "Less",
   "kit.more": "More",
 
-  "status.offline": "You're offline – changes won't be saved until you reconnect.",
+  "status.offline": "No signal – the list keeps working, changes are sent automatically when you reconnect.",
   "status.reconnecting": "Restoring live connection…",
   "status.testEnv": "Test environment",
   "unit.ks": "pcs",
