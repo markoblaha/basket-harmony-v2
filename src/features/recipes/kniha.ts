@@ -178,7 +178,7 @@ export const BOOK: Recipe[] = [
       ],
     },
     ingredients: ings("Polievka", [
-      ["zemiaky", 4, "ks", "ABCD", { note: "stredné (asi 500 g)" }],
+      ["zemiaky", 4, "ks", "ABCD", { note: "stredné" }],
       ["sampinony", 300, "g", "BCD", { label: "Čerstvé huby", note: "lesné alebo šampiňóny" }],
       ["rasca", 0.5, "lyzicka", "ABCD", { note: "celá" }],
       ["sol", 1, "lyzicka", "ABCD"],
