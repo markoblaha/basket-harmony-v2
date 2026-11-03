@@ -193,7 +193,7 @@ export function MatchPage() {
         )}
       </div>
       <div style={{ height: 230 }} />
-      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl stack g-8" style={{ bottom: "var(--tabbar-space)" }}>
+      <div className="bottom-cta fixed inset-x-0 mx-auto max-w-2xl stack g-8">
         <button type="button" className="btn btn-ink btn-block" disabled={attach.isPending || c.attached} onClick={() => void yes()}>
           <Check size={18} /> {t("match.yes")}
         </button>

@@ -23,10 +23,10 @@ nie v repozitári. Má vlastnú domácnosť „Testovacia domácnosť (kópia)�
 aliasy, zoznamy, rozpočty) + jeden skúšobný bloček „Lidl 5,01 €“ z overenia čítania na pozadí. Blahovci ani Marko ho nevidia.
 Starší účet `claude-test-recepty@example.com` (heslo neznáme) ostal nepoužitý.
 
-**Automatické preklikanie appky:** `testy/preklikanie.cjs` – prihlási testovací účet cez obrazovku, prejde 22 obrazoviek
+**Automatické preklikanie appky:** `testy/preklikanie.cjs` – prihlási testovací účet cez obrazovku, prejde 31 obrazoviek
 v telefónovej veľkosti v každom vzhľade (zatiaľ svetlý/tmavý; témy pribudnú vo Fáze 1) a hľadá chyby JS, neúspešné volania
 servera, chybové hlásenia, pretekanie, text mimo obrazovky a prekrytia. Fotky + `report.json` do `testy/vysledky/` (mimo gitu).
-`E2E_EMAIL=… E2E_PASSWORD=… node testy/preklikanie.cjs [adresa]` – bez adresy ide na nasadenú testovaciu appku.
+`E2E_EMAIL=… E2E_PASSWORD=… node testy/preklikanie.cjs [adresa]` – bez adresy ide na nasadenú testovaciu appku; `ONLY=nakupy,parovanie` preklikne len vybrané obrazovky.
 
 ## Pred zlúčením testovacej vetvy do `main` (nedokončené)
 
@@ -228,6 +228,8 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
 - Nápovedy a ukážka sa samy ukážu len pri prvom spustení, potom len cez „?“. Ukážka nesmie zapisovať do DB.
 - Hlas nesmie vydávať žiadne zvuky. Pásik ˄ ˅ ✓ nad klávesnicou iPhonu z webu skryť nejde (len natívna appka).
 - Texty po slovensky, jednoduché, bez skloňovania mien („Nakupuje: Lucia“).
+- Appka tyká (3. 11. 2026). Dokument = „bloček“.
+- Položka pridaná počas cudzieho nákupu ide cez schválenie nakupujúcim (3. 11. 2026).
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
@@ -268,8 +270,7 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     obal `src/features/auth/shell.tsx` (AuthShell, AuthLogo, Field, Note; CSS v `adapt.css` `.auth-pg`) s triedami mockupu,
     v Skle aj fotka v pozadí; Google s logom. Domácnosť, Upozornenia a Moje obchody vo vzhľade tém (MkHeader, .lst/.row,
     Toggle, StoreTile). Podstránka `/more/tiles` zrušená (nič na ňu neviedlo). Avatary všade `memberColor(id)` (aj MeBtn,
-    PersonAvatar). Mimo vzhľadu tém ostali len výpis z banky (`/receipts/statement`) a párovanie bločku (`/receipts/:id/match`)
-    – prídu s doladením kariet.
+    PersonAvatar). Výpis z banky a párovanie bločku doladené v Etape 6.
   - **Etapa 4 – Hlas 2.0, časť A HOTOVÁ 3. 11. (čaká na „OK“):** mikrofón je tlačidlo s ikonou (pauza = sivé s ikonou
     pauzy), prstenec dýcha podľa hlasitosti (`useRecorder.level` → `--lvl` cez requestAnimationFrame, pri obmedzení
     pohybu vypnuté), stav s bodkou (Počúvam / Počujem / Rozumiem vete / Pozastavené / Upravujem), veta pod tlačidlami
@@ -307,9 +308,19 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     testovacej DB (`vapid_public`, `vapid_private_jwk`) – pri zlúčení skopírovať rovnaký pár do trezoru ostrej DB.
     Overené: udalosť v DB → push-send → skúšobný odber (httpbin) „sent 1“, 410 → odber vypnutý. Neoverené: skutočné
     zobrazenie v telefóne (prehliadač v sandboxe si odber u Google nevytvorí). Pridávanie počas nákupu ostáva so
-    schvaľovaním (rozhodnutie majiteľa čaká).
-  - Ďalšie etapy: 6 doladenie kariet (aj výpis a párovanie) a texty (tykanie/vykanie)
-    · 7 pred obchodmi.
+    schvaľovaním (rozhodnutie majiteľa 3. 11.).
+  - **Etapa 6 – HOTOVÁ 3. 11. (čaká na „OK“):** všetky slovenské texty tykajú (rozhodnutie majiteľa), „doklad“ → „bloček“
+    vo všetkých tvaroch, vety o domácnosti bez rodu a množného čísla („Za október sa minulo…“, „Minuté“), ženský/mužský
+    rod odstránený („Zabudnuté heslo?“, „Nájdený 1 pohyb“), aj v upozorneniach („Kúpené: 5 · Lucia“, push-send v2).
+    Staré obrazovky (hlavička, karty, sekcie, riadky) dostali vzhľad tém v `adapt.css`; výpis z banky má hlavičku
+    `MkHeader`. Nákupy v skupinách Dnes (aj práve nakupovaný) / Tento týždeň / Z minulých dní (najnovšie hore) /
+    Neskôr a bez dňa, hlavičky len keď je skupín viac; prázdne zoznamy zbalené pod „N prázdnych zoznamov“.
+    Návrhy pri písaní: jedlo pred drogériou s rovnakým slovom a iná kategória ako najlepšia zhoda nižšie („mlie“ →
+    Mlieko, Trvanlivé mlieko, až potom Telové mlieko); oprava preklepu volí všeobecnejší názov („mleko“ → Mlieko).
+    Párovanie bločku a výpis z banky vo vzhľade tém; spodné tlačidlá nad lištou majú plné (v Skle rozmazané) pozadie
+    až pod lištu – obsah pod nimi už nepresvitá. Preklikanie 4 vzhľady × 31 obrazoviek (pribudlo párovanie), 0 nálezov. Ukážka (prototyp) má stále vykanie a skutočné dáta – Etapa 7.
+  - Ďalšia etapa: 7 pred obchodmi (ukážka s vymyslenými dátami a angličtinou, kniha receptov v5, testy tokov,
+    rýchlosť na staršom iPhone).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

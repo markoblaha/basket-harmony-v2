@@ -298,7 +298,8 @@ button.cell:active, .cell.tap:active { background: var(--pressed); }
 .live::after { content: ""; position: absolute; inset: 0; border-radius: 999px; background: currentColor; animation: p-ping 1.6s ease-out infinite; }
 
 /* tlačidlo nad lištou leží nad jej prechodom, aby ho prechod neprekrýval */
-.bottom-cta:not(.no-tab) { bottom: var(--tabbar-space); padding: 36px 16px 28px;
+/* siaha až pod spodnú lištu (tá je navrchu), aby ani medzera pod tlačidlami nepresvitala */
+.bottom-cta:not(.no-tab) { bottom: 0; padding: 36px 16px calc(var(--tabbar-space) + 28px);
   background: linear-gradient(to top, var(--bg) 0%, var(--bg) calc(100% - 36px), color-mix(in srgb, var(--bg) 0%, transparent) 100%); }
 /* obsah sa dá doscrollovať celý nad tlačidlo pri lište */
 :has(> .bottom-cta:not(.no-tab)) > .scroll { padding-bottom: 72px; }

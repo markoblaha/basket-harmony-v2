@@ -77,6 +77,7 @@ function screens(id) {
     ["recept", "/recipes/r/segedin"],
     ["doklady", "/receipts"],
     id.receipt && ["doklad", `/receipts/${id.receipt}`],
+    id.receipt && ["parovanie", `/receipts/${id.receipt}/match`],
     ["vypis", "/receipts/statement"],
     ["analytika", "/analytics"],
     ["analytika-kategorie", "/analytics/categories"],
@@ -140,7 +141,9 @@ const CHECK = () => {
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const id = await ids();
-  const list = screens(id);
+  // ONLY=nakupy,parovanie – len vybrané obrazovky (rýchla kontrola jednej zmeny)
+  const only = (process.env.ONLY || "").split(",").filter(Boolean);
+  const list = screens(id).filter(([n]) => !only.length || only.includes(n));
   const browser = await chromium.launch();
   const report = {};
   let problems = 0;
