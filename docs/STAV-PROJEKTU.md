@@ -250,7 +250,21 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     karte zoznamu, Odfotiť, ▶ Variť, Rýchlo); 2+ chýbajúce bločky = jeden riadok na Domove. Výdavky: „o 83 % menej ako
     1. – 3. 10.“ (DB už porovnávala rovnaké dni, text nie). Rovnaké rozpätie ceny sa nepíše. Kontrolný riadok hlasu len
     s `?diag=1` (vypne `?diag=0`). Texty: „Zabudnuté heslo?“, bez mužského rodu, „vlastník“ jednotne.
-  - Ďalšie etapy: 2 poistky (zmazanie účtu, súkromie, limity a ceny AI od 1. 1. 2027, únik hesiel) · 3 staré obrazovky
+  - **Etapa 2 – HOTOVÁ 3. 11. (čaká na „OK“):** migrácia `20261103000035_account_deletion_ai_limits` (v testovacej DB):
+    `prepare_account_deletion` + edge funkcia `delete-account` v1 (testovacia DB; zmaže súkromné zoznamy, odíde zo
+    všetkých domácností, posledný člen ju zruší aj s fotkami bločkov, potom auth.users). Overené so súhlasom majiteľa
+    na skúšobnom účte `zmazanie-test@basket-harmony.invalid` (už neexistuje; heslo ostalo vo vault `delete_test_password`):
+    vlastná domácnosť zmizla, v testovacej domácnosti ostala položka bez autora, vlastník bez zmeny, bez tokenu 401,
+    bez potvrdenia 400. Viac → Zmazať účet volá funkciu naozaj. Limity AI: hlas 120/h a 400/deň, recepty 20/h a 60/deň,
+    mesačný strop 5 $ na domácnosť (`_ai_month_cap`), bločky najviac 40 za 24 h (`RECEIPT_LIMIT`) – overené blokom
+    s vrátením (fails=0), testy doplnené do `core_test.sql` (celý súbor stále nebežal – obsahuje `delete`).
+    `/privacy` a `/terms` (sk/en, `src/i18n/*/legal.ts`), odkaz pri registrácii a Viac → Súkromie a podmienky.
+    `_shared/gemini.ts`: ceny podľa dátumu (3.6/3.8 Flash od 1. 1. 2027 dvojnásobok).
+    **Pred zverejnením / do 31. 12. 2026:** nasadiť všetky AI funkcie znova (testovacia aj ostrá DB) – inak `ai_usage`
+    od januára ukáže polovičné náklady; doplniť prevádzkovateľa (`legal.operator`); overiť platený plán Gemini API;
+    Supabase Pro (zálohy + ochrana uniknutých hesiel: Authentication → Sign In / Providers → Email → Prevent use of
+    leaked passwords – je len v Pro). Funkciu `delete-account` nasadiť aj do ostrej.
+  - Ďalšie etapy: 3 staré obrazovky
     do nového vzhľadu (prihlásenie, domácnosť, nastavenia, výpis, párovanie; jednotné avatary) · 4 Hlas 2.0 · 5 offline
     a push · 6 doladenie kariet a texty (tykanie/vykanie) · 7 pred obchodmi.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
