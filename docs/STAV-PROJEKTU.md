@@ -270,7 +270,14 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Toggle, StoreTile). Podstránka `/more/tiles` zrušená (nič na ňu neviedlo). Avatary všade `memberColor(id)` (aj MeBtn,
     PersonAvatar). Mimo vzhľadu tém ostali len výpis z banky (`/receipts/statement`) a párovanie bločku (`/receipts/:id/match`)
     – prídu s doladením kariet.
-  - Ďalšie etapy: 4 Hlas 2.0 · 5 offline a push · 6 doladenie kariet (aj výpis a párovanie) a texty (tykanie/vykanie)
+  - **Etapa 4 – Hlas 2.0, časť A HOTOVÁ 3. 11. (čaká na „OK“):** mikrofón je tlačidlo s ikonou (pauza = sivé s ikonou
+    pauzy), prstenec dýcha podľa hlasitosti (`useRecorder.level` → `--lvl` cez requestAnimationFrame, pri obmedzení
+    pohybu vypnuté), stav s bodkou (Počúvam / Počujem / Rozumiem vete / Pozastavené / Upravujem), veta pod tlačidlami
+    (`vx.cap*`), „Hotovo · N“, príklady len text (`.vx-exl`; v prototype ostali tlačidlá – ukážka nemá mikrofón).
+    Oprava: písaný text v hlase už neposiela AI zoznam „často kupujete“ (pokyn „podobne znejúce = ten produkt“ patrí
+    k nahrávke) – AI inak menila „chlieb“ na „Rožky“/„Toastový chlieb“. Neurobené: B (Silero VAD – ~2 MB model +
+    onnxruntime ~10 MB, treba overiť na iPhone) a C (Gemini Live, živý prepis) – navrhnuté ako pokus s majiteľom.
+  - Ďalšie etapy: 5 offline a push · 6 doladenie kariet (aj výpis a párovanie) a texty (tykanie/vykanie)
     · 7 pred obchodmi.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),

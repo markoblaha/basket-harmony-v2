@@ -395,7 +395,9 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       if (!rest && cook.cook.length) return;
 
       setRefining((r) => r + 1);
-      void interpretAI(sp.rest, before, target, vocabRef.current).then((ai) => {
+      // Zoznam „často kupujete“ (pokyn „podobne znejúce slovo = ten produkt“) patrí len k nahrávke, kde sa
+      // slovo môže zle počuť. Pri texte sa nič zle počuť nedá – inak AI zmenila „chlieb“ na „Rožky“.
+      void interpretAI(sp.rest, before, target, []).then((ai) => {
         setRefining((r) => r - 1);
         if (!ai) {
           if (!local.understood && !cook.cook.length && seq.current === mine) toast.show(t("voice.notUnderstood"));
