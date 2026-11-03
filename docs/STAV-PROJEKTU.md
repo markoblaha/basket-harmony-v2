@@ -291,7 +291,24 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     chlieb, pol kila mletého mäsa a jeden Radegast“ presne; v prehliadači s nahrávkou ako mikrofónom správne položky.
     Neoverené: skutočný iPhone (zvuk bez pípania, appka z plochy). Migrácia `20261103000036_voice_live` (testovacia DB).
     Pred zlúčením: nasadiť `voice-live-token` aj do ostrej (kľúč Gemini musí byť platený – inak Google údaje použije).
-  - Ďalšie etapy: 5 offline a push · 6 doladenie kariet (aj výpis a párovanie) a texty (tykanie/vykanie)
+  - **Etapa 5 – HOTOVÁ 3. 11. (čaká na „OK“ a skúšku na iPhone):**
+    *Offline:* `public/sw.js` (obal stránky sieť → po 3,5 s kópia, `/assets` a obrázky z pamäte, Supabase nikdy),
+    `lib/offlineCache.ts` (zoznamy, položky, nákupy, členovia, katalóg v localStorage `bh.cache.v1`, mapy ako `__map`,
+    max. 7 dní, pri odhlásení zmazané), mutácie sa pri chybe spojenia opakujú (8×, odstup), `add_item` má rovnaké
+    `client_op_id` aj pri opakovaní, bez signálu sa nová položka ukáže hneď (`tmp-…`). Overené lokálne v prehliadači
+    s vypnutou sieťou (zoznam sa ukázal, pridanie sa po pripojení uložilo raz). Service worker sa registruje len v builde.
+    *Push:* migrácia `20261103000037_push` (testovacia DB): `push_subscriptions` (bez mazania – vypnutý = `disabled_at`),
+    `save_push_subscription` / `remove_push_subscription` / `set_push_prefs`, `push_vapid()` (len service_role), spúšťače
+    → `_push()` → pg_net → edge funkcia `push-send` v1 (`verify_jwt` false, overuje `x-worker-secret`): nakupuje (ostatní,
+    pri súkromnom zozname len autor), koniec nákupu, žiadosť (nakupujúcemu), odpoveď (žiadateľovi), nemali (kto pridal),
+    bloček prečítaný / na kontrolu (kto nahral); nikdy nie autorovi akcie, prefs podľa Viac → Upozornenia (na účte),
+    noc 22–7 (Bratislava) len žiadosti a odpovede, 404/410 → vypnúť odber. `_shared/webpush.ts`: VAPID + aes128gcm cez
+    WebCrypto, overené knižnicou http_ece. Kľúče VAPID: verejný v `.env.*` (`VITE_VAPID_PUBLIC_KEY`), súkromný v trezore
+    testovacej DB (`vapid_public`, `vapid_private_jwk`) – pri zlúčení skopírovať rovnaký pár do trezoru ostrej DB.
+    Overené: udalosť v DB → push-send → skúšobný odber (httpbin) „sent 1“, 410 → odber vypnutý. Neoverené: skutočné
+    zobrazenie v telefóne (prehliadač v sandboxe si odber u Google nevytvorí). Pridávanie počas nákupu ostáva so
+    schvaľovaním (rozhodnutie majiteľa čaká).
+  - Ďalšie etapy: 6 doladenie kariet (aj výpis a párovanie) a texty (tykanie/vykanie)
     · 7 pred obchodmi.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),

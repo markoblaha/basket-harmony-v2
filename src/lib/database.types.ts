@@ -397,6 +397,10 @@ export type Database = {
       accept_request: { Args: { p_request_id: string }; Returns: Json };
       ai_allow: { Args: { p_household_id: string; p_fn: string }; Returns: undefined };
       item_catalog: { Args: { p_household_id: string }; Returns: Json };
+      prepare_account_deletion: { Args: Record<PropertyKey, never>; Returns: Json };
+      save_push_subscription: { Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_locale: string; p_prefs: Json }; Returns: undefined };
+      remove_push_subscription: { Args: { p_endpoint: string }; Returns: undefined };
+      set_push_prefs: { Args: { p_prefs: Json; p_locale: string }; Returns: undefined };
       add_item: {
         Args: {
           p_category_guess?: string;

@@ -1,7 +1,7 @@
 /**
  * Podstránky Viac: Upozornenia a Moje obchody (voľby tohto telefónu, src/lib/settings.ts).
  */
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { setSetting, useSettings, type NotifKind } from "@/lib/settings";
 import { normalizeName } from "@/lib/categories";
@@ -11,7 +11,10 @@ import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useReceipts } from "@/features/receipts/api";
 import { t, tn, type Key } from "@/i18n";
 import { Back, I, MkHeader, Toggle } from "@/mockup/ui";
-import { StoreTile, storeKeyOf } from "@/mockup/kit";
+import { Btn, StoreTile, storeKeyOf } from "@/mockup/kit";
+import { useToast } from "@/components/toast";
+import { errorMessage } from "@/lib/errors";
+import { disablePush, enablePush, pushState, syncPushPrefs, type PushState } from "./push";
 import { useTheme } from "@/theme/ThemeProvider";
 
 /* ------------------------------------------------------------------ V3 – upozornenia */
@@ -27,6 +30,29 @@ const NOTIF: [NotifKind, Key, Key][] = [
 export function NotificationsPage() {
   const navigate = useNavigate();
   const { notif } = useSettings();
+  const toast = useToast();
+  const [push, setPush] = useState<PushState>("unsupported");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    void pushState().then(setPush);
+  }, []);
+  async function toggle() {
+    setBusy(true);
+    try {
+      if (push === "on") {
+        await disablePush();
+        setPush("off");
+      } else {
+        const st = await enablePush(notif);
+        setPush(st);
+        if (st === "on") toast.show(t("push.enabled"), "success");
+      }
+    } catch (err) {
+      toast.show(errorMessage(err), "error");
+    } finally {
+      setBusy(false);
+    }
+  }
   const gl = useTheme().style === "glass" ? " glass2" : "";
   return (
     <div className="stack">
@@ -36,9 +62,14 @@ export function NotificationsPage() {
             <I n="bell" />
           </span>
           <div className="tx">
-            <b>{t("more.notif.inApp")}</b>
-            <span className="sub">{t("more.notif.inAppBody")}</span>
+            <b>{t("push.title")}</b>
+            <span className="sub">{t(`push.state.${push}` as Key)}</span>
           </div>
+          {(push === "off" || push === "on") && (
+            <Btn cls={push === "on" ? "soft sm" : "pri sm"} onClick={() => void toggle()} disabled={busy}>
+              {push === "on" ? t("push.off") : t("push.on")}
+            </Btn>
+          )}
         </div>
         <div className={`lst${gl}`}>
           {NOTIF.map(([k, title, sub]) => (
@@ -47,11 +78,20 @@ export function NotificationsPage() {
                 <b>{t(title)}</b>
                 <span className="sub">{t(sub)}</span>
               </div>
-              <Toggle on={notif[k] !== false} label={t(title)} onChange={(v) => setSetting("notif", { ...notif, [k]: v })} />
+              <Toggle
+                on={notif[k] !== false}
+                label={t(title)}
+                onChange={(v) => {
+                  const next = { ...notif, [k]: v };
+                  setSetting("notif", next);
+                  // Rovnaké voľby platia aj pre upozornenia do telefónu (na všetkých mojich zariadeniach).
+                  if (push === "on") void syncPushPrefs(next).catch(() => undefined);
+                }}
+              />
             </div>
           ))}
         </div>
-        <p className="hint">{t("more.notif.footer")}</p>
+        <p className="hint">{t("push.footer")}</p>
       </MkHeader>
       <div className="tab-space" />
     </div>
