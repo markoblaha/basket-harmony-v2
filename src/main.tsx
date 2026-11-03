@@ -23,6 +23,7 @@ import "./styles/voice.css";
 import "./styles/themes.css";
 import "./mockup/mockup.css";
 import "./mockup/assets.css";
+import "./features/recipes/kniha.css";
 import "./mockup/adapt.css";
 
 const queryClient = new QueryClient({

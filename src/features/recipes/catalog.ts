@@ -3,6 +3,7 @@
  * V krokoch {kľúč} = množstvo danej suroviny prepočítané na zvolený počet porcií.
  * Obsah receptov je údaj (ako názov produktu), nie text rozhrania – preto nie je v i18n.
  */
+import { BOOK } from "./kniha";
 import type { Ingredient, Recipe, RecipeCategory, Step, Unit } from "./types";
 
 const i = (food: string, qty: number, unit: Unit = "g", note = ""): Ingredient => ({ food, qty, unit, note });
@@ -21,27 +22,8 @@ export const RECIPE_CATEGORIES: { id: RecipeCategory | "rychle" | "deti"; icon: 
 ];
 export const MEATS = ["kuracie", "bravcove", "hovadzie", "ryby", "bez"] as const;
 
-export const CATALOG: Recipe[] = [
-  {
-    id: "segedin", name: "Segedínsky guláš", category: "hlavne", meat: "bravcove", minutes: 90, difficulty: 2 as const, portions: 4, hue: 25, icon: "CookingPot",
-    tags: ["klasika"], source: "",
-    ingredients: [
-      i("pliecko", 600), i("kapusta", 500), i("cibula", 2, "ks"), i("olej", 3, "lyzica"), i("paprika_mleta", 1, "lyzica"),
-      i("rasca", 1, "lyzicka"), i("cesnak", 2, "strucik"), i("kysla_smotana", 200), i("muka", 2, "lyzica"), i("sol", 1, "lyzicka"), i("korenie", 1, "stipka"),
-      i("knedla", 1, "ks", "príloha"),
-    ],
-    steps: [
-      s("Cibuľu ({cibula}) nakrájaj nadrobno a speň na {olej} oleja do zlatista.", 6),
-      s("Pridaj mäso ({pliecko}) nakrájané na kocky, opeč zo všetkých strán, posyp paprikou ({paprika_mleta}) a hneď podlej vodou."),
-      s("Pridaj rascu ({rasca}), soľ, korenie a prelisovaný cesnak ({cesnak}). Duste pod pokrievkou.", 45),
-      s("Kapustu ({kapusta}) prepláchni, ak je veľmi kyslá, a pridaj k mäsu. Duste do mäkka.", 25),
-      s("Smotanu ({kysla_smotana}) rozmiešaj s múkou ({muka}), vmiešaj do guláša a krátko povar. Podávaj s knedľou."),
-    ],
-    qa: [
-      { q: "Ako znížiť kyslosť kapusty?", a: "Kapustu pred pridaním prepláchni studenou vodou a nechaj odkvapkať. Pomôže aj lyžička cukru na konci." },
-      { q: "Dá sa uvariť deň vopred?", a: "Áno, guláš je na druhý deň ešte lepší. Smotanu vmiešaj až pri ohrievaní." },
-    ],
-  },
+/** Staršie krátke recepty (bez zdrojov). Postupne ich nahradia recepty z knihy. */
+const OLD: Recipe[] = [
   {
     id: "palacinky", name: "Palacinky s džemom", category: "sladke", meat: "bez", minutes: 30, difficulty: 1 as const, portions: 4, hue: 340, icon: "CakeSlice",
     tags: ["deti", "rychle", "klasika"], source: "",
@@ -113,17 +95,6 @@ export const CATALOG: Recipe[] = [
     ],
   },
   {
-    id: "paprikas", name: "Kurací paprikáš", category: "hlavne", meat: "kuracie", minutes: 50, difficulty: 1 as const, portions: 4, hue: 20, icon: "Drumstick",
-    tags: ["klasika", "deti"], source: "",
-    ingredients: [i("kuracie_stehna", 1000), i("cibula", 2, "ks"), i("paprika_mleta", 2, "lyzica"), i("kysla_smotana", 200), i("muka", 1, "lyzica"), i("olej", 2, "lyzica"), i("sol", 1, "lyzicka"), i("cestoviny", 400, "g", "príloha")],
-    steps: [
-      s("Na oleji ({olej}) speň nadrobno nakrájanú cibuľu ({cibula}).", 6),
-      s("Stiahni z ohňa, vmiešaj papriku ({paprika_mleta}), hneď podlej vodou a vlož stehná ({kuracie_stehna}). Osoľ."),
-      s("Duste pod pokrievkou do mäkka.", 35),
-      s("Smotanu ({kysla_smotana}) rozmiešaj s múkou ({muka}), vmiešaj a krátko povar. Podávaj s cestovinami ({cestoviny})."),
-    ],
-  },
-  {
     id: "bryndzove", name: "Bryndzové halušky", category: "hlavne", meat: "bravcove", minutes: 40, difficulty: 2 as const, portions: 4, hue: 55, icon: "Wheat",
     tags: ["klasika"], source: "",
     ingredients: [i("zemiaky", 800), i("muka", 300), i("bryndza", 250), i("slanina", 150), i("sol", 1, "lyzicka")],
@@ -166,17 +137,6 @@ export const CATALOG: Recipe[] = [
       s("Na masle ({maslo}) opeč kocky chleba ({chlieb}) na krutóny."),
       s("Do polievky pridaj prelisovaný cesnak ({cesnak}) a majorán ({majoran}), už nevar."),
       s("Podávaj s krutónmi a nastrúhaným syrom ({eidam})."),
-    ],
-  },
-  {
-    id: "kulajda", name: "Kulajda", category: "polievky", meat: "bez", minutes: 35, difficulty: 2 as const, portions: 4, hue: 80, icon: "Soup",
-    tags: [], source: "",
-    ingredients: [i("zemiaky", 300), i("sampinony", 200), i("kysla_smotana", 200), i("mlieko", 200, "ml"), i("muka", 2, "lyzica"), i("vajce", 4, "ks", "na stratené vajcia"), i("ocot", 2, "lyzica"), i("kopor", 2, "lyzica"), i("maslo", 20), i("sol", 1, "lyzicka")],
-    steps: [
-      s("Zemiaky ({zemiaky}) a huby ({sampinony}) var v 1 l osolenej vody do mäkka.", 15),
-      s("Smotanu ({kysla_smotana}) rozmiešaj s mliekom ({mlieko}) a múkou ({muka}), vlej do polievky a povar.", 5),
-      s("Dochuť octom ({ocot}) a pridaj kôpor ({kopor}) s maslom ({maslo})."),
-      s("Do každého taniera daj stratené vajce ({vajce})."),
     ],
   },
   {
@@ -254,18 +214,14 @@ export const CATALOG: Recipe[] = [
   },
 ];
 
+/** Katalóg: najprv recepty z knihy (kniha.ts), potom staršie krátke recepty. */
+export const CATALOG: Recipe[] = [...BOOK, ...OLD];
+
 /*
  * Podrobnosti krokov (ako poznáš, že je hotovo · tip · podrobnejší postup) pre katalógové recepty.
  * Vlastným receptom ich napíše Gemini pri čítaní.
  */
 export const STEP_DETAILS: Record<string, Pick<Step, "done" | "tip" | "more">[]> = {
-  segedin: [
-    { done: "Cibuľa je sklovitá a zlatistá, nie hnedá.", tip: "Mierny oheň – spálená cibuľa zhorkne celý guláš.", more: "Cibuľu nakrájaj na malé kocky (asi 5 mm). Olej nahrej na strednom ohni, cibuľu pridaj s malou štipkou soli, vytiahne z nej vodu a speníš ju rovnomernejšie. Miešaj každú minútu." },
-    { done: "Mäso je zo všetkých strán zatiahnuté, už nie ružové.", tip: "Papriku daj až na chvíľku a hneď podlej – na horúcom oleji zhorkne za pár sekúnd.", more: "Mäso nakrájaj na kocky asi 3 × 3 cm a opekaj po dávkach, aby sa nedusilo vo vlastnej šťave. Po paprike podlej toľko vody, aby bolo mäso takmer zakryté." },
-    { done: "Mäso je polomäkké, vidlička prejde s miernym odporom.", tip: "Občas zamiešaj a podlej, keď šťava klesne pod mäso.", more: "Pokrievku nechaj mierne pootvorenú, nech sa šťava pomaly redukuje. Cesnak môžeš pridať aj až v posledných 10 minútach, bude výraznejší." },
-    { done: "Kapusta aj mäso sú mäkké, šťava je hustejšia.", tip: "Ochutnaj kapustu – ak je veľmi kyslá, prepláchni ju dôkladnejšie alebo pridaj lyžičku cukru.", more: "Kapustu pred pridaním vytlač z nálevu a pokrájaj, ak má dlhé vlákna. Po pridaní premiešaj a duste pod pokrievkou na miernom ohni." },
-    { done: "Guláš je krémový, múka už nie je cítiť (asi 3 minúty varu).", tip: "Smotanu najprv zmiešaj s trochou horúcej šťavy, nezrazí sa.", more: "Do misky so smotanou a múkou prilej naberačku šťavy, rozšľahaj dohladka a až potom vlej do hrnca. Krátko povar za stáleho miešania a dochuť soľou." },
-  ],
   palacinky: [
     { done: "Zmes je jednoliata, bez kúskov bielka.", tip: "Mlieko izbovej teploty sa s vajcami spojí lepšie.", more: "Vajcia rozšľahaj metličkou, prilej asi tretinu mlieka, pridaj cukor a soľ. Zvyšok mlieka pridáš v ďalšom kroku spolu s múkou." },
     { done: "Cesto steká z lyžice ako hustejšia smotana, bez hrudiek.", tip: "Odpočinok 10 minút – palacinky sa potom netrhajú.", more: "Múku pridávaj postupne a stále šľahaj, striedaj ju so zvyškom mlieka. Ak vzniknú hrudky, cesto preceď cez sitko." },

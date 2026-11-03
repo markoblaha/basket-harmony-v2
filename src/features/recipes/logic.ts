@@ -29,7 +29,8 @@ const SPOON_UNITS = ["lyzica", "lyzicka", "strucik", "stipka", "hrst"];
 export function formatAmount(qty: number, unit: string): string {
   if (unit === "g" || unit === "ml" || unit === "kg" || unit === "l") return formatQuantity(qty, unit) ?? "";
   if (unit === "ks") return t("rc.unit.ks", { n: formatNumber(qty, { maximumFractionDigits: 1 }) });
-  if (SPOON_UNITS.includes(unit)) return tn(`rc.unit.${unit}` as PluralBase, qty, { n: formatNumber(qty, { maximumFractionDigits: 1 }) });
+  // Pol lyžičky sa píše ako „½ lyžičky“, nie „0,5 lyžičky“.
+  if (SPOON_UNITS.includes(unit)) return tn(`rc.unit.${unit}` as PluralBase, qty, { n: qty === 0.5 ? "½" : formatNumber(qty, { maximumFractionDigits: 1 }) });
   return `${formatNumber(qty, { maximumFractionDigits: 1 })} ${unit}`;
 }
 
@@ -70,14 +71,16 @@ export function scaleIngredients(r: Recipe, portions: number): Ingredient[] {
 /** Text kroku s doplnenými množstvami: {cibula} → „2 ks“. */
 export function renderStep(text: string, scaled: Ingredient[]) {
   return text.replace(/\{([^}]+)\}/g, (_, k: string) => {
-    const ing = scaled.find((x) => x.food === k);
+    const ing = findRef(scaled, k);
     return ing ? formatAmount(ing.qty, ing.unit) : "";
   });
 }
+/** Surovina podľa kľúča v kroku: {ref} (napr. muka_h) alebo {potravina} bez vlastného ref. */
+export const findRef = (scaled: Ingredient[], k: string) => scaled.find((x) => x.ref === k) ?? scaled.find((x) => x.food === k && !x.ref);
 /** Suroviny spomenuté v kroku (pre režim varenia). */
 export function stepIngredients(text: string, scaled: Ingredient[]) {
-  const keys = [...new Set([...text.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]))];
-  return keys.map((k) => scaled.find((x) => x.food === k)).filter((x): x is Ingredient => !!x);
+  const keys = [...new Set([...text.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]!))];
+  return keys.map((k) => findRef(scaled, k)).filter((x): x is Ingredient => !!x);
 }
 
 /* ------------------------------------------------------------------ výživa
@@ -125,8 +128,9 @@ export function recipeNutrition(r: Recipe): Nutrition {
       continue;
     }
     known += 1;
-    grams += g;
-    for (const n of NUTRIENTS) total[n.id] += ((food.n[n.idx] ?? 0) * g) / 100;
+    const eg = g * (food.edible ?? 1); // kurča s kosťami: počíta sa len jedlá časť
+    grams += eg;
+    for (const n of NUTRIENTS) total[n.id] += ((food.n[n.idx] ?? 0) * eg) / 100;
   }
   const per = (d: number) => Object.fromEntries(NUTRIENTS.map((n) => [n.id, d ? total[n.id] / d : 0])) as Record<NutrientId, number>;
   return { perPortion: per(r.portions), per100: per(grams / 100), portionGrams: grams / r.portions, known, unknown, skipped };
@@ -151,6 +155,7 @@ export function mergeIngredients(cart: CartEntry[], find: (id: string) => Recipe
     if (!r) continue;
     for (const ing of scaleIngredients(r, entry.portions)) {
       const food = FOODS[ing.food];
+      if (food?.free) continue; // voda sa nekupuje
       const gk = food ? ing.food : `x:${normalizeName(ing.label || ing.food)}`;
       if (!groups.has(gk)) groups.set(gk, { food: food ? ing.food : null, name: ingName(ing), cat: food?.cat || "other", sources: [] });
       groups.get(gk)!.sources.push({ recipeId: r.id, recipeName: r.name, qty: ing.qty, unit: ing.unit, note: ing.note || "" });

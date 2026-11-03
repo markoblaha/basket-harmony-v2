@@ -8,14 +8,14 @@ const segedin = find("segedin")!;
 describe("recepty", () => {
   it("prepočíta porcie a zaokrúhli ako človek", () => {
     const two = scaleIngredients(segedin, 2);
-    expect(two.find((x) => x.food === "pliecko")?.qty).toBe(300);
+    expect(two.find((x) => x.food === "pliecko")?.qty).toBe(350);
     expect(two.find((x) => x.food === "cibula")?.qty).toBe(1);
     expect(two.find((x) => x.food === "cesnak")?.qty).toBe(1);
   });
 
   it("doplní množstvá do krokov", () => {
-    const text = renderStep("Cibuľu ({cibula}) speň na {olej} oleja.", scaleIngredients(segedin, 4));
-    expect(text).toBe("Cibuľu (2 ks) speň na 3 lyžice oleja.");
+    const text = renderStep("Cibuľu ({cibula}) opeč a podlej {vyvar} vývaru.", scaleIngredients(segedin, 4));
+    expect(text).toBe("Cibuľu (2 ks) opeč a podlej 750 ml vývaru.");
   });
 
   it("skloňuje lyžice a strúčiky", () => {
@@ -34,7 +34,7 @@ describe("recepty", () => {
       find,
     );
     const cibula = rows.find((r) => r.food === "cibula")!;
-    expect(cibula.qty).toBe(4);
+    expect(cibula.qty).toBe(3);
     expect(cibula.sources).toHaveLength(2);
     expect(rows.find((r) => r.food === "sol")?.staple).toBe(true);
   });
@@ -42,8 +42,8 @@ describe("recepty", () => {
   it("navrhne balenie a váhu na nákup", () => {
     const rows = mergeIngredients([{ recipeId: "segedin", portions: 4 }], find);
     const meat = buyPlan(rows.find((r) => r.food === "pliecko")!);
-    expect(meat).toMatchObject({ qty: 0.6, unit: "kg" });
-    const cream = buyPlan(rows.find((r) => r.food === "kysla_smotana")!);
+    expect(meat).toMatchObject({ qty: 0.7, unit: "kg" });
+    const cream = buyPlan(rows.find((r) => r.food === "smotana_sladka")!);
     expect(cream).toMatchObject({ qty: 1, unit: "ks" });
     const garlic = buyPlan(rows.find((r) => r.food === "cesnak")!);
     expect(garlic).toMatchObject({ qty: 1, unit: "ks" });

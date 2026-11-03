@@ -12,6 +12,8 @@ import { HelpBtn } from "@/features/help/Help";
 import { Btn } from "@/mockup/kit";
 import { useCookRecipe, useRecipes } from "./api";
 import { STEP_DETAILS } from "./catalog";
+import { StepChips } from "./book";
+import type { Step } from "./types";
 import { formatAmount, ingName, renderStep, scaleIngredients } from "./logic";
 import { art } from "./mk";
 
@@ -86,7 +88,8 @@ export function CookPage() {
   const steps = r.steps.length ? r.steps : [{ text: t("ck.noSteps") }];
   const st = steps[Math.min(i, steps.length - 1)]!;
   const scaled = scaleIngredients(r, portions);
-  const det = st.done || st.tip || st.more ? st : STEP_DETAILS[r.id]?.[i];
+  // Recept z knihy má podrobnosti priamo v kroku; staršie recepty ich majú v STEP_DETAILS.
+  const det: Pick<Step, "done" | "tip" | "more" | "warn"> | undefined = r.book || st.done || st.tip || st.more ? st : STEP_DETAILS[r.id]?.[i];
   const end = timers[i];
   const left = end ? Math.max(0, (end - Date.now()) / 1000) : null;
   const running = Object.entries(timers).filter(([k, e]) => e && e > Date.now() && +k !== i);
@@ -150,8 +153,17 @@ export function CookPage() {
             <>
               <span className="stn">{i + 1}</span>
               <p className="stx">{renderStep(st.text, scaled)}</p>
-              {det && (
+              {st.heat && <StepChips st={{ heat: st.heat }} />}
+              {det && (det.done || det.tip || det.more || det.warn) && (
                 <div className="cbox">
+                  {det.warn && (
+                    <div className="sbx pz">
+                      <I n="warning" />
+                      <span>
+                        <b>{t("ck.warn")}</b> {det.warn}
+                      </span>
+                    </div>
+                  )}
                   {det.done && (
                     <div className="sbx ok">
                       <I n="check-circle" />

@@ -54,12 +54,13 @@ export function TastePage() {
   const ref = useRef<HTMLDivElement>(null);
   const tap = useRef(0);
 
-  // Poradie: najprv recepty s fotkou, ktoré ste ešte nevideli, potom podľa toho, čo máte doma.
+  // Poradie: najprv recepty z knihy (overené, so sadou fotiek), potom ostatné s fotkou, ktoré ste ešte nevideli,
+  // potom podľa toho, čo máte doma.
   const ids = useMemo(() => {
     const seen = readSeen();
     const score = (r: Recipe) => {
       const f = facts.get(r.id);
-      return (art(r).pic ? 4 : 0) + (f ? (f.have / Math.max(1, f.all)) * 3 : 0) - (seen[r.id] ? 5 : 0) + ((r.id.charCodeAt(0) * 7) % 5) / 5;
+      return (r.book ? 6 : 0) + (art(r).pic ? 4 : 0) + (f ? (f.have / Math.max(1, f.all)) * 3 : 0) - (seen[r.id] ? 5 : 0) + ((r.id.charCodeAt(0) * 7) % 5) / 5;
     };
     return [...recipes.catalog].sort((a, b) => score(b) - score(a)).slice(0, LIMIT).map((r) => r.id);
   }, [recipes.catalog]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -125,7 +126,7 @@ export function TastePage() {
                     a.pic ? (
                       <div className="gal">
                         <div className="gal-s">
-                          <div className={`gal-i pic-${a.pic}`} role="img" aria-label={r.name} />
+                          <div className={`gal-i pic-${a.big ?? a.pic}`} role="img" aria-label={r.name} />
                         </div>
                       </div>
                     ) : (

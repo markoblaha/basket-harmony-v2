@@ -18,6 +18,7 @@ import { useDeleteRecipe, useFavorites, useRecipes, useToggleFavorite } from "./
 import { NUTRIENTS, fmtNutrient, formatAmount, recipeNutrition, renderStep, riPct, scaleIngredients, type NutrientId } from "./logic";
 import { RCATS, art, recipeRows, useHave } from "./mk";
 import { AddRecipeSheet, PlanSheet } from "./sheets";
+import { BookIngredients, BookInfo, BookSteps, Gallery, duration } from "./book";
 import { useCart } from "./cart";
 import type { Recipe } from "./types";
 import { useSetting } from "@/lib/settings";
@@ -131,6 +132,16 @@ export function RecipePage() {
         </div>
       </div>
       <div className="bhm bhm-list bhm-recipe">
+        {r.book ? (
+          <div key={r.id} className="rhero2 rgal">
+            <Gallery r={r} />
+            {ids.length > 1 && (
+              <span className="rpos">
+                {idx + 1} / {ids.length}
+              </span>
+            )}
+          </div>
+        ) : (
         <div
           key={r.id}
           className={`rhero2${a.pic ? ` pic-${a.pic}` : ` bg-${a.bg}`}`}
@@ -149,16 +160,19 @@ export function RecipePage() {
             </span>
           )}
         </div>
+        )}
         <div className="body rbody" key={`b${r.id}`}>
           <div>
-            <div className="date">{[cat && t(`rk.cat.${cat.id}` as Key), r.mine ? r.source || t("rk.srcMine") : t("rk.srcBook")].filter(Boolean).join(" · ")}</div>
+            <div className="date">{[cat && t(`rk.cat.${cat.id}` as Key), r.book?.cuisine ?? (r.mine ? r.source || t("rk.srcMine") : t("rk.srcBook"))].filter(Boolean).join(" · ")}</div>
             <h1 className="lt rt">{r.name}</h1>
           </div>
           <div className="facts">
             <span>
               <I n="clock" />
-              {t("rk.minutes", { min: r.minutes })}
+              {r.book ? t("kb.work", { act: r.book.active, total: duration(r.minutes) }) : t("rk.minutes", { min: r.minutes })}
             </span>
+            {r.book?.wait && <span>+ {r.book.wait}</span>}
+            {r.book && <span>{t(`rc.diff.${r.difficulty}` as Key)}</span>}
             {kcal > 0 && (
               <span role={nutritionOn ? "button" : undefined} onClick={() => nutritionOn && setSheet("nutri")}>
                 <I n="flame" />
@@ -179,7 +193,7 @@ export function RecipePage() {
           </div>
           <Seg<"ing" | "steps">
             items={[
-              ["ing", t("rk.tabIng", { n: rows.length })],
+              ["ing", t("rk.tabIng", { n: r.book ? r.ingredients.length : rows.length })],
               ["steps", t("rk.tabSteps", { n: r.steps.length })],
             ]}
             value={tab}
@@ -189,8 +203,11 @@ export function RecipePage() {
             <>
               <div className="portion">
                 <span className="meta">{t("rk.forHowMany")}</span>
-                <Stepper label={tn("rk.portions", por)} minDisabled={por <= 1} onMinus={() => setPor(Math.max(1, por - 1))} onPlus={() => setPor(Math.min(12, por + 1))} />
+                <Stepper label={tn("rk.portions", por)} minDisabled={por <= 1} onMinus={() => setPor(Math.max(1, por - 1))} onPlus={() => setPor(Math.min(Math.max(12, r.portions * 2), por + 1))} />
               </div>
+              {r.book ? (
+                <BookIngredients r={r} portions={por} rows={rows} est={est} onToggle={(x) => toggle(r.id, x)} />
+              ) : (
               <div className="ings">
                 {rows.map((x) => (
                   <div key={x.key} className={`ing${x.home ? " home" : ""}${x.staple && !x.home ? " nohome" : ""}`} onClick={() => toggle(r.id, x)} role="button" aria-pressed={x.home}>
@@ -210,8 +227,11 @@ export function RecipePage() {
                   </div>
                 ))}
               </div>
+              )}
               <p className="hint">{t("rk.haveHint")}</p>
             </>
+          ) : r.book ? (
+            <BookSteps r={r} portions={por} />
           ) : (
             <ol className="steps">
               {r.steps.map((st, i) => (
@@ -225,6 +245,7 @@ export function RecipePage() {
               ))}
             </ol>
           )}
+          <BookInfo r={r} />
           {r.mine && (
             <Btn cls="danger soft full" onClick={() => setSheet("del")}>
               <I n="trash" />

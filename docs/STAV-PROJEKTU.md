@@ -387,6 +387,27 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Dostupné obrázkové modely na kľúči testovacieho projektu: gemini-nano-banana-2.1, gemini-3.1-flash-lite-image,
     gemini-3.1-flash-image, gemini-3-pro-image (+ preview). Funkcia `proto-images` bola na ukážku dočasne nasadená
     (v3, token len v scratchpade) a hneď znova vypnutá (v4, 410, verify_jwt).
+    **5 receptov z knihy v testovacej appke – HOTOVÉ 3. 11. (na pokyn majiteľa „sprav 5 receptov a vlož ich do testovacej
+    appky“, bez licencií a bez ďalších návrhov):** segedín, kurací paprikáš s haluškami, kulajda s vajcom, medovník
+    s karamelovým krémom, lasagne bolognese. Každý spojený zo 4–5 skutočných receptov z rôznych povolených webov
+    (paprikáš 5 + halušky 4), suroviny s písmenami zdrojov (`src`), kroky so zdrojmi, text vlastnými slovami.
+    Súbory: `src/features/recipes/kniha.ts` (recepty, zdroje, `recipeAllergens`, `bookPics`), `book.tsx` (galéria,
+    suroviny v skupinách, kroky s ohňom a „Hotové je, keď / Pozor / Tip“, alergény, náradie, skladovanie, zdroje –
+    z mockupu book.jsx), `kniha.css` (triedy `pic-kb_<id>_<n>`), fotky `public/kniha/<id>-<1|2|3>.webp` (1080×1341)
+    + `-1s.webp` (480 px na karty), `kniha.test.ts` = kontrolný program v `npm run check` (3–5 zdrojov z rôznych webov,
+    surovina vo viac ako polovici zdrojov, kroky so zdrojom, suroviny ↔ postup podľa tvarov slov `SAID`, hydina 74 °C,
+    mäkký žĺtok s upozornením, časovače, alergény a výživa zo všetkých surovín, fotky existujú). `foods.ts`: hodnoty
+    USDA SR Legacy (kód fdc v komentári), `al` (14 alergénov EÚ), `check` (skontroluj obal), `edible` (kurča 0,68),
+    `free` (voda sa nekupuje); nové potraviny kurca, mast, vyvar, voda, smotana_sladka, tuk, med, kondenz, soda, orechy,
+    lasagne, zeler_stopkovy, muskat. `catalog.ts`: CATALOG = BOOK + staršie (staré segedín, paprikáš, kulajda zmazané,
+    aj STEP_DETAILS.segedin). Ochutnávač dáva recepty z knihy dopredu, kategória Mäso už neberie cestoviny.
+    Fotky: hlavná fotka zo zadania podľa receptu (štýl: svetlý dub, svetlo zľava, biela keramika, šalviová utierka,
+    nič mimo receptu), potom 2 zábery s hlavnou fotkou ako predlohou (zhora – „flat lay 90°“, zblízka), model
+    `gemini-nano-banana-2.1`, 2K, cez dočasnú `proto-images` (znova vypnutá, v6). Kontrola každej sady pohľadom:
+    paprikáš (málo omáčky, halušky ako cestoviny) a medovník (hrubé pláty bez krému) prerobené, 3 zábery zhora prerobené.
+    Cena ~1 $. Overené lokálne (vite preview, testovací účet, Teplá aj Sklo tmavé): 5 receptov, galéria, postup,
+    porcie, varenie, Ochutnávač – bez chýb JS/servera a bez pretekania. Recepty sú zatiaľ len po slovensky (aj v EN
+    rozhraní) a sú v kóde appky, nie v DB; „Navrhni recept“ a „Nahlásiť chybu“ ešte nie sú.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

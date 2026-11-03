@@ -13,7 +13,8 @@ import { useSetting } from "@/lib/settings";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, Back, useScrolled } from "@/mockup/ui";
 import { HelpBtn } from "@/features/help/Help";
-import { Avatars, Btn, eur, eur0, recipeArt, relDay, storeName } from "@/mockup/kit";
+import { Avatars, Btn, eur, eur0, relDay, storeName } from "@/mockup/kit";
+import { art as recipeArtOf } from "@/features/recipes/mk";
 import { openVoice } from "@/features/voice/open";
 import type { RecipePlan } from "@/features/recipes/api";
 import { useDeleteItem, useUpdateItem, type Item, type ShoppingList } from "./api";
@@ -278,7 +279,7 @@ export function ListView({
               )}
               {loose.length > 0 && <div className={`lst${gl}`}>{loose.map((it) => row(it, it.note))}</div>}
               {[...groups.entries()].map(([label, { plan, items: gi }]) => {
-                const art = recipeArt(plan.recipe_key, plan.recipe_name);
+                const art = recipeArtOf({ id: plan.recipe_key, name: plan.recipe_name });
                 const gs = gi.reduce((a, i) => a + (estimator.est(i, storeKey)?.v ?? 0), 0);
                 return (
                   <Fragment key={label}>

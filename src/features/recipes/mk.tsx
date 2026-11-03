@@ -9,12 +9,13 @@ import { eur, recipeArt } from "@/mockup/kit";
 import { useEstimator, type Estimator } from "@/features/lists/estimate";
 import { buyPlan, mergeIngredients, type Row } from "./logic";
 import { STAPLE_KEYS } from "./foods";
+import { bookRecipe } from "./kniha";
 import type { Recipe } from "./types";
 
 /** Kategórie knihy (ako v mockupe) – nad kategóriami a druhom mäsa receptov z appky. */
 export const RCATS: { id: string; e: string; pic: string; test: (r: Recipe) => boolean }[] = [
   { id: "polievky", e: "stew", pic: "p_zeleninova", test: (r) => r.category === "polievky" },
-  { id: "maso", e: "meat", pic: "gulas_p", test: (r) => (r.meat === "bravcove" || r.meat === "hovadzie") && r.category !== "polievky" },
+  { id: "maso", e: "meat", pic: "gulas_p", test: (r) => (r.meat === "bravcove" || r.meat === "hovadzie") && r.category !== "polievky" && r.category !== "cestoviny" },
   { id: "hydina", e: "poultry", pic: "stehna_p", test: (r) => r.meat === "kuracie" && r.category !== "polievky" },
   { id: "cestoviny", e: "spaghetti", pic: "penne_p", test: (r) => r.category === "cestoviny" },
   { id: "ryby", e: "fish", pic: "losos_p", test: (r) => r.meat === "ryby" },
@@ -31,8 +32,11 @@ export const RCOLS: { id: string; e: string; test: ((r: Recipe) => boolean) | nu
 ];
 
 /** Obrázok receptu z mockupu (fotka alebo 3D emoji na farebnom pozadí). */
-export function art(r: Pick<Recipe, "id" | "name" | "mine">) {
-  return r.mine ? { e: "pot", pic: null as string | null, bg: "peach" } : recipeArt(r.id, r.name);
+export function art(r: Pick<Recipe, "id" | "name" | "mine">): { e: string; pic: string | null; bg: string; big?: string } {
+  if (r.mine) return { e: "pot", pic: null, bg: "peach" };
+  // Recept z knihy: malá fotka na karty, veľká (big) na celú obrazovku.
+  if (bookRecipe(r.id)?.book) return { e: "pot", pic: `kb_${r.id}_1s`, big: `kb_${r.id}_1`, bg: "peach" };
+  return recipeArt(r.id, r.name);
 }
 
 /* ------------------------------------------------------------------ mám doma (v zariadení) */

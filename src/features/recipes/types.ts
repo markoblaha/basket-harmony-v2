@@ -11,6 +11,12 @@ export type Ingredient = {
   note?: string;
   /** Neisté miesto po čítaní (len pri kontrole importu). */
   uncertain?: string | null;
+  /** Kniha receptov: skupina surovín („Halušky“), voliteľná surovina, iný kľúč do krokov ({ref}). */
+  group?: string;
+  optional?: boolean;
+  ref?: string;
+  /** Kniha receptov: zdroje (písmená z book.sources), v ktorých surovina je. */
+  src?: string;
 };
 
 export type Step = {
@@ -23,6 +29,26 @@ export type Step = {
   tip?: string;
   more?: string;
   uncertain?: string | null;
+  /** Kniha receptov: stupeň ohňa alebo teplota rúry, „Pozor“ a zdroje kroku (písmená z book.sources). */
+  heat?: string;
+  warn?: string;
+  src?: string;
+};
+
+/** Recept z knihy: spojený z 3–5 skutočných receptov (zdroje), s fotkami a doplnkami. */
+export type BookInfo = {
+  /** Fotky: hlavná, zhora, zblízka (súbory public/kniha/<id>-<n>.webp, triedy pic-kb_<id>_<n>). */
+  photos: number;
+  /** Čas práce v minútách (minutes = celkový čas). */
+  active: number;
+  /** Čakanie navyše (odležanie). */
+  wait?: string;
+  cuisine: string;
+  tools: string[];
+  store: string;
+  sources: { k: string; site: string; name: string; url: string }[];
+  /** Zdroje skupiny, ktorá má vlastné zdroje (napr. halušky). */
+  groupSources?: Record<string, string>;
 };
 
 export type QA = { q: string; a: string };
@@ -48,4 +74,5 @@ export type Recipe = {
   qa?: QA[];
   mine?: boolean;
   ai?: boolean;
+  book?: BookInfo;
 };
