@@ -231,6 +231,16 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
+- **Revízia pred ostrým spustením (3. 11. 2026):** https://claude.ai/artifact/X8aprnTLiiWL5bgiDQwNAT – preklikané
+  4 vzhľady × 19 obrazoviek (0 chýb JS/servera), kód, DB, AI. Blokery P0: zmazanie účtu len predstiera (dialóg + hláška
+  „zatiaľ nevie“), chýbajú zásady súkromia/podmienky, offline v obchode (žiadny service worker), push upozornenia,
+  zálohy (Supabase Pro), ceny Gemini 3.8/3.6 Flash sa 1. 1. 2027 zdvojnásobia (`_shared/gemini.ts` to nevie →
+  `ai_usage` bude klamať). P1: limity AI príliš voľné (hlas 1500/deň, recepty 200/deň, bločky bez limitu), vypnutá
+  ochrana uniknutých hesiel, bez sledovania chýb. Dizajn: 3 vizuálne jazyky (Teplá, Sklo, staré obrazovky), karta vs.
+  pozadie 1,09:1, biely text na oranžovej 2,3–3,3:1; návrh jednej témy „Harmónia“ (bazalka #2F6B4F = jediná akcia,
+  terakota len pre „živé“, max. 1 plné tlačidlo na obrazovke). Hlas 2.0 (A vzhľad, B Silero VAD, C Gemini Live),
+  matica push, Výdavky porovnávajú 3 dni s celým mesiacom, tykanie/vykanie zmiešané. Kapitola 11 = 7 rozhodnutí,
+  kapitola 12 = kontrolný prompt na ďalšie revízie. Nič z toho nie je implementované.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
