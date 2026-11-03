@@ -22,9 +22,9 @@ async function json(prompt, opts = {}) {
 export function aiErrorText(e) {
   const c = e && e.code;
   if (c === 'unavailable') return 'AI tu nie je dostupná – použilo sa rozpoznávanie v telefóne.';
-  if (c === 'not_granted') return 'Prístup k AI ste nepovolili – použilo sa rozpoznávanie v telefóne.';
-  if (c === 'rate_limited') return 'AI je chvíľu vyťažená. Skúste to o minútu.';
-  if (c === 'image_rejected') return 'Fotku sa nepodarilo prečítať. Skúste ju odfotiť ostrejšie.';
+  if (c === 'not_granted') return 'Prístup k AI nie je povolený – použilo sa rozpoznávanie v telefóne.';
+  if (c === 'rate_limited') return 'AI je chvíľu vyťažená. Skús to o minútu.';
+  if (c === 'image_rejected') return 'Fotku sa nepodarilo prečítať. Skús ju odfotiť ostrejšie.';
   return 'AI teraz neodpovedala – použilo sa rozpoznávanie v telefóne.';
 }
 

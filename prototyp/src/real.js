@@ -1,4 +1,4 @@
-// Napojenie skutočných bločkov: produkty z bločkov sa spárujú s katalógom appky,
+// Napojenie bločkov ukážkovej domácnosti (vymyslené, realdata.js): produkty sa spárujú s katalógom appky,
 // ceny pri položkách, história cien a všetky výdavky sa počítajú z týchto riadkov.
 import { RAW_PRODUCTS, RAW_RECEIPTS } from './realdata.js';
 import { PRODUCTS, STORES, CATS, STAPLES } from './data.js';
@@ -21,6 +21,9 @@ const MAP = [
   [/^hliníková fólia/i, 'alobal'], [/^tekuté mydlo/i, 'mydlo'], [/^dezodorant|^antiperspirant/i, 'deo'], [/^spevňujúce telové/i, 'telove'], [/^kozmetické tampóny/i, 'tampony'],
   [/^detské chrumky/i, 'chrumky'], [/^probiotické kvapky/i, 'probio'], [/^univerzálna náplasť/i, 'naplast'], [/^zemiakové hranolky/i, 'hranolky'], [/^polievková zmes/i, 'zmes'],
   [/^káva zrnková/i, 'kava'], [/^krevety/i, 'krevety'], [/^bravčové mäso mleté/i, 'mlete'], [/^bravčový bok/i, 'bok'], [/^zmes olív/i, 'olivy'], [/^bryndza/i, 'bryndza'],
+  [/^cibuľa/i, 'cibula'], [/^cesnak/i, 'cesnak'], [/^zemiaky/i, 'zemiaky'], [/^brokolica/i, 'brokolica'], [/^kuracie stehná/i, 'stehna'], [/^bravčové pliecko/i, 'pliecko'],
+  [/^losos/i, 'losos'], [/^parmezán/i, 'parmezan'], [/^mlieko polotučné/i, 'mlieko'], [/^maslo/i, 'maslo'], [/^smotana na varenie/i, 'smotana'], [/^tvaroh/i, 'tvaroh'],
+  [/^cestoviny/i, 'cestoviny'], [/^múka/i, 'muka'], [/^olej/i, 'olej'], [/^čaj/i, 'caj'], [/^čokoláda/i, 'cokolada'], [/^pomarančový džús/i, 'dzus'], [/^vrecia na odpad/i, 'vrecia'],
 ];
 const FOOD = new Set(['bakery', 'produce', 'meat_fish', 'deli_chilled', 'dairy_eggs', 'frozen', 'pantry', 'breakfast', 'snacks_sweets', 'beverages', 'alcohol', 'household_cleaning', 'personal_care', 'baby', 'health']);
 const CAT_EMOJI = { bakery: 'bread', produce: 'leafy', meat_fish: 'meat', deli_chilled: 'cheese', dairy_eggs: 'milk', frozen: 'ice', pantry: 'canned', breakfast: 'coffee', snacks_sweets: 'chocolate', beverages: 'juice', alcohol: 'wine', household_cleaning: 'sponge', personal_care: 'lotion', baby: 'babybottle', health: 'pill' };

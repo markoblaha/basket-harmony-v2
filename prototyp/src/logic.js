@@ -62,7 +62,7 @@ export function bump(q, u, dir) {
   const v = Math.round((q + dir * s) * 1000) / 1000;
   return Math.max(min, v);
 }
-// Jednotka položky v zozname: 'ks' = počet (kus, balík, strapec – čo vezmete do ruky),
+// Jednotka položky v zozname: 'ks' = počet (kus, balík, strapec – čo vezmeš do ruky),
 // 'kg'/'l' = presné množstvo, len keď ho niekto vyslovene napísal alebo ho určil recept.
 export function itemUnit(i) {
   if (i.u) return i.u === 'bal' ? 'ks' : i.u;
@@ -80,7 +80,7 @@ export function toItemQty(n, unit) {
   if (unit === 'l') return { q: n || 1, u: 'l' };
   return { q: n || 1, u: 'ks' };
 }
-// Koľko kg je „1 ks“ váženého produktu: pri pár kusoch váš bežný nákup z bločkov (strapec banánov, balík mrkvy),
+// Koľko kg je „1 ks“ váženého produktu: pri pár kusoch tvoj bežný nákup z bločkov (strapec banánov, balík mrkvy),
 // pri viacerých kusoch váha jedného kusu (6 jabĺk). Slúži len na odhad ceny, nikde sa nezobrazuje.
 export const PIECE = { banany: .18, jablka: .2, paprika: .15, citrony: .12, mrkva: .1, cuketa: .3, zemiaky: .15, kuracie: .2, hovadzie: .25, pliecko: .25, stehna: .3, losos: .2, rostenec: .25, tekvica: 1.2, cibula: .15, uhorka: .35, avokado: .2 };
 export function typicalKg(pid, S) {
@@ -177,7 +177,7 @@ const UNITW = {
   bal: ['bal', 'balenie', 'balenia', 'baleni', 'balik', 'baliky', 'balicky', 'balicek', 'krabicu', 'krabice', 'flasu', 'flase', 'flias', 'flasa', 'plechovky', 'plechovku', 'plechoviek', 'vrecko', 'vrecka'],
 };
 const UNITMAP = {}; for (const [u, ws] of Object.entries(UNITW)) ws.forEach((w) => (UNITMAP[w] = u));
-const FILL = new Set('kup kupit kupte kupim kupis pridaj pridajte daj dajte este prosim mi nam tam nejake nejaky nejaku nejakych trochu do zoznamu na zoznam zoznamu zoznam a aj tiez potrebujem potrebujeme treba chcem chceme by bolo dobre ze uz lucia marek nech tak no takze teda aby si s sa'.split(' '));
+const FILL = new Set('kup kupit kúp kupim kupis pridaj pridaj daj daj este prosim mi nam tam nejake nejaky nejaku nejakych trochu do zoznamu na zoznam zoznamu zoznam a aj tiez potrebujem potrebujeme treba chcem chceme by bolo dobre ze uz lucia marek nech tak no takze teda aby si s sa'.split(' '));
 
 let INDEX = null;
 function index() {
@@ -505,7 +505,7 @@ export function matchReceipt(rec, list) {
   return rec;
 }
 
-// ---------- výdavky (počítané zo skutočných bločkov + nových odfotených) ----------
+// ---------- výdavky (počítané z bločkov ukážkovej domácnosti + nových odfotených) ----------
 // Najčastejšie navštevované obchody (podľa bločkov), doplnené bežnými
 export function frequentStores(S, n = 6) {
   const c = {};

@@ -92,7 +92,7 @@ export function Shop({ p }) {
               <span className="req-av"><Av id={r.from} s={40} /></span>
               <div className="grow">{fresh && <span className="reqnew"><i />Nová žiadosť</span>}<div className="t1">{MEMBERS[r.from].name}: {pp.n.toLowerCase()}</div><div className="meta">{fmtQty(r.q, pp.u)}{u ? ' · ~' + eur(u.up * r.q) : ''}{r.note ? ' · ' + r.note : ''}</div></div>
               <Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => { act((s) => { const s1 = { ...s, requests: s.requests.filter((x) => x.id !== r.id) }; const L = s1.lists.find((x) => x.id === list.id); return { ...s1, lists: s1.lists.map((x) => x.id === list.id ? { ...x, items: [{ id: Math.random().toString(36).slice(2), pid: r.pid, q: r.q, by: r.from, t: Date.now(), done: false, flash: Date.now() }, ...x.items] } : x) }; }); toast('Pridané – Lucia dostane potvrdenie'); }}>Pridať</Btn>
-              <IB n="x" label="Odmietnuť" cls="flat sm" onClick={() => { act('dropRequest', r.id); toast('Lucia uvidí, že to nekúpite'); }} />
+              <IB n="x" label="Odmietnuť" cls="flat sm" onClick={() => { act('dropRequest', r.id); toast('Lucia uvidí, že to nekúpiš'); }} />
             </div>
           ); })}
           {cats.map((c) => {
@@ -124,7 +124,7 @@ export function Shop({ p }) {
         </div>
       </div>
       <div className="dock solo">
-        <Btn cls={(open.length ? 'soft' : 'pri') + ' full big' + (g ? (open.length ? ' gl' : ' a') : '')} onClick={finish} disabled={!t.done}>{open.length ? (t.done ? `Dokončiť nákup · ešte ${open.length}` : 'Odškrtnite, čo dáte do košíka') : 'Dokončiť nákup'}</Btn>
+        <Btn cls={(open.length ? 'soft' : 'pri') + ' full big' + (g ? (open.length ? ' gl' : ' a') : '')} onClick={finish} disabled={!t.done}>{open.length ? (t.done ? `Dokončiť nákup · ešte ${open.length}` : 'Odškrtni, čo dáš do košíka') : 'Dokončiť nákup'}</Btn>
       </div>
     </div>
   );
@@ -158,9 +158,9 @@ export function FinishSheet({ open, close, listId }) {
         <h2>Nákup dokončený?</h2>
         <p className="meta">{t.done} z {t.n} položiek · odhad ~{eur(t.doneV)}</p>
         {left > 0 && <div className="tgrow"><span>Nekúpené ({left}) nechať v zozname na budúce</span><Toggle on={keep} onChange={setKeep} label="Nechať nekúpené" /></div>}
-        <div className="callout"><I n="lightbulb" /><span>Odfoťte bloček – skutočné ceny sa zapíšu k položkám a nabudúce bude odhad presnejší.</span></div>
+        <div className="callout"><I n="lightbulb" /><span>Odfoť bloček – skutočné ceny sa zapíšu k položkám a nabudúce bude odhad presnejší.</span></div>
         <Btn cls={'pri full big' + (theme === 'g' ? ' a' : '')} onClick={() => { const { hid, miss } = end(); close(); closeModal(); setTimeout(() => modal('scan', { listId: hid, missing: miss && miss.id }), 320); }}><I n="camera" />Odfotiť bloček</Btn>
-        <Btn cls="soft full" onClick={() => { end(); close(); closeModal(); setTimeout(() => jump('home'), 280); toast('Nákup je v histórii · bloček pridáte neskôr', { icon: 'receipt', action: { label: 'História', fn: () => jump('lists', 'history') } }); }}>Teraz nie</Btn>
+        <Btn cls="soft full" onClick={() => { end(); close(); closeModal(); setTimeout(() => jump('home'), 280); toast('Nákup je v histórii · bloček pridáš neskôr', { icon: 'receipt', action: { label: 'História', fn: () => jump('lists', 'history') } }); }}>Teraz nie</Btn>
         <button type="button" className="lnk c fin-back" onClick={close}><I n="arrow-counter-clockwise" w="bold" />Vrátiť sa k nákupu</button>
       </div>
     </Sheet>
@@ -194,12 +194,12 @@ export function Follow() {
             <div className="rowc"><StoreTile k={list.store} s={48} /><div className="grow"><div className={g ? 't1' : 't'}>{storeName(list.store)}</div><div className={g ? 't2' : 's'}>{fin ? 'Hotovo' : 'Nakupuje ' + ago(S.live.started).replace('pred ', '')} · <span className="nw">{t.done} z {t.n}</span></div></div><div className="ra"><div className={g ? 'num' : 'sv'}>{eur(t.doneV)}</div><div className={g ? 't2' : 's'}>v košíku</div></div></div>
             {!fin && <div className={g ? 'bar' : 'prog'}><i style={{ width: (t.done / t.n) * 100 + '%' }} /></div>}
           </div>
-          <p className="hint c">Zoznam sa mení naživo – keď Lucia niečo vloží do košíka, uvidíte to tu.</p>
+          <p className="hint c">Zoznam sa mení naživo – keď Lucia niečo vloží do košíka, uvidíš to tu.</p>
           <div className={'lst' + (g ? ' glass2' : '')}>
             {items.map((it) => (
               <div key={it.id} className={'row' + (it.done ? ' done' : '') + (it.doneAt && Date.now() - it.doneAt < 4000 ? ' flash' : '')}>
                 <span className="th"><E k={pe(it.pid)} /></span>
-                <div className="tx"><b>{itemName(it)}</b><span className="sub">{fmtQty(it.q, unitOf(it))}{it.done && it.doneAt ? ' · v košíku ' + ago(it.doneAt) : it.by === 'm' ? ' · pridali ste vy' : ''}</span></div>
+                <div className="tx"><b>{itemName(it)}</b><span className="sub">{fmtQty(it.q, unitOf(it))}{it.done && it.doneAt ? ' · v košíku ' + ago(it.doneAt) : it.by === 'm' ? ' · pridané tebou' : ''}</span></div>
                 {it.done ? <span className="fstat" role="img" aria-label="V košíku"><I n="check" w="bold" /></span> : <span className="fstat no" role="img" aria-label="Ešte nie v košíku" />}
               </div>
             ))}

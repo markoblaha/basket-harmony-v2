@@ -271,8 +271,8 @@ function ThemeIntro({ onPick }) {
     <div className="intro" role="dialog" aria-label="Výber témy">
       <div className="in-wrap">
         <span className="in-k">Basket Harmony · prototyp</span>
-        <h1>Ktorú tému chcete vyskúšať?</h1>
-        <p>Obe témy majú rovnaké funkcie. Prepnúť ich môžete kedykoľvek v časti Viac.</p>
+        <h1>Ktorú tému chceš vyskúšať?</h1>
+        <p>Obe témy majú rovnaké funkcie. Prepnúť ich môžeš kedykoľvek v časti Viac.</p>
         <ThemePicker onPick={onPick} big />
       </div>
     </div>
@@ -285,15 +285,15 @@ function Desk({ app }) {
   const [confirm, setConfirm] = useState(false);
   useEffect(() => { const f = () => setSc(Math.min(1, (window.innerHeight - 40) / 878)); f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
   const tryIt = [
-    ['microphone', 'Nadiktujte nákup', 'V zozname ťuknite na mikrofón v poli dole.', () => voice({ listId: 'l1' })],
-    ['shopping-cart', 'Choďte nakupovať', 'Odškrtávajte, príde aj žiadosť od Lucie.', () => modal('shop', { listId: 'l1' })],
-    ['receipt', 'Odfoťte bloček', 'Skutočné ceny sa zapíšu k položkám.', () => modal('scan', { listId: 'l1' })],
-    ['cooking-pot', 'Prelistujte knihu receptov', 'Kategórie, obľúbené a plán týždňa.', () => jump('recipes')],
-    ['wallet', 'Pozrite výdavky', 'Október z vašich bločkov.', () => jump('money')],
+    ['microphone', 'Nadiktuj nákup', 'V zozname ťukni na mikrofón v poli dole.', () => voice({ listId: 'l1' })],
+    ['shopping-cart', 'Choď nakupovať', 'Odškrtávaj, príde aj žiadosť od Lucie.', () => modal('shop', { listId: 'l1' })],
+    ['receipt', 'Odfoť bloček', 'Skutočné ceny sa zapíšu k položkám.', () => modal('scan', { listId: 'l1' })],
+    ['cooking-pot', 'Prelistuj knihu receptov', 'Kategórie, obľúbené a plán týždňa.', () => jump('recipes')],
+    ['wallet', 'Pozri výdavky', 'Október z tvojich bločkov.', () => jump('money')],
   ];
   const tour = [
     ['hand-tap', 'Prvé spustenie od začiatku', 'Uvítanie: ukážka alebo začať naprázdno.', () => reset()],
-    ...CHAPTERS.map((c, i) => [c.ic, `Kapitola ${i + 1}: ${c.n}`, `${c.time} · potom sa vrátite k svojim údajom`, () => { jump('home'); startTour(act, null, { fromHelp: true, ch: i, only: i }); }]),
+    ...CHAPTERS.map((c, i) => [c.ic, `Kapitola ${i + 1}: ${c.n}`, `${c.time} · potom sa vrátiš k svojim údajom`, () => { jump('home'); startTour(act, null, { fromHelp: true, ch: i, only: i }); }]),
   ];
   return (
     <div className="desk">
@@ -309,7 +309,7 @@ function Desk({ app }) {
         <div className="p-head">
           <span className="p-k">Interaktívny prototyp</span>
           <h1>Basket Harmony</h1>
-          <p>Všetko v telefóne funguje: zoznamy, nákup, hlas, recepty, bločky aj výdavky. Pri prvom spustení privíta nového človeka sprievodca s ukážkou. Zmeny sa ukladajú v tomto prehliadači; späť sa vrátite aj potiahnutím z ľavého okraja doprava.</p>
+          <p>Všetko v telefóne funguje: zoznamy, nákup, hlas, recepty, bločky aj výdavky. Pri prvom spustení privíta nového človeka sprievodca s ukážkou. Zmeny sa ukladajú v tomto prehliadači; späť sa vrátiš aj potiahnutím z ľavého okraja doprava.</p>
         </div>
         <div className="p-sec">
           <h2>Téma</h2>
@@ -320,7 +320,7 @@ function Desk({ app }) {
           <Seg items={[['light', 'Svetlý'], ['dark', 'Tmavý'], ['system', 'Podľa systému']]} value={S.mode} onChange={(m) => act((s) => ({ ...s, mode: m }))} />
         </div>
         <div className="p-sec">
-          <h2>Vyskúšajte</h2>
+          <h2>Vyskúšaj</h2>
           <div className="p-try">{tryIt.map(([ic, t, d, fn]) => <button type="button" key={t} onClick={fn}><I n={ic} /><span><b>{t}</b><small>{d}</small></span><I n="caret-right" w="bold" /></button>)}</div>
         </div>
         <div className="p-sec">

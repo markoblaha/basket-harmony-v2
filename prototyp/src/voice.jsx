@@ -70,14 +70,14 @@ function VoiceOther({ p }) {
         const grp = { rid: r.id, label: `Na ${r.n.charAt(0).toLowerCase() + r.n.slice(1)}` };
         const miss = r.ing.filter((x) => !x[3] && !S.have.includes(x[0]) && PRODUCTS[x[0]]).map(([pid, use]) => ({ key: Math.random(), pid, q: Math.max(PRODUCTS[pid].u === 'kg' ? .1 : 1, PRODUCTS[pid].u === 'kg' ? Math.round(use * 20) / 20 : Math.ceil(use - .001)), u: PRODUCTS[pid].u === 'kg' || PRODUCTS[pid].u === 'l' ? PRODUCTS[pid].u : 'ks', grp }));
         setIntent({ type: 'recipe', r });
-        setReply(res.say || (miss.length ? `${r.n}: doma chýba ${plural(miss.length, 'surovina', 'suroviny', 'surovín')}.` : `${r.n}: všetko máte doma.`));
+        setReply(res.say || (miss.length ? `${r.n}: doma chýba ${plural(miss.length, 'surovina', 'suroviny', 'surovín')}.` : `${r.n}: všetko máš doma.`));
         setItems(miss); setPhase('result'); return;
       }
     }
     setIntent(null);
     const its = res.items.map((x) => ({ ...x, key: Math.random() }));
     setItems(its);
-    setReply(res.say || (its.length ? 'Rozumiem, toto pridám.' : 'Nerozumel som – skúste to inak.'));
+    setReply(res.say || (its.length ? 'Rozumiem, toto pridám.' : 'Nerozumiem – skús to inak.'));
     setPhase('result');
   };
 
@@ -94,13 +94,13 @@ function VoiceOther({ p }) {
         const r = new SR(); r.lang = 'sk-SK'; r.interimResults = true; r.continuous = false;
         let final = '';
         r.onresult = (e) => { let s = ''; for (const x of e.results) s += x[0].transcript; final = s; setTr(s); };
-        r.onerror = (e) => { setPhase('idle'); setKbd(true); setNote('Mikrofón tu nie je povolený. Ťuknite do poľa a diktujte cez mikrofón na klávesnici – alebo vyskúšajte príklad.'); };
+        r.onerror = (e) => { setPhase('idle'); setKbd(true); setNote('Mikrofón tu nie je povolený. Ťukni do poľa a diktuj cez mikrofón na klávesnici – alebo vyskúšaj príklad.'); };
         r.onend = () => { if (final) process(final); };
         r.start(); rec.current = r; setPhase('listening'); return;
       } catch {}
     }
     setKbd(true); setPhase('idle');
-    setNote('Diktujte cez mikrofón na klávesnici telefónu, alebo vyskúšajte príklad.');
+    setNote('Diktuj cez mikrofón na klávesnici telefónu, alebo vyskúšaj príklad.');
     setTimeout(() => inp.current && inp.current.focus(), 0);
   };
   const stop = () => { try { rec.current && rec.current.stop(); } catch {} if (phase === 'listening' && tr) process(tr); else setPhase('idle'); };
@@ -139,7 +139,7 @@ function VoiceOther({ p }) {
 
   const kbdField = (
     <form className={'field vfield' + (g ? ' glass2' : '')} onSubmit={(e) => { e.preventDefault(); const v = tr.trim(); if (v) process(v); }}>
-      <input ref={inp} id="voice-text" value={tr} onChange={(e) => { setTr(e.target.value); if (phase === 'result') setPhase('idle'); }} placeholder={mode === 'type' ? 'Napíšte, napr. „2 l mlieka a chlieb“' : 'Diktujte alebo napíšte…'} autoComplete="off" enterKeyHint="send" aria-label="Text pre asistenta" />
+      <input ref={inp} id="voice-text" value={tr} onChange={(e) => { setTr(e.target.value); if (phase === 'result') setPhase('idle'); }} placeholder={mode === 'type' ? 'Napíš, napr. „2 l mlieka a chlieb“' : 'Diktuj alebo napíš…'} autoComplete="off" enterKeyHint="send" aria-label="Text pre asistenta" />
       <button type="submit" className="m" aria-label="Spracovať" disabled={!tr.trim()}><I n="arrow-up" w="bold" /></button>
     </form>
   );
@@ -149,7 +149,7 @@ function VoiceOther({ p }) {
       {g ? <div className={'orb' + (phase === 'listening' ? ' on' : phase === 'thinking' ? ' think' : '')} onClick={phase === 'listening' ? stop : startMic} role="button" aria-label={phase === 'listening' ? 'Zastaviť' : 'Hovoriť'} />
         : <button type="button" className={'mic' + (phase === 'listening' ? ' on' : phase === 'thinking' ? ' think' : '')} onClick={phase === 'listening' ? stop : startMic} aria-label={phase === 'listening' ? 'Zastaviť' : 'Hovoriť'}><I n={phase === 'listening' ? 'stop' : 'microphone'} /></button>}
       {tr && phase !== 'idle' ? <div className={g ? 'vtx' : 'quote'}>„{tr}{phase === 'listening' ? <i>…</i> : ''}“</div>
-        : phase === 'idle' && <div className={g ? 'vtx sm' : 'vhint'}>{mode === 'search' ? 'Ťuknite na mikrofón a povedzte, na čo máte chuť' : 'Ťuknite na mikrofón a povedzte, čo kúpiť'}</div>}
+        : phase === 'idle' && <div className={g ? 'vtx sm' : 'vhint'}>{mode === 'search' ? 'Ťukni na mikrofón a povedz, na čo máš chuť' : 'Ťukni na mikrofón a povedz, čo kúpiť'}</div>}
       {phase === 'thinking' && <div className="think-l"><span /><span /><span />{ai ? 'Rozumiem vete…' : 'Spracúvam…'}</div>}
       {phase === 'result' && reply && <div className="reply"><I n="sparkle" />{reply}</div>}
       {note && <div className="vnote"><I n="info" />{note}</div>}
@@ -157,7 +157,7 @@ function VoiceOther({ p }) {
       {g && askItem && <div className="qtyg">{((askItem.u || 'ks') === 'kg' ? [.25, .5, 1, 2] : askItem.u === 'l' ? [.5, 1, 2, 3] : [1, 2, 3, 6]).map((q) => <button type="button" key={q} className={Math.abs(askItem.q - q) < .001 ? 'on' : 'glass2'} onClick={() => { setQ(askItem.key, q); setSel(null); }}>{fmtQty(q, askItem.u || 'ks')}</button>)}</div>}
       {phase === 'result' && intent && intent.type === 'search' && <Btn cls={'pri' + (g ? ' a' : '')} onClick={toRecipes}><I n="cooking-pot" />Ukázať recepty</Btn>}
       {(phase === 'idle' || (phase === 'result' && !items.length && !intent)) && (
-        <div className="examples"><span className="k">Alebo vyskúšajte príklad</span>{(mode === 'search' ? SEARCH_EX : EXAMPLES).map((x) => <button type="button" key={x} className={g ? 'glass2' : ''} onClick={() => simulate(x)}><I n="microphone" />{x}</button>)}</div>
+        <div className="examples"><span className="k">Alebo vyskúšaj príklad</span>{(mode === 'search' ? SEARCH_EX : EXAMPLES).map((x) => <button type="button" key={x} className={g ? 'glass2' : ''} onClick={() => simulate(x)}><I n="microphone" />{x}</button>)}</div>
       )}
       {(kbd || mode === 'type') && kbdField}
     </>
@@ -177,11 +177,11 @@ function VoiceOther({ p }) {
       steps: (r.steps && r.steps.length ? r.steps : [{ t: 'Postup nebol uvedený.', min: 0 }]).map((s) => [s.t || s, s.min || 0]) };
     act((s) => ({ ...s, aiRecipes: [rec2, ...s.aiRecipes] }));
     setRbusy(false); closeModal();
-    setTimeout(() => { jump('recipes', 'recipe', { id }); toast('Recept uložený medzi vaše recepty'); }, 50);
+    setTimeout(() => { jump('recipes', 'recipe', { id }); toast('Recept uložený medzi tvoje recepty'); }, 50);
   };
   const recipeMode = (
     <div className="rdict">
-      <p className="meta">Nadiktujte recept vlastnými slovami (cez mikrofón na klávesnici) alebo ho sem vložte. {ai ? 'AI z neho spraví suroviny a postup.' : 'Suroviny sa rozpoznajú v telefóne.'}</p>
+      <p className="meta">Nadiktuj recept vlastnými slovami (cez mikrofón na klávesnici) alebo ho sem vlož. {ai ? 'AI z neho spraví suroviny a postup.' : 'Suroviny sa rozpoznajú v telefóne.'}</p>
       <textarea id="recipe-text" value={rtxt} onChange={(e) => setRtxt(e.target.value)} placeholder="Napr. „Babkin perkelt: kilo pliecka, štyri cibule…“" rows={5} />
       <div className="rowc"><button type="button" className="chip plain" onClick={() => setRtxt(RECIPE_EXAMPLE)}><I n="sparkle" />Vložiť príklad</button><span className="grow" /><Btn cls={'pri sm' + (g ? ' a' : '')} onClick={saveRecipe} disabled={!rtxt.trim() || rbusy}>{rbusy ? 'Spracúvam…' : 'Uložiť recept'}</Btn></div>
       {note && <div className="vnote"><I n="info" />{note}</div>}

@@ -152,13 +152,13 @@ function Composer({ list, onAdded, focus0 }) {
             const what = !p ? (typo ? 'pridá sa presne takto' : 'nová položka') : p.grp ? (p.grp.length > 1 ? `všetky druhy (${p.grp.length})` : 'všeobecne') : p.virt === 'brand' ? `značka · ${PRODUCTS[p.kindPid].n.replace(/ ·.*$/, '')}` : 'presne tento druh';
             return <button type="button" className="sgr ent" onPointerDown={(ev) => ev.preventDefault()} onClick={submit}>{p ? <span className="sgi"><E k={p.e} s={30} /></span> : <span className="sgi nwi"><I n="plus" w="bold" /></span>}<span className="sgt"><b>{p ? p.n.replace(/ ·.*$/, '') : x.n}</b><small>{fmtQty(x.q, x.u)} · {what}</small></span>{e && <span className="sgp">~{eur(e.v)}</span>}<kbd aria-label="Enter">↵</kbd></button>; })()}
           {sugg.map((p) => { const q = enter.length === 1 ? enter[0].q : 1; const qu = enter.length === 1 ? enter[0].u : 'ks'; const e = estimate({ pid: p.id, q, u: qu }, S, list.store); const isT = typo && p.id === typo.id;
-            const what = isT ? 'preklep? ťuknite pre opravu' : p.grp ? (p.grp.length > 1 ? `všetky druhy (${p.grp.length})` : 'všeobecne') : p.virt === 'brand' ? 'značka' : 'druh';
+            const what = isT ? 'preklep? ťukni pre opravu' : p.grp ? (p.grp.length > 1 ? `všetky druhy (${p.grp.length})` : 'všeobecne') : p.virt === 'brand' ? 'značka' : 'druh';
             return (
             <button type="button" key={p.id} className={'sgr' + (isT ? ' typo' : '')} onPointerDown={(ev) => ev.preventDefault()} onClick={() => add(p, q, qu)}><span className="sgi"><E k={p.e} s={30} /></span><span className="sgt"><b>{isT ? p.n.replace(/ ·.*$/, '') + '?' : p.n.replace(/ ·.*$/, '')}</b><small>{what}</small></span>{e && <span className="sgp">~{eur(e.v)}</span>}</button>
           ); })}
         </div>
       ) : (
-        <div className="chips staples" aria-label="Často kupujete">
+        <div className="chips staples" aria-label="Často kupuješ">
           {staples.map((pid) => { const p = PRODUCTS[pid]; const pd = pend[pid]; return (
             <button type="button" key={pid} className={'chip' + (pd ? ' pend' : '') + (g ? ' glass2' : '')} onClick={() => tapStaple(pid)}>
               <E k={p.e} />{p.n.replace(/ ·.*$/, '').replace(/ polotučné| šalátová/, '')}
@@ -168,7 +168,7 @@ function Composer({ list, onAdded, focus0 }) {
         </div>
       )}
       <form className={'field' + (g ? ' glass2' : '')} onSubmit={submit}>
-        <input ref={inp} id={'add-' + list.id} value={txt} onChange={(e) => setTxt(e.target.value)} onFocus={() => setFocus(true)} onBlur={() => setTimeout(() => setFocus(false), 150)} placeholder="Napíšte alebo nadiktujte položku" autoComplete="off" enterKeyHint="done" aria-label="Pridať položku" />
+        <input ref={inp} id={'add-' + list.id} value={txt} onChange={(e) => setTxt(e.target.value)} onFocus={() => setFocus(true)} onBlur={() => setTimeout(() => setFocus(false), 150)} placeholder="Napíš alebo nadiktuj položku" autoComplete="off" enterKeyHint="done" aria-label="Pridať položku" />
         {txt ? <button type="submit" className="m" aria-label="Pridať"><I n="arrow-up" w="bold" /></button> : <button type="button" className="m" onClick={() => voice({ listId: list.id })} aria-label="Pridať hlasom"><I n="microphone" /></button>}
       </form>
     </div>
@@ -225,7 +225,7 @@ export function ListScreen({ p }) {
             <Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => modal('shop', { listId: list.id })} disabled={!open.length}><I n="basket" />Nakupovať</Btn>
           </div>
           {/* Rýchla úprava množstva je v nápovede „?“ – nič sa neukazuje samo */}
-          {!open.length && !done.length && <Empty e="basket" t="Zoznam je prázdny" d="Pridajte položky dole, ťuknite na časté položky alebo použite mikrofón." />}
+          {!open.length && !done.length && <Empty e="basket" t="Zoznam je prázdny" d="Pridaj položky dole, ťukni na časté položky alebo použi mikrofón." />}
           {loose.length > 0 && <div className={'lst' + (g ? ' glass2' : '')}>{loose.map((it) => <ItemRow key={it.id} it={it} list={list} sel={sel === it.id} setSel={setSel} />)}</div>}
           {Object.values(groups).map(({ g: gr, items }) => {
             const r = recipeById(gr.rid, S); const gs = items.reduce((a, i) => { const e = estimate(i, S, list.store); return a + (e ? e.v : 0); }, 0);
@@ -275,8 +275,8 @@ export function ItemSheet({ open, close, listId, itemId }) {
           <div className="pi-top"><div><div className="k">{it.paid != null ? 'Zaplatené' : 'Odhad'}</div><div className="price">{e ? (it.paid != null ? '' : '~') + eur(e.v) : '–'}</div></div>
             {up && <div className="ra"><div className="k">Bežná cena</div><div className="pv">{eur(up.up)} / {p.u === 'kg' ? 'kg' : p.u === 'l' ? 'l' : 'ks'}</div></div>}</div>
           {e && e.perKg && <p className="meta">Odhad podľa vášho bežného nákupu (~{fmtQty(weightOf(it, S), 'kg')}). Presnú cenu zapíše bloček.</p>}
-          {up && up.avg && <p className="meta">{p.grp.length > 1 ? `Priemer z ${up.k} nákupov ${p.grp.length} druhov` : `Priemer z ${up.k} nákupov`}{up.same ? ` v obchode ${storeName(list.store)}` : ''}. Rozpätie {eur(up.min)} – {eur(up.max)}. Keď položku spresníte, cena sa spočíta len z toho druhu.</p>}
-          {up && !up.approx && !up.avg && <p className="meta">{p && p.virt === 'brand' ? `Len nákupy značky ${p.brand}. ` : ''}{up.k === 1 ? 'Cena z posledného nákupu' : `Medián posledných ${up.k} nákupov`}{up.same ? ` v obchode ${storeName(list.store)}` : list.store ? ' zo všetkých obchodov' : ''}. Rozpätie {eur(up.min)} – {eur(up.max)}.{!up.same && list.store ? ` V obchode ${storeName(list.store)} ste to ešte nekupovali – cena je z obchodu ${storeName(up.store)}.` : ''}</p>}
+          {up && up.avg && <p className="meta">{p.grp.length > 1 ? `Priemer z ${up.k} nákupov ${p.grp.length} druhov` : `Priemer z ${up.k} nákupov`}{up.same ? ` v obchode ${storeName(list.store)}` : ''}. Rozpätie {eur(up.min)} – {eur(up.max)}. Keď položku spresníš, cena sa spočíta len z toho druhu.</p>}
+          {up && !up.approx && !up.avg && <p className="meta">{p && p.virt === 'brand' ? `Len nákupy značky ${p.brand}. ` : ''}{up.k === 1 ? 'Cena z posledného nákupu' : `Medián posledných ${up.k} nákupov`}{up.same ? ` v obchode ${storeName(list.store)}` : list.store ? ' zo všetkých obchodov' : ''}. Rozpätie {eur(up.min)} – {eur(up.max)}.{!up.same && list.store ? ` V obchode ${storeName(list.store)} sa to ešte nekupovalo – cena je z obchodu ${storeName(up.store)}.` : ''}</p>}
           {up && up.approx && <p className="meta">Orientačná cena – v bločkoch zatiaľ nie je. Po prvom bločku sa sem zapíše skutočná.</p>}
           {!up && <p className="meta">Cenu zatiaľ nepoznáme. Zapíše sa z bločku po nákupe.</p>}
           {h.length > 0 && <div className="hist">{h.map((x, i) => <div key={i}><span>{shortDate(x.d)}</span><span className="mk" style={{ '--sc': (STORES[x.s] || {}).c1 }}>{storeName(x.s)}</span><b>{eur(x.p)}</b></div>)}</div>}
@@ -322,7 +322,7 @@ export function NewListSheet({ open, close }) {
     const d = date ? new Date(date + 'T00:00') : addDays(new Date(), day); const today = !date && day === 0; d.setHours(today ? new Date().getHours() + 1 : 17, 0, 0, 0);
     let id = null;
     act((s) => { const nl = { id: Math.random().toString(36).slice(2, 9), name: title, store, when: d.toISOString(), shared: mine ? ['m'] : ['m', 'l'], items: [] }; id = nl.id; return { ...s, lists: [...s.lists.filter((x) => !x.live), nl, ...s.lists.filter((x) => x.live)] }; });
-    close(); setTimeout(() => id && push('list', { id }), 50); toast(mine ? 'Zoznam vytvorený – vidíte ho len vy' : 'Zoznam vytvorený – Lucia ho vidí tiež');
+    close(); setTimeout(() => id && push('list', { id }), 50); toast(mine ? 'Zoznam vytvorený – vidíš ho len ty' : 'Zoznam vytvorený – Lucia ho vidí tiež');
   };
   return (
     <Sheet open={open} onClose={close} label="Nový zoznam" cls="nl">
@@ -333,12 +333,12 @@ export function NewListSheet({ open, close }) {
         <div><span className="k">Kedy</span><div className="days">{[[0, 'Dnes'], [1, 'Zajtra'], [2, 'Pozajtra']].map(([d, l]) => <button type="button" key={l} className={'chip plain' + (!date && day === d ? ' on' : '')} onClick={() => { setDay(d); setDate(''); }}>{l}</button>)}
           <label className={'chip plain datec' + (date ? ' on' : '')}><I n="calendar-blank" />{date ? `${['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'][new Date(date + 'T00:00').getDay()]} ${new Date(date + 'T00:00').getDate()}. ${new Date(date + 'T00:00').getMonth() + 1}.` : 'Dátum'}<input type="date" aria-label="Vybrať dátum" min={dkey(new Date())} value={date} onChange={(e) => setDate(e.target.value)} onClick={(e) => { try { e.currentTarget.showPicker(); } catch {} }} /></label></div></div>
         <div><span className="k">Kto ho uvidí</span><div className="who">
-          <button type="button" aria-pressed={!mine} className={'whob' + (!mine ? ' on' : '')} onClick={() => setMine(false)}><I n="users-three" /><span><b>Blahovci</b><small>spoločný s Luciou</small></span></button>
+          <button type="button" aria-pressed={!mine} className={'whob' + (!mine ? ' on' : '')} onClick={() => setMine(false)}><I n="users-three" /><span><b>Kováčovci</b><small>spoločný s Luciou</small></span></button>
           <button type="button" aria-pressed={mine} className={'whob' + (mine ? ' on' : '')} onClick={() => setMine(true)}><I n="lock-simple" /><span><b>Iba ja</b><small>súkromný</small></span></button>
         </div></div>
       </div>
       {/* potvrdenie je vždy viditeľné pod obsahom, netreba rolovať */}
-      <div className="sh-foot"><Btn cls="pri full" disabled={!title} onClick={create}>{title ? `Vytvoriť „${title}“` : 'Napíšte názov alebo vyberte obchod'}</Btn></div>
+      <div className="sh-foot"><Btn cls="pri full" disabled={!title} onClick={create}>{title ? `Vytvoriť „${title}“` : 'Napíš názov alebo vyber obchod'}</Btn></div>
     </Sheet>
   );
 }
@@ -352,7 +352,7 @@ export function ListMenuSheet({ open, close, id }) {
   if (!l) return <Sheet open={false} onClose={close} />;
   const share = () => {
     const txt = `${l.name}${l.store && storeName(l.store) !== l.name ? ` (${storeName(l.store)})` : ''}\n` + l.items.filter((i) => !i.done).map((i) => `• ${itemName(i)} – ${fmtQty(i.q, unitOf(i))}`).join('\n');
-    const ok = () => toast('Zoznam skopírovaný – vložte ho do správy');
+    const ok = () => toast('Zoznam skopírovaný – vlož ho do správy');
     try { navigator.clipboard.writeText(txt).then(ok, () => toast('Kopírovanie tu nie je povolené', { icon: 'warning-circle' })); } catch { toast('Kopírovanie tu nie je povolené', { icon: 'warning-circle' }); }
   };
   return (
@@ -388,8 +388,8 @@ export function History() {
     <div className="sc">
       <header className="nb"><Back /><span className="nbt">História nákupov</span><HelpBtn screen="history" /></header>
       <div className="body">
-        <div><h1 className="lt">História nákupov</h1><p className="meta">Ukončené nákupy. Ťuknutím pozriete, čo ste kúpili, alebo nakúpite znova.</p></div>
-        {!hs.length ? <Empty e="bags" t="Zatiaľ žiadny ukončený nákup" d="Keď nákup dokončíte, nájdete ho tu." /> : (
+        <div><h1 className="lt">História nákupov</h1><p className="meta">Ukončené nákupy. Ťuknutím pozrieš, čo sa kúpilo, alebo nakúpiš znova.</p></div>
+        {!hs.length ? <Empty e="bags" t="Zatiaľ žiadny ukončený nákup" d="Keď nákup dokončíš, nájdeš ho tu." /> : (
           <div className={'lst' + (g ? ' glass2' : '')}>{hs.map((h) => (
             <button type="button" key={h.id} className="row tap" onClick={() => push('histlist', { id: h.id })}>
               {h.store ? <StoreTile k={h.store} s={44} /> : <span className="th ic"><I n="basket" /></span>}

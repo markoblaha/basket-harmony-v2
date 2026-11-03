@@ -97,14 +97,14 @@ function Tonight({ x, g }) {
   if (!x || !x.r) return (
     <button type="button" className={'card plan tapc' + (g ? ' glass2' : '')} onClick={() => jump('recipes')}>
       <span className="tile"><E k="cooking" /></span>
-      <div className="grow"><div className="k acc">Dnes večer</div><div className="ttl serif">Zatiaľ nič naplánované</div><div className="meta">Vyberte jedlo v knihe receptov</div></div><I n="caret-right" w="bold" cls="chev" />
+      <div className="grow"><div className="k acc">Dnes večer</div><div className="ttl serif">Zatiaľ nič naplánované</div><div className="meta">Vyber jedlo v knihe receptov</div></div><I n="caret-right" w="bold" cls="chev" />
     </button>
   );
   const h = haveCount(x.r, S);
   return (
     <button type="button" className={'card plan tapc' + (g ? ' glass2' : '')} onClick={() => push('recipe', { id: x.r.id })}>
       {g && x.r.pic ? <span className={'tile tph pic-' + x.r.pic} /> : <span className={'tile bg-' + x.r.bg}><E k={x.r.e} /></span>}
-      <div className="grow"><div className="k acc">{x.today ? 'Dnes večer' : dayName(x.d)}</div><div className="ttl serif">{x.r.n}</div><div className="meta">{x.r.min} min · {h.have === h.all ? 'suroviny máte' : `chýba ${h.all - h.have} surovín`}</div></div>
+      <div className="grow"><div className="k acc">{x.today ? 'Dnes večer' : dayName(x.d)}</div><div className="ttl serif">{x.r.n}</div><div className="meta">{x.r.min} min · {h.have === h.all ? 'suroviny máš' : `chýba ${h.all - h.have} surovín`}</div></div>
       <span className="btn sm round pri" role="button" aria-label="Variť" onClick={(e) => { e.stopPropagation(); modal('cook', { id: x.r.id }); }}><I n="play" /></span>
     </button>
   );
@@ -163,13 +163,13 @@ export function Home() {
           {next ? <HRow g={g} lead={<StoreTile k={next.store} n={next.name} s={40} />} onClick={() => jump('lists', 'list', { id: next.id })} label={`Zoznam ${next.name}`}
             title={next.store ? storeName(next.store) : next.name} sub={`${relDay(next.when)} · ${nOpen} ${nOpen === 1 ? 'položka' : nOpen < 5 && nOpen > 0 ? 'položky' : 'položiek'}${nextT.priced ? ' · ~' + eur0(nextT.v) : ''}`}
             action={nOpen > 0 ? <Btn cls={(going ? 'ok' : 'pri') + ' sm' + (g && !going ? ' a' : '')} onClick={stopThen(() => modal('shop', { listId: next.id }))}><I n={going ? 'play' : 'basket'} />{going ? 'Pokračovať' : 'Nakupovať'}</Btn> : null} />
-            : <HRow g={g} lead={<span className="th ic"><I n="basket" /></span>} title="Žiadny otvorený zoznam" sub="Začnite nový nákup" onClick={() => sheet('newList')} action={<Btn cls="soft sm"><I n="plus" w="bold" />Nový</Btn>} />}
+            : <HRow g={g} lead={<span className="th ic"><I n="basket" /></span>} title="Žiadny otvorený zoznam" sub="Začni nový nákup" onClick={() => sheet('newList')} action={<Btn cls="soft sm"><I n="plus" w="bold" />Nový</Btn>} />}
         </HSec>}
         {!(S.first && !plan.length) && <HSec t="Naplánované recepty" link="Plán týždňa" onLink={() => jump('recipes')}>
           {plan.length ? plan.map(({ k, r }) => { const h = haveCount(r, S); const miss = h.all - h.have; return <HRow key={k} g={g} lead={r.pic ? <span className={'th tph pic-' + r.pic} /> : <span className={'th bg-' + r.bg}><E k={r.e} /></span>} onClick={() => push('recipe', { id: r.id })} label={`Recept ${r.n}`}
-            title={r.n} sub={`${relDay(k)} · ${r.min} min · ${miss === 0 ? 'suroviny máte' : `chýba ${miss} ${miss === 1 ? 'surovina' : miss < 5 ? 'suroviny' : 'surovín'}`}`}
+            title={r.n} sub={`${relDay(k)} · ${r.min} min · ${miss === 0 ? 'suroviny máš' : `chýba ${miss} ${miss === 1 ? 'surovina' : miss < 5 ? 'suroviny' : 'surovín'}`}`}
             action={<button type="button" className="hplay" aria-label={`Variť ${r.n}`} onClick={stopThen(() => modal('cook', { id: r.id }))}><I n="play" /></button>} />; })
-            : <HRow g={g} lead={<span className="th ic"><I n="cooking-pot" /></span>} title="Nič naplánované" sub="Vyberte jedlo v knihe receptov" onClick={() => jump('recipes')} action={<I n="caret-right" w="bold" cls="chev" />} />}
+            : <HRow g={g} lead={<span className="th ic"><I n="cooking-pot" /></span>} title="Nič naplánované" sub="Vyber jedlo v knihe receptov" onClick={() => jump('recipes')} action={<I n="caret-right" w="bold" cls="chev" />} />}
         </HSec>}
         <HSec t="Rýchlo">
           <div className="hqa">{QA.map(([ic, t, fn]) => <button type="button" key={t} className={'hqab' + (g ? ' glass2' : '')} onClick={fn}><span className="qi"><I n={ic} w={ic === 'plus' ? 'bold' : 'fill'} /></span>{t}</button>)}</div>

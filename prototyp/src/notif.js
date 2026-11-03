@@ -9,7 +9,7 @@ export function notifItems(S) {
   return [
     live && lt.done < lt.n && { id: 'live', av: 'l', t: `Nakupuje: Lucia · ${storeName(live.store)}`, d: `${lt.done} z ${lt.n} v košíku`, go: ['modal', 'follow'] },
     byL.length && { id: 'add' + byL.length, av: 'l', t: `Lucia pridala položky: ${byL.length}`, d: `do zoznamu ${l1.name}`, go: ['jump', 'lists', 'list', { id: l1.id }] },
-    miss && { id: 'miss' + miss, e: 'receipt', t: `Chýba bloček: ${miss}`, d: 'odfoťte ho a ceny sa zapíšu samé', go: ['jump', 'money'] },
+    miss && { id: 'miss' + miss, e: 'receipt', t: `Chýba bloček: ${miss}`, d: 'odfoť ho a ceny sa zapíšu samé', go: ['jump', 'money'] },
     !S.noReal && { id: 'pivo', e: 'beer', t: 'Pivo 12° je v Lidli najlacnejšie', d: '0,92 € oproti 1,15 € v Kauflande', go: ['jump', 'money', 'product', { pid: 'pivo' }] },
   ].filter(Boolean);
 }

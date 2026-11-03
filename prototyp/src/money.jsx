@@ -72,7 +72,7 @@ export function Money() {
   const openCat = (k) => push('category', { cat: k });
   const rbtns = <div className="rbtns"><Btn cls="pri grow" onClick={() => modal('scan', {})}><I n="camera" />Odfotiť bloček</Btn><Btn cls="soft grow" onClick={() => push('receipts')}><I n="receipt" />Všetky bločky</Btn></div>;
   const seg = <Seg items={[['week', 'Týždeň'], ['month', 'Október'], ['year', 'Rok']]} value={per} onChange={setPer} />;
-  const empty = !P.total && <Empty e="receipt" t="Tento týždeň zatiaľ žiadny bloček" d="Údaje z bločkov končia 21. 10. Odfoťte bloček po nákupe a hneď sa tu ukáže."><Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => modal('scan', {})}><I n="camera" />Odfotiť bloček</Btn></Empty>;
+  const empty = !P.total && <Empty e="receipt" t="Tento týždeň zatiaľ žiadny bloček" d="Údaje z bločkov končia 21. 10. Odfoť bloček po nákupe a hneď sa tu ukáže."><Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => modal('scan', {})}><I n="camera" />Odfotiť bloček</Btn></Empty>;
 
   const rest = (
     <>
@@ -88,7 +88,7 @@ export function Money() {
       </>}
       <div className="h2">Oplatí sa vedieť</div>
       {insights(S).map((x) => <button type="button" key={x.t} className={'card insight tapc' + (g ? ' glass2' : '')} onClick={() => push('product', { pid: x.pid })}><span className="tile"><E k={x.e} /></span><div className="grow"><div className="ib-t">{x.t}</div><div className="meta">{x.d}</div></div><I n="caret-right" w="bold" cls="chev" /></button>)}
-      <p className="src-note">Všetko je spočítané zo skutočných bločkov domácnosti (testovacia databáza, august – október 2026) a z bločkov, ktoré odfotíte tu.</p>
+      <p className="src-note">Všetko je spočítané z vymyslených bločkov ukážkovej domácnosti (august – október 2026) a z bločkov, ktoré odfotíš tu.</p>
     </>
   );
 
@@ -130,7 +130,7 @@ export function Money() {
         {seg}
         {P.total > 0 && <button type="button" className="card sum tapc" onClick={() => per === 'month' && sheet('budget')}>
           <Donut cats={P.cats} center={used != null ? Math.round(used * 100) + ' %' : eur0(P.total)} sub={used != null ? 'z ' + eur0(budget) : P.title.toLowerCase()} />
-          <div className="grow"><div className="meta">Minuli ste</div><div className="price xl">{eur(P.total)}</div>
+          <div className="grow"><div className="meta">Minuté</div><div className="price xl">{eur(P.total)}</div>
             {diff != null && <div className={'trend ' + (diff > 0 ? 'up' : 'dn')}><I n={diff > 0 ? 'trend-up' : 'trend-down'} w="bold" />o {Math.abs(Math.round(diff * 100))} % {diff > 0 ? 'viac' : 'menej'}<br />ako v septembri</div>}
             {P.note && <div className="meta sm">{P.note}</div>}
           </div>
@@ -158,7 +158,7 @@ export function CategoryScreen({ p }) {
         <div className="body">
           <div className="lhead"><span className="tile lg" style={{ '--tc': c.col }}><E k={c.e} s={40} /></span><div className="grow"><h1 className="lt">{c.n}</h1><div className="meta">Október 2026 · {plural(kinds.length, 'druh', 'druhy', 'druhov')}</div></div></div>
           <div className={'card match' + (g ? ' mg' : '')}><div><div className="k">Október</div><div className="price">{eur(v)}</div></div><div className="ra"><div className="k">September</div><div className="price mut">{eur(prev)}</div>{prev > 0 && <div className={'trend sm ' + (v > prev ? 'up' : 'dn')}><I n={v > prev ? 'trend-up' : 'trend-down'} w="bold" />v októbri o {eur(Math.abs(v - prev))} {v > prev ? 'viac' : 'menej'}</div>}</div></div>
-          <div className="h2 sm">Čo ste kúpili</div>
+          <div className="h2 sm">Čo sa kúpilo</div>
           <div className={'lst' + (g ? ' glass2' : '')}>
             {kinds.map((x) => (
               <button type="button" key={x.kind} className="row tap" onClick={() => push('kind', { kind: x.kind, mo: '2026-10' })}>
@@ -195,7 +195,7 @@ export function KindScreen({ p }) {
       <div className="body">
         <div className="lhead"><span className="tile lg" style={{ '--tc': c ? c.col : '#999' }}><E k={d.ls[0] ? lineEmoji(d.ls[0]) : 'basket'} s={40} /></span><div className="grow"><h1 className="lt">{p.kind}</h1><div className="meta">{c ? c.n : 'Druh'} · všetky značky a balenia</div></div></div>
         <Seg items={MOS} value={mo} onChange={setMo} />
-        {!d.cnt ? <p className="vnote"><I n="info" />V tomto období ste tento druh nekúpili.</p> : <>
+        {!d.cnt ? <p className="vnote"><I n="info" />V tomto období sa tento druh nekúpil.</p> : <>
           <div className={'card kstat' + (g ? ' glass2' : '')}>
             <div><div className="k">Spolu</div><div className="price">{eur(d.sum)}</div><div className="meta sm">{d.cnt}× nákup</div></div>
             <div><div className="k">Nakúpené</div><div className="price">{d.qty ? qtyTxt(d.qty, B) : '–'}</div></div>
@@ -307,7 +307,7 @@ export function ProductScreen({ p }) {
       <div className="sc">
         <header className="nb"><Back /><span className="nbt">{pp.n}</span><span className="ibs" /></header>
         <div className="body">
-          <div className="lhead"><span className="tile lg" style={{ '--tc': CATS[pp.c].col }}><E k={pp.e} s={44} /></span><div className="grow"><h1 className="lt">{pp.n}</h1><div className="meta">{CATS[pp.c].n}{pp.real ? ' · z vašich bločkov' : ''}</div></div></div>
+          <div className="lhead"><span className="tile lg" style={{ '--tc': CATS[pp.c].col }}><E k={pp.e} s={44} /></span><div className="grow"><h1 className="lt">{pp.n}</h1><div className="meta">{CATS[pp.c].n}{pp.real ? ' · z tvojich bločkov' : ''}</div></div></div>
           <div className={'card match' + (g ? ' mg' : '')}>
             <div><div className="k">Bežná cena</div><div className="price">{u ? eur(u.up) : '–'}<small>{per}</small></div><div className="meta sm">{u && !u.approx ? 'medián posledných 3 nákupov' : 'orientačne'}</div></div>
             {u && !u.approx && <div className="ra"><div className="k">Naposledy</div><div className="price mut">{eur(u.last.p)}</div><div className="meta sm">{storeName(u.last.s)} · {shortDate(u.last.d)}</div></div>}
@@ -339,7 +339,7 @@ export function StoreScreen({ p }) {
         <div className="body">
           <div className="lhead"><StoreTile k={key || p.name} s={60} /><div className="grow"><h1 className="lt">{p.name}</h1><div className="meta">Október 2026</div></div></div>
           <div className={'card match' + (g ? ' mg' : '')}><div><div className="k">Spolu</div><div className="price">{eur(tot)}</div></div><div className="ra"><div className="k">Nákupy</div><div className="price mut">{rs.length}</div><div className="meta sm">priemerne {eur(tot / Math.max(1, rs.length))}</div></div></div>
-          {Object.keys(cats).length > 0 && <><div className="h2 sm">Čo tu kupujete</div><div className={'card cats' + (g ? ' glass2' : '')}>{Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, v]) => <button type="button" key={k} className="cat" onClick={() => push('category', { cat: k })}><span className="tile" style={{ '--tc': CATS[k].col }}><E k={CATS[k].e} /></span><div className="g1"><div className="cr"><span>{CATS[k].n}</span><em>{eur(v)}</em></div><div className="ln"><i style={{ width: v / max * 100 + '%', background: CATS[k].col }} /></div></div></button>)}</div></>}
+          {Object.keys(cats).length > 0 && <><div className="h2 sm">Čo tu kupuješ</div><div className={'card cats' + (g ? ' glass2' : '')}>{Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, v]) => <button type="button" key={k} className="cat" onClick={() => push('category', { cat: k })}><span className="tile" style={{ '--tc': CATS[k].col }}><E k={CATS[k].e} /></span><div className="g1"><div className="cr"><span>{CATS[k].n}</span><em>{eur(v)}</em></div><div className="ln"><i style={{ width: v / max * 100 + '%', background: CATS[k].col }} /></div></div></button>)}</div></>}
           <div className="h2 sm">Bločky</div>
           <div className={'lst' + (g ? ' glass2' : '')}>{rs.map((r) => <button type="button" key={r.id} className="row tap" onClick={() => push('receipt', { id: r.id })}><span className="th"><E k="receipt" /></span><div className="tx"><b>{shortDate(r.date)} {r.time}</b><span className="sub">{plural(r.lines.length, 'položka', 'položky', 'položiek')}</span></div><b className="amt">{eur(r.total)}</b></button>)}</div>
         </div>
@@ -359,7 +359,7 @@ export function BudgetSheet({ open, close }) {
         <div className="bigv">{eur0(v)}</div>
         <input id="budget" type="range" min="300" max="2000" step="50" value={v} onChange={(e) => setV(+e.target.value)} aria-label="Rozpočet" />
         <div className="chips wrap c">{[600, 800, 1000, 1200].map((x) => <button type="button" key={x} className={'chip plain' + (v === x ? ' on' : '')} onClick={() => setV(x)}>{eur0(x)}</button>)}</div>
-        <p className="meta c">V októbri ste zatiaľ minuli {eur(spent)} – {Math.round(spent / v * 100)} % z tohto rozpočtu.</p>
+        <p className="meta c">V októbri sa zatiaľ minulo {eur(spent)} – {Math.round(spent / v * 100)} % z tohto rozpočtu.</p>
         <Btn cls="pri full" onClick={() => { act((s) => ({ ...s, budget: v })); toast('Rozpočet uložený'); close(); }}>Uložiť</Btn>
       </div>
     </Sheet>

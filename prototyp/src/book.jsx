@@ -101,7 +101,7 @@ export function BookSteps({ r }) {
 export function BookInfo({ r }) {
   const { S, act, toast } = useApp();
   const rate = (S.aiRate || {})[r.id];
-  const set = (v) => { act((s) => ({ ...s, aiRate: { ...(s.aiRate || {}), [r.id]: v } })); toast(v === 'up' ? 'Ďakujem, recept je označený ako dobrý' : v === 'down' ? 'Označené na opravu. V Mape knihy ho uvidíte.' : 'Chyba nahlásená', { icon: v === 'up' ? 'thumbs-up' : 'flag' }); };
+  const set = (v) => { act((s) => ({ ...s, aiRate: { ...(s.aiRate || {}), [r.id]: v } })); toast(v === 'up' ? 'Ďakujem, recept je označený ako dobrý' : v === 'down' ? 'Označené na opravu. V Mape knihy ho uvidíš.' : 'Chyba nahlásená', { icon: v === 'up' ? 'thumbs-up' : 'flag' }); };
   return <>
     {r.variants && r.variants.length > 0 && <div className="binfo">
       <div className="bgh">Obmeny</div>
@@ -115,7 +115,7 @@ export function BookInfo({ r }) {
     </div>
     {r.aiTest && <div className="aitest">
       <div className="t1"><I n="sparkle" />Na otestovanie</div>
-      <p className="meta">Recept napísala AI podľa štandardu knihy, fotky vytvorila AI ako ilustračné. Ako sa vám páči?</p>
+      <p className="meta">Recept napísala AI podľa štandardu knihy, fotky vytvorila AI ako ilustračné. Ako sa ti páči?</p>
       <div className="aiv">
         <button type="button" className={rate === 'up' ? 'on' : ''} onClick={() => set('up')}><I n="thumbs-up" />Dobrý</button>
         <button type="button" className={rate === 'down' ? 'on' : ''} onClick={() => set('down')}><I n="thumbs-down" />Opraviť</button>
@@ -180,7 +180,7 @@ export function Taste() {
                 <div className="tst-tags">{r.aiTest && <AiBadge sm />}{r.cuisine && <span className="tg">{r.cuisine}</span>}</div>
                 <h2>{r.n}</h2>
                 <div className="tst-meta"><span><I n="timer" />{r.min >= 60 ? `${Math.floor(r.min / 60)} h ${r.min % 60 ? (r.min % 60) + ' min' : ''}` : r.min + ' min'}</span><span>{eur(recipeCost(r, S))} / porcia</span>{r.diff && <span>{r.diff}</span>}</div>
-                <div className="tst-have">Doma máte {h.have} z {h.all} surovín{LUCIA_LIKES.includes(id) && <span className="tst-who"><Av id="l" s={20} />Lucii sa páči</span>}</div>
+                <div className="tst-have">Doma máš {h.have} z {h.all} surovín{LUCIA_LIKES.includes(id) && <span className="tst-who"><Av id="l" s={20} />Lucii sa páči</span>}</div>
                 <button type="button" className="tst-open" onClick={() => open(id)}>Celý recept<I n="caret-right" w="bold" /></button>
               </div>
               <div className="tst-rail">
@@ -197,16 +197,16 @@ export function Taste() {
           <div className="tst-endin">
             <E k="party" s={64} />
             <h2>Na dnes stačilo</h2>
-            <p>Prešli ste {ids.length} receptov. {liked.length ? `Páčili sa vám ${plural(liked.length, 'recept', 'recepty', 'receptov')}:` : 'Nič vás nezaujalo? Zajtra budú iné.'}</p>
+            <p>Prezreté recepty: {ids.length}. {liked.length ? `Páčili sa ti ${plural(liked.length, 'recept', 'recepty', 'receptov')}:` : 'Nič ťa nezaujalo? Zajtra budú iné.'}</p>
             {liked.length > 0 && <div className="tst-liked">{liked.map((r) => <button type="button" key={r.id} onClick={() => open(r.id)}><span className={'th pic-' + r.pic} /><b>{r.n}</b>{LUCIA_LIKES.includes(r.id) && <Av id="l" s={22} />}</button>)}</div>}
             <Btn cls="pri full" onClick={closeModal}>Hotovo</Btn>
           </div>
         </section>
       </div>
       {hint && <div className="tst-hint" onClick={() => { setHint(false); act((s) => ({ ...s, tips: { ...(s.tips || {}), taste: true } })); }}>
-        <div><I n="caret-up" w="bold" /><b>Potiahnite hore</b><span>ďalší recept</span></div>
+        <div><I n="caret-up" w="bold" /><b>Potiahni hore</b><span>ďalší recept</span></div>
         <div><I n="hand-swipe-left" /><b>Do strany</b><span>ďalšia fotka</span></div>
-        <div><I n="heart" w="fill" /><b>Dvakrát ťuknite</b><span>chcem to uvariť</span></div>
+        <div><I n="heart" w="fill" /><b>Dvakrát ťukni</b><span>chcem to uvariť</span></div>
       </div>}
       {match && (() => { const r = recipeById(match, S); return (
         <div className="tst-match" onClick={() => setMatch(null)} role="dialog" aria-label="Rodinná zhoda">
@@ -229,7 +229,7 @@ export function TasteEntry() {
   return (
     <button type="button" className="tentry" onClick={() => modal('taste')}>
       <span className="te-ph"><i className="pic-a_las1" /><i className="pic-a_seg2" /><i className="pic-a_med1" /></span>
-      <span className="te-tx"><b>Ochutnávač</b><small>Listujte recepty ako videá. Čo sa páči vám aj Lucii, appka ukáže.</small>{n > 0 && <em><I n="heart" w="fill" />{n} sa vám páči</em>}</span>
+      <span className="te-tx"><b>Ochutnávač</b><small>Listuj recepty ako videá. Čo sa páči tebe aj Lucii, appka ukáže.</small>{n > 0 && <em><I n="heart" w="fill" />{n} sa ti páči</em>}</span>
       <span className="te-go"><I n="play" w="fill" /></span>
     </button>
   );
@@ -273,7 +273,7 @@ export function BookMap() {
         </div>
         <div className="h2 sm">Várky</div>
         <div className="lst">
-          <div className="row"><span className="th ic"><I n="sparkle" /></span><div className="tx"><b>Várka 1 · skúšobná</b><span className="sub">{BOOK.length} receptov · 15 fotiek · čaká na vaše hodnotenie</span></div></div>
+          <div className="row"><span className="th ic"><I n="sparkle" /></span><div className="tx"><b>Várka 1 · skúšobná</b><span className="sub">{BOOK.length} receptov · 15 fotiek · čaká na tvoje hodnotenie</span></div></div>
           <div className="row"><span className="th ic"><I n="calendar-blank" /></span><div className="tx"><b>Várka 2 · návrh</b><span className="sub">20 receptov podľa priority: hľadané, sezóna, kategórie pod minimom</span></div></div>
         </div>
         <div className="h2 sm">Na otestovanie</div>

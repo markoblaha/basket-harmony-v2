@@ -23,7 +23,7 @@ export function RCard({ r, onOpen, wide }) {
   const meta = `${r.min} min · ${eur(recipeCost(r, S))} / porcia`;
   return (
     <button type="button" className={'rcard' + (wide ? ' wide' : '')} onClick={onOpen}>
-      <span className={'rimg' + (r.pic ? ' pic-' + r.pic : ' bg-' + (r.bg || 'peach'))}>{!r.pic && <E k={r.e} />}{fav && <span className="rfav"><I n="heart" /></span>}{h.all && h.have === h.all && <span className="rok">Máte všetko</span>}{r.aiTest && <span className="raib"><I n="sparkle" />Od AI</span>}</span>
+      <span className={'rimg' + (r.pic ? ' pic-' + r.pic : ' bg-' + (r.bg || 'peach'))}>{!r.pic && <E k={r.e} />}{fav && <span className="rfav"><I n="heart" /></span>}{h.all && h.have === h.all && <span className="rok">Máš všetko</span>}{r.aiTest && <span className="raib"><I n="sparkle" />Od AI</span>}</span>
       <span className="rtxt"><b>{r.n}</b><small>{meta}</small></span>
     </button>
   );
@@ -99,7 +99,7 @@ export function Recipes() {
           </form>
           {sr ? <>
             <div className="h2">{sr.miss ? 'Podobné recepty' : 'Výsledky'}<button type="button" className="a" onClick={() => { setSr(null); setQ(''); }}>Späť na knihu</button></div>
-            {sr.miss && <div className="card wish"><span className="wi"><I n="book-open-text" /></span><div className="grow"><div className="t1">„{sr.q}“ v knihe zatiaľ nemáme</div><p className="meta">Pridali sme to do plánu knihy. Keď recept pribudne, dáme vám vedieť. Recepty si appka nevymýšľa naživo, každý najprv skontrolujeme.</p></div></div>}
+            {sr.miss && <div className="card wish"><span className="wi"><I n="book-open-text" /></span><div className="grow"><div className="t1">„{sr.q}“ v knihe zatiaľ nemáme</div><p className="meta">Pridali sme to do plánu knihy. Keď recept pribudne, dáme ti vedieť. Recepty si appka nevymýšľa naživo, každý najprv skontrolujeme.</p></div></div>}
             <div className="rgrid2">
               {sr.ids.map((id, i) => { const r = recipeById(id, S); return r ? <div key={id} className="rin" style={{ '--d': (i % 4) * 90 + 'ms' }}><RCard r={r} onOpen={() => push('recipe', { id, ids: sr.ids })} /></div> : null; })}
             </div>
@@ -107,7 +107,7 @@ export function Recipes() {
           </> : <>
             <TasteEntry />
             <div className="h2">Na otestovanie <span className="cnt">AI</span><button type="button" className="a" onClick={() => push('rcol', { col: 'aitest' })}>Všetky</button></div>
-            <p className="meta sm aimeta">Nová kniha receptov: suroviny v skupinách, podrobný postup a 3 fotky. Recept aj fotky vytvorila AI, otestujte ich.</p>
+            <p className="meta sm aimeta">Nová kniha receptov: suroviny v skupinách, podrobný postup a 3 fotky. Recept aj fotky vytvorila AI, otestuj ich.</p>
             <div className="rrow">{BOOK.map((r) => <RCard key={r.id} r={r} wide onOpen={() => open(r, BOOK)} />)}</div>
             <div className="h2">Kategórie</div>
             <div className="cgrid">{RCATS.map((c) => <CatTile key={c.id} c={c} g={g} n={c.id === 'all' ? RECIPES.length : RECIPES.filter((r) => r.cat === c.id).length} onOpen={() => push('rcol', { cat: c.id })} />)}</div>
@@ -132,25 +132,25 @@ export function Recipes() {
             </div>
           </div>
           <div className="h2">Obľúbené <span className="cnt">{favs.length}</span></div>
-          {favs.length ? <Grid list={favs} open={open} /> : <p className="vnote"><I n="heart" />Srdiečkom pri recepte si ho uložíte sem.</p>}
-          <div className="h2">Pridané vami <span className="cnt">{own.length}</span></div>
-          {own.length ? <Grid list={own} open={open} /> : <p className="vnote"><I n="info" />Recepty, ktoré odfotíte, nadiktujete alebo pridáte odkazom, budú tu.</p>}
+          {favs.length ? <Grid list={favs} open={open} /> : <p className="vnote"><I n="heart" />Srdiečkom pri recepte si ho uložíš sem.</p>}
+          <div className="h2">Pridané tebou <span className="cnt">{own.length}</span></div>
+          {own.length ? <Grid list={own} open={open} /> : <p className="vnote"><I n="info" />Recepty, ktoré odfotíš, nadiktuješ alebo pridáš odkazom, budú tu.</p>}
           {cooked.length > 0 && <><div className="h2">Naposledy varené</div><Grid list={cooked} open={open} /></>}
         </>}
 
         {sec === 'plan' && <>
-          <p className="meta">Naplánujte jedlá na týždeň. Chýbajúce suroviny pridáte do nákupu jedným ťuknutím.</p>
+          <p className="meta">Naplánuj jedlá na týždeň. Chýbajúce suroviny pridáš do nákupu jedným ťuknutím.</p>
           <div className="lst weekl">
             {days.map((x) => (
               <button type="button" key={x.k} className="row tap" onClick={() => (x.r ? push('recipe', { id: x.r.id, ids: days.filter((y) => y.r).map((y) => y.r.id) }) : sheet('plan', { day: x.k }))}>
                 <span className="dayc"><b>{x.i === 0 ? 'Dnes' : dayShort(x.d)}</b><small>{x.d.getDate()}.</small></span>
-                {x.r ? <><span className={'th' + (x.r.pic ? ' pic-' + x.r.pic : ' bg-' + x.r.bg)}>{!x.r.pic && <E k={x.r.e} />}</span><div className="tx"><b>{x.r.n}</b><span className="sub">{x.r.min} min · {(() => { const h = haveCount(x.r, S); return h.have === h.all ? 'všetko máte' : `chýba ${h.all - h.have}`; })()}</span></div></>
+                {x.r ? <><span className={'th' + (x.r.pic ? ' pic-' + x.r.pic : ' bg-' + x.r.bg)}>{!x.r.pic && <E k={x.r.e} />}</span><div className="tx"><b>{x.r.n}</b><span className="sub">{x.r.min} min · {(() => { const h = haveCount(x.r, S); return h.have === h.all ? 'všetko máš' : `chýba ${h.all - h.have}`; })()}</span></div></>
                   : <div className="tx"><span className="sub plan-empty"><I n="plus" w="bold" />Vybrať jedlo</span></div>}
               </button>
             ))}
           </div>
           {planMissing > 0 && target && <div className="card dockc"><div className="grow"><div className="t1">Na plán chýba {plural(planMissing, 'surovina', 'suroviny', 'surovín')}</div><div className="meta">pridajú sa do zoznamu {target.name}</div></div><Btn cls="pri sm" onClick={() => { days.filter((x) => x.r).forEach((x) => act('addRecipe', x.r.id, target.id, x.r.por, x.k)); }}>Pridať</Btn></div>}
-          {planMissing === 0 && days.some((x) => x.r) && <p className="vnote"><I n="check-circle" />Na všetky naplánované jedlá máte suroviny doma alebo v zozname.</p>}
+          {planMissing === 0 && days.some((x) => x.r) && <p className="vnote"><I n="check-circle" />Na všetky naplánované jedlá máš suroviny doma alebo v zozname.</p>}
         </>}
       </div>
     </div>
@@ -229,7 +229,7 @@ export function RecipeScreen({ p }) {
           {r.groups ? (tab === 'ing' ? <>
             <div className="portion"><span className="meta">{r.unit ? 'Koľko kúskov' : 'Pre koľko ľudí'}</span><Stepper q={por} u="por" onChange={(v) => setPor(Math.max(1, Math.min(r.unit ? 48 : 12, v)))} label={r.unit ? `${por} ${r.unit}` : plural(por, 'porcia', 'porcie', 'porcií')} /></div>
             <BookIngredients r={r} k={k} />
-            <p className="hint">Ťuknutím prepnete „mám doma“ / „nemám“. Kúpi sa len to, čo nemáte. Nastavenia sa tým nemenia.</p>
+            <p className="hint">Ťuknutím prepneš „mám doma“ / „nemám“. Kúpi sa len to, čo nemáš. Nastavenia sa tým nemenia.</p>
           </> : <BookSteps r={r} />) : tab === 'ing' ? <>
             <div className="portion"><span className="meta">Pre koľko ľudí</span><Stepper q={por} u="por" onChange={(v) => setPor(Math.max(1, Math.min(12, v)))} label={plural(por, 'porcia', 'porcie', 'porcií')} /></div>
             <div className="ings">
@@ -241,7 +241,7 @@ export function RecipeScreen({ p }) {
                 </div>
               ))}
             </div>
-            <p className="hint">Ťuknutím prepnete „mám doma“ / „nemám“. Kúpi sa len to, čo nemáte. Nastavenia sa tým nemenia.</p>
+            <p className="hint">Ťuknutím prepneš „mám doma“ / „nemám“. Kúpi sa len to, čo nemáš. Nastavenia sa tým nemenia.</p>
           </> : <ol className="steps">{r.steps.map(([t, m], i) => <li key={i}><span className="n">{i + 1}</span><p>{t}{m ? <em> · {m} min</em> : null}</p></li>)}</ol>}
           {r.groups && <BookInfo r={r} />}
           {ids.length > 1 && <div className="pager">
@@ -252,9 +252,9 @@ export function RecipeScreen({ p }) {
       </div>
       <div className="dock">
         {missing.length ? (
-          <div className="card dockc"><div className="grow"><div className="t1">Kúpiť {plural(missing.length, 'surovinu', 'suroviny', 'surovín')}</div><div className="meta">~{eur(mcost)} · čo nemáte doma</div></div><Btn cls="pri sm" onClick={() => sheet('addRecipe', { rid: r.id, por })}><I n="basket" />Pridať</Btn></div>
+          <div className="card dockc"><div className="grow"><div className="t1">Kúpiť {plural(missing.length, 'surovinu', 'suroviny', 'surovín')}</div><div className="meta">~{eur(mcost)} · čo nemáš doma</div></div><Btn cls="pri sm" onClick={() => sheet('addRecipe', { rid: r.id, por })}><I n="basket" />Pridať</Btn></div>
         ) : (
-          <div className="card dockc allok"><I n="check-circle" /><div className="grow"><div className="t1">Všetko máte doma</div><div className="meta">nič netreba kúpiť</div></div><Btn cls="pri sm" onClick={() => modal('cook', { id: r.id, por })}><I n="play" />Variť</Btn></div>
+          <div className="card dockc allok"><I n="check-circle" /><div className="grow"><div className="t1">Všetko máš doma</div><div className="meta">nič netreba kúpiť</div></div><Btn cls="pri sm" onClick={() => modal('cook', { id: r.id, por })}><I n="play" />Variť</Btn></div>
         )}
       </div>
     </>

@@ -102,7 +102,7 @@ export function VoiceTalk({ p }) {
     if (other) { setItems((xs) => xs.map((i) => (i.key === x.key ? { ...i, pid: other.pid, n: null, q: other.q, u: other.u || 'ks', unsure: null, fix: { from: base(x), to: base({ pid: other.pid }), at: Date.now() } } : i))); setSel(null); buzz(); return true; }
     const y = parseChunk(`${strip} ${base(x)}`);
     if (y && y.q && (y.q !== x.q || (y.u || 'ks') !== (x.u || 'ks'))) { const u = y.u || 'ks'; setItems((xs) => xs.map((i) => (i.key === x.key ? { ...i, q: y.q, u, bump: (i.bump || 0) + 1, fix: { from: label(i), to: fmtQty(y.q, u), at: Date.now() } } : i))); setSel(null); buzz(); return true; }
-    setNote(`Úprave „${text}“ som nerozumel. Skúste napríklad „tri“, „pol kila“ alebo „zmaž“.`);
+    setNote(`Úprave „${text}“ nerozumiem. Skús napríklad „tri“, „pol kila“ alebo „zmaž“.`);
     return true;
   };
 
@@ -125,7 +125,7 @@ export function VoiceTalk({ p }) {
     else if (pt.store || pt.day != null) setTarget((tg) => (tg && tg.kind === 'list' ? tg : { kind: 'new', store: pt.store || (tg && tg.store) || null, day: pt.day != null ? pt.day : tg && tg.day != null ? tg.day : 1 }));
     const res = pt.rest ? parseLocal(pt.rest) : { items: [] };
     const its = (res.items || []).filter((y) => y.pid || (y.n && y.n.length > 1));
-    if (!its.length && pt.rest) setNote(`„${pt.rest}“ som nerozumel. Skúste to inak alebo napíšte.`);
+    if (!its.length && pt.rest) setNote(`„${pt.rest}“ nerozumiem. Skús to inak alebo napíš.`);
     addParsed(its);
   };
   const processRef = useRef(process); processRef.current = process;
@@ -139,11 +139,11 @@ export function VoiceTalk({ p }) {
   const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
   const startMic = () => {
     setPhase('listening');
-    if (!SR) { setKbd(true); setNote('Mikrofón tu nie je dostupný. Diktujte cez mikrofón na klávesnici alebo vyskúšajte príklad.'); setTimeout(() => inp.current && inp.current.focus(), 0); return; }
+    if (!SR) { setKbd(true); setNote('Mikrofón tu nie je dostupný. Diktuj cez mikrofón na klávesnici alebo vyskúšaj príklad.'); setTimeout(() => inp.current && inp.current.focus(), 0); return; }
     try {
       const r = new SR(); r.lang = 'sk-SK'; r.interimResults = true; r.continuous = true;
       r.onresult = (e) => { let interim = ''; for (let k = e.resultIndex; k < e.results.length; k++) { const x = e.results[k]; if (x.isFinal) { processRef.current(x[0].transcript); setTr(''); } else interim += x[0].transcript; } setTr(interim); };
-      r.onerror = () => { setKbd(true); setNote('Mikrofón tu nie je povolený. Diktujte cez mikrofón na klávesnici alebo vyskúšajte príklad.'); };
+      r.onerror = () => { setKbd(true); setNote('Mikrofón tu nie je povolený. Diktuj cez mikrofón na klávesnici alebo vyskúšaj príklad.'); };
       r.onend = () => { if (rec.current === r && phaseRef.current === 'listening') { try { r.start(); } catch {} } };
       r.start(); rec.current = r;
     } catch { setKbd(true); }
@@ -191,16 +191,16 @@ export function VoiceTalk({ p }) {
         <button type="button" className="vx-target" onClick={() => setPanel('pick')} aria-label="Kam pridávať">Do: {tLabel ? <b>{tLabel}</b> : <em>nový zoznam</em>}<I n="caret-down" w="bold" /></button>
         <HelpBtn screen="m-voice" />
       </div>
-      {restored && items.length > 0 && <div className="vx-rest"><I n="arrow-counter-clockwise" w="bold" /><span className="grow">Pokračujete v rozdiktovanom zozname ({items.length})</span><button type="button" onClick={() => { setItems([]); setTarget(p.listId ? { kind: 'list', id: p.listId } : defTarget(S)); setRestored(false); }}>Začať odznova</button></div>}
+      {restored && items.length > 0 && <div className="vx-rest"><I n="arrow-counter-clockwise" w="bold" /><span className="grow">Pokračuješ v rozdiktovanom zozname ({items.length})</span><button type="button" onClick={() => { setItems([]); setTarget(p.listId ? { kind: 'list', id: p.listId } : defTarget(S)); setRestored(false); }}>Začať odznova</button></div>}
       <div className="vx-list" onClick={(e) => { if (e.target === e.currentTarget) setSel(null); }}>
         {!items.length ? (
           <div className="vx-empty">
-            <b>Hovorte, čo kúpiť</b>
+            <b>Hovor, čo kúpiť</b>
             <span>Napríklad: „dve mlieka, chlieb a pol kila mletého mäsa do Lidla“</span>
             <div className="vx-ex">{EX_START.map((x) => <button type="button" key={x} onClick={() => simulate(x)}>{x}</button>)}</div>
           </div>
         ) : <>
-          <div className="vx-cnt">{plural(items.length, 'položka', 'položky', 'položiek')} · ťuknutím upravíte</div>
+          <div className="vx-cnt">{plural(items.length, 'položka', 'položky', 'položiek')} · ťuknutím upravíš</div>
           {items.map((x) => {
             const e = estimate(x, S, tStore);
             return (
@@ -224,7 +224,7 @@ export function VoiceTalk({ p }) {
         {selItem && <div className="vx-qq">{((selItem.u || 'ks') === 'kg' ? [.25, .5, 1, 2] : selItem.u === 'l' ? [.5, 1, 2, 3] : [1, 2, 3, 6]).map((q) => <button type="button" key={q} className={Math.abs(selItem.q - q) < .001 ? 'on' : ''} onClick={() => { setItems((xs) => xs.map((i) => (i.key === sel ? { ...i, q, bump: (i.bump || 0) + 1, fix: { from: label(i), to: fmtQty(q, i.u || 'ks'), at: Date.now() } } : i))); setSel(null); }}>{fmtQty(q, selItem.u || 'ks')}</button>)}</div>}
         <div className={'vx-heard' + (selItem ? ' edit' : '')} aria-live="polite">
           <small>{selItem ? `Upravujem: ${base(selItem)}` : tr ? 'Počujem' : phase === 'listening' ? 'Počúvam' : 'Pozastavené'}</small>
-          {tr ? <span>{tr}<i>…</i></span> : selItem ? <span className="dim">Povedzte napr. „radšej kilo“ alebo „zmaž“</span> : phase === 'listening' ? <span className="wave"><i /><i /><i /><i /><i /></span> : <span className="dim">Ťuknite na guľu a hovorte ďalej</span>}
+          {tr ? <span>{tr}<i>…</i></span> : selItem ? <span className="dim">Povedz napr. „radšej kilo“ alebo „zmaž“</span> : phase === 'listening' ? <span className="wave"><i /><i /><i /><i /><i /></span> : <span className="dim">Ťukni na guľu a hovor ďalej</span>}
           {note && <p className="vx-note"><I n="warning-circle" />{note}</p>}
         </div>
         {kbd && <form className="vx-kbd" onSubmit={(e) => { e.preventDefault(); const v = txt.trim(); if (v) { process(v); setTxt(''); } }}><input ref={inp} id="voice-talk-text" value={txt} onChange={(e) => setTxt(e.target.value)} placeholder={selItem ? 'Napr. „tri“ alebo „zmaž“' : 'Napr. „2 mlieka a chlieb“'} autoComplete="off" enterKeyHint="send" aria-label="Napísať položky" /><button type="submit" disabled={!txt.trim()} aria-label="Pridať"><I n="arrow-up" w="bold" /></button></form>}
@@ -271,7 +271,7 @@ function WherePanel({ mode, n, target, lists, onClose, onPick, onCommit }) {
           <div className="vx-stores">{stores.map(({ k }) => <button type="button" key={k} className={isNew && c.store === k ? 'on' : ''} onClick={() => newC({ store: isNew && c.store === k ? null : k })}><StoreTile k={k} s={22} />{storeName(k)}</button>)}</div>
           <div className="vx-days">{[0, 1, 2].map((d) => <button type="button" key={d} className={isNew && c.day === d ? 'on' : ''} onClick={() => newC({ day: d })}>{d === 0 ? 'Dnes' : d === 1 ? 'Zajtra' : 'Pozajtra'}</button>)}
 </div>
-          <div className="vx-days"><span className="vx-who">Uvidí ho</span><button type="button" className={isNew && !c.mine ? 'on' : ''} onClick={() => newC({ mine: false })}>Blahovci</button><button type="button" className={isNew && c.mine ? 'on' : ''} onClick={() => newC({ mine: true })}>Iba ja</button></div>
+          <div className="vx-days"><span className="vx-who">Uvidí ho</span><button type="button" className={isNew && !c.mine ? 'on' : ''} onClick={() => newC({ mine: false })}>Kováčovci</button><button type="button" className={isNew && c.mine ? 'on' : ''} onClick={() => newC({ mine: true })}>Iba ja</button></div>
         </div>
         <Btn cls="pri full big" onClick={() => (mode === 'pick' ? onPick(c) : onCommit(c))} disabled={!isNew && !L}>{btn}</Btn>
       </div>

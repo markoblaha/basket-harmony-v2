@@ -3,7 +3,7 @@ import { useApp, useState, useEffect, useRef, useLayoutEffect, I, IB, safeInsets
 
 // ===================== Nápovedy =====================
 // Systém:
-//  1. Pri prvom spustení uvítanie: „Ukážte mi to“ alebo „Zvládnem to sám“.
+//  1. Pri prvom spustení uvítanie: „Ukáž mi to“ alebo „Zvládnem to sám“.
 //  2. Na každej obrazovke sa pri prvej návšteve ukážu jej nápovedy postupne (1 z 3, Ďalej, Preskočiť).
 //     Nič nezmizne samo – starší človek má čas dočítať. Ťuk mimo bubliny = Ďalej.
 //  3. Ťuk priamo na zvýraznený prvok ho normálne použije (napr. otvorí zoznam).
@@ -11,41 +11,41 @@ import { useApp, useState, useEffect, useRef, useLayoutEffect, I, IB, safeInsets
 //  5. Viac → Nápovedy: zapnúť/vypnúť a ukázať všetky znova.
 // Nápoveda sa ukáže len na prvok, ktorý je naozaj na obrazovke a už sa nehýbe.
 export const COACH = [
-  { id: 'mic', screen: 'home', sel: '.tabbar .tmic', global: true, hand: 'tap', title: 'Hovorte namiesto písania', text: 'Ťuknite a povedzte napríklad „dve mlieka a chlieb“. Hore vyberiete, do ktorého zoznamu sa pridajú.' },
-  { id: 'tabs', screen: 'home', sel: '.tabbar', global: true, title: 'Štyri časti appky', text: 'Domov, Nákupy, Recepty a Výdavky. Ťuknutím sa medzi nimi prepínate.' },
+  { id: 'mic', screen: 'home', sel: '.tabbar .tmic', global: true, hand: 'tap', title: 'Hovor namiesto písania', text: 'Ťukni a povedz napríklad „dve mlieka a chlieb“. Hore vyberieš, do ktorého zoznamu sa pridajú.' },
+  { id: 'tabs', screen: 'home', sel: '.tabbar', global: true, title: 'Štyri časti appky', text: 'Domov, Nákupy, Recepty a Výdavky. Ťuknutím sa medzi nimi prepínaš.' },
   { id: 'quick', screen: 'home', sel: '.hqa', title: 'Rýchle akcie', text: 'Pridať do nákupu, odfotiť bloček alebo nájsť, čo uvariť – jedným ťuknutím.' },
-  { id: 'help', screen: 'home', sel: '.nb .helpb', title: 'Pomoc je vždy tu', text: 'Ťuknite na otáznik: ukáže tipy k tejto obrazovke alebo časť ukážky appky.' },
-  { id: 'lcard', screen: 'lists', sel: '.lcard', title: 'Váš nákupný zoznam', text: 'Ťuknutím ho otvoríte: uvidíte položky a odhad ceny podľa bločkov.' },
-  { id: 'lgo', screen: 'lists', sel: '.lgo', hand: 'tap', title: 'Rovno do obchodu', text: 'Košíkom na karte spustíte nákup bez otvárania zoznamu.' },
-  { id: 'newlist', screen: 'lists', sel: '.nb .addb', hand: 'tap', title: 'Nový zoznam', text: 'Pomenujte ho, vyberte obchod a deň a či ho uvidí celá domácnosť.' },
-  { id: 'hist', screen: 'lists', sel: '.histrow', title: 'História nákupov', text: 'Ukončené nákupy: čo ste kúpili, za koľko a či chýba bloček. Jedným ťuknutím nakúpite znova.' },
-  { id: 'swipe', screen: 'list', sel: '.lst .row', title: 'Rýchla úprava množstva', text: 'Potiahnite položku doprava = +1, doľava = −1. Ťuknutím otvoríte detail: množstvo, cenu a presun do iného zoznamu.' },
-  { id: 'composer', screen: 'list', sel: '.dock .field', title: 'Pridajte položku', text: 'Napíšte napríklad „mlieko 2“ alebo ťuknite na mikrofón a povedzte, čo treba.' },
-  { id: 'shopbtn', screen: 'list', sel: '.est .btn', hand: 'tap', title: 'Ste v obchode?', text: 'Ťuknite na Nakupovať a odškrtávajte, čo dávate do košíka.' },
-  { id: 'shrow', screen: 'm-shop', sel: '.lst.big .row', modal: true, hand: 'tap', title: 'Dali ste to do košíka?', text: 'Ťuknite na položku – presunie sa do časti V košíku. Omyl? Ťuknite na ňu tam a vráti sa.' },
-  { id: 'shhead', screen: 'm-shop', sel: '.shopnb .snb-seg', modal: true, title: 'Koľko ešte zostáva', text: 'Každý dielik je jedna položka. Keď sú všetky zelené, máte nakúpené.' },
-  { id: 'shdone', screen: 'm-shop', sel: '.tgl-g', modal: true, title: 'V košíku', text: 'Tu sú odškrtnuté položky. Ťuknutím ich otvoríte; položku vrátite ťuknutím na ňu.' },
-  { id: 'flive', screen: 'm-follow', sel: '.lst', modal: true, title: 'Nákup naživo', text: 'Čo Lucia vloží do košíka, tu hneď zozelenie. Nič tu neodškrtávate – len sledujete.' },
-  { id: 'fask', screen: 'm-follow', sel: '.dock .field', modal: true, title: 'Poprosiť o niečo', text: 'Napíšte, čo ešte treba. Lucia to uvidí v nákupe ako žiadosť a môže to hneď pridať.' },
+  { id: 'help', screen: 'home', sel: '.nb .helpb', title: 'Pomoc je vždy tu', text: 'Ťukni na otáznik: ukáže tipy k tejto obrazovke alebo časť ukážky appky.' },
+  { id: 'lcard', screen: 'lists', sel: '.lcard', title: 'Tvoj nákupný zoznam', text: 'Ťuknutím ho otvoríš: uvidíš položky a odhad ceny podľa bločkov.' },
+  { id: 'lgo', screen: 'lists', sel: '.lgo', hand: 'tap', title: 'Rovno do obchodu', text: 'Košíkom na karte spustíš nákup bez otvárania zoznamu.' },
+  { id: 'newlist', screen: 'lists', sel: '.nb .addb', hand: 'tap', title: 'Nový zoznam', text: 'Pomenuj ho, vyber obchod a deň a či ho uvidí celá domácnosť.' },
+  { id: 'hist', screen: 'lists', sel: '.histrow', title: 'História nákupov', text: 'Ukončené nákupy: čo sa kúpilo, za koľko a či chýba bloček. Jedným ťuknutím nakúpiš znova.' },
+  { id: 'swipe', screen: 'list', sel: '.lst .row', title: 'Rýchla úprava množstva', text: 'Potiahni položku doprava = +1, doľava = −1. Ťuknutím otvoríš detail: množstvo, cenu a presun do iného zoznamu.' },
+  { id: 'composer', screen: 'list', sel: '.dock .field', title: 'Pridaj položku', text: 'Napíš napríklad „mlieko 2“ alebo ťukni na mikrofón a povedz, čo treba.' },
+  { id: 'shopbtn', screen: 'list', sel: '.est .btn', hand: 'tap', title: 'Si v obchode?', text: 'Ťukni na Nakupovať a odškrtávaj, čo dávaš do košíka.' },
+  { id: 'shrow', screen: 'm-shop', sel: '.lst.big .row', modal: true, hand: 'tap', title: 'Je to v košíku?', text: 'Ťukni na položku – presunie sa do časti V košíku. Omyl? Ťukni na ňu tam a vráti sa.' },
+  { id: 'shhead', screen: 'm-shop', sel: '.shopnb .snb-seg', modal: true, title: 'Koľko ešte zostáva', text: 'Každý dielik je jedna položka. Keď sú všetky zelené, máš nakúpené.' },
+  { id: 'shdone', screen: 'm-shop', sel: '.tgl-g', modal: true, title: 'V košíku', text: 'Tu sú odškrtnuté položky. Ťuknutím ich otvoríš; položku vrátiš ťuknutím na ňu.' },
+  { id: 'flive', screen: 'm-follow', sel: '.lst', modal: true, title: 'Nákup naživo', text: 'Čo Lucia vloží do košíka, tu hneď zozelenie. Nič tu neodškrtávaš – len sleduješ.' },
+  { id: 'fask', screen: 'm-follow', sel: '.dock .field', modal: true, title: 'Poprosiť o niečo', text: 'Napíš, čo ešte treba. Lucia to uvidí v nákupe ako žiadosť a môže to hneď pridať.' },
   { id: 'cstep', screen: 'm-cook', sel: '.stx', modal: true, title: 'Varenie krok po kroku', text: 'Jeden krok naraz, veľkým písmom. Ďalší krok dole, suroviny cez ikonu vpravo hore.' },
-  { id: 'ttimer', screen: 'm-cook', sel: '.cbox', modal: true, title: 'Časovač', text: 'Pri kroku s časom spustíte odpočítavanie. Keď skončí, telefón zavibruje aj na inej obrazovke.' },
-  { id: 'tfeed', screen: 'm-taste', sel: '.tst-feed', modal: true, title: 'Listujte ako videá', text: 'Potiahnite hore na ďalší recept, do strany na ďalšiu fotku.' },
-  { id: 'tlike', screen: 'm-taste', sel: '.tr-b', modal: true, hand: 'tap', title: 'Chcem to uvariť', text: 'Ťuknite na srdiečko alebo dvakrát na fotku. Recept sa uloží do časti Moje.' },
-  { id: 'vtarget', screen: 'm-voice', sel: '.vx-target', modal: true, title: 'Kam sa položky pridajú', text: 'Ťuknutím vyberiete zoznam. Môžete ho aj povedať, napríklad „do Lidla“.' },
-  { id: 'vorb', screen: 'm-voice', sel: '.vx-orb', modal: true, title: 'Hovorte', text: 'Keď guľa pulzuje, appka počúva. Ťuknutím počúvanie pozastavíte.' },
-  { id: 'vdone', screen: 'm-voice', sel: '.vx-done', modal: true, title: 'Hotovo', text: 'Keď máte všetko, ťuknite na Hotovo. Položky sa uložia do zoznamu.' },
-  { id: 'taste', screen: 'recipes', sel: '.tentry', hand: 'tap', title: 'Neviete, čo variť?', text: 'V Ochutnávači listujete recepty ako videá. Čo sa páči, označíte srdiečkom.' },
-  { id: 'rsearch', screen: 'recipes', sel: '.search', title: 'Hľadajte jedlo aj surovinu', text: 'Napríklad „guláš“ alebo „kuracie“.' },
+  { id: 'ttimer', screen: 'm-cook', sel: '.cbox', modal: true, title: 'Časovač', text: 'Pri kroku s časom spustíš odpočítavanie. Keď skončí, telefón zavibruje aj na inej obrazovke.' },
+  { id: 'tfeed', screen: 'm-taste', sel: '.tst-feed', modal: true, title: 'Listuj ako videá', text: 'Potiahni hore na ďalší recept, do strany na ďalšiu fotku.' },
+  { id: 'tlike', screen: 'm-taste', sel: '.tr-b', modal: true, hand: 'tap', title: 'Chcem to uvariť', text: 'Ťukni na srdiečko alebo dvakrát na fotku. Recept sa uloží do časti Moje.' },
+  { id: 'vtarget', screen: 'm-voice', sel: '.vx-target', modal: true, title: 'Kam sa položky pridajú', text: 'Ťuknutím vyberieš zoznam. Môžeš ho aj povedať, napríklad „do Lidla“.' },
+  { id: 'vorb', screen: 'm-voice', sel: '.vx-orb', modal: true, title: 'Hovor', text: 'Keď guľa pulzuje, appka počúva. Ťuknutím počúvanie pozastavíš.' },
+  { id: 'vdone', screen: 'm-voice', sel: '.vx-done', modal: true, title: 'Hotovo', text: 'Keď máš všetko, ťukni na Hotovo. Položky sa uložia do zoznamu.' },
+  { id: 'taste', screen: 'recipes', sel: '.tentry', hand: 'tap', title: 'Nevieš, čo variť?', text: 'V Ochutnávači listuješ recepty ako videá. Čo sa páči, označíš srdiečkom.' },
+  { id: 'rsearch', screen: 'recipes', sel: '.search', title: 'Hľadaj jedlo aj surovinu', text: 'Napríklad „guláš“ alebo „kuracie“.' },
   { id: 'rtabs', screen: 'recipes', sel: '.seg', title: 'Kniha, Moje a Plán týždňa', text: 'V Moje sú obľúbené a pridané recepty, v Pláne týždňa jedlá na konkrétne dni.' },
-  { id: 'recadd', screen: 'recipe', sel: '.dock .dockc .btn', title: 'Suroviny do nákupu', text: 'Jedným ťuknutím pridáte, čo chýba, do zoznamu alebo do nového.' },
-  { id: 'ing', screen: 'recipe', sel: '.ings .ing[role="button"]', hand: 'tap', title: 'Čo máte doma?', text: 'Ťuknite na surovinu, ktorú máte. Do nákupu sa potom pridá len to, čo chýba.' },
-  { id: 'mper', screen: 'money', sel: '.seg', title: 'Obdobie', text: 'Prepnite týždeň, mesiac alebo rok. Súčet aj grafy sa prepočítajú.' },
-  { id: 'minsight', screen: 'money', sel: '.card.insight', title: 'Oplatí sa vedieť', text: 'Appka porovnáva ceny z vašich bločkov a ukáže, kde je čo lacnejšie.' },
-  { id: 'mrc', screen: 'money', sel: '.mrc', title: 'Chýba bloček', text: 'Tu sú nákupy bez bločku. Odfoťte ho a ceny sa priradia samé.' },
-  { id: 'scan', screen: 'money', sel: '.rbtns .btn.pri', hand: 'tap', title: 'Odfoťte bloček', text: 'Ceny sa zapíšu k položkám a výdavky sa spočítajú samé.' },
+  { id: 'recadd', screen: 'recipe', sel: '.dock .dockc .btn', title: 'Suroviny do nákupu', text: 'Jedným ťuknutím pridáš, čo chýba, do zoznamu alebo do nového.' },
+  { id: 'ing', screen: 'recipe', sel: '.ings .ing[role="button"]', hand: 'tap', title: 'Čo máš doma?', text: 'Ťukni na surovinu, ktorú máš. Do nákupu sa potom pridá len to, čo chýba.' },
+  { id: 'mper', screen: 'money', sel: '.seg', title: 'Obdobie', text: 'Prepni týždeň, mesiac alebo rok. Súčet aj grafy sa prepočítajú.' },
+  { id: 'minsight', screen: 'money', sel: '.card.insight', title: 'Oplatí sa vedieť', text: 'Appka porovnáva ceny z tvojich bločkov a ukáže, kde je čo lacnejšie.' },
+  { id: 'mrc', screen: 'money', sel: '.mrc', title: 'Chýba bloček', text: 'Tu sú nákupy bez bločku. Odfoť ho a ceny sa priradia samé.' },
+  { id: 'scan', screen: 'money', sel: '.rbtns .btn.pri', hand: 'tap', title: 'Odfoť bloček', text: 'Ceny sa zapíšu k položkám a výdavky sa spočítajú samé.' },
   { id: 'mnotif', screen: 'more', sel: '.notifsec', title: 'Upozornenia', text: 'Čo sa v domácnosti zmenilo: kto nakupuje, čo pribudlo, čo treba vybaviť. Nové označí červená bodka na avatare.' },
-  { id: 'mhelp', screen: 'more', sel: '.tx-chl.inl', title: 'Pomoc a ukážka', text: 'Tu si kedykoľvek pustíte celú ukážku alebo jednu kapitolu. Vaše údaje sa pri tom nezmenia.' },
-  { id: 'hrow', screen: 'history', sel: '.lst .row', title: 'Ukončený nákup', text: 'Ťuknite: uvidíte položky, ceny a bloček. Chýbajúci bloček môžete odfotiť aj dodatočne.' },
+  { id: 'mhelp', screen: 'more', sel: '.tx-chl.inl', title: 'Pomoc a ukážka', text: 'Tu si kedykoľvek pustíš celú ukážku alebo jednu kapitolu. Tvoje údaje sa pri tom nezmenia.' },
+  { id: 'hrow', screen: 'history', sel: '.lst .row', title: 'Ukončený nákup', text: 'Ťukni: uvidíš položky, ceny a bloček. Chýbajúci bloček môžeš odfotiť aj dodatočne.' },
 ];
 export const coachScreens = new Set(COACH.map((c) => c.screen));
 
@@ -186,11 +186,11 @@ export function CoachWelcome({ blocked }) {
     <div className="co-wel" role="dialog" aria-modal="true" aria-labelledby="cw-t">
       <div className="co-wcard">
         <span className="co-wi"><I n="sparkle" /></span>
-        <h2 id="cw-t">Vitajte v Basket Harmony</h2>
-        <p>Ukážeme vám, čo je kde, priamo na obrazovke. Vždy jednu vec naraz a tam, kde ju práve potrebujete.</p>
-        <div className="co-wq"><span className="helpdemo"><I n="question" w="bold" /></span><span>Keď si niečo nebudete pamätať, ťuknite na otáznik vpravo hore. Nápovedy sa ukážu znova.</span></div>
-        <button type="button" className="co-ok big" onClick={() => set({})}>Ukážte mi to</button>
-        <button type="button" className="co-skip c" onClick={() => set({ off: true })}>Zvládnem to sám</button>
+        <h2 id="cw-t">Vitaj v Basket Harmony</h2>
+        <p>Ukážeme ti, čo je kde, priamo na obrazovke. Vždy jednu vec naraz a tam, kde ju práve potrebuješ.</p>
+        <div className="co-wq"><span className="helpdemo"><I n="question" w="bold" /></span><span>Keď si niečo nebudeš pamätať, ťukni na otáznik vpravo hore. Nápovedy sa ukážu znova.</span></div>
+        <button type="button" className="co-ok big" onClick={() => set({})}>Ukáž mi to</button>
+        <button type="button" className="co-skip c" onClick={() => set({ off: true })}>Poradím si</button>
       </div>
     </div>
   );

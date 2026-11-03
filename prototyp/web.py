@@ -6,6 +6,12 @@ P = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(P, '..', 'public', 'prototyp')
 os.makedirs(OUT, exist_ok=True)
 body = open(P + '/dist/basket-harmony-prototyp.html').read()
+# V appke sú obrázky ako súbory v /mk/ (do-appky.py) – ukážka ich berie odtiaľ namiesto vložených
+# (4,7 MB → menej ako 1 MB; obrázok sa stiahne, až keď je na obrazovke, a zdieľa ho aj appka).
+inline = open(P + '/gen/assets.css').read()
+linked = open(os.path.join(P, '..', 'src', 'mockup', 'assets.css')).read()
+assert inline in body, 'gen/assets.css nie je v prototype – spusti najprv build.py'
+body = body.replace(inline, linked)
 head = '''<!doctype html>
 <html lang="sk">
 <head>

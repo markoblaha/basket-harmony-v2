@@ -137,9 +137,9 @@ export function AddRecipeSheet({ open, close, rid, por }) {
         </div></div>
         {lid === null && <label className="fl"><span>Názov zoznamu</span><input id="rl-name" value={name} onChange={(e) => setName(e.target.value)} onFocus={(e) => e.target.select()} onKeyDown={(e) => e.key === 'Enter' && cand.length && add()} placeholder={RECIPE_LIST} enterKeyHint="done" /></label>}
         <div><span className="k">Na ktorý deň</span><div className="days">{[null, 0, 1, 2].map((i) => { const k2 = i == null ? null : dkey(addDays(today, i)); return <button type="button" key={String(i)} className={'chip plain' + (day === k2 ? ' on' : '')} onClick={() => setDay(k2)}>{i == null ? 'Bez dňa' : i === 0 ? 'Dnes' : i === 1 ? 'Zajtra' : 'Pozajtra'}</button>; })}</div></div>
-        <p className="meta">Kúpi sa všetko, čo v recepte nemáte označené „mám doma“.</p>
+        <p className="meta">Kúpi sa všetko, čo v recepte nemáš označené „mám doma“.</p>
       </div>
-      <div className="sh-foot">{cand.length ? <Btn cls="pri full" onClick={add}>{L ? `Pridať do „${L.name}“` : `Vytvoriť zoznam „${title}“`}</Btn> : <Btn cls="soft full" onClick={close}>Všetko máte doma</Btn>}</div>
+      <div className="sh-foot">{cand.length ? <Btn cls="pri full" onClick={add}>{L ? `Pridať do „${L.name}“` : `Vytvoriť zoznam „${title}“`}</Btn> : <Btn cls="soft full" onClick={close}>Všetko máš doma</Btn>}</div>
     </Sheet>
   );
 }
@@ -155,7 +155,7 @@ export function ImportSheet({ open, close, start }) {
     const host = (url.match(/^(?:https?:\/\/)?(?:www\.)?([^/]+)/) || [])[1] || 'web';
     const id = 'web' + Math.random().toString(36).slice(2, 6);
     act((s) => ({ ...s, aiRecipes: [{ id, n: 'Bryndzové halušky', e: 'bowl', bg: 'sage', min: 40, kcal: 640, por: 4, src: host, diff: 'ukážka importu', tags: ['klasika'], ai: true,
-      ing: [['zemiaky', 1, '1 kg'], ['muka', .3, '300 g'], ['bryndza', 2, '250 g'], ['bok', .15, '150 g slaniny']], steps: [['Zemiaky nastrúhajte najemno a zmiešajte s múkou a soľou.', 5], ['Cesto pretláčajte cez sitko do vriacej vody, varte 3 minúty.', 15], ['Na panvici opečte slaninu.', 8], ['Halušky zmiešajte s bryndzou a posypte slaninou.', 2]] }, ...s.aiRecipes] }));
+      ing: [['zemiaky', 1, '1 kg'], ['muka', .3, '300 g'], ['bryndza', 2, '250 g'], ['bok', .15, '150 g slaniny']], steps: [['Zemiaky nastrúhaj najemno a zmiešaj s múkou a soľou.', 5], ['Cesto pretláčaj cez sitko do vriacej vody, var 3 minúty.', 15], ['Na panvici opeč slaninu.', 8], ['Halušky zmiešaj s bryndzou a posyp slaninou.', 2]] }, ...s.aiRecipes] }));
     close(); setTimeout(() => { jump('recipes', 'recipe', { id }); toast('Recept z odkazu uložený (v prototype ukážka)'); }, 60);
   };
   const fromPhoto = async (f) => {
@@ -174,7 +174,7 @@ export function ImportSheet({ open, close, start }) {
       <div className="sh-head"><h2>Pridať recept</h2></div>
       <div className="sh-body">
         <div className="menu big">
-          <button type="button" onClick={() => { close(); setTimeout(() => voice({ mode: 'recipe' }), 300); }}><E k="mic" s={34} /><span><b>Nadiktovať alebo vložiť text</b><small>Poviete recept vlastnými slovami, appka z neho spraví suroviny a postup.</small></span></button>
+          <button type="button" onClick={() => { close(); setTimeout(() => voice({ mode: 'recipe' }), 300); }}><E k="mic" s={34} /><span><b>Nadiktovať alebo vložiť text</b><small>Povieš recept vlastnými slovami, appka z neho spraví suroviny a postup.</small></span></button>
           <button type="button" onClick={() => file.current && file.current.click()} disabled={busy}><E k="camera" s={34} /><span><b>{busy ? 'Čítam fotku…' : 'Odfotiť z knihy alebo obrazovky'}</b><small>{ai ? 'AI prepíše recept z fotky.' : 'Potrebuje AI – tu nie je dostupná.'}</small></span></button>
         </div>
         <input ref={file} type="file" accept="image/*" hidden onChange={(e) => fromPhoto(e.target.files && e.target.files[0])} />

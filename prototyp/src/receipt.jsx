@@ -126,7 +126,7 @@ export function Scan({ p }) {
         <div className={'body' + (g ? ' rsheet glass2' : '')}>
           <div className="reshead">
             {!g && <Paper rec={rec} small />}
-            <div className="grow">{g && <span className="okb"><I n="check" w="bold" /></span>}<h1 className="lt">{ok ? 'Bloček sedí' : 'Skontrolujte'}</h1><div className="meta">{items.length} z {rec.lines.length} položiek spárovaných s nákupom · {shortDate(rec.date)}{rec.demo ? ' · ukážka' : ''}</div></div>
+            <div className="grow">{g && <span className="okb"><I n="check" w="bold" /></span>}<h1 className="lt">{ok ? 'Bloček sedí' : 'Skontroluj'}</h1><div className="meta">{items.length} z {rec.lines.length} položiek spárovaných s nákupom · {shortDate(rec.date)}{rec.demo ? ' · ukážka' : ''}</div></div>
           </div>
           <div className={'card match' + (g ? ' mg' : '')}>
             <div><div className="k">Zaplatené</div><div className="price">{eur(rec.total)}</div></div>
@@ -206,7 +206,7 @@ export function ReceiptDetail({ p }) {
           <div className={'card match' + (g ? ' mg' : '')}><div><div className="k">Zaplatené</div><div className="price">{eur(r.total)}</div></div>{Math.abs(diff) > .009 && <div className="ra"><div className="k">Rozdiel voči položkám</div><div className="price mut">{eur(diff)}</div><div className="meta sm">zľava alebo zaokrúhlenie</div></div>}</div>
           <div className={'lst' + (g ? ' glass2' : '')}>{items.map(row)}</div>
           {dep.length > 0 && <><div className="group plain"><span className="gl">Zálohy za obaly</span><span className="cnt">{eur(dep.reduce((a, l) => a + l.t, 0))}</span></div><div className={'lst' + (g ? ' glass2' : '')}>{dep.map(row)}</div></>}
-          <p className="hint">Ťuknutím na položku otvoríte výrobok: cenu za kg/l/ks v čase a v obchodoch.</p>
+          <p className="hint">Ťuknutím na položku otvoríš výrobok: cenu za kg/l/ks v čase a v obchodoch.</p>
         </div>
       </div>
     </>
@@ -234,7 +234,7 @@ export function MissingReceipts({ compact }) {
   const list = compact ? ms.slice(0, 1) : ms;
   return (
     <div className={'card mrc' + (g ? ' glass2' : '')} role="region" aria-label="Chýbajúce bločky">
-      <div className="mrc-h"><span className="mrc-i"><I n="receipt" /><b>{ms.length}</b></span><div className="grow"><div className="t1">{ms.length === 1 ? 'Chýba bloček z nákupu' : `Chýbajú bločky z ${ms.length} nákupov`}</div><div className="meta sm">Odfoťte ho a skutočné ceny sa priradia k nákupu samé.</div></div></div>
+      <div className="mrc-h"><span className="mrc-i"><I n="receipt" /><b>{ms.length}</b></span><div className="grow"><div className="t1">{ms.length === 1 ? 'Chýba bloček z nákupu' : `Chýbajú bločky z ${ms.length} nákupov`}</div><div className="meta sm">Odfoť ho a skutočné ceny sa priradia k nákupu samé.</div></div></div>
       {list.map((m) => (
         <div key={m.id} className="mrc-r">
           {m.store ? <StoreTile k={m.store} s={36} /> : <span className="th ic"><I n="basket" /></span>}

@@ -43,7 +43,7 @@ export function More({ p = {}, top }) {
     if (S.tour && S.tour.on) { toast('V ukážke sa pozvánka neodošle', { icon: 'info' }); return; }
     const url = 'https://' + link;
     try { if (navigator.share) { await navigator.share({ title: 'Pozvánka do domácnosti', text: 'Pridaj sa k nám v Basket Harmony', url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-    try { await navigator.clipboard.writeText(url); toast('Odkaz skopírovaný – pošlite ho partnerovi'); } catch { toast('Odkaz: ' + url, { icon: 'link', ms: 6000 }); }
+    try { await navigator.clipboard.writeText(url); toast('Odkaz skopírovaný – pošli ho partnerovi'); } catch { toast('Odkaz: ' + url, { icon: 'link', ms: 6000 }); }
   };
   const pantryAll = [...new Set([...PANTRY, 'mlieko', 'vajcia', 'muka', 'parmezan', 'smotana', 'kecup', 'soja', 'olivy', 'korenie'])];
   return (
@@ -52,12 +52,12 @@ export function More({ p = {}, top }) {
       <div className="sc">
         <header className="nb"><Back /><span className="nbt">Viac</span><HelpBtn screen="more" /></header>
         <div className="body">
-          <div className="lhead"><Av id="m" s={60} /><div className="grow"><h1 className="lt">Marek</h1><div className="meta">{S.solo ? 'Vaša domácnosť · zatiaľ len vy' : 'Domácnosť Blahovci · 2 členovia'}</div></div></div>
+          <div className="lhead"><Av id="m" s={60} /><div className="grow"><h1 className="lt">Marek</h1><div className="meta">{S.solo ? 'Tvoja domácnosť · zatiaľ len ty' : 'Domácnosť Kováčovci · 2 členovia'}</div></div></div>
 
           <div className="h2 sm">Upozornenia</div>
           <div className={'lst notifsec' + (g ? ' glass2' : '')}>
             {N.length ? N.map((n) => <button type="button" key={n.id} className="row tap" onClick={() => runGo(n.go, { modal, jump })}>{n.av ? <Av id={n.av} s={40} /> : <span className="th ic"><E k={n.e} /></span>}<div className="tx"><b>{n.t}</b><span className="sub">{n.d}</span></div><I n="caret-right" w="bold" cls="chev" /></button>)
-              : <div className="row"><span className="th ic"><I n="check-circle" /></span><div className="tx"><b>Nič nové</b><span className="sub">Keď niekto z domácnosti niečo pridá alebo nakupuje, uvidíte to tu.</span></div></div>}
+              : <div className="row"><span className="th ic"><I n="check-circle" /></span><div className="tx"><b>Nič nové</b><span className="sub">Keď niekto z domácnosti niečo pridá alebo nakupuje, uvidíš to tu.</span></div></div>}
           </div>
 
           <div className="h2 sm">Téma prototypu</div>
@@ -67,9 +67,9 @@ export function More({ p = {}, top }) {
 
           <div className="h2 sm">Domácnosť</div>
           <div className={'lst' + (g ? ' glass2' : '')}>
-            {Object.values(MEMBERS).filter((m) => !S.solo || m.id === 'm').map((m) => <div className="row" key={m.id}><Av id={m.id} s={40} /><div className="tx"><b>{m.name}</b><span className="sub">{m.id === 'm' ? 'vy · správca' : 'člen · vidí všetky zoznamy'}</span></div></div>)}
-            <button type="button" className="row tap" onClick={() => setInv(!inv)}><span className="th ic"><I n="user-plus" /></span><div className="tx"><b>Pozvať do domácnosti</b><span className="sub">pošlete odkaz, partner ho potvrdí</span></div><I n={inv ? 'caret-up' : 'caret-down'} w="bold" cls="chev" /></button>
-            {inv && <div className="invite"><span className="link">{link}</span><Btn cls={'pri sm' + (g ? ' a' : '')} onClick={send}><I n="paper-plane-right" />Poslať</Btn><p className="meta sm">Pošlite odkaz SMS-kou, WhatsAppom alebo e-mailom. Kto ho otvorí, len potvrdí pridanie do domácnosti. Odkaz platí 7 dní.</p></div>}
+            {Object.values(MEMBERS).filter((m) => !S.solo || m.id === 'm').map((m) => <div className="row" key={m.id}><Av id={m.id} s={40} /><div className="tx"><b>{m.name}</b><span className="sub">{m.id === 'm' ? 'ty · správca' : 'člen · vidí všetky zoznamy'}</span></div></div>)}
+            <button type="button" className="row tap" onClick={() => setInv(!inv)}><span className="th ic"><I n="user-plus" /></span><div className="tx"><b>Pozvať do domácnosti</b><span className="sub">pošleš odkaz, partner ho potvrdí</span></div><I n={inv ? 'caret-up' : 'caret-down'} w="bold" cls="chev" /></button>
+            {inv && <div className="invite"><span className="link">{link}</span><Btn cls={'pri sm' + (g ? ' a' : '')} onClick={send}><I n="paper-plane-right" />Poslať</Btn><p className="meta sm">Pošli odkaz SMS-kou, WhatsAppom alebo e-mailom. Kto ho otvorí, len potvrdí pridanie do domácnosti. Odkaz platí 7 dní.</p></div>}
           </div>
 
           {!EMBED && <HelpSection g={g} />}
@@ -78,7 +78,7 @@ export function More({ p = {}, top }) {
           <div className={'lst menu-l' + (g ? ' glass2' : '')}>
             <button type="button" className="row tap" onClick={() => sheet('budget')}><span className="th ic"><I n="target" /></span><div className="tx"><b>Mesačný rozpočet</b><span className="sub">{eur0(S.budget)}</span></div><I n="caret-right" w="bold" cls="chev" /></button>
             <button type="button" className="row tap" onClick={() => setPantry(!pantry)}><span className="th ic"><I n="house" /></span><div className="tx"><b>Čo mám doma</b><span className="sub">{S.have.length} surovín · recepty s tým počítajú</span></div><I n={pantry ? 'caret-up' : 'caret-down'} w="bold" cls="chev" /></button>
-            {pantry && <p className="meta sm pantry-h">Ťuknutím označíte, čo doma bežne máte. Recepty to predvolene nekúpia; v recepte to môžete pre jeden nákup prepnúť na „nemám“.</p>}
+            {pantry && <p className="meta sm pantry-h">Ťuknutím označíš, čo doma bežne máš. Recepty to predvolene nekúpia; v recepte to môžeš pre jeden nákup prepnúť na „nemám“.</p>}
             {pantry && <div className="chips wrap pantry">{pantryAll.filter((x) => PRODUCTS[x]).map((pid) => <button type="button" key={pid} className={'chip' + (S.have.includes(pid) ? ' on' : '')} onClick={() => act('toggleHave', pid)}><E k={PRODUCTS[pid].e} />{PRODUCTS[pid].n.replace(/ ·.*$/, '')}</button>)}</div>}
             <div className="row"><span className="th ic"><I n="sparkle" /></span><div className="tx"><b>AI asistent</b><span className="sub">{ai == null ? 'zisťujem…' : ai ? 'Claude – hlas, recepty, bločky' : 'nedostupný – rozpoznávanie v telefóne'}</span></div><span className={'stat' + (ai ? ' ok' : '')}>{ai ? 'zapnutý' : 'offline'}</span></div>
             <button type="button" className="row tap" onClick={() => push('bookmap')}><span className="th ic"><I n="map-trifold" /></span><div className="tx"><b>Mapa knihy receptov</b><span className="sub">čo máme, čo chýba, čo ľudia hľadajú · pre správcu</span></div><I n="caret-right" w="bold" cls="chev" /></button>
