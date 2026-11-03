@@ -241,8 +241,8 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   prepisuje); návrh jednej témy „Harmónia“. Hlas 2.0 (A vzhľad, B Silero VAD, C Gemini Live), matica push,
   tykanie/vykanie zmiešané. Kapitola 11 = 7 rozhodnutí, kapitola 12 = kontrolný prompt na ďalšie revízie.
   **Rozhodnutie majiteľa 3. 11.: obe témy (Teplá kuchyňa, Fotky a sklo) ostávajú, len sa vylepšia; postupne sa opraví
-  všetko ostatné z revízie.** Vetva `claude/amazing-gates-c8nts0` → https://claude-amazing-gates-c8nts0-basket-harmony-v2.markoblaha.workers.dev
-  (testovacia DB, rovnako ako testovacia appka).
+  všetko ostatné z revízie.** Pokyn majiteľa 3. 11.: dizajn a farby sa robia priamo v testovacej verzii
+  (vetva `design/v2-mobile-redesign`) na aktuálnych témach – nie v samostatnej vetve.
   - **Etapa 1 – HOTOVÁ 3. 11. (čaká na „OK“):** farby oboch tém v `prototyp/css/polish.css` (blok „Revízia 3. 11.“) →
     `do-appky.py`; staré obrazovky v `styles.css`. Teplá: pozadie #F2ECE2, biele karty s okrajom, akcia #2F6B4F (namiesto
     takmer čiernej #26392D), šalviový nádych hore (`--tint`, v appke na body + systémová lišta). Sklo: tlačidlo
