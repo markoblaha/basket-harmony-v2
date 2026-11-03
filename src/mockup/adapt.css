@@ -346,3 +346,63 @@ body.kb-typing .bhm-tabs {
 :root.w body::before {
   background: var(--tint);
 }
+
+/* Obrazovky mimo appky vo vzhľade tém (etapa 3): prihlásenie, nové heslo, prvé spustenie, pozvánka,
+ * zásady. Komponenty v src/features/auth/shell.tsx, triedy mockupu (.lt, .seg, .btn, .fl, .card…). */
+.bhm.auth-pg {
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+}
+.bhm .auth-wrap {
+  width: 100%;
+  max-width: 26rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 32px);
+}
+.bhm .auth-wrap.wide { max-width: 40rem; }
+.bhm .auth-wrap > .lt { margin-top: 6px; }
+.bhm .auth-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bhm .auth-logo { display: flex; align-items: center; gap: 10px; }
+.bhm .auth-logo b { font-size: 17px; font-weight: 750; letter-spacing: -0.3px; }
+.w .bhm .auth-logo b { font-family: var(--serif); font-weight: 560; }
+.bhm .auth-mark { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; background: var(--pri); color: var(--onpri); box-shadow: var(--prish); }
+.bhm .auth-mark .ico { width: 21px; height: 21px; }
+.bhm .auth-lead { font-size: 17px; margin-top: -6px; }
+.bhm .auth-sub { display: flex; flex-direction: column; gap: 4px; }
+.bhm .auth-lang { display: flex; gap: 2px; background: var(--card2); border-radius: 99px; padding: 3px; }
+.bhm .auth-lang button { min-width: 44px; min-height: 36px; border-radius: 99px; font-size: 13px; font-weight: 750; letter-spacing: .06em; color: var(--sec); }
+.bhm .auth-lang button.on { background: var(--segon); color: var(--fg); box-shadow: 0 1px 4px rgb(0 0 0 / .1); }
+.bhm .auth-google { gap: 10px; box-shadow: var(--sh); background: var(--card); }
+.bhm .auth-or { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ter); }
+.bhm .auth-or span { flex: 1; height: 1px; background: var(--line2); }
+.bhm .auth-form { display: flex; flex-direction: column; gap: 14px; }
+.bhm .auth-fl .auth-in { position: relative; display: flex; align-items: center; }
+.bhm .auth-fl input { width: 100%; height: 52px; border-radius: 16px; background: var(--card); padding: 0 16px; font-size: 17px; color: var(--fg); box-shadow: inset 0 0 0 1px var(--line2); }
+.bhm .auth-fl input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--acc); }
+.bhm .auth-fl .auth-in .ib { position: absolute; right: 6px; }
+.bhm .auth-fl .auth-in:has(.ib) input { padding-right: 52px; }
+.bhm .auth-fl small { font-size: 13px; color: var(--sec); }
+.bhm .auth-fl small.err, .bhm .auth-fl.bad > span { color: var(--danger); }
+.bhm .auth-fl.bad input { box-shadow: inset 0 0 0 2px var(--danger); }
+.bhm .auth-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; }
+.bhm .auth-note .ico { width: 20px; height: 20px; flex: none; margin-top: 1px; }
+.bhm .auth-note > div { display: flex; flex-direction: column; gap: 2px; }
+.bhm .auth-note b { font-weight: 700; }
+.bhm .auth-note.danger { background: var(--dangers); color: var(--danger); }
+.bhm .auth-note.ok { background: var(--accs); color: var(--acc); }
+.bhm .auth-note.warn { background: var(--honeys); color: var(--honey); }
+.bhm .auth-card { gap: 14px; }
+.bhm .auth-card-h { display: flex; align-items: center; gap: 12px; font-size: 17px; font-weight: 700; }
+.bhm .auth-hero-ic { width: 64px; height: 64px; border-radius: 22px; display: grid; place-items: center; background: var(--accs); color: var(--acc); }
+.bhm .auth-hero-ic .ico { width: 30px; height: 30px; }
+.bhm .auth-spin { width: 18px; height: 18px; border-radius: 99px; border: 2.5px solid currentColor; border-right-color: transparent; animation: mk-spin .8s linear infinite; }
+@keyframes mk-spin { to { transform: rotate(360deg); } }
+.bhm .lnk.c.dng .ico { width: 16px; height: 16px; }
+.bhm .legal-back { align-self: flex-start; }
+.bhm .legal-intro { font-size: 17px; line-height: 1.45; margin: 4px 0 6px; }
+.bhm .legal-sec { display: flex; flex-direction: column; gap: 10px; }
+.bhm .legal-p, .bhm .legal-ul { margin: 0; font-size: 16px; line-height: 1.5; color: var(--sec); }
+.bhm .legal-ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }

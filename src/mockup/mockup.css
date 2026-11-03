@@ -2161,3 +2161,6 @@
 .bhm .tentry::before { background: radial-gradient(circle at 15% 50%, rgb(155 227 179 / .22), transparent 60%); }
 .g .bhm .tentry { background: #1c1714; }
 .g .bhm .tentry::before { background: radial-gradient(circle at 15% 50%, rgb(194 82 38 / .42), transparent 60%); }
+.bhm .tx > b.dng, .bhm .th.ic.dng { color: var(--danger); }
+.bhm .th.ic.dng { background: var(--dangers); }
+.bhm .tx > b.acc { color: var(--acc); }

@@ -7,6 +7,7 @@ import { getSetting } from "@/lib/settings";
 import { ChevronLeft, ChevronRight, Minus, Plus, Trash2, X, type LucideIcon } from "lucide-react";
 import { CategoryGlyph } from "./CategoryIcon";
 import { cx } from "./ui";
+import { memberColor } from "@/mockup/kit";
 import { formatNumber, t } from "@/i18n";
 
 type Hue = CSSProperties & { "--h": number };
@@ -199,7 +200,8 @@ export type Person = { id: string; name: string };
 
 export function PersonAvatar({ person, size = "" }: { person: Person; size?: "" | "sm" | "lg" | "xs" }) {
   return (
-    <span className={cx("avatar", size)} style={{ "--h": hueOf(person.id) } as Hue} title={person.name} aria-hidden>
+    // Rovnaká farba človeka všade v appke (memberColor z mockupu).
+    <span className={cx("avatar", size)} style={{ background: memberColor(person.id), color: "#fff" }} title={person.name} aria-hidden>
       {initials(person.name)}
     </span>
   );

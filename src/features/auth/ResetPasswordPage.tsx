@@ -2,7 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
-import { Banner, Button, Spinner, TextField } from "@/components/ui";
+import { Spinner } from "@/components/ui";
+import { AuthLogo, AuthShell, Field, Note } from "./shell";
 import { t } from "@/i18n";
 import { useAuth } from "./AuthProvider";
 
@@ -35,15 +36,16 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-10">
-      <h1 className="mb-6 text-2xl font-semibold">{t("auth.resetTitle")}</h1>
+    <AuthShell>
+      <AuthLogo />
+      <h1 className="lt">{t("auth.resetTitle")}</h1>
       {!session ? (
-        <Banner tone="warning" title={t("auth.resetInvalidTitle")}>
+        <Note tone="warn" title={t("auth.resetInvalidTitle")}>
           {t("auth.resetInvalidText")}
-        </Banner>
+        </Note>
       ) : (
-        <form onSubmit={submit} className="flex flex-col gap-4">
-          <TextField
+        <form onSubmit={submit} className="auth-form">
+          <Field
             label={t("auth.resetTitle")}
             type="password"
             autoComplete="new-password"
@@ -51,12 +53,13 @@ export function ResetPasswordPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          {error && <Banner tone="danger">{error}</Banner>}
-          <Button type="submit" size="lg" block loading={busy}>
+          {error && <Note tone="danger">{error}</Note>}
+          <button type="submit" className="btn pri full big" disabled={busy} aria-busy={busy || undefined}>
+            {busy && <span className="auth-spin" aria-hidden />}
             {t("auth.resetSave")}
-          </Button>
+          </button>
         </form>
       )}
-    </main>
+    </AuthShell>
   );
 }

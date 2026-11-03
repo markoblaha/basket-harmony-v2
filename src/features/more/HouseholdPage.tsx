@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Check, Copy, Crown, Link2, LogOut, MoreHorizontal, Pencil, Share2, UserPlus, X } from "lucide-react";
+import { Copy, Link2, Share2, UserPlus } from "lucide-react";
 import { errorMessage } from "@/lib/errors";
 import { Spinner } from "@/components/ui";
-import { BottomSheet, ConfirmDialog, PersonAvatar, ScreenHeader, SheetHeader } from "@/components/kit";
+import { BottomSheet, ConfirmDialog, SheetHeader } from "@/components/kit";
 import { useToast } from "@/components/toast";
 import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
@@ -11,6 +11,9 @@ import {
   useCreateInvitation, useInvitations, useLeaveHousehold, useMembers, useRemoveMember, useRenameHousehold, useRevokeInvitation, type Member,
 } from "@/features/household/api";
 import { formatDateTime, t } from "@/i18n";
+import { Back, I, IB, MkHeader } from "@/mockup/ui";
+import { Av, Btn } from "@/mockup/kit";
+import { useTheme } from "@/theme/ThemeProvider";
 
 const shortDate = (iso: string) => formatDateTime(iso, { day: "numeric", month: "numeric" });
 const dayDate = (iso: string) => formatDateTime(iso, { weekday: "short", day: "numeric", month: "numeric" });
@@ -31,24 +34,12 @@ export function HouseholdPage() {
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(household.name);
-  const [menu, setMenu] = useState<string | null>(null);
   const [removing, setRemoving] = useState<Member | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [invite, setInvite] = useState<{ url: string; expires: string } | null>(null);
 
   const isOwner = members.data?.some((m) => m.user_id === me && m.role === "OWNER") ?? false;
   const others = (members.data ?? []).filter((m) => m.user_id !== me).length;
-
-  // Ponuka pri členovi sa zavrie ťuknutím kamkoľvek inam.
-  useEffect(() => {
-    if (!menu) return;
-    const close = () => setMenu(null);
-    const id = window.setTimeout(() => document.addEventListener("click", close, { once: true }));
-    return () => {
-      window.clearTimeout(id);
-      document.removeEventListener("click", close);
-    };
-  }, [menu]);
 
   async function saveName() {
     const next = name.trim();
@@ -98,17 +89,16 @@ export function HouseholdPage() {
     }
   }
 
+  const gl = useTheme().style === "glass" ? " glass2" : "";
   return (
     <div className="stack">
-      <ScreenHeader title={t("household.title")} onBack={() => navigate("/more")} />
-      <div className="stack g-20 pad" style={{ paddingTop: 4 }}>
-        <div className="stack g-8">
-          <span className="section-title">{t("household.nameSection")}</span>
-          <div className="card row g-8" style={{ padding: "8px 8px 8px 16px", minHeight: 60 }}>
+      <MkHeader title={t("household.title")} back={<Back label={t("more.title")} onClick={() => navigate("/more")} />}>
+        <div className="h2 sm">{t("household.nameSection")}</div>
+        <div className={`lst${gl}`}>
+          <div className="row">
             {editing ? (
-              <>
+              <div className="fl row grow">
                 <input
-                  className="input grow"
                   autoFocus
                   value={name}
                   maxLength={60}
@@ -122,109 +112,82 @@ export function HouseholdPage() {
                   }}
                   aria-label={t("household.nameLabel")}
                 />
-                <button type="button" className="ibtn ink" onClick={() => void saveName()} disabled={rename.isPending} aria-label={t("common.save")}>
-                  <Check size={18} />
+                <button type="button" className="btn pri round" onClick={() => void saveName()} disabled={rename.isPending} aria-label={t("common.save")}>
+                  <I n="check" w="bold" />
                 </button>
-              </>
+              </div>
             ) : (
               <>
-                <span className="grow t-h">{household.name}</span>
-                {isOwner ? (
-                  <button
-                    type="button"
-                    className="ibtn"
+                <span className="th ic">
+                  <I n="house" />
+                </span>
+                <div className="tx">
+                  <b>{household.name}</b>
+                  {!isOwner && <span className="sub">{t("household.ownerEdits")}</span>}
+                </div>
+                {isOwner && (
+                  <IB
+                    n="pencil-simple"
+                    cls="flat sm"
+                    label={t("household.rename")}
                     onClick={() => {
                       setName(household.name);
                       setEditing(true);
                     }}
-                    aria-label={t("household.rename")}
-                  >
-                    <Pencil size={17} />
-                  </button>
-                ) : (
-                  <span className="t-xs t-3" style={{ paddingRight: 8 }}>
-                    {t("household.ownerEdits")}
-                  </span>
+                  />
                 )}
               </>
             )}
           </div>
         </div>
 
-        <div className="stack g-8">
-          <span className="section-title">{t("household.members")}</span>
-          {members.isPending ? (
-            <Spinner />
-          ) : (
-            <div className="cells" style={{ overflow: "visible" }}>
-              {members.data?.map((m) => (
-                <div key={m.user_id} className="cell" style={{ position: "relative" }}>
-                  <PersonAvatar person={{ id: m.user_id, name: m.display_name }} />
-                  <span className="grow stack g-2">
-                    <span className="t-body fw-5">
-                      {m.display_name}
-                      {m.user_id === me ? ` ${t("household.you")}` : ""}
-                    </span>
-                    <span className="row g-4 t-sm t-2">
-                      {m.role === "OWNER" && <Crown size={13} />}
-                      {m.role === "OWNER" ? t("household.ownerRole") : t("household.memberRole")}
-                    </span>
-                  </span>
-                  {isOwner && m.user_id !== me && (
-                    <button
-                      type="button"
-                      className="ibtn"
-                      aria-label={t("household.options", { name: m.display_name })}
-                      aria-expanded={menu === m.user_id}
-                      onClick={() => setMenu(menu === m.user_id ? null : m.user_id)}
-                    >
-                      <MoreHorizontal size={20} />
-                    </button>
-                  )}
-                  {menu === m.user_id && (
-                    <div className="card anim-pop mr-menu" role="menu">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="cell"
-                        onClick={() => {
-                          setMenu(null);
-                          setRemoving(m);
-                        }}
-                      >
-                        <X size={18} color="var(--red)" /> <span className="t-body t-red">{t("household.removeFromHousehold")}</span>
-                      </button>
-                    </div>
-                  )}
+        <div className="h2 sm">{t("household.members")}</div>
+        {members.isPending ? (
+          <Spinner />
+        ) : (
+          <div className={`lst${gl}`}>
+            {members.data?.map((m) => (
+              <div key={m.user_id} className="row">
+                <Av id={m.user_id} name={m.display_name} s={40} />
+                <div className="tx">
+                  <b>
+                    {m.display_name}
+                    {m.user_id === me ? ` ${t("household.you")}` : ""}
+                  </b>
+                  <span className="sub">{m.role === "OWNER" ? t("household.ownerRole") : t("household.memberRole")}</span>
                 </div>
-              ))}
-              <button type="button" className="cell" onClick={createInvitation} disabled={createInvite.isPending}>
-                <span className="cat-ic" style={{ background: "var(--ink)", color: "var(--on-ink)" }}>
-                  <UserPlus size={18} />
-                </span>
-                <span className="grow t-body fw-6">{t("household.invite")}</span>
-                {createInvite.isPending && <span className="spin t-3" style={{ width: 16, height: 16, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: 99 }} />}
-              </button>
-            </div>
-          )}
-        </div>
+                {isOwner && m.user_id !== me && (
+                  <IB n="x" cls="flat sm" label={t("household.removeFromHousehold") + ": " + m.display_name} onClick={() => setRemoving(m)} />
+                )}
+              </div>
+            ))}
+            <button type="button" className="row tap" onClick={createInvitation} disabled={createInvite.isPending}>
+              <span className="th ic">
+                <I n="user-plus" />
+              </span>
+              <div className="tx">
+                <b className="acc">{t("household.invite")}</b>
+              </div>
+              {createInvite.isPending ? <Spinner /> : <I n="caret-right" w="bold" cls="chev" />}
+            </button>
+          </div>
+        )}
 
         {(invitations.data?.length ?? 0) > 0 && (
-          <div className="stack g-8">
-            <span className="section-title">{t("household.pendingInvites")}</span>
-            <div className="cells">
+          <>
+            <div className="h2 sm">{t("household.pendingInvites")}</div>
+            <div className={`lst${gl}`}>
               {invitations.data?.map((inv) => (
-                <div key={inv.id} className="cell">
-                  <span className="cat-ic">
-                    <Link2 size={18} />
+                <div key={inv.id} className="row">
+                  <span className="th ic">
+                    <I n="link" />
                   </span>
-                  <span className="grow stack g-2">
-                    <span className="t-body fw-5 num">{t("household.inviteItem", { date: shortDate(inv.created_at) })}</span>
-                    <span className="t-sm t-2">{t("household.inviteValid", { date: shortDate(inv.expires_at) })}</span>
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-soft btn-sm"
+                  <div className="tx">
+                    <b>{t("household.inviteItem", { date: shortDate(inv.created_at) })}</b>
+                    <span className="sub">{t("household.inviteValid", { date: shortDate(inv.expires_at) })}</span>
+                  </div>
+                  <Btn
+                    cls="soft sm"
                     onClick={() =>
                       revokeInvite.mutate(inv.id, {
                         onSuccess: () => toast.show(t("household.inviteRevoked")),
@@ -233,22 +196,24 @@ export function HouseholdPage() {
                     }
                   >
                     {t("common.cancel")}
-                  </button>
+                  </Btn>
                 </div>
               ))}
             </div>
-          </div>
+          </>
         )}
 
-        <div className="cells">
-          <button type="button" className="cell" onClick={() => setConfirmLeave(true)}>
-            <span className="cat-ic" style={{ background: "var(--red-soft)", color: "var(--red)" }}>
-              <LogOut size={18} />
+        <div className={`lst${gl}`}>
+          <button type="button" className="row tap" onClick={() => setConfirmLeave(true)}>
+            <span className="th ic dng">
+              <I n="sign-out" />
             </span>
-            <span className="grow t-body fw-6 t-red">{t("household.leave")}</span>
+            <div className="tx">
+              <b className="dng">{t("household.leave")}</b>
+            </div>
           </button>
         </div>
-      </div>
+      </MkHeader>
       <div className="tab-space" />
 
       <BottomSheet open={!!invite} onClose={() => setInvite(null)} label={t("household.inviteReady")}>

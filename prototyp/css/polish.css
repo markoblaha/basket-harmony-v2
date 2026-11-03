@@ -831,3 +831,7 @@ button.group { min-height: 44px; }
 .tentry::before { background: radial-gradient(circle at 15% 50%, rgb(155 227 179 / .22), transparent 60%); }
 .g .tentry { background: #1c1714; }
 .g .tentry::before { background: radial-gradient(circle at 15% 50%, rgb(194 82 38 / .42), transparent 60%); }
+/* Riadky s nebezpečnou / hlavnou akciou (Odhlásiť, Odísť z domácnosti, Pozvať). */
+.tx > b.dng, .th.ic.dng { color: var(--danger); }
+.th.ic.dng { background: var(--dangers); }
+.tx > b.acc { color: var(--acc); }

@@ -1,7 +1,8 @@
 import { useNavigate, useParams } from "react-router";
-import { Users } from "lucide-react";
 import { errorMessage } from "@/lib/errors";
-import { Banner, Button, Spinner } from "@/components/ui";
+import { Spinner } from "@/components/ui";
+import { I } from "@/mockup/ui";
+import { AuthLogo, AuthShell, Note } from "@/features/auth/shell";
 import { t, type Key } from "@/i18n";
 import { useAcceptInvitation, useInvitationPreview } from "./api";
 import { rememberHousehold } from "./HouseholdProvider";
@@ -34,49 +35,46 @@ export function JoinPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-10">
+    <AuthShell>
+      <AuthLogo />
       {preview.isPending && <Spinner label={t("join.checking")} />}
-      {preview.isError && <Banner tone="danger">{errorMessage(preview.error)}</Banner>}
+      {preview.isError && <Note tone="danger">{errorMessage(preview.error)}</Note>}
       {preview.data && preview.data.state === "VALID" && (
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex size-16 items-center justify-center rounded-full bg-primary-soft text-primary">
-            <Users className="size-8" aria-hidden />
-          </div>
-          <div>
-            <p className="text-text-2">{t("join.invitedBy", { name: preview.data.invited_by ?? t("join.someone") })}</p>
-            <h1 className="text-2xl font-semibold">{preview.data.household_name}</h1>
-          </div>
-          <p className="text-sm text-text-2">{t("join.willShare")}</p>
-          {accept.isError && <Banner tone="danger">{errorMessage(accept.error)}</Banner>}
-          <Button size="lg" block loading={accept.isPending} onClick={join}>
+        <>
+          <span className="auth-hero-ic" aria-hidden>
+            <I n="users" />
+          </span>
+          <p className="meta">{t("join.invitedBy", { name: preview.data.invited_by ?? t("join.someone") })}</p>
+          <h1 className="lt">{preview.data.household_name}</h1>
+          <p className="meta">{t("join.willShare")}</p>
+          {accept.isError && <Note tone="danger">{errorMessage(accept.error)}</Note>}
+          <button type="button" className="btn pri full big" onClick={join} disabled={accept.isPending} aria-busy={accept.isPending || undefined}>
+            {accept.isPending && <span className="auth-spin" aria-hidden />}
             {t("join.accept")}
-          </Button>
-          <Button variant="ghost" onClick={() => navigate("/", { replace: true })}>
+          </button>
+          <button type="button" className="lnk c" onClick={() => navigate("/", { replace: true })}>
             {t("join.decline")}
-          </Button>
-        </div>
+          </button>
+        </>
       )}
       {preview.data && preview.data.state === "ALREADY_MEMBER" && (
-        <div className="flex flex-col gap-4">
-          <Banner
-            tone="success"
-            title={preview.data.household_name ? t("join.alreadyMember", { name: preview.data.household_name }) : t("join.alreadyMemberPlain")}
-          />
-          <Button size="lg" block onClick={() => openHousehold(preview.data?.household_id)}>
+        <>
+          <Note tone="ok" title={preview.data.household_name ? t("join.alreadyMember", { name: preview.data.household_name }) : t("join.alreadyMemberPlain")} />
+          <button type="button" className="btn pri full big" onClick={() => openHousehold(preview.data?.household_id)}>
             {t("join.open")}
-          </Button>
-        </div>
+          </button>
+        </>
       )}
       {preview.data && STATE_TEXT[preview.data.state] && (
-        <div className="flex flex-col gap-4">
-          <Banner tone="warning" title={t(STATE_TEXT[preview.data.state]!.title)}>
+        <>
+          <Note tone="warn" title={t(STATE_TEXT[preview.data.state]!.title)}>
             {t(STATE_TEXT[preview.data.state]!.text)}
-          </Banner>
-          <Button variant="secondary" size="lg" block onClick={() => navigate("/", { replace: true })}>
+          </Note>
+          <button type="button" className="btn soft full big" onClick={() => navigate("/", { replace: true })}>
             {t("join.continueToApp")}
-          </Button>
-        </div>
+          </button>
+        </>
       )}
-    </main>
+    </AuthShell>
   );
 }

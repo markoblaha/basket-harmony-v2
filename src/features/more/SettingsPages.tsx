@@ -1,22 +1,18 @@
 /**
- * Podstránky Viac: V3 Upozornenia, V4 Moje obchody, V5 Obľúbené dlaždice.
- * Upozornenia a obchody sú voľby tohto telefónu (src/lib/settings.ts), dlaždice sú v databáze.
+ * Podstránky Viac: Upozornenia a Moje obchody (voľby tohto telefónu, src/lib/settings.ts).
  */
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { BellRing, GripVertical, Star, Trash2 } from "lucide-react";
-import { errorMessage } from "@/lib/errors";
 import { setSetting, useSettings, type NotifKind } from "@/lib/settings";
 import { normalizeName } from "@/lib/categories";
-import { Empty, ScreenHeader, StoreBadge, Switch, haptic } from "@/components/kit";
+import { haptic } from "@/components/kit";
 import { useFlip } from "@/components/motion";
-import { ErrorState, Spinner } from "@/components/ui";
-import { useToast } from "@/components/toast";
-import { useUserId } from "@/features/auth/AuthProvider";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { useFavoriteTiles, useRemoveFavorite, useSaveFavorite } from "@/features/lists/api";
 import { useReceipts } from "@/features/receipts/api";
 import { t, tn, type Key } from "@/i18n";
+import { Back, I, MkHeader, Toggle } from "@/mockup/ui";
+import { StoreTile, storeKeyOf } from "@/mockup/kit";
+import { useTheme } from "@/theme/ThemeProvider";
 
 /* ------------------------------------------------------------------ V3 – upozornenia */
 const NOTIF: [NotifKind, Key, Key][] = [
@@ -31,34 +27,32 @@ const NOTIF: [NotifKind, Key, Key][] = [
 export function NotificationsPage() {
   const navigate = useNavigate();
   const { notif } = useSettings();
+  const gl = useTheme().style === "glass" ? " glass2" : "";
   return (
     <div className="stack">
-      <ScreenHeader title={t("more.notif.title")} onBack={() => navigate("/more")} />
-      <div className="stack g-16 pad" style={{ paddingTop: 4 }}>
-        <div className="card row g-12" style={{ padding: 14, alignItems: "flex-start", background: "var(--blue-soft)", boxShadow: "none" }}>
-          <BellRing size={20} color="var(--blue)" style={{ flex: "none", marginTop: 2 }} />
-          <span className="stack g-4">
-            <span className="t-h" style={{ color: "var(--blue)" }}>
-              {t("more.notif.inApp")}
-            </span>
-            <span className="t-sm t-2">{t("more.notif.inAppBody")}</span>
+      <MkHeader title={t("more.notif.title")} back={<Back label={t("more.title")} onClick={() => navigate("/more")} />}>
+        <div className={`card row-card callout${gl}`}>
+          <span className="th ic">
+            <I n="bell" />
           </span>
+          <div className="tx">
+            <b>{t("more.notif.inApp")}</b>
+            <span className="sub">{t("more.notif.inAppBody")}</span>
+          </div>
         </div>
-        <div className="cells">
+        <div className={`lst${gl}`}>
           {NOTIF.map(([k, title, sub]) => (
-            <div key={k} className="cell">
-              <span className="grow stack g-2">
-                <span className="t-body fw-5">{t(title)}</span>
-                <span className="t-sm t-2">{t(sub)}</span>
-              </span>
-              <Switch on={notif[k] !== false} label={t(title)} onChange={(v) => setSetting("notif", { ...notif, [k]: v })} />
+            <div key={k} className="row">
+              <div className="tx">
+                <b>{t(title)}</b>
+                <span className="sub">{t(sub)}</span>
+              </div>
+              <Toggle on={notif[k] !== false} label={t(title)} onChange={(v) => setSetting("notif", { ...notif, [k]: v })} />
             </div>
           ))}
         </div>
-        <span className="t-sm t-2" style={{ padding: "0 4px" }}>
-          {t("more.notif.footer")}
-        </span>
-      </div>
+        <p className="hint">{t("more.notif.footer")}</p>
+      </MkHeader>
       <div className="tab-space" />
     </div>
   );
@@ -143,40 +137,38 @@ export function StoresPage() {
     setLive(null);
   };
 
+  const gl = useTheme().style === "glass" ? " glass2" : "";
   return (
     <div className="stack">
-      <ScreenHeader title={t("more.stores")} onBack={() => navigate("/more")} />
-      <div className="stack g-12 pad" style={{ paddingTop: 4 }}>
-        <span className="t-sm t-2" style={{ padding: "0 4px" }}>
-          {t("more.stores.help")}
-        </span>
-        <div className="cells" ref={box}>
+      <MkHeader title={t("more.stores")} back={<Back label={t("more.title")} onClick={() => navigate("/more")} />}>
+        <p className="meta">{t("more.stores.help")}</p>
+        <div className={`lst${gl}`} ref={box}>
           {shown.map((n, i) => {
             const on = isFav(n);
             const dragging = drag?.name === n;
             return (
               <div
                 key={n}
-                className="cell"
+                className="row"
                 // Ťahaný riadok riadi prst, plynulé uhýbanie (FLIP) len ostatné.
                 data-flip={dragging ? undefined : n}
                 style={
                   dragging
-                    ? { transform: `translateY(${drag.dy}px) scale(1.02)`, zIndex: 2, position: "relative", background: "var(--elevated)", boxShadow: "var(--sh-3)", borderRadius: 14 }
+                    ? { transform: `translateY(${drag.dy}px) scale(1.02)`, zIndex: 4, background: "var(--card)", boxShadow: "var(--sh)", borderRadius: 16 }
                     : undefined
                 }
               >
-                <StoreBadge name={n} />
-                <span className="grow stack g-2">
-                  <span className="t-body fw-5">{n}</span>
-                  <span className="t-sm t-2 num">{tn("more.stores.count", counts.get(normalizeName(n)) ?? 0)}</span>
-                </span>
-                <button type="button" className="ibtn sm" onClick={() => toggleFav(n)} aria-label={on ? t("more.stores.unfav") : t("more.stores.fav")} aria-pressed={on}>
-                  <Star size={18} fill={on ? "currentColor" : "none"} style={{ color: on ? "var(--yellow)" : "var(--text-3)" }} />
+                <StoreTile k={storeKeyOf(n)} n={n} s={40} />
+                <div className="tx">
+                  <b>{n}</b>
+                  <span className="sub">{tn("more.stores.count", counts.get(normalizeName(n)) ?? 0)}</span>
+                </div>
+                <button type="button" className={`ib flat sm${on ? " faved" : ""}`} onClick={() => toggleFav(n)} aria-label={on ? t("more.stores.unfav") : t("more.stores.fav")} aria-pressed={on}>
+                  <I n="star" />
                 </button>
                 <button
                   type="button"
-                  className="ibtn sm"
+                  className="ib flat sm"
                   style={{ touchAction: "none", cursor: dragging ? "grabbing" : "grab" }}
                   aria-label={t("more.stores.drag", { name: n })}
                   onPointerDown={(e) => grab(e, n)}
@@ -190,80 +182,13 @@ export function StoresPage() {
                     }
                   }}
                 >
-                  <GripVertical size={18} />
+                  <I n="dots-six-vertical" />
                 </button>
               </div>
             );
           })}
         </div>
-      </div>
-      <div className="tab-space" />
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ V5 – obľúbené dlaždice */
-export function TilesPage() {
-  const navigate = useNavigate();
-  const me = useUserId();
-  const { household } = useHousehold();
-  const toast = useToast();
-  const tiles = useFavoriteTiles(household.id);
-  const remove = useRemoveFavorite(household.id);
-  const restore = useSaveFavorite(household.id);
-  const mine = (tiles.data ?? []).filter((x) => x.user_id === me);
-
-  return (
-    <div className="stack">
-      <ScreenHeader title={t("more.tiles")} sub={t("more.tilesSub", { n: mine.length })} onBack={() => navigate("/more")} />
-      <div className="stack g-12 pad" style={{ paddingTop: 4 }}>
-        {tiles.isPending ? (
-          <Spinner />
-        ) : tiles.isError ? (
-          <ErrorState error={errorMessage(tiles.error)} onRetry={() => tiles.refetch()} />
-        ) : mine.length === 0 ? (
-          <Empty icon={Star} title={t("more.tiles.empty")} text={t("more.tiles.emptyText")} />
-        ) : (
-          <>
-            <span className="t-sm t-2" style={{ padding: "0 4px" }}>
-              {t("more.tiles.help")}
-            </span>
-            <div className="cells">
-              {mine.map((tile) => (
-                <div key={tile.id} className="cell">
-                  <span className="cat-ic">
-                    <Star size={18} strokeWidth={1.9} />
-                  </span>
-                  <span className="grow stack g-2">
-                    <span className="t-body fw-5">{tile.label}</span>
-                    {tile.item_name !== tile.label && <span className="t-sm t-2">{tile.item_name}</span>}
-                  </span>
-                  <button
-                    type="button"
-                    className="ibtn"
-                    aria-label={t("more.tiles.remove", { name: tile.label })}
-                    onClick={() =>
-                      remove.mutate(tile.id, {
-                        onSuccess: () =>
-                          toast.show(t("more.tiles.removed", { name: tile.label }), "info", {
-                            undo: () =>
-                              restore.mutate(
-                                { label: tile.label, itemName: tile.item_name, position: tile.position },
-                                { onError: (err) => toast.show(errorMessage(err), "error") },
-                              ),
-                          }),
-                        onError: (err) => toast.show(errorMessage(err), "error"),
-                      })
-                    }
-                  >
-                    <Trash2 size={18} color="var(--red)" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+      </MkHeader>
       <div className="tab-space" />
     </div>
   );

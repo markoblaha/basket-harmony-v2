@@ -90,7 +90,6 @@ function screens(id) {
     ["domacnost", "/more/household"],
     ["upozornenia", "/more/notifications"],
     ["obchody", "/more/stores"],
-    ["dlazdice", "/more/tiles"],
   ].filter(Boolean);
 }
 

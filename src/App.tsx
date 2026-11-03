@@ -44,7 +44,6 @@ const HomePage = page(() => import("@/features/home/HomePage"), "HomePage");
 const HouseholdPage = page(() => import("@/features/more/HouseholdPage"), "HouseholdPage");
 const NotificationsPage = page(settings, "NotificationsPage");
 const StoresPage = page(settings, "StoresPage");
-const TilesPage = page(settings, "TilesPage");
 const HistoryPage = page(() => import("@/features/lists/HistoryScreens"), "HistoryPage");
 const HistoryDetailPage = page(() => import("@/features/lists/HistoryScreens"), "HistoryDetailPage");
 const CollectionPage = page(() => import("@/features/recipes/CollectionPage"), "CollectionPage");
@@ -146,7 +145,6 @@ export function App() {
           <Route path="more/household" element={<HouseholdPage />} />
           <Route path="more/notifications" element={<NotificationsPage />} />
           <Route path="more/stores" element={<StoresPage />} />
-          <Route path="more/tiles" element={<TilesPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

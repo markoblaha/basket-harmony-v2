@@ -10,6 +10,7 @@ import { useProfiles } from "@/features/household/api";
 import { t } from "@/i18n";
 import { ICONS } from "./icons";
 import { EXTRA_ICONS } from "./icons-extra";
+import { memberColor } from "./kit";
 import { useUnread } from "@/features/more/notif";
 
 /** Ikona Phosphor. w = fill | bold | regular (ako v mockupe). */
@@ -58,7 +59,7 @@ export function MeBtn() {
   const name = profiles.data?.get(me) || user?.email?.split("@")[0] || "?";
   const unread = useUnread();
   return (
-    <button type="button" className="mebtn" onClick={() => navigate("/more")} aria-label={unread ? t("nt.meUnread") : t("nav.me")}>
+    <button type="button" className="mebtn" style={me ? { background: memberColor(me) } : undefined} onClick={() => navigate("/more")} aria-label={unread ? t("nt.meUnread") : t("nav.me")}>
       {name.trim().charAt(0).toUpperCase()}
       {unread && <i className="mdot" aria-hidden="true" />}
     </button>

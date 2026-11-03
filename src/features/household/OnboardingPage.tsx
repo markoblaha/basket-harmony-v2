@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router";
-import { Home, LogOut, Mail } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
-import { Banner, Button, TextField } from "@/components/ui";
+import { I } from "@/mockup/ui";
+import { AuthLogo, AuthShell, Field, Note } from "@/features/auth/shell";
 import { t } from "@/i18n";
 import { useHouseholds, useCreateHousehold } from "./api";
 
@@ -40,28 +40,32 @@ export function OnboardingPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-8 px-6 py-10 pt-safe">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("onboarding.welcome")}</h1>
-        <p className="mt-1 text-text-2">{t("onboarding.intro")}</p>
-      </div>
-
-      <form onSubmit={createHousehold} className="flex flex-col gap-3 rounded-[var(--radius-surface)] bg-surface p-4 shadow-card">
-        <h2 className="flex items-center gap-2 font-semibold">
-          <Home className="size-5 text-primary" aria-hidden /> {t("onboarding.create")}
-        </h2>
-        <TextField label={t("household.nameLabel")} value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
-        {create.isError && <Banner tone="danger">{errorMessage(create.error)}</Banner>}
-        <Button type="submit" size="lg" block loading={create.isPending}>
+    <AuthShell>
+      <AuthLogo />
+      <h1 className="lt">{t("onboarding.welcome")}</h1>
+      <p className="meta auth-lead">{t("onboarding.intro")}</p>
+      <form onSubmit={createHousehold} className="card auth-card">
+        <div className="auth-card-h">
+          <span className="th ic">
+            <I n="house" />
+          </span>
+          <b>{t("onboarding.create")}</b>
+        </div>
+        <Field label={t("household.nameLabel")} value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
+        {create.isError && <Note tone="danger">{errorMessage(create.error)}</Note>}
+        <button type="submit" className="btn pri full" disabled={create.isPending} aria-busy={create.isPending || undefined}>
+          {create.isPending && <span className="auth-spin" aria-hidden />}
           {t("onboarding.createButton")}
-        </Button>
+        </button>
       </form>
-
-      <form onSubmit={openInvite} className="flex flex-col gap-3 rounded-[var(--radius-surface)] bg-surface p-4 shadow-card">
-        <h2 className="flex items-center gap-2 font-semibold">
-          <Mail className="size-5 text-primary" aria-hidden /> {t("onboarding.haveInvite")}
-        </h2>
-        <TextField
+      <form onSubmit={openInvite} className="card auth-card">
+        <div className="auth-card-h">
+          <span className="th ic">
+            <I n="link" />
+          </span>
+          <b>{t("onboarding.haveInvite")}</b>
+        </div>
+        <Field
           label={t("onboarding.linkLabel")}
           placeholder="https://…/join/…"
           value={link}
@@ -71,15 +75,15 @@ export function OnboardingPage() {
             setLinkError(null);
           }}
         />
-        <Button type="submit" variant="secondary" size="lg" block>
+        <button type="submit" className="btn soft full">
           {t("onboarding.continue")}
-        </Button>
+        </button>
       </form>
-
-      <Button variant="ghost" onClick={() => supabase.auth.signOut()}>
-        <LogOut className="size-4" aria-hidden /> {t("more.signOut")}
-      </Button>
-    </main>
+      <button type="button" className="lnk c dng" onClick={() => supabase.auth.signOut()}>
+        <I n="sign-out" />
+        {t("more.signOut")}
+      </button>
+    </AuthShell>
   );
 }
 
