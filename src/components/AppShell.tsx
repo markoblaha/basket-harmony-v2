@@ -123,7 +123,8 @@ export function AppShell() {
           </div>
         </Suspense>
       </main>
-      <EdgeBack screen={screen} enabled={!ROOTS.includes(pathname.replace(/\/$/, "") || "/")} />
+      {/* Varenie a Ochutnávač majú vlastné ťahy do strán (krok / fotka) – tam okraj nezatvára obrazovku. */}
+      <EdgeBack screen={screen} enabled={!ROOTS.includes(pathname.replace(/\/$/, "") || "/") && !OWN_SWIPE.test(pathname)} />
       {style === "glass" && (
         // Pozadie Fotiek a skla ako v mockupe: rozmazaná fotka trhu so závojom.
         <div className="bhm bhm-bg" aria-hidden>
@@ -173,6 +174,9 @@ export function AppShell() {
 }
 
 type Tab = (typeof TABS)[number];
+
+/** Obrazovky s vlastným ťahom do strán (varenie: kroky, Ochutnávač: fotky). */
+const OWN_SWIPE = /\/cook\/?$|\/recipes\/taste\/?$/;
 
 
 /**

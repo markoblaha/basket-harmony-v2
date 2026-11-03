@@ -70,3 +70,15 @@
 .bhm .tst-hint .tst-hok { margin-top: 6px; align-self: center; }
 /* Ikona v štítku (čas, oheň) nesmie dostať pozadie a odsadenie samotného štítku (span v span). */
 .bhm .tst-meta .ico, .bhm .schips .ico { height: 15px; width: 15px; padding: 0; background: none; border-radius: 0; -webkit-backdrop-filter: none; backdrop-filter: none; flex: none; }
+
+/* Varenie: kroky sa menia ťukom na stranu a ťahom prstom (CookPage). Zvislé posúvanie dlhého kroku ostáva. */
+.bhm .cbody.swipe { touch-action: pan-y; -webkit-user-select: none; user-select: none; cursor: pointer; }
+.bhm .ckst { display: flex; flex-direction: column; gap: 22px; }
+.bhm .ckst.in-next { animation: ck-in-next .26s cubic-bezier(.2, .7, .3, 1); }
+.bhm .ckst.in-prev { animation: ck-in-prev .26s cubic-bezier(.2, .7, .3, 1); }
+@keyframes ck-in-next { from { opacity: 0; transform: translateX(40px); } }
+@keyframes ck-in-prev { from { opacity: 0; transform: translateX(-40px); } }
+.bhm .ck-hint { align-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 99px; background: var(--card2); color: var(--sec); font-size: 14px; font-weight: 650; text-align: center; }
+.bhm .ck-hint .ico { width: 18px; height: 18px; flex: none; }
+.g .bhm .cook:has(.bgl) .ck-hint { background: rgb(255 255 255 / .16); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .bhm .ckst.in-next, .bhm .ckst.in-prev { animation: none; } }

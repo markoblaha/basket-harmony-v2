@@ -423,6 +423,11 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Overené Playwrightom lokálne: ťuk/kláves menia 1/3 → 2/3 → 3/3, samé posúvanie, dvojťuk, návrat, prestávka na 12,
     pri 4× spomalenom procesore 57 snímok/s, 2 dlhé snímky z ~300, v DOM ~280 uzlov po 9 receptoch. Prototyp
     (`prototyp/src/book.jsx`) tieto zmeny nemá – Ochutnávač sa teraz vyvíja v appke.
+    **Varenie – kroky ťukom a ťahom (3. 11., pokyn majiteľa):** `CookPage.tsx`: ťuk na ľavú tretinu = späť, inde = ďalej,
+    ťah prstom (krok ide za prstom, na začiatku/konci len pruží), klávesy ← → medzerník, animácia prechodu podľa smeru,
+    vibrácia, návod „Ďalší krok: ťukni vpravo…“ do prvého gesta (`bh.cookHint`). Posledný krok ťah ani ťuk neukončí
+    (len tlačidlo Hotovo), ťuk na časovač krok nemení. `AppShell.tsx`: okrajové „späť“ (`EdgeBack`) je vypnuté na
+    varení a v Ochutnávači (`OWN_SWIPE`), inak by ťah od ľavého okraja zavrel obrazovku. Overené dotykom (CDP).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

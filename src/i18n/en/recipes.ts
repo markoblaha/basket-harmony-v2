@@ -501,6 +501,7 @@ export const enRecipes: Record<keyof typeof skRecipes, string> = {
   "ck.stop": "stop",
   "ck.start": "start the timer",
   "ck.next": "Next step",
+  "ck.swipeHint": "Next step: tap the right side or swipe left",
   "ck.warn": "Careful:",
   "kb.ph.1": "The dish",
   "kb.ph.2": "From above",

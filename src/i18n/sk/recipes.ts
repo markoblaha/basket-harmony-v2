@@ -511,6 +511,7 @@ export const skRecipes = {
   "ck.stop": "zastaviť",
   "ck.start": "spustiť časovač",
   "ck.next": "Ďalší krok",
+  "ck.swipeHint": "Ďalší krok: ťukni vpravo alebo potiahni prstom doľava",
   "ck.warn": "Pozor:",
   "kb.ph.1": "Hotové jedlo",
   "kb.ph.2": "Zhora",
