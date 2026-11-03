@@ -27,3 +27,46 @@
 .bhm .bsrc a span { text-decoration: underline; text-decoration-color: var(--line, rgb(0 0 0 / .15)); text-underline-offset: 3px; }
 .bhm .bal { display: flex; flex-wrap: wrap; gap: 6px; }
 .bhm .bal span { height: 28px; padding: 0 10px; border-radius: 99px; background: var(--card2); display: inline-flex; align-items: center; font-size: 13.5px; font-weight: 650; }
+
+/* Fotky receptu, ktoré sa listujú do strán (Photos.tsx) – detail receptu aj Ochutnávač. */
+.bhm .phs { position: relative; width: 100%; height: 100%; overflow: hidden; background: #141414; }
+.bhm .phs-s { display: flex; width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; -webkit-tap-highlight-color: transparent; }
+.bhm .phs-s::-webkit-scrollbar { display: none; }
+.bhm .phs-i { position: relative; flex: 0 0 100%; height: 100%; overflow: hidden; scroll-snap-align: center; scroll-snap-stop: always; background-size: cover; background-position: center; background-color: #1c1c1c; }
+.bhm .phs > .phs-i { width: 100%; }
+.bhm .phs-i img { display: block; width: 100%; height: 100%; object-fit: cover; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+.bhm .phs.feed .phs-i.on img { animation: kb-zoom 7s cubic-bezier(.2, .6, .3, 1) forwards; will-change: transform; }
+@keyframes kb-zoom { from { transform: scale(1); } to { transform: scale(1.07); } }
+.bhm .phs-cnt { position: absolute; right: 12px; bottom: 40px; z-index: 3; height: 26px; padding: 0 9px; border-radius: 99px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 750; color: #fff; background: rgb(0 0 0 / .45); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font-variant-numeric: tabular-nums; pointer-events: none; }
+.bhm .phs-nav { position: absolute; top: 50%; z-index: 3; width: 40px; height: 40px; margin-top: -20px; border-radius: 99px; display: none; place-items: center; color: #1d1d1d; background: rgb(255 255 255 / .88); box-shadow: 0 4px 14px rgb(0 0 0 / .22); transition: opacity var(--dur-2, .2s); }
+.bhm .phs-nav .ico { width: 18px; height: 18px; }
+.bhm .phs-nav.prev { left: 12px; }
+.bhm .phs-nav.next { right: 12px; }
+.bhm .phs-nav[disabled] { opacity: 0; pointer-events: none; }
+@media (hover: hover) and (pointer: fine) { .bhm .phs-nav { display: grid; } }
+/* Detail receptu z knihy: väčšia fotka (4:5), aby jedlo bolo vidieť celé. */
+.bhm .rhero2.rbook { height: calc(var(--sat) + min(108vw, 460px)); }
+/* Ochutnávač: pásiky fotiek ako príbeh a počítadlo pod hornou lištou. */
+.bhm .phs-seg { position: absolute; left: 14px; right: 14px; top: calc(var(--sat) + 64px); z-index: 3; display: flex; gap: 4px; pointer-events: none; }
+.bhm .phs-seg i { position: relative; flex: 1; height: 3px; border-radius: 99px; overflow: hidden; background: rgb(255 255 255 / .32); }
+.bhm .phs-seg i.d { background: #fff; }
+.bhm .phs-seg i.c::after { content: ""; position: absolute; inset: 0; background: #fff; transform-origin: left; }
+.bhm .phs-seg i.c.run::after { animation: seg-fill var(--auto, 3.2s) linear forwards; }
+@keyframes seg-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.bhm .phs.feed .phs-cnt { top: calc(var(--sat) + 76px); bottom: auto; right: 14px; }
+.bhm .phs.feed .phs-nav { top: 46%; }
+@media (prefers-reduced-motion: reduce) {
+  .bhm .phs.feed .phs-i.on img, .bhm .phs-seg i.c.run::after { animation: none; }
+}
+
+/* Ochutnávač 2.0 */
+.bhm .tst-card { contain: layout paint; }
+.bhm .tst-ph .phs { position: absolute; inset: 0; }
+.bhm .tst-top .tst-ttl { flex: 1; text-align: center; font-weight: 800; font-size: 16px; letter-spacing: -.2px; text-shadow: 0 1px 8px rgb(0 0 0 / .45); pointer-events: none; }
+.bhm .tst-kind { font-size: 13px; font-weight: 750; letter-spacing: .6px; text-transform: uppercase; color: rgb(255 255 255 / .85); }
+.bhm .tst-ai { font-size: 12px; color: rgb(255 255 255 / .7); }
+.bhm .tst-burst.at { left: var(--x); top: var(--y); }
+.bhm .tst-hint { cursor: pointer; }
+.bhm .tst-hint .tst-hok { margin-top: 6px; align-self: center; }
+/* Ikona v štítku (čas, oheň) nesmie dostať pozadie a odsadenie samotného štítku (span v span). */
+.bhm .tst-meta .ico, .bhm .schips .ico { height: 15px; width: 15px; padding: 0; background: none; border-radius: 0; -webkit-backdrop-filter: none; backdrop-filter: none; flex: none; }

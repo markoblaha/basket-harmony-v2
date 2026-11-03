@@ -408,6 +408,21 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Cena ~1 $. Overené lokálne (vite preview, testovací účet, Teplá aj Sklo tmavé): 5 receptov, galéria, postup,
     porcie, varenie, Ochutnávač – bez chýb JS/servera a bez pretekania. Recepty sú zatiaľ len po slovensky (aj v EN
     rozhraní) a sú v kóde appky, nie v DB; „Navrhni recept“ a „Nahlásiť chybu“ ešte nie sú.
+    **Fotky do strán a Ochutnávač 2.0 – HOTOVÉ 3. 11. (pokyn majiteľa: listovanie fotiek s počtom, Ochutnávač
+    „návykový, kvalitný, optimalizovaný“):** `Photos.tsx` (`PhotoSwiper`): natívne posúvanie so zarážkami, ťuk na ľavú/
+    pravú tretinu, šípky na počítači (len zariadenia s myšou), klávesy ← →, počítadlo „1/3“, bodky, `<img>` s async
+    dekódovaním a lenivým načítaním, malý náhľad pod prvou fotkou; detail receptu z knihy má väčšiu fotku (4:5).
+    V Ochutnávači: pásiky ako príbeh, fotky sa samy posúvajú každých 3,2 s (kým sa ich nedotkneš), pomalé priblíženie
+    (vypnuté pri „obmedziť pohyb“). `TastePage.tsx` prepísaný: nekonečný feed v kolách (`taste.ts` + test – kniha
+    prvá, nevidené a „mám doma“ vyššie, pestré kategórie, „Nie“ dozadu, nikdy rovnaký recept za sebou), prestávka
+    so súhrnom po 12 receptoch („Listovať ďalej“ / Hotovo), návrat z receptu na to isté miesto (`bh.tasteSession`
+    v sessionStorage, 30 min), aktuálna karta cez IntersectionObserver, obsah len pre karty ±3, fotky ±1,
+    prednačítanie ďalších 3, karty `memo`, dvojťuk = Chcem so srdcom na mieste ťuknutia a vibráciou, návod pri prvom
+    spustení (`bh.tasteHint`), klávesy ↓ ↑ medzerník L Esc. „Chcem“ je optimistické (`useToggleLike` onMutate).
+    Opravené aj ikony v štítkoch (čas/oheň) – v mockup CSS dostávali pozadie a odsadenie štítku (`kniha.css`).
+    Overené Playwrightom lokálne: ťuk/kláves menia 1/3 → 2/3 → 3/3, samé posúvanie, dvojťuk, návrat, prestávka na 12,
+    pri 4× spomalenom procesore 57 snímok/s, 2 dlhé snímky z ~300, v DOM ~280 uzlov po 9 receptoch. Prototyp
+    (`prototyp/src/book.jsx`) tieto zmeny nemá – Ochutnávač sa teraz vyvíja v appke.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

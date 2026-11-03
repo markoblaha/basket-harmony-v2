@@ -18,7 +18,8 @@ import { useDeleteRecipe, useFavorites, useRecipes, useToggleFavorite } from "./
 import { NUTRIENTS, fmtNutrient, formatAmount, recipeNutrition, renderStep, riPct, scaleIngredients, type NutrientId } from "./logic";
 import { RCATS, art, recipeRows, useHave } from "./mk";
 import { AddRecipeSheet, PlanSheet } from "./sheets";
-import { BookIngredients, BookInfo, BookSteps, Gallery, duration } from "./book";
+import { BookIngredients, BookInfo, BookSteps, duration } from "./book";
+import { PhotoSwiper } from "./Photos";
 import { useCart } from "./cart";
 import type { Recipe } from "./types";
 import { useSetting } from "@/lib/settings";
@@ -133,8 +134,8 @@ export function RecipePage() {
       </div>
       <div className="bhm bhm-list bhm-recipe">
         {r.book ? (
-          <div key={r.id} className="rhero2 rgal">
-            <Gallery r={r} />
+          <div key={r.id} className="rhero2 rgal rbook">
+            <PhotoSwiper r={r} />
             {ids.length > 1 && (
               <span className="rpos">
                 {idx + 1} / {ids.length}

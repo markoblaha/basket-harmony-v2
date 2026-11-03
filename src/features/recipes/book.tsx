@@ -1,14 +1,13 @@
 /**
- * Recept z knihy v appke – prenesené z mockupu (prototyp/src/book.jsx): galéria 3 fotiek toho istého jedla,
- * suroviny v skupinách s presným množstvom, kroky s časom, ohňom a radami („Hotové je, keď“, „Pozor“, „Tip“),
- * alergény (odvodené zo surovín), náradie, skladovanie a zdroje, z ktorých recept vznikol.
+ * Recept z knihy v appke – prenesené z mockupu (prototyp/src/book.jsx): suroviny v skupinách s presným
+ * množstvom, kroky s časom, ohňom a radami („Hotové je, keď“, „Pozor“, „Tip“),
+ * alergény (odvodené zo surovín), náradie, skladovanie a zdroje, z ktorých recept vznikol. Fotky: Photos.tsx.
  */
-import { useRef, useState } from "react";
 import { formatNumber, t, tn, type Key } from "@/i18n";
 import { E, I } from "@/mockup/ui";
 import type { Estimator } from "@/features/lists/estimate";
 import { FOODS } from "./foods";
-import { bookPics, recipeAllergens } from "./kniha";
+import { recipeAllergens } from "./kniha";
 import { formatAmount, ingName, renderStep, roundQty, scaleIngredients, toGrams } from "./logic";
 import type { IngRow } from "./mk";
 import type { Ingredient, Recipe, Step } from "./types";
@@ -30,41 +29,6 @@ export function bookAmount(ing: Ingredient) {
   if (!spoon && !piece) return base;
   const g = toGrams(ing.food, ing.qty, ing.unit);
   return g && g >= 1 ? `${base} (${formatNumber(roundQty(g, "g"))} g)` : base;
-}
-
-export function Gallery({ r }: { r: Recipe }) {
-  const pics = bookPics(r);
-  const [i, setI] = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
-  const names = [t("kb.ph.1"), t("kb.ph.2"), t("kb.ph.3")];
-  const go = (k: number) => ref.current?.scrollTo({ left: k * ref.current.clientWidth, behavior: "smooth" });
-  return (
-    <div className="gal">
-      <div
-        className="gal-s"
-        ref={ref}
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          const n = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
-          if (n !== i) setI(n);
-        }}
-      >
-        {pics.map((p, k) => (
-          <div key={p} className={`gal-i pic-${p}`} role="img" aria-label={`${r.name} – ${names[k] ?? ""}`} />
-        ))}
-      </div>
-      {pics.length > 1 && (
-        <div className="gal-d">
-          {pics.map((p, k) => (
-            <button type="button" key={p} className={k === i ? "on" : ""} onClick={() => go(k)} aria-label={names[k]} />
-          ))}
-        </div>
-      )}
-      <span className="gal-l">
-        {names[i]} · {t("kb.aiPhoto")}
-      </span>
-    </div>
-  );
 }
 
 /** Suroviny v skupinách; ťuk prepne „mám doma“ (rovnako ako pri ostatných receptoch). */

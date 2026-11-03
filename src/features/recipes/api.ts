@@ -354,15 +354,29 @@ export function useRecipeLikes(householdId: string) {
   });
 }
 
+type Like = { user_id: string; recipe_key: string };
+
+/** „Chcem“: srdiečko sa zmení hneď (bez čakania na server), pri chybe sa vráti späť. */
 export function useToggleLike(householdId: string) {
   const qc = useQueryClient();
+  const key = ["recipe-likes", householdId];
   return useMutation({
-    mutationFn: async ({ key, on, me }: { key: string; on: boolean; me: string }) => {
+    mutationFn: async ({ key: rk, on, me }: { key: string; on: boolean; me: string }) => {
       const { error } = on
-        ? await supabase.from("recipe_likes").upsert({ household_id: householdId, recipe_key: key }, { ignoreDuplicates: true })
-        : await supabase.from("recipe_likes").delete().eq("household_id", householdId).eq("recipe_key", key).eq("user_id", me);
+        ? await supabase.from("recipe_likes").upsert({ household_id: householdId, recipe_key: rk }, { ignoreDuplicates: true })
+        : await supabase.from("recipe_likes").delete().eq("household_id", householdId).eq("recipe_key", rk).eq("user_id", me);
       if (error) throw error;
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["recipe-likes", householdId] }),
+    onMutate: async ({ key: rk, on, me }) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Like[]>(key);
+      const rest = (prev ?? []).filter((l) => !(l.recipe_key === rk && l.user_id === me));
+      qc.setQueryData<Like[]>(key, on ? [...rest, { user_id: me, recipe_key: rk }] : rest);
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 }

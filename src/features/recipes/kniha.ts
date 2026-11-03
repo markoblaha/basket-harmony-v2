@@ -354,3 +354,12 @@ export function recipeAllergens(r: Pick<Recipe, "ingredients">) {
   }
   return { allergens: [...al], check: [...check] };
 }
+
+/** Adresy fotiek receptu z knihy (veľké na celú obrazovku) a malá prvá fotka ako náhľad počas načítania. */
+export function bookPhotos(r: Pick<Recipe, "id" | "book">) {
+  const n = r.book?.photos ?? 0;
+  return {
+    urls: Array.from({ length: n }, (_, k) => `/kniha/${r.id}-${k + 1}.webp`),
+    small: n ? `/kniha/${r.id}-1s.webp` : null,
+  };
+}
