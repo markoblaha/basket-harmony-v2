@@ -8,7 +8,7 @@ import { useNavigate } from "react-router";
 import { ErrorState } from "@/components/ui";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { errorMessage } from "@/lib/errors";
-import { t, tn } from "@/i18n";
+import { formatCalendarDate, t, tn } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, MkHeader, Seg } from "@/mockup/ui";
 import { HelpBtn } from "@/features/help/Help";
@@ -80,7 +80,13 @@ export function MoneyPage() {
   const months = (o?.months ?? []).filter((m) => m.amount > 0);
   const mmax = Math.max(1, ...months.map((m) => m.amount));
   const ins = o ? insights(o) : [];
-  const trendTxt = diff == null ? null : t(diff > 0 ? "mn.more" : "mn.less", { pct: Math.abs(Math.round(diff * 100)), prev: prevTitle });
+  // Prebiehajúce obdobie sa porovnáva s rovnakými dňami predošlého (DB: prev_to_date) – text to musí povedať,
+  // inak „o 83 % menej ako október“ vyzerá ako porovnanie 3 dní s celým mesiacom.
+  const prevLabel =
+    o?.prev_to_date != null && o.prev_cut
+      ? `${formatCalendarDate(period.prevFrom, { day: "numeric" })} – ${formatCalendarDate(o.prev_cut, { day: "numeric", month: "numeric" })}`
+      : prevTitle;
+  const trendTxt = diff == null ? null : t(diff > 0 ? "mn.more" : "mn.less", { pct: Math.abs(Math.round(diff * 100)), prev: prevLabel });
 
   const rbtns = (
     <div className="rbtns">

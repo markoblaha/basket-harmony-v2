@@ -150,7 +150,7 @@ export const skLs = {
   "ls.someoneShopsIn": "Nakupuje: {who} · {name}",
   "ls.watching": "Sleduješ naživo. Čo pridáš, pôjde na schválenie (nakupuje {name}).",
   "ls.subFor": "Náhrada za {name}",
-  "ls.subPlaceholder": "Čo si kúpil namiesto toho?",
+  "ls.subPlaceholder": "Čo bolo namiesto toho?",
   "ls.subNote": "Náhrada za: {name}",
   "ls.saveSub": "Uložiť náhradu",
   "ls.na": "Nemali",

@@ -792,7 +792,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
               <span className="dim">{t("vx.pausedHint")}</span>
             )}
           </div>
-          {engine === "rec" && import.meta.env.MODE === "staging" && <MicDiag diag={rec.diag} />}
+          {engine === "rec" && import.meta.env.MODE === "staging" && showDiag() && <MicDiag diag={rec.diag} />}
           {typing && (
             <form className="vx-kbd" onSubmit={send}>
               <input
@@ -1040,11 +1040,26 @@ function WherePanel({
 }
 
 /** Len v testovacej appke: čo mikrofón naozaj dáva (hlasitosť vs. prah reči) – na odhalenie tichého mikrofónu. */
+/**
+ * Kontrolný riadok mikrofónu (len testovacia appka a len na požiadanie): zapne ho adresa s ?diag=1,
+ * vypne ?diag=0 – voľba sa pamätá v zariadení (bh.diag), aby fungovala aj v appke z plochy.
+ */
+function showDiag(): boolean {
+  try {
+    const q = new URLSearchParams(location.search).get("diag");
+    if (q === "1") localStorage.setItem("bh.diag", "1");
+    if (q === "0") localStorage.removeItem("bh.diag");
+    return localStorage.getItem("bh.diag") === "1";
+  } catch {
+    return false;
+  }
+}
+
 function MicDiag({ diag }: { diag: { current: string } }) {
   const [text, setText] = useState("");
   useEffect(() => {
     const id = setInterval(() => setText(diag.current), 400);
     return () => clearInterval(id);
   }, [diag]);
-  return text ? <div className="v-diag t-xs t-3 num">{text}</div> : null;
+  return text ? <div className="v-diag">{text}</div> : null;
 }

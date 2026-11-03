@@ -21,7 +21,7 @@ export const enAuth: Record<keyof typeof skAuth, string> = {
   "auth.hidePassword": "Hide password",
   "auth.createAccount": "Create account",
   "auth.sendLink": "Send link",
-  "auth.forgotLink": "I forgot my password",
+  "auth.forgotLink": "Forgot password?",
   "auth.backToSignIn": "Back to sign in",
   "auth.googleFailed": "Google sign-in failed: {reason}",
   "auth.errEmail": "Enter your email.",

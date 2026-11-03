@@ -240,7 +240,7 @@ export function MissingReceipts({ compact }) {
           {m.store ? <StoreTile k={m.store} s={36} /> : <span className="th ic"><I n="basket" /></span>}
           <div className="grow"><b>{m.name}</b><span className="sub">{when(m.at)} · {m.n} {m.n === 1 ? 'položka' : m.n < 5 ? 'položky' : 'položiek'} · ~{eur(m.total)}</span></div>
           {!compact && <IB n="x" cls="flat sm" label={`Bloček nemám: ${m.name}`} onClick={() => drop(m)} />}
-          <Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => modal('scan', { listId: m.listId, missing: m.id })}><I n="camera" />Odfotiť</Btn>
+          <Btn cls="soft sm" onClick={() => modal('scan', { listId: m.listId, missing: m.id })}><I n="camera" />Odfotiť</Btn>
         </div>
       ))}
       {compact && ms.length > 1 && <div className="meta sm">a ďalšie vo Výdavkoch</div>}

@@ -561,14 +561,14 @@ export function ItemSheet({
           {up && up.avg && r && (
             <p className="meta">
               {r.kinds > 1 ? t("li.avgNoteKinds", { k: up.k, n: r.kinds }) : t("li.avgNote", { k: up.k })}
-              {up.same && store ? t("li.inStore", { store }) : ""}. {t("li.rangeNote", { min: eur(up.min), max: eur(up.max) })} {t("li.refineNote")}
+              {up.same && store ? t("li.inStore", { store }) : ""}. {eur(up.min) !== eur(up.max) ? t("li.rangeNote", { min: eur(up.min), max: eur(up.max) }) : ""} {t("li.refineNote")}
             </p>
           )}
           {up && !up.avg && (
             <p className="meta">
               {r?.level === "brand" && r.brand ? `${t("li.brandOnly", { brand: r.brand })} ` : ""}
               {up.k === 1 ? t("li.lastBuy") : t("li.median", { k: up.k })}
-              {up.same && store ? t("li.inStore", { store }) : listStore ? t("li.allStores") : ""}. {t("li.rangeNote", { min: eur(up.min), max: eur(up.max) })}
+              {up.same && store ? t("li.inStore", { store }) : listStore ? t("li.allStores") : ""}. {eur(up.min) !== eur(up.max) ? t("li.rangeNote", { min: eur(up.min), max: eur(up.max) }) : ""}
               {!up.same && listStore && up.store ? ` ${t("li.notHere", { store, other: storeName(storeKeyOf(up.store)) ?? up.store })}` : ""}
             </p>
           )}

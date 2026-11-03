@@ -781,3 +781,53 @@ button.group { min-height: 44px; }
 .sgr kbd { flex: none; min-width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font: 750 15px/1 inherit; font-family: inherit; background: var(--accs); color: var(--acc); }
 .sgr.typo small { color: var(--honey); font-weight: 650; }
 .g .sgl { border-radius: 24px; }
+
+/* =====================================================================================================
+ * Revízia 3. 11. 2026 – farby a hierarchia oboch tém (obe témy ostávajú, len lepšie)
+ * Teplá kuchyňa: karta sa nelíšila od pozadia (1,09 : 1) a hlavná farba bola takmer čierna – teraz
+ *   hlbšie ovsené pozadie, biele karty s jemným okrajom, akcia stredná lesná zelená (bazalka, biely
+ *   text 6,3 : 1), jemný šalviový nádych hore (aj systémová lišta a pripnutá hlavička).
+ * Fotky a sklo: signálna oranžová #DC5A1C (biely text 3,8 : 1) → pokojnejšia terakotová
+ *   #C25226 → #A8441F (4,6 – 6 : 1), hustejší závoj nad fotkou, aby fotka nekričala.
+ * Hierarchia: na obrazovke najviac jedno plné tlačidlo – opakované akcie v riadkoch (košík na karte
+ *   zoznamu, Odfotiť pri chýbajúcom bločku, ▶ Variť, ikony v Rýchlo) sú tónové.
+ * ===================================================================================================== */
+.w { --bg: #f2ece2; --card: #ffffff; --card2: #efe8dc; --line: #ebe4d8; --rowbg: #ffffff; --segon: #ffffff; --ibg: #ffffff; --sheetbg: #f4efe6;
+  --pri: #2f6b4f; --onpri: #ffffff; --acc: #2f6b4f; --accs: #e2eee5; --selbg: #e4eee7; --forest: #1f4433; --ter: #63675d;
+  --prish: 0 10px 20px -12px rgb(30 70 50 / .75);
+  --sh: 0 0 0 1px rgb(70 55 30 / .06), 0 1px 2px rgb(70 55 30 / .05), 0 10px 26px -18px rgb(70 55 30 / .32);
+  --tint: #e5ece1; --navbg: rgb(229 236 225 / .86);
+  --mat: rgb(255 255 255 / .66); --mat-thick: rgb(246 242 235 / .86); }
+.w.t-d { --card: #1d211b; --card2: #282d24; --rowbg: #1d211b; --ibg: #21251e; --segon: #343a30; --forest: #1f3d2c; --ter: #959a8d;
+  --pri: #8fd4a7; --onpri: #0f1a13; --acc: #8fd4a7; --accs: #1f3427; --selbg: #1f3026;
+  --prish: 0 10px 22px -12px rgb(0 0 0 / .8);
+  --sh: 0 0 0 1px rgb(255 255 255 / .05), 0 14px 30px -18px rgb(0 0 0 / .9);
+  --tint: #152019; --navbg: rgb(21 32 25 / .86);
+  --mat: rgb(32 36 29 / .6); --mat-thick: rgb(24 27 21 / .86); }
+/* Šalviový nádych hore obrazovky (posúva sa s obsahom). */
+.w .sc { background: linear-gradient(180deg, var(--tint) 0, color-mix(in srgb, var(--tint) 40%, var(--bg)) 160px, var(--bg) 320px) local; }
+.w .live { box-shadow: 0 18px 34px -20px rgb(20 50 35 / .8); }
+
+.g { --pri: linear-gradient(180deg, #c25226, #a8441f); --prish: 0 10px 22px -12px rgb(168 68 31 / .7), inset 0 1px 0 rgb(255 255 255 / .22);
+  --acc: #a3401c; --acc2: #c8643a; --accs: rgb(194 82 38 / .12); --selbg: rgb(194 82 38 / .1); --toastacc: #f2a27c; --veil: rgb(246 244 240 / .68); }
+.g.t-d { --pri: linear-gradient(180deg, #c25226, #a8441f); --acc: #f29a70; --acc2: #e0794a; --accs: rgb(242 154 112 / .16); --selbg: rgb(242 154 112 / .12); --toastacc: #c25226; --veil: rgb(6 6 8 / .62); }
+.g .tx-ok, .g .tx-paused .go, .g .tx-fs .go, .g .tx-wide.p { background: var(--pri); }
+.tx-logo, .tx-big .num { background: linear-gradient(160deg, #c8643a, #a8441f); box-shadow: 0 18px 40px -16px rgb(168 68 31 / .8); }
+.w .tx-logo, .w .tx-big .num { background: var(--pri); }
+.g .ph.noph { background: linear-gradient(160deg, #e7a07c, #b24a22); }
+/* Náhľady tém vo Viac – rovnaké farby ako témy. */
+.pw-a em { color: #2f6b4f; } .pw-c { background: #2f6b4f; } .tp-w { background: #f2ece2; }
+.pg-c i { background: #c25226; } .pg-o { background: linear-gradient(160deg, #c8643a, #a8441f); }
+
+/* Opakované akcie v riadkoch: tónové, nie plné. */
+.lgo { background: var(--accs); color: var(--acc); box-shadow: none; }
+.g .lgo { background: color-mix(in srgb, var(--acc) 14%, var(--glass2)); }
+.hplay { background: var(--accs); color: var(--acc); box-shadow: none; }
+.hqab .qi, .w .hqab .qi, .g .hqab .qi { background: var(--accs); color: var(--acc); }
+.app.g.t-d { --gs-acc: #c25226; --gs-btn: linear-gradient(180deg, #c25226, #a8441f); }
+.app.g.t-l { --gs-acc: #f29a70; --gs-btn: linear-gradient(180deg, #c25226, #a8441f); }
+/* Ochutnávač: farby témy namiesto fialovej. */
+.tentry { background: var(--forest, #1c1714); }
+.tentry::before { background: radial-gradient(circle at 15% 50%, rgb(155 227 179 / .22), transparent 60%); }
+.g .tentry { background: #1c1714; }
+.g .tentry::before { background: radial-gradient(circle at 15% 50%, rgb(194 82 38 / .42), transparent 60%); }

@@ -334,3 +334,15 @@ body.kb-typing .bhm-tabs {
 .bhm .wk .tr i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 99px; background: var(--acc); }
 .g .bhm .wk .tr i { background: linear-gradient(90deg, #ffcf5a, #ff7a3d); }
 .bhm .wk em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Teplá kuchyňa (revízia 3. 11.): šalviový nádych hore. V mockupe je na posúvanom .sc, v appke sa posúva
+ * celé okno – nádych je preto na body (posúva sa s obsahom) a pás pod systémovou lištou má jeho farbu. */
+.w .bhm.bhm-top .sc {
+  background: none;
+}
+:root.w body {
+  background: linear-gradient(180deg, var(--tint) 0, color-mix(in srgb, var(--tint) 40%, var(--bg)) 160px, var(--bg) 320px) no-repeat, var(--bg);
+}
+:root.w body::before {
+  background: var(--tint);
+}

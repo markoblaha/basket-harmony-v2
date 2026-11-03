@@ -124,23 +124,39 @@ export function HomePage() {
       <MkHeader title={t("nav.home")} bodyClass="home-a" right={<HelpBtn screen="home" />}>
           <FirstSteps g={g} />
           {missing.length > 0 && (
-            <HSec title={t("home.todo")} link={missing.length > 2 ? t("home.allCount", { n: missing.length }) : undefined} onLink={() => navigate("/history?filter=missing")}>
-              {missing.slice(0, 2).map((l) => (
+            <HSec title={t("home.todo")}>
+              {missing.length === 1 ? (
                 <HRow
-                  key={l.id}
                   g={g}
                   warn
-                  lead={storeKeyOf(l.name) ? <StoreTile k={storeKeyOf(l.name)} s={40} /> : <span className="th ic"><I n="receipt" /></span>}
+                  lead={storeKeyOf(missing[0]!.name) ? <StoreTile k={storeKeyOf(missing[0]!.name)} s={40} /> : <span className="th ic"><I n="receipt" /></span>}
                   title={t("home.missingTitle")}
-                  sub={`${l.name} · ${relDay(l.completed_at!)}`}
+                  sub={`${missing[0]!.name} · ${relDay(missing[0]!.completed_at!)}`}
                   action={
-                    <Btn cls={`pri sm${g ? " a" : ""}`} onClick={stopThen(() => navigate(`/scan?nakup=${l.id}`))}>
+                    <Btn cls="soft sm" onClick={stopThen(() => navigate(`/scan?nakup=${missing[0]!.id}`))}>
                       <I n="camera" />
                       {t("home.photo")}
                     </Btn>
                   }
                 />
-              ))}
+              ) : (
+                // Viac chýbajúcich bločkov = jeden riadok (nie stena tlačidiel); zoznam je vo Výdavkoch.
+                <HRow
+                  g={g}
+                  warn
+                  lead={<span className="th ic"><I n="receipt" /></span>}
+                  onClick={() => navigate("/analytics")}
+                  label={tn("home.missingMany", missing.length)}
+                  title={tn("home.missingMany", missing.length)}
+                  sub={t("home.missingManySub", { name: missing[0]!.name, day: relDay(missing[0]!.completed_at!) })}
+                  action={
+                    <Btn cls="soft sm" onClick={stopThen(() => navigate(`/scan?nakup=${missing[0]!.id}`))}>
+                      <I n="camera" />
+                      {t("home.photo")}
+                    </Btn>
+                  }
+                />
+              )}
             </HSec>
           )}
 

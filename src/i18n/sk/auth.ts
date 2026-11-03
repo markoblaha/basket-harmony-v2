@@ -20,7 +20,7 @@ export const skAuth = {
   "auth.hidePassword": "Skryť heslo",
   "auth.createAccount": "Vytvoriť účet",
   "auth.sendLink": "Poslať odkaz",
-  "auth.forgotLink": "Zabudol som heslo",
+  "auth.forgotLink": "Zabudnuté heslo?",
   "auth.backToSignIn": "Späť na prihlásenie",
   "auth.googleFailed": "Prihlásenie cez Google sa nepodarilo: {reason}",
   "auth.errEmail": "Zadaj e-mail.",

@@ -19,7 +19,8 @@ const STYLE_KEY = "bh.style";
 
 /** Farba systémovej lišty iPhonu (zhodná s --bg v styles.css). */
 export const STATUS_BAR: Record<ThemeStyle, Record<ResolvedTheme, string>> = {
-  warm: { light: "#f7f3ec", dark: "#11130f" },
+  // Teplá kuchyňa: lišta má farbu šalviového nádychu hore obrazovky (--tint v prototyp/css/polish.css).
+  warm: { light: "#e5ece1", dark: "#152019" },
   glass: { light: "#f3f2f0", dark: "#050506" },
 };
 

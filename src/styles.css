@@ -154,21 +154,21 @@
   color-scheme: light;
   --font-ui: "DM Sans Variable", -apple-system, system-ui, sans-serif;
   --font-display: "Fraunces Variable", Georgia, serif;
-  --bg: #f7f3ec;
-  --surface: #fffdf9;
-  --elevated: #fffdf9;
-  --sunken: #f0ebe2;
+  --bg: #f2ece2;
+  --surface: #ffffff;
+  --elevated: #ffffff;
+  --sunken: #efe8dc;
   --pressed: #e8e1d5;
-  --line: #ece6db;
+  --line: #ebe4d8;
   --line-strong: #8d8f86;
   --text: #22261f;
   --text-2: #5d6157;
-  --text-3: #6b6f65;
-  --primary: #26392d;
-  --primary-pressed: #1b2a20;
+  --text-3: #63675d;
+  --primary: #2f6b4f;
+  --primary-pressed: #265a42;
   --primary-soft: #e2eee5;
-  --on-primary: #f7f3ec;
-  --accent: #346b4e;
+  --on-primary: #ffffff;
+  --accent: #2f6b4f;
   --accent-soft: #e2eee5;
   --accent-text: #2f6447;
   --on-accent: #ffffff;
@@ -195,7 +195,7 @@
   --info: #1f5f8f;
   --info-soft: #dbe7ee;
   --scrim: rgb(18 14 8 / 0.42);
-  --elev-card: 0 1px 2px rgb(70 55 30 / 0.05), 0 12px 30px -18px rgb(70 55 30 / 0.3);
+  --elev-card: 0 0 0 1px rgb(70 55 30 / 0.06), 0 1px 2px rgb(70 55 30 / 0.05), 0 10px 26px -18px rgb(70 55 30 / 0.32);
   --elev-raised: 0 1px 2px rgb(70 55 30 / 0.06), 0 16px 34px -18px rgb(70 55 30 / 0.42);
   --elev-overlay: 0 -10px 40px -20px rgb(0 0 0 / 0.4);
   /* materiál skla (lišta, hlavička pri posúvaní, panel zdola) */
@@ -205,7 +205,7 @@
   --mat-edge: inset 0 0 0 0.5px rgb(255 255 255 / 0.85), inset 0 1px 0 rgb(255 255 255 / 1);
   --mat-spec: linear-gradient(180deg, rgb(255 255 255 / 0.45), rgb(255 255 255 / 0.1) 42%, rgb(255 255 255 / 0) 70%);
   --mat-out: 0 0 0 0.5px rgb(70 55 30 / 0.1), 0 16px 34px -18px rgb(70 55 30 / 0.42);
-  --fade: rgb(247 243 236 / 0.8);
+  --fade: rgb(242 236 226 / 0.8);
   --ink-grad: none;
 }
 
@@ -215,7 +215,7 @@
 [data-theme-scope="warm-dark"] {
   color-scheme: dark;
   --bg: #11130f;
-  --surface: #1b1e18;
+  --surface: #1d211b;
   --elevated: #20241d;
   --sunken: #262a22;
   --pressed: #30352b;
@@ -255,7 +255,7 @@
   --info: #7ab6f2;
   --info-soft: #1b252b;
   --scrim: rgb(0 0 0 / 0.6);
-  --elev-card: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 14px 30px -18px rgb(0 0 0 / 0.9);
+  --elev-card: 0 0 0 1px rgb(255 255 255 / 0.05), 0 14px 30px -18px rgb(0 0 0 / 0.9);
   --elev-raised: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 34px -16px rgb(0 0 0 / 0.9);
   --elev-overlay: 0 0 0 1px rgb(255 255 255 / 0.06), 0 -12px 40px -8px rgb(0 0 0 / 0.7);
   --mat: rgb(32 36 29 / 0.56);
@@ -284,13 +284,13 @@
   --text: #111113;
   --text-2: rgb(17 17 19 / 0.72);
   --text-3: rgb(17 17 19 / 0.64);
-  --primary: #bf440d;
-  --primary-pressed: #a63a0b;
-  --primary-soft: rgb(255 106 43 / 0.13);
+  --primary: #a8441f;
+  --primary-pressed: #923a1a;
+  --primary-soft: rgb(194 82 38 / 0.12);
   --on-primary: #ffffff;
-  --accent: #ab3e0c;
-  --accent-soft: rgb(255 106 43 / 0.13);
-  --accent-text: #ab3e0c;
+  --accent: #a3401c;
+  --accent-soft: rgb(194 82 38 / 0.12);
+  --accent-text: #a3401c;
   --on-accent: #ffffff;
   --badge: #d93a32;
   --on-badge: #ffffff;
@@ -325,8 +325,8 @@
   --mat-spec: linear-gradient(180deg, rgb(255 255 255 / 0.38), rgb(255 255 255 / 0.08) 42%, rgb(255 255 255 / 0) 70%);
   --mat-out: 0 0 0 0.5px rgb(0 0 0 / 0.06), 0 14px 34px -18px rgb(40 25 10 / 0.45);
   --fade: rgb(243 242 240 / 0.78);
-  --veil: rgb(246 244 240 / 0.6);
-  --ink-grad: linear-gradient(180deg, #dc5a1c, #bf440d);
+  --veil: rgb(246 244 240 / 0.68);
+  --ink-grad: linear-gradient(180deg, #c25226, #a8441f);
 }
 
 /* Fotky a sklo – tmavá. */
@@ -344,13 +344,13 @@
   --text: #ffffff;
   --text-2: rgb(255 255 255 / 0.72);
   --text-3: rgb(255 255 255 / 0.6);
-  --primary: #dc5a1c;
-  --primary-pressed: #bf440d;
-  --primary-soft: rgb(255 127 69 / 0.18);
+  --primary: #c25226;
+  --primary-pressed: #a8441f;
+  --primary-soft: rgb(242 154 112 / 0.16);
   --on-primary: #ffffff;
-  --accent: #ff8a52;
-  --accent-soft: rgb(255 127 69 / 0.18);
-  --accent-text: #ff8a52;
+  --accent: #f29a70;
+  --accent-soft: rgb(242 154 112 / 0.16);
+  --accent-text: #f29a70;
   --on-accent: #1a0d05;
   --badge: #ff6b6f;
   --on-badge: #2a0a0b;
@@ -384,8 +384,8 @@
   --mat-spec: linear-gradient(180deg, rgb(255 255 255 / 0.11), rgb(255 255 255 / 0.02) 42%, rgb(255 255 255 / 0) 70%);
   --mat-out: 0 0 0 0.5px rgb(0 0 0 / 0.4), 0 16px 36px -16px rgb(0 0 0 / 0.85);
   --fade: rgb(5 5 6 / 0.7);
-  --veil: rgb(6 6 8 / 0.52);
-  --ink-grad: linear-gradient(180deg, #dc5a1c, #bf440d);
+  --veil: rgb(6 6 8 / 0.62);
+  --ink-grad: linear-gradient(180deg, #c25226, #a8441f);
 }
 
 /* Plocha celej obrazovky (prihlásenie, hlasový nákup, nákup v obchode): tiež rozmazaná fotka. */

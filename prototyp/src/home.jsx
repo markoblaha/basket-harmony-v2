@@ -148,9 +148,13 @@ export function Home() {
       <div className="body home-a">
         <h1 className="lt">Domov</h1>
         <FirstSteps g={g} />
-        {ms.length > 0 && <HSec t="Treba vybaviť" link={ms.length > 2 ? `Všetky (${ms.length})` : null} onLink={() => jump('money')}>
-          {ms.slice(0, 2).map((m) => <HRow key={m.id} g={g} warn lead={m.store ? <StoreTile k={m.store} s={40} /> : <span className="th ic"><I n="receipt" /></span>} title="Chýba bloček" sub={`${m.name} · ${relDay(m.at)} · ~${eur0(m.total)}`}
-            action={<Btn cls={'pri sm' + (g ? ' a' : '')} onClick={() => modal('scan', { listId: m.listId, missing: m.id })}><I n="camera" />Odfotiť</Btn>} />)}
+        {ms.length > 0 && <HSec t="Treba vybaviť">
+          {ms.length === 1
+            ? ms.map((m) => <HRow key={m.id} g={g} warn lead={m.store ? <StoreTile k={m.store} s={40} /> : <span className="th ic"><I n="receipt" /></span>} title="Chýba bloček" sub={`${m.name} · ${relDay(m.at)} · ~${eur0(m.total)}`}
+              action={<Btn cls="soft sm" onClick={() => modal('scan', { listId: m.listId, missing: m.id })}><I n="camera" />Odfotiť</Btn>} />)
+            : <HRow g={g} warn lead={<span className="th ic"><I n="receipt" /></span>} onClick={() => jump('money')} label="Chýbajúce bločky"
+              title={ms.length < 5 ? `Chýbajú ${ms.length} bločky` : `Chýba ${ms.length} bločkov`} sub={`Najnovší: ${ms[0].name} · ${relDay(ms[0].at)}`}
+              action={<Btn cls="soft sm" onClick={stopThen(() => modal('scan', { listId: ms[0].listId, missing: ms[0].id }))}><I n="camera" />Odfotiť</Btn>} />}
         </HSec>}
         {!(S.first && !live && !next) && <HSec t="Nákupy" link="Všetky" onLink={() => jump('lists')}>
           {live && <HRow g={g} lead={<StoreTile k={live.store} s={40} />} onClick={() => modal('follow')} label="Luciin nákup"

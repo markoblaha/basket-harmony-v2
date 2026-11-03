@@ -208,7 +208,7 @@ export function MissingReceipts({ compact, g }: { compact?: boolean; g: boolean 
               </span>
             </div>
             {!compact && <IB n="x" cls="flat sm" label={t("mn.noReceiptAria", { name: l.name })} onClick={() => drop(l.id)} />}
-            <Btn cls={`pri sm${g ? " a" : ""}`} onClick={() => navigate(`/scan?nakup=${l.id}`)}>
+            <Btn cls="soft sm" onClick={() => navigate(`/scan?nakup=${l.id}`)}>
               <I n="camera" />
               {t("mn.photo")}
             </Btn>
