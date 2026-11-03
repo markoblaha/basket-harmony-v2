@@ -24,6 +24,7 @@ export const skTrips = {
   "date.yesterday": "včera",
   "hub.g.today": "Dnes",
   "hub.g.week": "Tento týždeň",
+  "hub.g.past": "Z minulých dní",
   "hub.g.later": "Neskôr a bez dňa",
   "hub.gEmpty.one": "{n} prázdny zoznam",
   "hub.gEmpty.few": "{n} prázdne zoznamy",

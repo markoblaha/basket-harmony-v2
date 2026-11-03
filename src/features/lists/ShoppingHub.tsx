@@ -87,8 +87,19 @@ export function ShoppingHub() {
   const today = isoDay(new Date());
   const week = isoDay(new Date(Date.now() + 6 * 86_400_000));
   const isEmpty = (l: ShoppingList) => !sessionByList.get(l.id) && stats.data?.get(l.id)?.open === 0;
-  const bucket = (l: ShoppingList) => (isEmpty(l) ? "empty" : !l.planned_for ? "later" : l.planned_for <= today ? "today" : l.planned_for <= week ? "week" : "later");
-  const groups: [string, ShoppingList[]][] = (["today", "week", "later", "empty"] as const).map((k) => [k, open.filter((l) => bucket(l) === k)]);
+  // Dnes (aj práve nakupovaný) → tento týždeň → z minulých dní (najnovšie hore) → neskôr a bez dňa → prázdne
+  const bucket = (l: ShoppingList) =>
+    sessionByList.get(l.id) ? "today"
+    : isEmpty(l) ? "empty"
+    : !l.planned_for ? "later"
+    : l.planned_for === today ? "today"
+    : l.planned_for < today ? "past"
+    : l.planned_for <= week ? "week"
+    : "later";
+  const groups: [string, ShoppingList[]][] = (["today", "week", "past", "later", "empty"] as const).map((k) => {
+    const v = open.filter((l) => bucket(l) === k);
+    return [k, k === "past" ? v.reverse() : v];
+  });
   const multi = groups.filter(([k, v]) => k !== "empty" && v.length).length > 1;
   const card = (l: ShoppingList) => (
     <ListCard

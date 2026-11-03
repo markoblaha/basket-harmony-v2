@@ -25,6 +25,7 @@ export const enTrips: Record<keyof typeof skTrips, string> = {
   "date.yesterday": "yesterday",
   "hub.g.today": "Today",
   "hub.g.week": "This week",
+  "hub.g.past": "From earlier days",
   "hub.g.later": "Later or no day",
   "hub.gEmpty.one": "{n} empty list",
   "hub.gEmpty.few": "{n} empty lists",
