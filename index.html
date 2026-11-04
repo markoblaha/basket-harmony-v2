@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f7f3ec" />
+    <meta name="theme-color" content="#e5ece1" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -37,14 +37,19 @@
         if (dark) root.classList.add("t-d");
         root.style.colorScheme = dark ? "dark" : "light";
         root.lang = locale === "en" ? "en" : "sk";
-        // Systémová lišta iPhonu (hodiny, batéria) má farbu z theme-color – v appke na ploche aj v Safari.
-        // Nastavíme ju podľa vzhľadu appky; iPhone k nej sám zvolí čitateľný (tmavý/svetlý) text.
+        // Systémová lišta iPhonu (hodiny, batéria) vo farbe vrchu obrazovky – rovnaké farby ako BAR
+        // v src/theme/statusBar.ts (pás #sbar nižšie, pozadie stránky a theme-color pre Android).
+        var sbar = glass ? (dark ? "#050506" : "#f3f2f0") : dark ? "#152019" : "#e5ece1";
+        root.style.setProperty("--sbar", sbar);
+        root.style.setProperty("--sbar-t", sbar);
         var bar = document.querySelector('meta[name="theme-color"]');
-        if (bar) bar.setAttribute("content", glass ? (dark ? "#050506" : "#f3f2f0") : dark ? "#11130f" : "#f7f3ec");
+        if (bar) bar.setAttribute("content", sbar);
       })();
     </script>
   </head>
   <body>
+    <!-- Pás pod systémovou lištou iPhonu; iOS 26 podľa neho farbí lištu (src/theme/statusBar.ts). -->
+    <div id="sbar" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

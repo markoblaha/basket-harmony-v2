@@ -12,6 +12,7 @@ import { failureText, readErrorMessage } from "@/features/receipts/format";
 import { normalizeName } from "@/lib/categories";
 import { formatDateTime, formatNumber, t } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
+import { useStatusBarPhoto } from "@/theme/statusBar";
 import { E, I, IB } from "@/mockup/ui";
 import { Btn, eur, eur0, storeKeyOf, storeName } from "@/mockup/kit";
 import { useLists, useTripItems, useUploadTripReceipt, type Item } from "./api";
@@ -79,6 +80,8 @@ function matchLines(lines: ReceiptItem[], bought: Item[], est: Estimator, names:
 export function ScanScreen() {
   const { household } = useHousehold();
   const g = useTheme().style === "glass";
+  // V Skle je bloček tmavý ako fotoaparát – lišta iPhonu je nad ním čierna.
+  useStatusBarPhoto(g);
   const navigate = useNavigate();
   const toast = useToast();
   const [params] = useSearchParams();

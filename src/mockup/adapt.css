@@ -61,6 +61,40 @@ body.kb-typing .bhm-tabs {
 :root.g body {
   background: transparent;
 }
+/* Sklo: body je priehľadné (pod ním fotka), iPhone preto berie farbu lišty z <html>. */
+:root.g {
+  background: var(--sbar, var(--bg));
+}
+/* Sklo: vrch fotky v pozadí prechádza z farby lišty (--sbar-t) – lišta na obrazovku plynulo nadväzuje. */
+.bhm-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: calc(var(--sat) + 110px);
+  background: linear-gradient(180deg, var(--sbar-t) 0, var(--sbar-t) var(--sat), transparent);
+}
+/* Detail receptu: fotka siaha pod lištu, jej vrch prechádza z farby lišty. */
+.bhm.bhm-recipe .rhero2::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  height: calc(var(--sat) + 96px);
+  background: linear-gradient(180deg, var(--sbar-t) 0, var(--sbar-t) var(--sat), color-mix(in srgb, var(--sbar-t) 45%, transparent) calc(var(--sat) + 36px), transparent);
+  pointer-events: none;
+}
+/* Ochutnávač, varenie a bloček v Skle (tmavá fotka / fotoaparát cez celú plochu): čierny pás lišty, obraz do neho prechádza. */
+.bhm .taste::after,
+.g .bhm .cook .bgl::after,
+.g .bhm .scan > .cam::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 5;
+  height: calc(var(--sat) + 76px);
+  background: linear-gradient(180deg, #000 0, #000 var(--sat), rgb(0 0 0 / .4) calc(var(--sat) + 30px), transparent);
+  pointer-events: none;
+}
 
 /* Spodné panely (Sheet z mockupu): nad celou appkou, pevne k oknu. */
 :root .bhm.bhm-ovl {
@@ -341,10 +375,16 @@ body.kb-typing .bhm-tabs {
   background: none;
 }
 :root.w body {
-  background: linear-gradient(180deg, var(--tint) 0, color-mix(in srgb, var(--tint) 40%, var(--bg)) 160px, var(--bg) 320px) no-repeat, var(--bg);
+  /* Farba pod prechodom nie je vidieť (prechod pokrýva celé body) – iPhone z nej farbí lištu (--sbar = nádych). */
+  background: linear-gradient(180deg, var(--tint) 0, color-mix(in srgb, var(--tint) 40%, var(--bg)) 160px, var(--bg) 320px) no-repeat, var(--sbar, var(--bg));
 }
-:root.w body::before {
-  background: var(--tint);
+/* Hlavička po posunutí: sklo vo farbe lišty iPhonu nad ňou (Teplá: šalviový nádych, Sklo: pozadie). */
+:root .bhm .sc.scrolled > .nb {
+  background: color-mix(in srgb, var(--sbar-t, var(--bg)) 84%, transparent);
+}
+/* Celoobrazovkové okná (varenie, bloček…): rovnaký nádych hore ako ostatné obrazovky, aby lišta iPhonu (--sbar) nadväzovala. */
+.w .bhm.bhm-full > .scr {
+  background: linear-gradient(180deg, var(--tint) 0, color-mix(in srgb, var(--tint) 40%, var(--bg)) 160px, var(--bg) 320px) no-repeat, var(--bg);
 }
 
 /* Obrazovky mimo appky vo vzhľade tém (etapa 3): prihlásenie, nové heslo, prvé spustenie, pozvánka,

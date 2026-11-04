@@ -421,19 +421,27 @@
   html {
     background: var(--bg);
   }
-  /* Pás pod systémovou lištou iPhonu (keď appka kreslí aj pod ňu): vždy vo farbe témy, nad posúvaným obsahom. */
-  body::before {
-    content: "";
+  /* Pás pod systémovou lištou iPhonu (hodiny, batéria): vo farbe vrchu obrazovky (--sbar, src/theme/statusBar.ts),
+   * nad posúvaným obsahom. iOS 26 podľa tohto pásu farbí lištu – musí byť skutočný prvok (nie ::before),
+   * navrchu, cez celú šírku a aspoň 6 px vysoký. */
+  #sbar {
     position: fixed;
     inset: 0 0 auto 0;
-    height: env(safe-area-inset-top);
-    background: var(--bg);
+    height: env(safe-area-inset-top, 0px);
+    background: var(--sbar, var(--bg));
     z-index: 60;
     pointer-events: none;
+  }
+  @supports (-webkit-touch-callout: none) {
+    #sbar {
+      height: max(6px, env(safe-area-inset-top, 0px));
+    }
   }
   body {
     min-height: 100dvh;
     background: var(--bg);
+    /* Keď iPhone pás nenájde, berie farbu pozadia body (Teplá ju má pod nádychom, Sklo na <html>). */
+    background-color: var(--sbar, var(--bg));
     color: var(--text);
     font-family: var(--font-sans);
     line-height: 1.5;

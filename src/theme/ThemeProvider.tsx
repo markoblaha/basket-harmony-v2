@@ -9,6 +9,7 @@
  * pred prvým vykreslením, aby pri tmavom režime nebliklo svetlé pozadie.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { syncStatusBar } from "./statusBar";
 
 export type ThemePreference = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
@@ -16,26 +17,6 @@ export type ThemeStyle = "warm" | "glass";
 
 const MODE_KEY = "bh.theme";
 const STYLE_KEY = "bh.style";
-
-/** Farba systémovej lišty iPhonu (zhodná s --bg v styles.css). */
-export const STATUS_BAR: Record<ThemeStyle, Record<ResolvedTheme, string>> = {
-  // Teplá kuchyňa: lišta má farbu šalviového nádychu hore obrazovky (--tint v prototyp/css/polish.css).
-  warm: { light: "#e5ece1", dark: "#152019" },
-  glass: { light: "#f3f2f0", dark: "#050506" },
-};
-
-/**
- * Farba systémovej lišty iPhonu (hodiny, batéria) = farba témy. iPhone ju berie z <meta name="theme-color">
- * a k nej sám zvolí tmavý alebo svetlý text. Zmenu atribútu Safari niekedy prehliadne,
- * preto starý meta nahradíme novým – vtedy sa lišta prefarbí hneď, bez reštartu appky.
- */
-function setStatusBarColor(color: string) {
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
-  const meta = document.createElement("meta");
-  meta.name = "theme-color";
-  meta.content = color;
-  document.head.appendChild(meta);
-}
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
@@ -118,7 +99,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.toggle("t-d", resolved === "dark");
     root.classList.toggle("t-l", resolved === "light");
     root.style.colorScheme = resolved;
-    setStatusBarColor(STATUS_BAR[style][resolved]);
+    // Lišta iPhonu (hodiny, batéria) vo farbe vrchu obrazovky – src/theme/statusBar.ts.
+    syncStatusBar();
   }, [resolved, style]);
 
   const setPreference = useCallback((next: ThemePreference) => {

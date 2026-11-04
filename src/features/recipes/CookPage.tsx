@@ -7,6 +7,7 @@ import { useEstimator } from "@/features/lists/estimate";
 import { errorMessage } from "@/lib/errors";
 import { t } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
+import { useStatusBarPhoto } from "@/theme/statusBar";
 import { E, I, IB } from "@/mockup/ui";
 import { HelpBtn } from "@/features/help/Help";
 import { Btn } from "@/mockup/kit";
@@ -142,6 +143,8 @@ export function CookPage() {
     }, 1000);
     return () => clearInterval(x);
   }, [anyTimer, timers]);
+  // V Skle je pozadím tmavá fotka jedla – lišta iPhonu je nad ňou čierna.
+  useStatusBarPhoto(g && !!r && !!art(r).pic);
 
   if (!r) return recipes.isPending ? <Spinner /> : null;
   const a = art(r);

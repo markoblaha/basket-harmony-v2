@@ -18,6 +18,7 @@ import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
 import { errorMessage } from "@/lib/errors";
 import { t, tn } from "@/i18n";
+import { useStatusBarPhoto } from "@/theme/statusBar";
 import { E, I, IB } from "@/mockup/ui";
 import { HelpBtn } from "@/features/help/Help";
 import { Av, Btn, eur } from "@/mockup/kit";
@@ -61,6 +62,8 @@ const WINDOW = 3;
 export function TastePage() {
   const { household } = useHousehold();
   const me = useUserId();
+  // Tmavé fotky cez celú plochu – lišta iPhonu (hodiny, batéria) je nad nimi čierna.
+  useStatusBarPhoto();
   const navigate = useNavigate();
   const toast = useToast();
   const recipes = useRecipes(household.id);

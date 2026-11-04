@@ -35,7 +35,8 @@ export function RecipePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const g = useTheme().style === "glass";
+  const theme = useTheme();
+  const g = theme.style === "glass";
   const recipes = useRecipes(household.id);
   const favs = useFavorites(household.id).data;
   const toggleFav = useToggleFavorite(household.id);
@@ -44,6 +45,8 @@ export function RecipePage() {
   const { isHome, toggle } = useHave();
   const [nutritionOn] = useSetting("nutrition");
   const scrolled = useScrolled(220);
+  // Biele sklenené tlačidlá nad fotkou len v tmavom Skle – vo svetlom je vrch fotky svetlý (prechod z lišty).
+  const wg = g && theme.resolved === "dark" && !scrolled ? "wg" : "";
   const ids = ((location.state as { ids?: string[] } | null)?.ids ?? [id]).filter(Boolean);
   const idx = Math.max(0, ids.indexOf(id));
   const r = recipes.find(id);
@@ -113,15 +116,15 @@ export function RecipePage() {
       <div className="bhm bhm-top bhm-over">
         <div className={`sc${scrolled ? " scrolled" : ""}`}>
           <header className="nb over">
-            <Back label={t("recipes.title")} onClick={() => navigate(-1)} cls={g && !scrolled ? "wg" : ""} />
+            <Back label={t("recipes.title")} onClick={() => navigate(-1)} cls={wg} />
             <span className="nbt">{r.name}</span>
             <div className="nbr">
-              <HelpBtn screen="recipe" cls={g && !scrolled ? "wg" : ""} />
-              <IB n="export" cls={g && !scrolled ? "wg" : ""} label={t("rk.share")} onClick={share} />
+              <HelpBtn screen="recipe" cls={wg} />
+              <IB n="export" cls={wg} label={t("rk.share")} onClick={share} />
               <IB
                 n="heart"
                 w={fav ? "fill" : "bold"}
-                cls={`${g && !scrolled ? "wg" : ""}${fav ? " faved" : ""}`}
+                cls={`${wg}${fav ? " faved" : ""}`}
                 label={fav ? t("rc.favRemove") : t("rc.favAdd")}
                 onClick={() => {
                   toggleFav.mutate({ id: r.id, on: !fav }, { onError: (e) => toast.show(errorMessage(e), "error") });

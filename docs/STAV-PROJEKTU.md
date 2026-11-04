@@ -436,6 +436,18 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     `HaveSheet` (`sheets.tsx`): pásik doma/kúpiť, tabuľka „Treba kúpiť“ (koľko kúpiť, cena ak ju poznáme; súčet len
     keď poznáme cenu všetkého), kartičky „Máš doma“, „Upraviť v recepte“, „Späť“ (zostane na tej istej karte)
     a „Pridať do nákupu“ (bežný panel). Overené lokálne (Teplá svetlá, Sklo tmavé), bez chýb v konzole.
+    **Lišta iPhonu (hodiny, batéria) vo farbe obrazovky (4. 11., pokyn majiteľa):** na iPhone svietila nad
+    obrazovkou takmer čierna lišta (#11130f = --bg), hoci vrch obrazovky je v Teplej šalviový (--tint). iOS 26
+    neberie farbu z `theme-color` meta za behu ani z `body::before`, ale z pevného prvku navrchu stránky, inak
+    z pozadia body/html. Riešenie `src/theme/statusBar.ts`: skutočný prvok `#sbar` (index.html) + farba pozadia
+    body (Teplá, pod prechodom nie je vidieť) / html (Sklo) + theme-color – všetko `--sbar`. Farby: Teplá =
+    --tint, Sklo = --bg (fotka v pozadí do nej prechádza, `.bhm-bg::after`); Ochutnávač, varenie a bloček
+    v Skle = čierna (`useStatusBarPhoto`, obraz do nej prechádza). Detail receptu: vrch fotky prechádza z farby
+    lišty; vo svetlom Skle tam nie sú biele tlačidlá (`wg`), boli by nečitateľné. Hlavička po posunutí má sklo
+    vo farbe lišty, celoobrazovkové okná v Teplej majú hore nádych. Pri každej zmene sa `#sbar` vymení za nový
+    prvok (iOS farbu odčíta, keď sa prvok objaví). Overené simuláciou iPhonu 13 mini (výrez 50 px) v oboch
+    režimoch (lišta nad stránkou aj stránka pod lištou), 4 vzhľady × 15 obrazoviek; na skutočnom iPhone overí
+    majiteľ (appku treba úplne zavrieť a znova otvoriť).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
