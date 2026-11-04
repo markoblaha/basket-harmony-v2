@@ -254,3 +254,96 @@ export function AddRecipeSheet({ open, onClose, r, portions }: { open: boolean; 
     </Sheet>
   );
 }
+
+/**
+ * Rýchly prehľad surovín (Ochutnávač – ťuk na „Doma máš X z Y“): čo treba kúpiť (množstvo na nákup a odhad ceny)
+ * a čo máš doma. Len na nahliadnutie; „Pridať do nákupu“ otvorí bežný panel, „Upraviť v recepte“ celý recept.
+ */
+export function HaveSheet({ open, onClose, r, onBuy, onOpen }: { open: boolean; onClose: () => void; r: Recipe; onBuy: () => void; onOpen: () => void }) {
+  const { household } = useHousehold();
+  const recipes = useRecipes(household.id);
+  const est = useEstimator(household.id);
+  const { isHome } = useHave();
+  const rows = recipeRows(r, r.portions, recipes.find, est, isHome);
+  const buy = rows.filter((x) => !x.home);
+  const home = rows.filter((x) => x.home);
+  // Súčet len keď poznáme cenu všetkého, inak by „~2 €“ za 8 vecí klamal.
+  const cost = buy.every((x) => x.cost > 0) ? buy.reduce((s, x) => s + x.cost, 0) : 0;
+  const pct = rows.length ? Math.round((home.length / rows.length) * 100) : 0;
+  return (
+    <Sheet open={open} onClose={onClose} label={t("hv.title")} cls="hvsh">
+      <div className="sh-head">
+        <div className="grow">
+          <h2>{r.name}</h2>
+          <p className="meta">{tn("rk.portions", r.portions)}</p>
+        </div>
+      </div>
+      <div className="sh-body">
+        <div className="hv-sum" role="img" aria-label={t("tst.have", { have: home.length, all: rows.length })}>
+          <div className="hv-bar">
+            <i style={{ width: `${pct}%` }} />
+          </div>
+          <div className="hv-nums">
+            <span>
+              <b>{home.length}</b> / {rows.length} {t("hv.atHome")}
+            </span>
+            {buy.length > 0 ? (
+              <span>
+                {t("hv.toBuy", { n: buy.length })}
+                {cost > 0 ? ` · ~${eur(cost)}` : ""}
+              </span>
+            ) : (
+              <span className="ok">{t("hv.allHome")}</span>
+            )}
+          </div>
+        </div>
+        {buy.length > 0 && (
+          <section className="hv-sec">
+            <div className="bgh">{t("hv.buy")}</div>
+            <ul className={`hv-tab${buy.some((x) => x.cost > 0) ? "" : " np"}`}>
+              {buy.map((x) => (
+                <li key={x.key}>
+                  <E k={est.emoji(x.name, x.cat)} />
+                  <b>{x.plan.name}</b>
+                  <span className="hv-q">{[x.plan.buyLabel, x.staple ? t("rk.noHome") : ""].filter(Boolean).join(" · ")}</span>
+                  <span className="hv-price">{x.cost > 0 ? `~${eur(x.cost)}` : ""}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {home.length > 0 && (
+          <section className="hv-sec">
+            <div className="bgh">{t("hv.home")}</div>
+            <div className="hv-chips">
+              {home.map((x) => (
+                <span key={x.key}>
+                  <E k={est.emoji(x.name, x.cat)} />
+                  {x.name}
+                  <I n="check" w="bold" />
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+        <button type="button" className="hv-edit" onClick={onOpen}>
+          {t("hv.edit")}
+          <I n="caret-right" w="bold" />
+        </button>
+      </div>
+      <div className="sh-foot">
+        <div className="sh-act">
+          <Btn cls="soft" onClick={onClose}>
+            {t("hv.back")}
+          </Btn>
+          {buy.length > 0 && (
+            <Btn cls="pri" onClick={onBuy}>
+              <I n="basket" />
+              {t("hv.add")}
+            </Btn>
+          )}
+        </div>
+      </div>
+    </Sheet>
+  );
+}

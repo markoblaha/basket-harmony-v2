@@ -7,6 +7,7 @@
  * Obsah receptov je údaj (ako názov produktu), nie text rozhrania – preto nie je v i18n.
  */
 import { FOODS, type Allergen } from "./foods";
+import { findRef } from "./logic";
 import type { Ingredient, Recipe, Step } from "./types";
 
 type I = [food: string, qty: number, unit: Ingredient["unit"], src: string, extra?: Partial<Ingredient>];
@@ -145,7 +146,7 @@ export const BOOK: Recipe[] = [
       ["Medzitým priprav halušky: v miske zmiešaj {muka_h} múky, vajce a {sol_h} soli. Postupne prilievaj vodu, kým nevznikne husté lesklé cesto, ktoré pomaly steká z lyžice.", 0, "FGHI", {
         tip: "Ak je cesto príliš tuhé, prilej lyžicu vody." }],
       ["Vo veľkom hrnci priveď do varu vodu s lyžicou soli. Cesto pretláčaj cez sitko na halušky priamo do vody a halušky jemne premiešaj, aby sa nezlepili.", 3, "FGHI", {
-        heat: "silný oheň", wait: true, done: "Halušky vyplávajú na hladinu. Vtedy ich var ešte 2 minúty.", warn: "Nevkladaj všetko cesto naraz, halušky by sa zlepili. Rob ich na 2 až 3 dávky." }],
+        heat: "silný oheň", wait: true, uses: ["sol_v"], done: "Halušky vyplávajú na hladinu. Vtedy ich var ešte 2 minúty.", warn: "Nevkladaj všetko cesto naraz, halušky by sa zlepili. Rob ich na 2 až 3 dávky." }],
       ["Halušky sceď a premiešaj s maslom, aby sa nelepili.", 0, "FI"],
       ["Mäso vyber z hrnca. Múku rozmiešaj v smotane dohladka, primiešaj do nej naberačku horúcej omáčky a až potom ju vlej do hrnca. Povar za občasného miešania.", 15, "ACDE", {
         heat: "mierny oheň", wait: true, warn: "Studenú smotanu nevlievaj rovno do vriacej omáčky, zrazila by sa.", tip: "Ak chceš úplne hladkú omáčku, pred pridaním smotany ju rozmixuj ponorným mixérom." }],
@@ -362,4 +363,44 @@ export function bookPhotos(r: Pick<Recipe, "id" | "book">) {
     urls: Array.from({ length: n }, (_, k) => `/kniha/${r.id}-${k + 1}.webp`),
     small: n ? `/kniha/${r.id}-1s.webp` : null,
   };
+}
+
+/* Ako sa surovina volá v texte postupu (začiatky slov, slovenské tvary). Používa ho kontrolný program
+ * (kniha.test.ts: suroviny ↔ postup) aj varenie (suroviny pri kroku). Nová surovina v knihe = nový riadok. */
+export const SAID: Record<string, string> = {
+  pliecko: "mäs", kurca: "kurč|mäs", mlete: "mäs", mast: "masť", cibula: "cibu", cesnak: "cesn", rasca: "rasc",
+  paprika_mleta: "papri", sol: "soľ|osoľ|soli", korenie: "koren", vyvar: "vývar", kapusta: "kapust", smotana_sladka: "smotan",
+  smotana: "smotan", kysla_smotana: "smotan", muka: "múk", knedla: "knedľ", olej: "olej", voda: "vod", vajce: "vajc|vajce",
+  maslo: "masl", zemiaky: "zemiak", sampinony: "hub", kopor: "kôpor", ocot: "oct", tuk: "tuk", cukor: "cukr", med: "med(om)?\\b",
+  soda: "sód", kondenz: "kondenz\\S* mliek|karamel", orechy: "orech(y|mi)\\b", olivovy_olej: "olej", mrkva: "mrkv", zeler_stopkovy: "zeler",
+  pasirovane: "paradaj", muskat: "muškát", lasagne: "platn", parmezan: "parmez", mlieko: "mliek",
+};
+/** Výraz, ktorý nájde surovinu v texte (na začiatku slova). */
+export const said = (food: string) => new RegExp(`(^|[^a-záäčďéíĺľňóôŕšťúýž])(${SAID[food] ?? "\\u0000"})`, "i");
+
+/**
+ * Suroviny, ktoré krok používa (s množstvom pre zvolené porcie): {odkazy} v texte, potom slová z textu.
+ * Pri surovine vo viacerých skupinách (múka do omáčky aj do halušiek) rozhodne skupina odkazov v kroku,
+ * inak tá bez vlastného ref. Krok môže suroviny určiť priamo (uses).
+ */
+export function stepFoods(st: Pick<Step, "text" | "uses">, scaled: Ingredient[]): Ingredient[] {
+  const pick = new Set<Ingredient>();
+  if (st.uses) {
+    for (const k of st.uses) {
+      const x = findRef(scaled, k);
+      if (x) pick.add(x);
+    }
+  } else {
+    const refs = [...st.text.matchAll(/\{([^}]+)\}/g)].map((m) => findRef(scaled, m[1]!)).filter((x): x is Ingredient => !!x);
+    refs.forEach((x) => pick.add(x));
+    const ctx = new Set(refs.map((x) => x.group));
+    const text = st.text.replace(/\{[^}]+\}/g, " ");
+    for (const food of new Set(scaled.map((x) => x.food))) {
+      if ([...pick].some((x) => x.food === food) || !SAID[food] || !said(food).test(text)) continue;
+      const cand = scaled.filter((x) => x.food === food && x.note !== "do vody");
+      const x = cand.find((c) => ctx.has(c.group)) ?? cand.find((c) => !c.ref) ?? cand[0];
+      if (x) pick.add(x);
+    }
+  }
+  return scaled.filter((x) => pick.has(x));
 }

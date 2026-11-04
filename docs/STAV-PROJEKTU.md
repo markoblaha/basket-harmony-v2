@@ -428,6 +428,14 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     vibrácia, návod „Ďalší krok: ťukni vpravo…“ do prvého gesta (`bh.cookHint`). Posledný krok ťah ani ťuk neukončí
     (len tlačidlo Hotovo), ťuk na časovač krok nemení. `AppShell.tsx`: okrajové „späť“ (`EdgeBack`) je vypnuté na
     varení a v Ochutnávači (`OWN_SWIPE`), inak by ťah od ľavého okraja zavrel obrazovku. Overené dotykom (CDP).
+    **Varenie a prehľad surovín – vylepšenie (4. 11., pokyn majiteľa „posunúť vizuál a ovládanie vyššie“):**
+    pri každom kroku sú bubliny so surovinami a presným množstvom pre zvolený počet porcií (`stepFoods` v `kniha.ts`:
+    zástupky `{…}` v texte + slová zo `SAID`, alebo pole `uses` v kroku; test v `kniha.test.ts`), pod pásikom krokov
+    „Ešte asi X min“ (bežiaci časovač sa ráta skutočným časom), časovač má kruh, ktorý ubúda, a na konci kroku je
+    náhľad „Ďalej: …“ (ťuk = ďalší krok). Ochutnávač: „Doma máš X z Y“ je tlačidlo s malým ukazovateľom → panel
+    `HaveSheet` (`sheets.tsx`): pásik doma/kúpiť, tabuľka „Treba kúpiť“ (koľko kúpiť, cena ak ju poznáme; súčet len
+    keď poznáme cenu všetkého), kartičky „Máš doma“, „Upraviť v recepte“, „Späť“ (zostane na tej istej karte)
+    a „Pridať do nákupu“ (bežný panel). Overené lokálne (Teplá svetlá, Sklo tmavé), bez chýb v konzole.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

@@ -26,7 +26,7 @@ import { duration } from "./book";
 import { bookPhotos } from "./kniha";
 import { RCATS, art, useRecipeFacts } from "./mk";
 import { PhotoSwiper } from "./Photos";
-import { AddRecipeSheet, PlanSheet } from "./sheets";
+import { AddRecipeSheet, HaveSheet, PlanSheet } from "./sheets";
 import { feedRound, isBreak, withBreaks, type FeedRecipe } from "./taste";
 import type { Recipe } from "./types";
 
@@ -73,7 +73,7 @@ export function TastePage() {
   const [items, setItems] = useState<string[]>(fresh ? restored.ids : []);
   const [cur, setCur] = useState(fresh ? restored.cur : 0);
   const [match, setMatch] = useState<{ id: string; who: string } | null>(null);
-  const [sheet, setSheet] = useState<null | { kind: "add" | "plan"; r: Recipe }>(null);
+  const [sheet, setSheet] = useState<null | { kind: "add" | "plan" | "have"; r: Recipe }>(null);
   const [hint, setHint] = useState(() => !read<boolean>(local, HINT, false));
   const ref = useRef<HTMLDivElement>(null);
 
@@ -193,6 +193,7 @@ export function TastePage() {
   );
   const shop = useCallback((r: Recipe) => setSheet({ kind: "add", r }), []);
   const plan = useCallback((r: Recipe) => setSheet({ kind: "plan", r }), []);
+  const have = useCallback((r: Recipe) => setSheet({ kind: "have", r }), []);
 
   // Klávesy (počítač): ↓ ↑ medzerník, L = Chcem, Esc = zavrieť. ← → listujú fotky (Photos.tsx).
   useEffect(() => {
@@ -259,6 +260,7 @@ export function TastePage() {
                 onOpen={open}
                 onShop={shop}
                 onPlan={plan}
+                onHave={have}
               />
             );
           })}
@@ -331,6 +333,19 @@ export function TastePage() {
       </div>
       {sheet?.kind === "add" && <AddRecipeSheet open onClose={() => setSheet(null)} r={sheet.r} portions={sheet.r.portions} />}
       {sheet?.kind === "plan" && <PlanSheet open onClose={() => setSheet(null)} rid={sheet.r.id} />}
+      {sheet?.kind === "have" && (
+        <HaveSheet
+          open
+          r={sheet.r}
+          onClose={() => setSheet(null)}
+          onBuy={() => setSheet({ kind: "add", r: sheet.r })}
+          onOpen={() => {
+            const id = sheet.r.id;
+            setSheet(null);
+            open(id);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -350,10 +365,11 @@ type CardProps = {
   onOpen: (id: string) => void;
   onShop: (r: Recipe) => void;
   onPlan: (r: Recipe) => void;
+  onHave: (r: Recipe) => void;
 };
 
 const TasteCard = memo(
-  function TasteCard({ k, r, active, near, visible, on, who, fact, onLike, onNo, onOpen, onShop, onPlan }: CardProps) {
+  function TasteCard({ k, r, active, near, visible, on, who, fact, onLike, onNo, onOpen, onShop, onPlan, onHave }: CardProps) {
     const [burst, setBurst] = useState<{ x: number; y: number; key: number } | null>(null);
     const tap = useRef({ t: 0, x: 0, y: 0 });
     if (!visible) return <section className="tst-card" data-k={k} aria-label={r.name} />;
@@ -391,7 +407,15 @@ const TasteCard = memo(
             {fact && fact.cost > 0 && <span>{t("rk.perPortion", { price: eur(fact.cost) })}</span>}
           </div>
           <div className="tst-have">
-            {fact ? t("tst.have", { have: fact.have, all: fact.all }) : null}
+            {fact && fact.all > 0 && (
+              <button type="button" className="tst-havebtn" onClick={() => onHave(r)} aria-haspopup="dialog">
+                <span className="hb-bar" aria-hidden="true">
+                  <i style={{ width: `${Math.round((fact.have / fact.all) * 100)}%` }} />
+                </span>
+                {t("tst.have", { have: fact.have, all: fact.all })}
+                <I n="caret-right" w="bold" />
+              </button>
+            )}
             {who.length > 0 && (
               <span className="tst-who">
                 <Av id={who[0]!.id} name={who[0]!.name} s={20} />

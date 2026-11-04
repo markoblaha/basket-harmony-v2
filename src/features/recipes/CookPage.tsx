@@ -15,7 +15,10 @@ import { useCookRecipe, useRecipes } from "./api";
 import { STEP_DETAILS } from "./catalog";
 import { StepChips } from "./book";
 import type { Step } from "./types";
-import { formatAmount, ingName, renderStep, scaleIngredients } from "./logic";
+import { formatAmount, ingName, renderStep, scaleIngredients, stepIngredients } from "./logic";
+import { bookAmount, duration } from "./book";
+import { stepFoods } from "./kniha";
+import { FOODS } from "./foods";
 import { art } from "./mk";
 
 const COOK_HINT = "bh.cookHint";
@@ -149,6 +152,14 @@ export function CookPage() {
   const det: Pick<Step, "done" | "tip" | "more" | "warn"> | undefined = r.book || st.done || st.tip || st.more ? st : STEP_DETAILS[r.id]?.[i];
   const end = timers[i];
   const left = end ? Math.max(0, (end - Date.now()) / 1000) : null;
+  // Suroviny tohto kroku s množstvom (kniha: podľa slov v texte, inak podľa {odkazov}).
+  const stepIngs = r.book ? stepFoods(st, scaled) : stepIngredients(st.text, scaled);
+  // Koľko času ešte zostáva: bežiace časovače podľa skutočnosti, ostatné kroky podľa receptu.
+  const remain = steps.slice(i).reduce((sum, s2, k) => {
+    const e2 = timers[i + k];
+    return sum + (e2 ? Math.max(0, (e2 - Date.now()) / 60000) : (s2.timerMin ?? 0));
+  }, 0);
+  const nextStep = steps[i + 1];
   const running = Object.entries(timers).filter(([k, e]) => e && e > Date.now() && +k !== i);
   const last = i >= steps.length - 1;
   const finish = () =>
@@ -185,6 +196,7 @@ export function CookPage() {
             <i key={k} className={k < i ? "d" : k === i ? "c" : ""} />
           ))}
         </div>
+        {remain >= 1 && <div className="ck-left">{t("ck.left", { time: duration(Math.ceil(remain)) })}</div>}
         {running.map(([k, e]) => (
           <button
             type="button"
@@ -290,6 +302,20 @@ export function CookPage() {
               <span className="stn">{i + 1}</span>
               <p className="stx">{renderStep(st.text, scaled)}</p>
               {st.heat && <StepChips st={{ heat: st.heat }} />}
+              {stepIngs.length > 0 && (
+                <div className="ck-ing" aria-label={t("ck.forStep")}>
+                  {stepIngs.map((x, k) => {
+                    const name = x.label || ingName(x);
+                    return (
+                      <span key={`${x.ref ?? x.food}${k}`}>
+                        <E k={FOODS[x.food]?.free ? "water" : est.emoji(FOODS[x.food]?.name ?? name, FOODS[x.food]?.cat)} />
+                        <b>{name}</b>
+                        <small>{r.book ? bookAmount(x) : formatAmount(x.qty, x.unit)}</small>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               {det && (det.done || det.tip || det.more || det.warn) && (
                 <div className="cbox">
                   {det.warn && (
@@ -327,7 +353,9 @@ export function CookPage() {
               {!!st.timerMin &&
                 (end ? (
                   <button type="button" className={`timer on${left === 0 ? " fin" : ""}`} onClick={() => setTimers((x) => ({ ...x, [i]: null }))}>
-                    <I n={left === 0 ? "check" : "pause"} w={left === 0 ? "bold" : "fill"} />
+                    <span className="tring" style={{ ["--p" as string]: String(Math.max(0, Math.min(1, (left ?? 0) / Math.max(1, (st.timerMin ?? 1) * 60)))) }}>
+                      <I n={left === 0 ? "check" : "pause"} w={left === 0 ? "bold" : "fill"} />
+                    </span>
                     <b>{left === 0 ? t("ck.ready") : mmss(left ?? 0)}</b>
                     <span>{left === 0 ? t("ck.timeUp") : t("ck.stop")}</span>
                   </button>
@@ -345,6 +373,13 @@ export function CookPage() {
                     <span>{t("ck.start")}</span>
                   </button>
                 ))}
+              {nextStep && (
+                <button type="button" className="ck-peek" onClick={() => move(1)}>
+                  <small>{t("ck.nextLabel")}</small>
+                  <span className="pk-tx">{renderStep(nextStep.text, scaled)}</span>
+                  <I n="caret-right" w="bold" />
+                </button>
+              )}
             </div>
           )}
           {hint && !showIng && steps.length > 1 && (

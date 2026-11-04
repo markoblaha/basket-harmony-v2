@@ -5,20 +5,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FOODS } from "./foods";
-import { BOOK, bookPics, recipeAllergens } from "./kniha";
+import { BOOK, SAID, bookPics, recipeAllergens, said, stepFoods } from "./kniha";
 import { findRef, recipeNutrition, scaleIngredients } from "./logic";
 import type { Recipe } from "./types";
 
-/* Ako sa surovina volá v texte postupu (začiatky slov, slovenské tvary). Nová surovina v knihe = nový riadok. */
-const SAID: Record<string, string> = {
-  pliecko: "mäs", kurca: "kurč|mäs", mlete: "mäs", mast: "masť", cibula: "cibu", cesnak: "cesn", rasca: "rasc",
-  paprika_mleta: "papri", sol: "soľ|osoľ|soli", korenie: "koren", vyvar: "vývar", kapusta: "kapust", smotana_sladka: "smotan",
-  smotana: "smotan", kysla_smotana: "smotan", muka: "múk", knedla: "knedľ", olej: "olej", voda: "vod", vajce: "vajc|vajce",
-  maslo: "masl", zemiaky: "zemiak", sampinony: "hub", kopor: "kôpor", ocot: "oct", tuk: "tuk", cukor: "cukr", med: "med(om)?\\b",
-  soda: "sód", kondenz: "kondenz\\S* mliek|karamel", orechy: "orech(y|mi)\\b", olivovy_olej: "olej", mrkva: "mrkv", zeler_stopkovy: "zeler",
-  pasirovane: "paradaj", muskat: "muškát", lasagne: "platn", parmezan: "parmez", mlieko: "mliek",
-};
-const said = (food: string) => new RegExp(`(^|[^a-záäčďéíĺľňóôŕšťúýž])(${SAID[food]})`, "i");
 const groupOf = (r: Recipe, g: string | undefined) => r.book!.groupSources?.[g ?? ""] ?? r.book!.sources.map((s) => s.k).join("");
 
 describe.each(BOOK.map((r) => [r.name, r] as const))("kniha: %s", (_, r) => {
@@ -107,6 +97,24 @@ describe.each(BOOK.map((r) => [r.name, r] as const))("kniha: %s", (_, r) => {
       const file = `public/kniha/${p.replace(/^kb_/, "").replace(/_(\d)(s?)$/, "-$1$2")}.webp`;
       expect(existsSync(file), file).toBe(true);
     }
+  });
+});
+
+describe("kniha: suroviny pri kroku (varenie)", () => {
+  const scaled = (id: string) => scaleIngredients(BOOK.find((r) => r.id === id)!, 4);
+  const names = (id: string, step: number) => stepFoods(BOOK.find((r) => r.id === id)!.steps[step]!, scaled(id)).map((x) => `${x.ref ?? x.food}:${x.qty}`);
+  it("halušky: múka a voda z halušiek, nie z omáčky", () => {
+    expect(names("paprikas", 5)).toEqual(expect.arrayContaining(["muka_h:300", "voda_h:200", "vajce:1", "sol_h:0.5"]));
+    expect(names("paprikas", 5)).not.toContain("muka:3");
+  });
+  it("omáčka: múka a smotana z paprikáša", () => {
+    expect(names("paprikas", 8)).toEqual(expect.arrayContaining(["muka:3", "smotana:250"]));
+  });
+  it("varenie halušiek: len soľ do vody", () => {
+    expect(names("paprikas", 6)).toEqual(["sol_v:1"]);
+  });
+  it("segedín: krok s mäsom má mäso, rascu, soľ a korenie", () => {
+    expect(names("segedin", 2)).toEqual(expect.arrayContaining(["pliecko:700", "rasca:1", "sol:1", "korenie:1"]));
   });
 });
 

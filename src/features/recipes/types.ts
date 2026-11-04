@@ -33,6 +33,8 @@ export type Step = {
   heat?: string;
   warn?: string;
   src?: string;
+  /** Kniha receptov: suroviny kroku (kľúč alebo ref), keď sa z textu nedajú určiť jednoznačne. */
+  uses?: string[];
 };
 
 /** Recept z knihy: spojený z 3–5 skutočných receptov (zdroje), s fotkami a doplnkami. */
