@@ -447,7 +447,9 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     vo farbe lišty, celoobrazovkové okná v Teplej majú hore nádych. Pri každej zmene sa `#sbar` vymení za nový
     prvok (iOS farbu odčíta, keď sa prvok objaví). Overené simuláciou iPhonu 13 mini (výrez 50 px) v oboch
     režimoch (lišta nad stránkou aj stránka pod lištou), 4 vzhľady × 15 obrazoviek; na skutočnom iPhone overí
-    majiteľ (appku treba úplne zavrieť a znova otvoriť).
+    majiteľ (appku treba úplne zavrieť a znova otvoriť). Oprava po snímke majiteľa: `#sbar` mal na iPhone
+    minimálne 6 px – na iPhone majiteľa je stránka pod lištou (výrez 0), pás prekryl vrch stránky a odsekol
+    tlačidlá hlavičky na všetkých obrazovkách. Výška je teraz len výrez displeja; farbu vtedy dáva pozadie body/html.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
