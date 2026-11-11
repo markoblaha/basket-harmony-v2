@@ -3,7 +3,7 @@
  * (vygenerované z prototyp/css) a platia len vo vnútri obalu <div className="bhm">.
  * Texty idú cez t(), dáta z features/*\/api.ts.
  */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { useAuth, useUserId } from "@/features/auth/AuthProvider";
 import { useProfiles } from "@/features/household/api";
@@ -37,10 +37,35 @@ export function IB({ n, w = "bold", onClick, label, cls = "" }: { n: string; w?:
   );
 }
 
-/** Prepínač ako v mockupe (Svetlý / Tmavý / Podľa systému). */
+/**
+ * Prepínač ako v mockupe (Svetlý / Tmavý / Podľa systému). Zvolená plocha je samostatný prvok, ktorý sa pri
+ * zmene plynulo presunie pod nové tlačidlo (predtým preskočila). Prvé umiestnenie je bez animácie.
+ */
 export function Seg<V extends string>({ items, value, onChange }: { items: [V, string][]; value: V; onChange: (v: V) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ind, setInd] = useState<{ x: number; w: number } | null>(null);
+  const [anim, setAnim] = useState(false);
+  const labels = items.map((x) => x[1]).join("|");
+  useLayoutEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const place = () => {
+      const b = root.querySelector<HTMLElement>(":scope > button.on");
+      setInd((cur) => (b ? (cur && cur.x === b.offsetLeft && cur.w === b.offsetWidth ? cur : { x: b.offsetLeft, w: b.offsetWidth }) : null));
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [value, labels]);
+  useEffect(() => {
+    if (!ind || anim) return;
+    const id = requestAnimationFrame(() => setAnim(true));
+    return () => cancelAnimationFrame(id);
+  }, [ind, anim]);
   return (
-    <div className="seg" role="tablist">
+    <div ref={ref} className={`seg${ind ? " has-ind" : ""}${anim ? " anim" : ""}`} role="tablist">
+      {ind && <i className="seg-ind" aria-hidden="true" style={{ width: ind.w, transform: `translateX(${ind.x}px)` }} />}
       {items.map(([k, l]) => (
         <button type="button" role="tab" aria-selected={value === k} key={k} className={value === k ? "on" : ""} onClick={() => onChange(k)}>
           {l}

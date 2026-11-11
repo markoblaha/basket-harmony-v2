@@ -1,4 +1,4 @@
-// Automatické preklikanie testovacej appky v telefónovej veľkosti (iPhone 393 × 852).
+// Automatické preklikanie testovacej appky v telefónovej veľkosti (iPhone 393 × 852; iná: W=375 H=667).
 //
 // Prihlási testovací účet (len testovacia DB), prejde všetky obrazovky v každom vzhľade
 // a hľadá: chyby JavaScriptu, neúspešné volania servera, chybové hlásenia na obrazovke,
@@ -150,7 +150,7 @@ const CHECK = () => {
   let problems = 0;
   for (const look of LOOKS) {
     const ctx = await browser.newContext({
-      viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
+      viewport: { width: Number(process.env.W) || 393, height: Number(process.env.H) || 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
       colorScheme: look.scheme, locale: "sk-SK",
     });
     await ctx.addInitScript(([theme, style]) => {

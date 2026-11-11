@@ -55,10 +55,11 @@ function HRow({ lead, title, sub, action, onClick, warn, g, label }: { lead: Rea
         <b>{title}</b>
         {sub && (
           <small>
-            {sub.split(" · ").map((x, i) => (
+            {sub.split(" · ").map((x, i, all) => (
               <Fragment key={i}>
-                {i > 0 && " · "}
-                <span className="nw">{x}</span>
+                {/* bodka patrí k predošlému úseku: riadok sa zlomí za ňou, nový riadok nezačne „·“ */}
+                {i > 0 && " "}
+                <span className="nw">{i < all.length - 1 ? `${x} ·` : x}</span>
               </Fragment>
             ))}
           </small>

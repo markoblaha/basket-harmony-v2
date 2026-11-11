@@ -208,10 +208,8 @@ export function MissingReceipts({ compact, g }: { compact?: boolean; g: boolean 
               </span>
             </div>
             {!compact && <IB n="x" cls="flat sm" label={t("mn.noReceiptAria", { name: l.name })} onClick={() => drop(l.id)} />}
-            <Btn cls="soft sm" onClick={() => navigate(`/scan?nakup=${l.id}`)}>
-              <I n="camera" />
-              {t("mn.photo")}
-            </Btn>
+            {/* Len ikona fotoaparátu – názov nákupu tak má miesto (hlavička karty hovorí „Odfoť ho“). */}
+            <IB n="camera" w="fill" cls="tone" label={`${t("mn.photo")}: ${l.name}`} onClick={() => navigate(`/scan?nakup=${l.id}`)} />
           </div>
         );
       })}

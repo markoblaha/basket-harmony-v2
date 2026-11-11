@@ -1,24 +1,25 @@
-/* Fotky receptov z knihy (public/kniha). Trieda pic-kb_<id>_<n> ako ostatné obrázky mockupu (assets.css). */
-.pic-kb_segedin_1 { background-image: url("/kniha/segedin-1.webp"); }
-.pic-kb_segedin_2 { background-image: url("/kniha/segedin-2.webp"); }
-.pic-kb_segedin_3 { background-image: url("/kniha/segedin-3.webp"); }
-.pic-kb_segedin_1s { background-image: url("/kniha/segedin-1s.webp"); }
-.pic-kb_paprikas_1 { background-image: url("/kniha/paprikas-1.webp"); }
-.pic-kb_paprikas_2 { background-image: url("/kniha/paprikas-2.webp"); }
-.pic-kb_paprikas_3 { background-image: url("/kniha/paprikas-3.webp"); }
-.pic-kb_paprikas_1s { background-image: url("/kniha/paprikas-1s.webp"); }
-.pic-kb_kulajda_1 { background-image: url("/kniha/kulajda-1.webp"); }
-.pic-kb_kulajda_2 { background-image: url("/kniha/kulajda-2.webp"); }
-.pic-kb_kulajda_3 { background-image: url("/kniha/kulajda-3.webp"); }
-.pic-kb_kulajda_1s { background-image: url("/kniha/kulajda-1s.webp"); }
-.pic-kb_medovnik_1 { background-image: url("/kniha/medovnik-1.webp"); }
-.pic-kb_medovnik_2 { background-image: url("/kniha/medovnik-2.webp"); }
-.pic-kb_medovnik_3 { background-image: url("/kniha/medovnik-3.webp"); }
-.pic-kb_medovnik_1s { background-image: url("/kniha/medovnik-1s.webp"); }
-.pic-kb_lasagne_1 { background-image: url("/kniha/lasagne-1.webp"); }
-.pic-kb_lasagne_2 { background-image: url("/kniha/lasagne-2.webp"); }
-.pic-kb_lasagne_3 { background-image: url("/kniha/lasagne-3.webp"); }
-.pic-kb_lasagne_1s { background-image: url("/kniha/lasagne-1s.webp"); }
+/* Fotky receptov z knihy (public/kniha). Trieda pic-kb_<id>_<n> ako ostatné obrázky mockupu (assets.css);
+ * :root, aby ich neprebili pravidlá mockupu s pozadím (napr. „.bhm .th“). */
+:root .pic-kb_segedin_1 { background-image: url("/kniha/segedin-1.webp"); }
+:root .pic-kb_segedin_2 { background-image: url("/kniha/segedin-2.webp"); }
+:root .pic-kb_segedin_3 { background-image: url("/kniha/segedin-3.webp"); }
+:root .pic-kb_segedin_1s { background-image: url("/kniha/segedin-1s.webp"); }
+:root .pic-kb_paprikas_1 { background-image: url("/kniha/paprikas-1.webp"); }
+:root .pic-kb_paprikas_2 { background-image: url("/kniha/paprikas-2.webp"); }
+:root .pic-kb_paprikas_3 { background-image: url("/kniha/paprikas-3.webp"); }
+:root .pic-kb_paprikas_1s { background-image: url("/kniha/paprikas-1s.webp"); }
+:root .pic-kb_kulajda_1 { background-image: url("/kniha/kulajda-1.webp"); }
+:root .pic-kb_kulajda_2 { background-image: url("/kniha/kulajda-2.webp"); }
+:root .pic-kb_kulajda_3 { background-image: url("/kniha/kulajda-3.webp"); }
+:root .pic-kb_kulajda_1s { background-image: url("/kniha/kulajda-1s.webp"); }
+:root .pic-kb_medovnik_1 { background-image: url("/kniha/medovnik-1.webp"); }
+:root .pic-kb_medovnik_2 { background-image: url("/kniha/medovnik-2.webp"); }
+:root .pic-kb_medovnik_3 { background-image: url("/kniha/medovnik-3.webp"); }
+:root .pic-kb_medovnik_1s { background-image: url("/kniha/medovnik-1s.webp"); }
+:root .pic-kb_lasagne_1 { background-image: url("/kniha/lasagne-1.webp"); }
+:root .pic-kb_lasagne_2 { background-image: url("/kniha/lasagne-2.webp"); }
+:root .pic-kb_lasagne_3 { background-image: url("/kniha/lasagne-3.webp"); }
+:root .pic-kb_lasagne_1s { background-image: url("/kniha/lasagne-1s.webp"); }
 /* Kniha receptov v appke – doplnky k triedam mockupu (gal, bgroups, bsteps, sbx, binfo). */
 .bhm .bopt { font-size: 12px; font-weight: 700; color: var(--ter); margin-left: 6px; }
 .bhm .bsrc { display: flex; flex-direction: column; gap: 6px; }

@@ -156,7 +156,8 @@ for sel, kind, data in re.findall(r'\.((?:em|pic)-[\w-]+)\{background-image:url\
     name = sel.split('-', 1)[1]
     os.makedirs(os.path.join(PUB, folder), exist_ok=True)
     open(os.path.join(PUB, folder, name + '.' + kind), 'wb').write(base64.b64decode(data))
-    lines.append('.%s { background-image: url("/mk/%s/%s.%s"); }' % (sel, folder, name, kind))
+    # Fotky (pic-) s :root – inak ich v appke prebije napr. „.bhm .th { background: … }“ (štýly mockupu tam majú .bhm navyše).
+    lines.append('%s.%s { background-image: url("/mk/%s/%s.%s"); }' % (':root ' if folder == 'pic' else '', sel, folder, name, kind))
 open(os.path.join(OUT, 'assets.css'), 'w').write('/* VYGENEROVANÉ z prototyp/gen/assets.css skriptom prototyp/do-appky.py. */\n' + '\n'.join(lines) + '\n')
 print('mockup.css', len(scoped) // 1024, 'KB ·', len(lines), 'obrázkov ·', len(keyframes), 'animácií')
 
