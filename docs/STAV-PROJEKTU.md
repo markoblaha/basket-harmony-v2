@@ -218,6 +218,20 @@ Potiahnutie späť z okraja: pevné prvky dostanú vyrovnanie, návrat len prel�
 odídu. Bez podpory View Transitions (iOS < 18) len krátke prelínanie. Pri „obmedziť pohyb“ v telefóne bez animácií.
 3. 11.: Recepty bez čísla na lište (počítalo aj recepty bez dňa, ktoré v Receptoch nevidno; mockup číslo nemá).
 Výdavky: listovanie obdobím ‹ › (mesiac, týždeň, rok) – `?o=-1` v adrese, platí aj na detailoch; v Roku ťuk na mesiac.
+11. 11.: Plán týždňa – časti „Bez dňa“ (recepty pridané do nákupu bez dňa) a „Z minulých dní“ (neuvarené); „Určiť deň“ = `plan_recipes` s pôvodným zoznamom a bez surovín (nič sa nepridá dvakrát), dá sa aj odstrániť z plánu. Bez zmeny DB (migráciu `set_recipe_plan_day` majiteľ nepovolil – netreba).
+11. 11.: **Vizuálne doladenie** (pokyn majiteľa: svetlé vzhľady pôsobili ako demo) – `src/mockup/finish.css` (načítava sa
+posledné): tiene vo farbe témy (kontakt + mäkký rozptyl), Teplá svetlá – karty s jemným prechodom, textúra papiera 3 %,
+hlavné tlačidlo s prechodom a hranou; Sklo svetlé – redší závoj (pozadie má farbu), karty ako zmatnené sklo
+(backdrop blur 22 px, saturate 1,7) so svetlou hranou, aj v tmavom; texty na fotkách kategórií čitateľné (silnejší
+prechod, tieň, max 2 riadky); prepínač (`Seg` v `ui.tsx`) má posuvnú zvolenú plochu; ikona lišty poskočí; odozva na
+dotyk (stmavnutie, ikonové tlačidlá). Opravy: fotky jedál v štvorčekoch (`.th`) sa neukazovali – triedy `pic-` majú
+`:root` (`do-appky.py`, `kniha.css`); suma Spolu na detaile výrobku pretekala; chýbajúce bločky – fotoaparát ako ikona,
+dátum v jednom riadku; podnadpis na Domove sa nezalomí s „·“ na začiatku riadku; recepty bez fotky majú emoji podľa
+jedla (`art()` v `mk.tsx`); varenie – posúvaný krok pri okraji zmizne. `testy/preklikanie.cjs` vie aj inú veľkosť (`W=375 H=667`).
+**Zlúčenie 11. 11. (pokyn majiteľa „zlúč to do testovacej appky“):** do testovacej vetvy prišiel „Finálny vzhľad“ a naklikanie
+kusov z vetvy `claude/jolly-lamport-pu5abj`. Z „Vizuálneho doladenia“ vyššie ostali len emoji podľa jedla (`mk.tsx`),
+mäkký okraj varenia (`adapt.css`) a `W/H` v preklikaní; `src/mockup/finish.css` a posuvná plocha v `Seg` (`ui.tsx`) boli
+odstránené – robili to isté ako `prototyp/css/finish.css` (dva jazdce prepínača, dve vrstvy tieňov).
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:

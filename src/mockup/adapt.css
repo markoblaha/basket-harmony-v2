@@ -500,3 +500,15 @@ body.kb-typing .bhm-tabs {
   .bh-load, .bh-dots i { animation: none; }
   .bh-dots i { opacity: 0.7; }
 }
+
+/* Plán týždňa → „Bez dňa“: riadok otvorí recept, tlačidlo vpravo určí deň. */
+.bhm .undated .row { display: flex; align-items: center; gap: 10px; }
+.bhm .undated .rmain { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; min-height: 44px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.bhm .undated .rmain .tx { min-width: 0; }
+.bhm .undated .row > .btn { flex: none; }
+
+/* Varenie na nízkom displeji: posúvaný obsah kroku pri okraji jemne zmizne (nie ostrá hrana nad tlačidlami). */
+.bhm .cbody {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 26px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 26px), transparent 100%);
+}
