@@ -329,16 +329,13 @@ export function Composer({
     onAdded?.();
     ptm.current[key] = setTimeout(() => {
       setPk(key, null);
-      // posledná rozklikaná bublina → položka je v zozname, okno sa zavrie (pokyn majiteľa 11. 11.)
+      // posledná rozklikaná bublina → položka je v zozname; okno aj klávesnica ostávajú otvorené na mieste,
+      // pole sa len vyprázdni na ďalšiu položku (pokyn majiteľa 11. 11.). Zavrie sa až cez Hotovo.
       if (!Object.keys(pk.current).length) {
         setTxt("");
-        closeWin();
+        if (document.activeElement !== inp.current) inp.current?.focus({ preventScroll: true });
       }
     }, 700);
-  };
-  const closeWin = () => {
-    inp.current?.blur();
-    onTyping(false);
   };
   const arm = (key: string) => {
     clearTimeout(ptm.current[key]);
