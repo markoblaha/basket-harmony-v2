@@ -469,6 +469,16 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     (sprievodca, nápovedy, pridávanie), test toku nákupu, meranie animácií v prehliadači, preklikanie 4 × 9 obrazoviek
     na nasadenom náhľade https://claude-jolly-lamport-pu5abj-basket-harmony-v2.markoblaha.workers.dev (testovacia DB).
     Do `design/v2-mobile-redesign` zatiaľ nezlúčené – čaká na „OK“ majiteľa. Na skutočnom iPhone overí majiteľ.
+    **Pridávanie – pravopis a naklikanie kusov (11. 11., pokyn majiteľa):** Enter (aj tučný prvý riadok návrhov) pridá
+    presne napísaný text s počtom, opraví sa len pravopis (`spellFix` v `itemCatalog.ts` + testy: diakritika podľa
+    názvov produktov, veľké písmeno, vlastné mená, preklep len pri jednom slove – „mleko 3“ → Mlieko 3 ks, „plzen 6“ →
+    Plzeň 6 ks, nie Pilsner Urquell; cena sa aj tak ráta zo značky). Samostatná bublina „preklep?“ zmizla – oprava je
+    rovno v prvom riadku („opravený preklep „mleko““). V každej bubline návrhu sa dajú naklikať kusy: ťuk = +1 (prvý ťuk
+    = napísané množstvo alebo 1 ks), − / +, pásik dole ukazuje čas – po 1,8 s bez ťuknutia sa položka pridá (bublina
+    zozelenie, „✓ Pridané“, ikona odletí), pri ďalšom písaní alebo odchode sa naklikané pridá hneď. Kód `Composer`
+    (`pickRow`) v `ListParts.tsx`, štýly `src/features/lists/pick.css`. Overené v prehliadači (Teplá svetlá/tmavá,
+    Sklo svetlé); do testovacieho zoznamu „Tok nákupu 11-03 15:01“ pribudli skúšobné položky (Svetlé pivo 12°, Plzeň,
+    Banány, Mlieko +3).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

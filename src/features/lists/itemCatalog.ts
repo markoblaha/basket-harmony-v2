@@ -256,6 +256,75 @@ export function typoFix(c: ItemCatalog, text: string): Resolved | null {
   return best ? resolveName(c, best.g.label) : null;
 }
 
+/** Hovorové mená značiek s pravopisom (nie sú v názvoch produktov). */
+const ALIAS_SPELL: Record<string, string> = {
+  plzen: "Plzeň", plzne: "Plzne", plzni: "Plzni", prazdroj: "Prazdroj", pilsner: "Pilsner",
+  smichov: "Smíchov", kozel: "Kozel", kozla: "Kozla", kozlik: "Kozlík",
+};
+
+/** Slovník pravopisu: slovo bez diakritiky → správny tvar (z názvov produktov, druhov a značiek) a počet nákupov. */
+function vocab(c: ItemCatalog): Map<string, { w: string; n: number }> {
+  const m = new Map<string, { w: string; n: number }>();
+  const put = (raw: string, n: number, keepCase: boolean) => {
+    raw.split(/[\s,()/]+/).forEach((x, i) => {
+      const k = norm(x);
+      if (!k || k.includes(" ") || isNum(k) || k.length < 2) return;
+      // prvé slovo názvu má veľké písmeno len kvôli začiatku vety; ďalšie veľké = vlastné meno („Pivo Smíchov“)
+      const w = keepCase || (i > 0 && /^\p{Lu}/u.test(x)) ? x : x.toLowerCase();
+      const old = m.get(k);
+      // slovo z názvu produktu (malé) má prednosť pred značkou; inak častejšie kupované
+      if (!old) m.set(k, { w, n });
+      else old.n += n;
+    });
+  };
+  for (const p of c.products) {
+    put(p.name, p.buys.length + 1, false);
+    if (p.kind) put(p.kind, p.buys.length + 1, false);
+  }
+  for (const p of c.products) if (p.brand) put(p.brand, p.buys.length + 1, true);
+  return m;
+}
+const vocabCache = new WeakMap<ItemCatalog, Map<string, { w: string; n: number }>>();
+
+/**
+ * Napísaný názov s opraveným pravopisom – nič iné sa nemení (pravidlo majiteľa 11. 11.: Enter pridá to, čo je
+ * napísané, nie produkt z návrhov). Doplní diakritiku podľa názvov produktov („svetle pivo“ → „Svetlé pivo“),
+ * veľké písmeno na začiatku a pri jednom slove opraví preklep („mleko“ → „Mlieko“). Neznáme slová ostanú.
+ * Vráti aj, či išlo o preklep (nielen diakritiku).
+ */
+export function spellFix(c: ItemCatalog | null | undefined, text: string): { text: string; typo: boolean } {
+  const raw = text.trim().replace(/\s+/g, " ");
+  if (!raw) return { text: "", typo: false };
+  if (!c) return { text: cap(raw), typo: false };
+  let v = vocabCache.get(c);
+  if (!v) vocabCache.set(c, (v = vocab(c)));
+  const toks = raw.split(" ");
+  let typo = false;
+  const out = toks.map((x) => {
+    const k = norm(x);
+    if (!k || k.includes(" ") || isNum(k) || /\d/.test(x)) return x;
+    const known = v!.get(k);
+    if (known) return known.w;
+    if (ALIAS_SPELL[k]) return ALIAS_SPELL[k]!;
+    // preklep len pri jednom slove (pri viacerých by mohol zmeniť správne slovo, ktoré appka nepozná)
+    if (toks.length === 1 && k.length >= 4 && !BROAD.has(k) && !SYN[k]) {
+      let best: { w: string; d: number; n: number } | null = null;
+      for (const [key, val] of v!) {
+        if (Math.abs(key.length - k.length) > 2 || key.length < 4) continue;
+        const d = editDist(k, key);
+        if (d > 0 && d <= (k.length > 6 ? 2 : 1) && (!best || d < best.d || (d === best.d && (val.w.length < best.w.length || (val.w.length === best.w.length && val.n > best.n)))))
+          best = { w: val.w, d, n: val.n };
+      }
+      if (best) {
+        typo = true;
+        return best.w;
+      }
+    }
+    return x;
+  });
+  return { text: cap(out.join(" ")), typo };
+}
+
 export function editDist(a: string, b: string): number {
   const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)] as number[]);
   for (let j = 1; j <= b.length; j++) dp[0]![j] = j;

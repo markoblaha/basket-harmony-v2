@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCatalog, estimate, refinements, resolveName, searchNames, typoFix, type Buy, type CatProduct } from "./itemCatalog";
+import { buildCatalog, estimate, refinements, resolveName, searchNames, spellFix, typoFix, type Buy, type CatProduct } from "./itemCatalog";
 
 const today = new Date();
 const day = (ago: number) => new Date(today.getTime() - ago * 86_400_000).toISOString().slice(0, 10);
@@ -120,5 +120,29 @@ describe("odhad ceny", () => {
   });
   it("bez nákupov nie je cena", () => {
     expect(estimate(null, 1, null, null, keyOf)).toBeNull();
+  });
+});
+
+describe("Enter pridá napísané – opraví sa len pravopis (11. 11.)", () => {
+  const fix = (x: string) => spellFix(cat, x).text;
+  it("diakritika a veľké písmeno, nič iné", () => {
+    expect(fix("pivo")).toBe("Pivo");
+    expect(fix("svetle pivo")).toBe("Svetlé pivo");
+    expect(fix("kysla smotana")).toBe("Kyslá smotana");
+    expect(fix("mlieko")).toBe("Mlieko");
+  });
+  it("značka ostane tak, ako bola napísaná (nie Pilsner Urquell)", () => {
+    expect(fix("plzen")).toBe("Plzeň");
+    expect(fix("radegast")).toBe("Radegast");
+    const c2 = buildCatalog([P("Pivo Smíchov", "Pivo", "Staropramen", "alcohol")]);
+    expect(spellFix(c2, "pivo smichov").text).toBe("Pivo Smíchov");
+  });
+  it("preklep v jednom slove sa opraví", () => {
+    expect(spellFix(cat, "mleko")).toEqual({ text: "Mlieko", typo: true });
+    expect(spellFix(cat, "mlieko").typo).toBe(false);
+  });
+  it("neznáme slovo ostane, pri viacerých slovách sa preklep nehádže", () => {
+    expect(fix("cukrík")).toBe("Cukrík");
+    expect(fix("mleko čerstvé")).toBe("Mleko čerstvé");
   });
 });

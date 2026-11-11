@@ -12,9 +12,10 @@ import { formatDateTime, formatNumber, t, tn } from "@/i18n";
 import { E, I, Seg, Stepper, SwipeRow } from "@/mockup/ui";
 import { Sheet } from "@/mockup/Sheet";
 import { Btn, STORES, StoreTile, eur, memberColor, storeKeyOf, storeName } from "@/mockup/kit";
+import { haptic } from "@/components/kit";
 import { useAddItem, useDeleteItem, useFrequentItems, useMoveItem, useStapleItems, useUpdateItem, type Item, type ShoppingList } from "./api";
 import type { Estimator } from "./estimate";
-import { refinements, resolveName, searchNames, typoFix, type Estimate, type Resolved } from "./itemCatalog";
+import { refinements, resolveName, searchNames, spellFix, type Estimate, type Resolved } from "./itemCatalog";
 import { sameProduct } from "./qty";
 import type { AddOutcome } from "./useSmartAdd";
 
@@ -218,9 +219,11 @@ export function Composer({
 
   const enter = useMemo(() => (txt.trim().length >= 2 ? chunks(txt.trim()) : []), [txt]);
   const one = enter.length === 1 ? enter[0]! : null;
-  const head = one && cat ? resolveName(cat, one.name) : null;
-  const typo = one && !head && cat ? typoFix(cat, one.name) : null;
-  // Návrhy: 1. čo pridá Enter, 2. oprava preklepu, 3. konkrétne druhy a značky, 4. ďalšie zhody podľa začiatku slova
+  // Enter pridá to, čo je napísané – len s opraveným pravopisom (pravidlo majiteľa 11. 11.), nikdy produkt z návrhov.
+  // Rozpoznanie (cena, kategória) sa ráta z opraveného textu.
+  const oneFix = useMemo(() => (one ? spellFix(cat, one.name) : null), [one?.name, cat]); // eslint-disable-line react-hooks/exhaustive-deps
+  const head = oneFix && cat ? resolveName(cat, oneFix.text) : null;
+  // Návrhy: 1. čo pridá Enter, 2. konkrétne druhy a značky, 3. ďalšie zhody podľa začiatku slova
   const sugg = useMemo(() => {
     if (!one || !cat) return [];
     const out: Resolved[] = [];
@@ -231,7 +234,6 @@ export function Composer({
         out.push(r);
       }
     };
-    push(typo);
     refinements(cat, head, 6).forEach(push);
     const found = searchNames(cat, one.name, 6).sort((a, b) => Number(inList(a.label)) - Number(inList(b.label)));
     if (!head && found.length) {
@@ -248,7 +250,7 @@ export function Composer({
     }
     found.forEach(push);
     return out.slice(0, head ? 4 : 5);
-  }, [one?.name, cat, head, typo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [one?.name, cat, head]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // dlaždice „Často kupujete“ – ťuk = +1, po 2 s sa pridá a nahradí ďalšou
   const staplesQ = useStapleItems(householdId);
@@ -292,15 +294,75 @@ export function Composer({
   };
 
   const label = (name: string) => {
-    const r = cat ? resolveName(cat, name) : null;
-    return { name: r ? r.label : cap(name), categoryId: r?.category ?? null };
+    const fixed = spellFix(cat, name).text;
+    const r = cat ? resolveName(cat, fixed) : null;
+    return { name: fixed, categoryId: r?.category ?? null };
   };
-  const add = (r: Resolved) => {
-    void onAdd({ name: r.label, quantity: one?.quantity ?? null, unit: one?.unit ?? null, categoryId: r.category });
-    setTxt("");
+
+  // Naklikanie kusov priamo v bubline návrhu: ťuk = +1 (prvý ťuk = napísané množstvo alebo 1 ks), − / + ,
+  // po 1,8 s bez ťuknutia sa položka pridá do zoznamu. Rozklikané bubliny sa pridajú aj pri ďalšom písaní.
+  type Pick = { name: string; cat: string | null; q: number; u: string | null; k: number; done?: boolean };
+  const [picks, setPicks] = useState<Record<string, Pick>>({});
+  const pk = useRef<Record<string, Pick>>({});
+  const ptm = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const setPk = (key: string, v: Pick | null) => {
+    if (v) pk.current[key] = v;
+    else delete pk.current[key];
+    setPicks({ ...pk.current });
+  };
+  const commit = (key: string) => {
+    const p = pk.current[key];
+    clearTimeout(ptm.current[key]);
+    if (!p || p.done) return;
+    setPk(key, { ...p, done: true });
+    haptic([8, 40, 14]);
+    void onAdd({ name: p.name, quantity: p.q, unit: p.u, categoryId: p.cat });
     onAdded?.();
+    // klávesnica ostane otvorená – ďalšia položka sa dá hneď písať a „✓ Pridané“ je vidno
     inp.current?.focus();
+    ptm.current[key] = setTimeout(() => {
+      setPk(key, null);
+      // posledná rozklikaná bublina → pole sa vyprázdni na ďalšiu položku
+      if (!Object.keys(pk.current).length) setTxt("");
+    }, 650);
   };
+  const arm = (key: string) => {
+    clearTimeout(ptm.current[key]);
+    ptm.current[key] = setTimeout(() => commit(key), 1800);
+  };
+  const tap = (key: string, name: string, catId: string | null) => {
+    const p = pk.current[key];
+    if (p?.done) return;
+    haptic(8);
+    if (!p) setPk(key, { name, cat: catId, q: one?.quantity ?? 1, u: one?.quantity ? (one.unit ?? null) : null, k: Date.now() });
+    else setPk(key, { ...p, q: bump(p.q, unitOf(p.u), 1), k: Date.now() });
+    arm(key);
+  };
+  const less = (key: string) => {
+    const p = pk.current[key];
+    if (!p || p.done) return;
+    haptic(6);
+    if (p.q <= minQty(unitOf(p.u))) {
+      clearTimeout(ptm.current[key]);
+      setPk(key, null);
+      return;
+    }
+    setPk(key, { ...p, q: bump(p.q, unitOf(p.u), -1), k: Date.now() });
+    arm(key);
+  };
+  // ďalšie písanie: rozklikané bubliny sa pridajú hneď (inak by zmizli spolu s návrhmi)
+  useEffect(() => {
+    for (const key of Object.keys(pk.current)) commit(key);
+  }, [one?.name]); // eslint-disable-line react-hooks/exhaustive-deps
+  // odchod z obrazovky: nič naklikané sa nestratí
+  useEffect(
+    () => () => {
+      Object.values(ptm.current).forEach(clearTimeout);
+      for (const p of Object.values(pk.current)) if (!p.done) void onAdd({ name: p.name, quantity: p.q, unit: p.u, categoryId: p.cat });
+    },
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!enter.length) return;
@@ -314,7 +376,55 @@ export function Composer({
   };
 
   const keep = (e: React.PointerEvent) => e.preventDefault();
-  const est = (r: Resolved | null) => (r ? estimator.est({ name: r.label, quantity: one?.quantity ?? null, unit: one?.unit ?? null }, listStore) : null);
+  const estOf = (name: string, p?: Pick) => estimator.est({ name, quantity: p ? p.q : (one?.quantity ?? null), unit: p ? p.u : (one?.unit ?? null) }, listStore);
+
+  /** Riadok návrhu s naklikaním kusov. */
+  const pickRow = (key: string, name: string, catId: string | null, icon: React.ReactNode, title: React.ReactNode, sub: React.ReactNode, priced: boolean, ent?: boolean) => {
+    const p = picks[key];
+    const e = priced ? estOf(name, p) : null;
+    return (
+      <div key={key} className={`sgr pk${ent ? " ent" : ""}${p ? " on" : ""}${p?.done ? " done" : ""}`}>
+        <button type="button" className="sgm" onPointerDown={keep} onClick={() => tap(key, name, catId)} aria-label={t("li.pickAria", { name })}>
+          <span className="sgi" key={p?.k ?? 0}>
+            {icon}
+          </span>
+          <span className="sgt">
+            <b>{title}</b>
+            <small>{sub}</small>
+          </span>
+          {e && <span className="sgp">~{eur(e.v)}</span>}
+        </button>
+        {p?.done ? (
+          <span className="pk-ok" role="status">
+            <I n="check" w="bold" />
+            {t("li.picked")}
+          </span>
+        ) : p ? (
+          <span className="pk-step">
+            <button type="button" className="pk-b" onPointerDown={keep} onClick={() => less(key)} aria-label={t("li.less")}>
+              <I n={p.q <= minQty(unitOf(p.u)) ? "x" : "minus"} w="bold" />
+            </button>
+            <b className="pk-n" key={p.k} aria-live="polite">
+              {fmtQty(p.q, p.u)}
+            </b>
+            <button type="button" className="pk-b" onPointerDown={keep} onClick={() => tap(key, name, catId)} aria-label={t("li.more")}>
+              <I n="plus" w="bold" />
+            </button>
+          </span>
+        ) : (
+          <button type="button" className="pk-add" onPointerDown={keep} onClick={() => tap(key, name, catId)} aria-label={t("li.pickAria", { name })}>
+            <I n="plus" w="bold" />
+          </button>
+        )}
+        {p && !p.done && <i className="pk-bar" key={`b${p.k}`} aria-hidden="true" />}
+        {p && !p.done && unitOf(p.u) === "ks" && (
+          <span className="pk-fly" key={`f${p.k}`} aria-hidden="true">
+            +1
+          </span>
+        )}
+      </div>
+    );
+  };
   const showSugg = typing && txt.trim().length >= 2;
 
   return (
@@ -334,47 +444,31 @@ export function Composer({
             </button>
           )}
           {one &&
-            (() => {
-              const e = est(head);
-              return (
-                <button type="button" className="sgr ent" onPointerDown={keep} onClick={() => submit()}>
-                  {head ? (
-                    <span className="sgi">
-                      <E k={estimator.emoji(head.label, head.category)} s={30} />
-                    </span>
-                  ) : (
-                    <span className="sgi nwi">
-                      <I n="plus" w="bold" />
-                    </span>
-                  )}
-                  <span className="sgt">
-                    <b>{head ? head.label : cap(one.name)}</b>
-                    <small>
-                      {fmtQty(one.quantity, one.unit)} · {whatOf(head) ?? (typo ? t("li.asTyped") : t("li.newItem"))}
-                    </small>
-                  </span>
-                  {e && <span className="sgp">~{eur(e.v)}</span>}
-                  <kbd aria-label="Enter">↵</kbd>
-                </button>
-              );
-            })()}
-          {sugg.map((r) => {
-            const e = est(r);
-            const isT = !!typo && r.label === typo.label;
-            const what = isT ? t("li.typo") : r.level === "general" ? whatOf(r) : r.level === "brand" ? t("li.brand") : t("li.kind");
-            return (
-              <button type="button" key={`${r.level}:${r.label}`} className={`sgr${isT ? " typo" : ""}`} onPointerDown={keep} onClick={() => add(r)}>
-                <span className="sgi">
-                  <E k={estimator.emoji(r.label, r.category)} s={30} />
-                </span>
-                <span className="sgt">
-                  <b>{isT ? `${r.label}?` : r.label}</b>
-                  <small>{what}</small>
-                </span>
-                {e && <span className="sgp">~{eur(e.v)}</span>}
-              </button>
-            );
-          })}
+            oneFix &&
+            pickRow(
+              "ent",
+              oneFix.text,
+              head?.category ?? null,
+              head ? <E k={estimator.emoji(oneFix.text, head.category)} s={30} /> : <I n="plus" w="bold" />,
+              oneFix.text,
+              <>
+                {fmtQty(picks.ent?.q ?? one.quantity, picks.ent ? picks.ent.u : one.unit)} ·{" "}
+                {oneFix.typo ? t("li.typoFixed", { w: one.name }) : (whatOf(head) ?? t("li.newItem"))}
+              </>,
+              !!head,
+              true,
+            )}
+          {sugg.map((r) =>
+            pickRow(
+              `${r.level}:${r.label}`,
+              r.label,
+              r.category,
+              <E k={estimator.emoji(r.label, r.category)} s={30} />,
+              r.label,
+              r.level === "general" ? whatOf(r) : r.level === "brand" ? t("li.brand") : t("li.kind"),
+              true,
+            ),
+          )}
         </div>
       ) : chipsLoading ? (
         <div className="chips staples" aria-hidden="true" style={{ visibility: "hidden" }}>
