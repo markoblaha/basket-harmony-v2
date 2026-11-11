@@ -137,9 +137,9 @@ describe("Enter pridá napísané – opraví sa len pravopis (11. 11.)", () => 
     const c2 = buildCatalog([P("Pivo Smíchov", "Pivo", "Staropramen", "alcohol")]);
     expect(spellFix(c2, "pivo smichov").text).toBe("Pivo Smíchov");
   });
-  it("preklep v jednom slove sa opraví", () => {
-    expect(spellFix(cat, "mleko")).toEqual({ text: "Mlieko", typo: true });
-    expect(spellFix(cat, "mlieko").typo).toBe(false);
+  it("preklep sa nemení na iné slovo – ostane, ako je napísaný (návrhy sú na výber)", () => {
+    expect(spellFix(cat, "mleko")).toEqual({ text: "Mleko", typo: false });
+    expect(fix("masl")).toBe("Masl");
   });
   it("neznáme slovo ostane, pri viacerých slovách sa preklep nehádže", () => {
     expect(fix("cukrík")).toBe("Cukrík");

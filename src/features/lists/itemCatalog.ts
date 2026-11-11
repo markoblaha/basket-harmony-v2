@@ -288,9 +288,9 @@ const vocabCache = new WeakMap<ItemCatalog, Map<string, { w: string; n: number }
 
 /**
  * Napísaný názov s opraveným pravopisom – nič iné sa nemení (pravidlo majiteľa 11. 11.: Enter pridá to, čo je
- * napísané, nie produkt z návrhov). Doplní diakritiku podľa názvov produktov („svetle pivo“ → „Svetlé pivo“),
- * veľké písmeno na začiatku a pri jednom slove opraví preklep („mleko“ → „Mlieko“). Neznáme slová ostanú.
- * Vráti aj, či išlo o preklep (nielen diakritiku).
+ * napísané; návrhy sú na to, aby si človek vybral iný produkt). Doplní sa len diakritika podľa názvov produktov
+ * („svetle pivo“ → „Svetlé pivo“, „plzen“ → „Plzeň“) a veľké písmeno na začiatku. Slová sa NEVYMIEŇAJÚ za podobné
+ * (žiadne „masl“ → „Mäso“); neznáme slovo ostane presne tak, ako je napísané.
  */
 export function spellFix(c: ItemCatalog | null | undefined, text: string): { text: string; typo: boolean } {
   const raw = text.trim().replace(/\s+/g, " ");
@@ -298,31 +298,14 @@ export function spellFix(c: ItemCatalog | null | undefined, text: string): { tex
   if (!c) return { text: cap(raw), typo: false };
   let v = vocabCache.get(c);
   if (!v) vocabCache.set(c, (v = vocab(c)));
-  const toks = raw.split(" ");
-  let typo = false;
-  const out = toks.map((x) => {
+  const out = raw.split(" ").map((x) => {
     const k = norm(x);
-    if (!k || k.includes(" ") || isNum(k) || /\d/.test(x)) return x;
-    const known = v!.get(k);
-    if (known) return known.w;
-    if (ALIAS_SPELL[k]) return ALIAS_SPELL[k]!;
-    // preklep len pri jednom slove (pri viacerých by mohol zmeniť správne slovo, ktoré appka nepozná)
-    if (toks.length === 1 && k.length >= 4 && !BROAD.has(k) && !SYN[k]) {
-      let best: { w: string; d: number; n: number } | null = null;
-      for (const [key, val] of v!) {
-        if (Math.abs(key.length - k.length) > 2 || key.length < 4) continue;
-        const d = editDist(k, key);
-        if (d > 0 && d <= (k.length > 6 ? 2 : 1) && (!best || d < best.d || (d === best.d && (val.w.length < best.w.length || (val.w.length === best.w.length && val.n > best.n)))))
-          best = { w: val.w, d, n: val.n };
-      }
-      if (best) {
-        typo = true;
-        return best.w;
-      }
-    }
-    return x;
+    if (!k || k.includes(" ") || /\d/.test(x)) return x;
+    // len ak sa slovo líši iba diakritikou alebo veľkosťou písmen
+    const known = v!.get(k)?.w ?? ALIAS_SPELL[k];
+    return known && norm(known) === k ? known : x;
   });
-  return { text: cap(out.join(" ")), typo };
+  return { text: cap(out.join(" ")), typo: false };
 }
 
 export function editDist(a: string, b: string): number {

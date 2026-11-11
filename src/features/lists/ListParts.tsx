@@ -324,6 +324,8 @@ export function Composer({
     if (!p || p.done) return;
     setPk(key, { ...p, done: true });
     haptic([8, 40, 14]);
+    // pole sa vymaže hneď po pridaní – dá sa písať ďalší produkt (bublina z „Často kupuješ“ text nemení)
+    if (!key.startsWith("s:")) setTxt("");
     void onAdd({ name: p.name, quantity: p.q, unit: p.u, categoryId: p.cat });
     logAdded({ name: p.name, cat: p.cat, q: p.q, u: p.u });
     onAdded?.();
@@ -331,10 +333,7 @@ export function Composer({
       setPk(key, null);
       // posledná rozklikaná bublina → položka je v zozname; okno aj klávesnica ostávajú otvorené na mieste,
       // pole sa len vyprázdni na ďalšiu položku (pokyn majiteľa 11. 11.). Zavrie sa až cez Hotovo.
-      if (!Object.keys(pk.current).length) {
-        setTxt("");
-        if (document.activeElement !== inp.current) inp.current?.focus({ preventScroll: true });
-      }
+      if (!Object.keys(pk.current).length && document.activeElement !== inp.current) inp.current?.focus({ preventScroll: true });
     }, 700);
   };
   const arm = (key: string) => {
@@ -414,13 +413,17 @@ export function Composer({
 
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
+    // Text priamo z poľa: klávesnica (napr. Gboard) môže mať posledné písmeno ešte len „rozpísané“
+    // a stav by bol o písmeno pozadu („masl“ namiesto „maslo“).
+    const now = inp.current?.value ?? txt;
+    const items = now.trim().length >= 2 ? chunks(now.trim()) : [];
     // „Hotovo“ na klávesnici pri prázdnom poli zavrie okno
-    if (!enter.length) {
-      if (typing && !txt.trim()) inp.current?.blur();
+    if (!items.length) {
+      if (typing && !now.trim()) inp.current?.blur();
       return;
     }
-    const before = txt;
-    for (const x of enter) {
+    const before = now;
+    for (const x of items) {
       const l = label(x.name);
       void onAdd({ name: l.name, quantity: x.quantity, unit: x.unit, categoryId: l.categoryId }).then((o) => o === "FAILED" && setTxt(before));
       logAdded({ name: l.name, cat: l.categoryId, q: x.quantity, u: x.unit });
@@ -506,7 +509,7 @@ export function Composer({
           icon: head ? <E k={estimator.emoji(oneFix.text, head.category)} s={30} /> : <I n="plus" w="bold" />,
           sub: (
             <>
-              {fmtQty(one.quantity, one.unit)} · {oneFix.typo ? t("li.typoFixed", { w: one.name }) : (whatOf(head) ?? t("li.newItem"))}
+              {fmtQty(one.quantity, one.unit)} · {whatOf(head) ?? t("li.newItem")}
             </>
           ),
           priced: !!head,
