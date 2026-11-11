@@ -329,9 +329,16 @@ export function Composer({
     onAdded?.();
     ptm.current[key] = setTimeout(() => {
       setPk(key, null);
-      // posledná rozklikaná bublina návrhu → pole sa vyprázdni na ďalšiu položku (klávesnica ostáva)
-      if (!key.startsWith("s:") && !Object.keys(pk.current).some((x) => !x.startsWith("s:"))) setTxt("");
+      // posledná rozklikaná bublina → položka je v zozname, okno sa zavrie (pokyn majiteľa 11. 11.)
+      if (!Object.keys(pk.current).length) {
+        setTxt("");
+        closeWin();
+      }
     }, 700);
+  };
+  const closeWin = () => {
+    inp.current?.blur();
+    onTyping(false);
   };
   const arm = (key: string) => {
     clearTimeout(ptm.current[key]);
@@ -426,7 +433,8 @@ export function Composer({
     onAdded?.();
   };
 
-  const keep = (e: React.PointerEvent) => e.preventDefault();
+  // Ťuk na bublinu nesmie zobrať poľu fokus (inak iPhone zavrie klávesnicu): zabrániť pointerdown aj mousedown.
+  const keep = (e: React.SyntheticEvent) => e.preventDefault();
   const estOf = (name: string, p?: Pick, start?: { q: number | null; u: string | null }) =>
     estimator.est({ name, quantity: p ? p.q : (start?.q ?? null), unit: p ? p.u : (start?.u ?? null) }, listStore);
   const showSugg = typing && txt.trim().length >= 2;
@@ -438,7 +446,7 @@ export function Composer({
     const go = () => tap(o.key, o.name, o.cat, o.start);
     return (
       <div key={o.key} className={`sgr pk${o.ent ? " ent" : ""}${p ? " on" : ""}${p?.done ? " done" : ""}`}>
-        <button type="button" className="sgm" onPointerDown={keep} onClick={go} aria-label={t("li.pickAria", { name: o.name })}>
+        <button type="button" className="sgm" onPointerDown={keep} onMouseDown={keep} onClick={go} aria-label={t("li.pickAria", { name: o.name })}>
           <span className="sgi" key={p?.k ?? 0}>
             {o.icon}
           </span>
@@ -449,11 +457,11 @@ export function Composer({
           {e && !p?.done && <span className="sgp">~{eur(e.v)}</span>}
         </button>
         {p && !p.done && (
-          <button type="button" className="pk-minus" onPointerDown={keep} onClick={() => less(o.key)} aria-label={t("li.less")}>
+          <button type="button" className="pk-minus" onPointerDown={keep} onMouseDown={keep} onClick={() => less(o.key)} aria-label={t("li.less")}>
             <I n={p.q <= minQty(unitOf(p.u)) ? "x" : "minus"} w="bold" />
           </button>
         )}
-        <button type="button" className="pk-c" onPointerDown={keep} onClick={go} aria-label={p ? t("li.more") : t("li.pickAria", { name: o.name })}>
+        <button type="button" className="pk-c" onPointerDown={keep} onMouseDown={keep} onClick={go} aria-label={p ? t("li.more") : t("li.pickAria", { name: o.name })}>
           {p && !p.done && (
             <svg viewBox="0 0 44 44" className="pk-ring" key={`r${p.k}`} aria-hidden="true">
               <circle cx="22" cy="22" r="19" />
@@ -481,7 +489,7 @@ export function Composer({
   const suggestions = (
     <div className={`sgl${glass ? " glass2" : ""}`} role="listbox" aria-label={t("li.suggestions")}>
       {enter.length > 1 && (
-        <button type="button" className="sgr ent" onPointerDown={keep} onClick={() => submit()}>
+        <button type="button" className="sgr ent" onPointerDown={keep} onMouseDown={keep} onClick={() => submit()}>
           <span className="sgi nwi">
             <I n="plus" w="bold" />
           </span>
@@ -620,7 +628,8 @@ export function Composer({
           onFocus={() => onTyping(true)}
           onBlur={() =>
             setTimeout(() => {
-              if (document.activeElement !== inp.current) onTyping(false);
+              // kým bublina odpočítava, okno ostáva otvorené – zavrie sa samo po pridaní
+              if (document.activeElement !== inp.current && !Object.keys(pk.current).length) onTyping(false);
             }, 150)
           }
           placeholder={requestMode ? t("ls.placeholderRequest") : t("li.placeholder")}
@@ -631,11 +640,11 @@ export function Composer({
           aria-label={t("li.addAria")}
         />
         {txt ? (
-          <button type="submit" className="m" aria-label={t("li.add")} onPointerDown={keep}>
+          <button type="submit" className="m" aria-label={t("li.add")} onPointerDown={keep} onMouseDown={keep}>
             <I n="arrow-up" w="bold" />
           </button>
         ) : (
-          <button type="button" className="m" onPointerDown={typing ? keep : undefined} onClick={onVoice} aria-label={t("li.voice")}>
+          <button type="button" className="m" onPointerDown={typing ? keep : undefined} onMouseDown={typing ? keep : undefined} onClick={onVoice} aria-label={t("li.voice")}>
             <I n="microphone" />
           </button>
         )}

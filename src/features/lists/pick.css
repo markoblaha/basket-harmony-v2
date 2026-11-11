@@ -162,3 +162,7 @@
 
 /* Hláška „+3 ks · Vrátiť“ počas okna pridávania pod hlavičkou okna – neprekryje „Hotovo“. */
 body.kb-typing .addpill { top: calc(env(safe-area-inset-top, 0px) + 66px) !important; }
+
+/* Pod oknom (pri pásiku ˄ ˅ ✓ a klávesnici iPhonu) neprešvitá zoznam: pozadie okna siaha pod jeho spodok. */
+.bhm .dock.addwin::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 160px; background: var(--bg); pointer-events: none; }
+.g .bhm .dock.addwin::after { background: color-mix(in srgb, var(--bg) 80%, transparent); -webkit-backdrop-filter: blur(34px) saturate(1.6); backdrop-filter: blur(34px) saturate(1.6); }

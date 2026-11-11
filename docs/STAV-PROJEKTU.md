@@ -500,6 +500,11 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     kým nič nepribudlo) a Často kupuješ ako rovnaké bubliny, dole pole. Bublina: ťuk = +1, krúžok okolo čísla odpočíta
     1,8 s, potom zelené ✓ a položka je v „Pridané teraz“; − uberie. „Hotovo“ na klávesnici pri prázdnom poli okno zavrie.
     Overené Playwrightom (pole na rovnakom mieste vo všetkých stavoch, fokus ostáva), test toku nákupu prešiel.
+    Oprava po skúške na iPhone (11. 11.): ťuk na bublinu zobral poľu fokus (iPhone berie fokus pri mousedown, nielen
+    pointerdown) → klávesnica zmizla, okno sa zavrelo a naklikané sa pridalo hneď. Teraz sa bráni aj mousedown, okno
+    kým bublina odpočítava ostáva otvorené aj bez klávesnice a po pridaní z bubliny sa samo zavrie (pokyn majiteľa).
+    Enter okno nezatvára. Pod oknom je jeho pozadie (pri pásiku ˄ ˅ ✓ neprešvitá zoznam). Pásik ˄ ˅ ✓ nad klávesnicou
+    web skryť nevie (rozhodnutie z minulosti platí – len natívna appka).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
