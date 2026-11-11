@@ -466,7 +466,9 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     výrobku/druhu v troch rovnakých stĺpcoch s „/ kg“ pod sumou (`PerUnit`). Oprava prevodu: fotky jedál v dlaždiciach
     (`.th.pic-…` – Plán týždňa, Ochutnávač, panely) prekrýval podklad `.bhm .th` → triedy fotiek majú aj `.bhm .pic-…`
     (`do-appky.py`, `kniha.css`). Overené: `npm run check`, preklikanie 4 vzhľady × 32 obrazoviek, testy ukážky
-    (sprievodca, nápovedy, pridávanie), meranie animácií v prehliadači. Na skutočnom iPhone overí majiteľ.
+    (sprievodca, nápovedy, pridávanie), test toku nákupu, meranie animácií v prehliadači, preklikanie 4 × 9 obrazoviek
+    na nasadenom náhľade https://claude-jolly-lamport-pu5abj-basket-harmony-v2.markoblaha.workers.dev (testovacia DB).
+    Do `design/v2-mobile-redesign` zatiaľ nezlúčené – čaká na „OK“ majiteľa. Na skutočnom iPhone overí majiteľ.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
