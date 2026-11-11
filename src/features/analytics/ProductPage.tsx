@@ -17,7 +17,7 @@ import { E, I, IB, Back, useScrolled } from "@/mockup/ui";
 import { Sheet } from "@/mockup/Sheet";
 import { Btn, StoreTile, emojiFor, eur, storeKeyOf } from "@/mockup/kit";
 import { PriceChart, cat, storeColors } from "./money";
-import { perUnit, sizeLabel, storeLabel } from "./bits";
+import { PerUnit, perUnit, sizeLabel, storeLabel } from "./bits";
 
 
 /**
@@ -113,11 +113,15 @@ export function ProductPage() {
           <div className={`card kstat${g ? " glass2" : ""}`}>
             <div>
               <div className="k">{t("mn.avg")}</div>
-              <div className="price">{pu(avg) ?? "–"}</div>
+              <div className="price">
+                <PerUnit price={avg} basis={basis} />
+              </div>
             </div>
             <div>
               <div className="k">{t("mn.last")}</div>
-              <div className="price">{last ? pu(unitOf(last)) : "–"}</div>
+              <div className="price">
+                <PerUnit price={last ? unitOf(last) : null} basis={basis} />
+              </div>
               {last && (
                 <div className="meta sm">
                   {last.store} · {short(last.date)}

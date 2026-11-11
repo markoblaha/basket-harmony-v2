@@ -1,0 +1,271 @@
+/* =====================================================================================================
+ * Finálny vzhľad (11. 11. 2026) – aby appka pôsobila ako hotový produkt, nie ako ukážka.
+ * Farby oboch tém ostávajú (Teplá kuchyňa, Fotky a sklo; svetlý aj tmavý). Pribudla hĺbka, materiál a pohyb:
+ *  – povrchy: vrstvený mäkký tieň (blízky + ďaleký), svetlá hrana zhora, jemný odlesk; sklo s diagonálnym
+ *    odleskom a svetlom aj na spodnej hrane (ako hrubé sklo);
+ *  – tlačidlá: hlavné s prechodom, odleskom a farebným tieňom, tónové s hranou; pružné stlačenie a návrat;
+ *  – ikony v dlaždiciach: farebné „kamienky“ s prechodom a vnútorným svetlom, 3D emoji s mäkkým tieňom;
+ *  – spodná lišta: aktívna záložka s podkladom, ktorý naskočí, mikrofón ako hlavné tlačidlo appky;
+ *  – texty: dlhé názvy na dva riadky namiesto „Tok náku…“, nič nepreteká cez dlaždice ani tlačidlá;
+ *  – pohyb: obsah obrazovky nastúpi postupne, prepínač má posuvného jazdca, odznaky a dlaždice pružia.
+ * Prenáša sa do appky skriptom do-appky.py (ako ostatné súbory prototyp/css). Pri „obmedziť pohyb“ bez animácií.
+ * ===================================================================================================== */
+
+/* ---------- tokeny: tiene a svetlo pre každú tému ---------- */
+.w { --f-ink: 84 62 30;
+  --sh: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px rgb(var(--f-ink) / .06), 0 1px 2px rgb(var(--f-ink) / .05), 0 6px 14px -8px rgb(var(--f-ink) / .12), 0 22px 40px -24px rgb(var(--f-ink) / .34);
+  --sh-hi: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px rgb(var(--f-ink) / .07), 0 2px 4px rgb(var(--f-ink) / .06), 0 10px 22px -10px rgb(var(--f-ink) / .18), 0 30px 54px -28px rgb(var(--f-ink) / .4);
+  --ish: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px rgb(var(--f-ink) / .07), 0 2px 6px -2px rgb(var(--f-ink) / .12), 0 10px 20px -12px rgb(var(--f-ink) / .3);
+  --f-sheen: linear-gradient(180deg, rgb(255 255 255 / .7), rgb(255 255 255 / 0) 58%);
+  --f-chip-hi: inset 0 1px 0 rgb(255 255 255 / .75);
+  --f-pri: linear-gradient(180deg, #3b8160 0%, #2f6b4f 52%, #285c44 100%);
+  --f-pri-sh: inset 0 1px 0 rgb(255 255 255 / .24), inset 0 -1px 0 rgb(0 0 0 / .16), 0 1px 2px rgb(20 50 35 / .2), 0 10px 22px -10px rgb(36 92 64 / .62);
+  --f-soft: linear-gradient(180deg, #f7f2ea, #eee7da);
+  --f-soft-sh: inset 0 1px 0 rgb(255 255 255 / .85), inset 0 0 0 1px rgb(var(--f-ink) / .07), 0 1px 2px rgb(var(--f-ink) / .06);
+  --f-glow-a: rgb(244 205 168 / .5); --f-glow-b: rgb(204 224 194 / .75); }
+.w.t-d { --f-ink: 0 0 0;
+  --sh: inset 0 1px 0 rgb(255 255 255 / .055), 0 0 0 1px rgb(255 255 255 / .05), 0 2px 4px rgb(0 0 0 / .3), 0 18px 36px -18px rgb(0 0 0 / .85);
+  --sh-hi: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .07), 0 4px 10px rgb(0 0 0 / .35), 0 26px 48px -22px rgb(0 0 0 / .9);
+  --ish: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .06), 0 8px 18px -10px rgb(0 0 0 / .8);
+  --f-sheen: linear-gradient(180deg, rgb(255 255 255 / .035), rgb(255 255 255 / 0) 55%);
+  --f-chip-hi: inset 0 1px 0 rgb(255 255 255 / .08);
+  --f-pri: linear-gradient(180deg, #a6e2bb 0%, #8fd4a7 55%, #7cc495 100%);
+  --f-pri-sh: inset 0 1px 0 rgb(255 255 255 / .5), inset 0 -1px 0 rgb(0 0 0 / .12), 0 1px 2px rgb(0 0 0 / .4), 0 10px 24px -10px rgb(143 212 167 / .38);
+  --f-soft: linear-gradient(180deg, #30352b, #282c24);
+  --f-soft-sh: inset 0 1px 0 rgb(255 255 255 / .07), inset 0 0 0 1px rgb(255 255 255 / .05), 0 1px 2px rgb(0 0 0 / .3);
+  --f-glow-a: rgb(232 179 102 / .07); --f-glow-b: rgb(143 212 167 / .09); }
+.g { --shade: 0 1px 2px rgb(40 25 10 / .05), 0 8px 18px -10px rgb(40 25 10 / .14), 0 24px 44px -24px rgb(40 25 10 / .42);
+  --mat-spec: linear-gradient(162deg, rgb(255 255 255 / .62) 0%, rgb(255 255 255 / .16) 34%, rgb(255 255 255 / 0) 58%, rgb(255 255 255 / .1) 100%);
+  --mat-edge: inset 0 0 0 .5px rgb(255 255 255 / .8), inset 0 1px 0 rgb(255 255 255 / 1), inset 0 -1px 0 rgb(255 255 255 / .35);
+  --sh-hi: var(--mat-edge), 0 2px 4px rgb(40 25 10 / .06), 0 14px 28px -12px rgb(40 25 10 / .2), 0 34px 60px -30px rgb(40 25 10 / .5);
+  --f-sheen: var(--mat-spec);
+  --f-chip-hi: inset 0 1px 0 rgb(255 255 255 / .8);
+  --f-pri: linear-gradient(180deg, #e46a2c 0%, #cc5317 50%, #b8460f 100%);
+  --f-pri-sh: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 -1px 0 rgb(0 0 0 / .14), 0 1px 2px rgb(120 40 5 / .2), 0 12px 24px -10px rgb(191 68 13 / .62); }
+.g.t-d { --shade: 0 2px 4px rgb(0 0 0 / .3), 0 18px 38px -16px rgb(0 0 0 / .9);
+  --mat-spec: linear-gradient(162deg, rgb(255 255 255 / .14) 0%, rgb(255 255 255 / .04) 34%, rgb(255 255 255 / 0) 58%, rgb(255 255 255 / .03) 100%);
+  --mat-edge: inset 0 0 0 .5px rgb(255 255 255 / .14), inset 0 1px 0 rgb(255 255 255 / .22), inset 0 -1px 0 rgb(255 255 255 / .05);
+  --sh-hi: var(--mat-edge), 0 4px 10px rgb(0 0 0 / .35), 0 28px 50px -22px rgb(0 0 0 / .95);
+  --f-chip-hi: inset 0 1px 0 rgb(255 255 255 / .12);
+  --f-pri-sh: inset 0 1px 0 rgb(255 255 255 / .28), inset 0 -1px 0 rgb(0 0 0 / .2), 0 12px 26px -10px rgb(220 90 28 / .5); }
+.g .card, .g .lst, .g .glass2, .g .qab, .g .acts2 > button, .g .pager > button, .g .chip:not(.on), .g .search, .g .field { box-shadow: var(--mat-edge), var(--shade); }
+
+/* ---------- pozadie: teplé svetlo v rohoch (Teplá kuchyňa; v appke na body – adapt.css) ---------- */
+.w .sc { background:
+  linear-gradient(180deg, var(--tint) 0, var(--tint) var(--sat), transparent calc(var(--sat) + 90px)) local,
+  radial-gradient(130% 380px at 100% 40px, var(--f-glow-a), transparent 70%) local,
+  radial-gradient(110% 340px at 0 0, var(--f-glow-b), transparent 70%) local,
+  linear-gradient(180deg, var(--tint) 0, color-mix(in srgb, var(--tint) 40%, var(--bg)) 160px, var(--bg) 320px) local; }
+
+/* ---------- povrchy: karty a zoznamy ---------- */
+/* Jemný odlesk zhora (na bielej karte nevidno, na farebnej je to lesk); karty s fotkou ho nedostanú. */
+.w .card:not([class*="pic-"]), .w .lst { background-image: var(--f-sheen); }
+.card, .lst { transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-3) var(--ease-out); }
+/* hlavné karty (súhrny, odhad, peniaze) o úroveň vyššie */
+.est.card, .sum.card, .hsum.card, .kstat.card, /* hlavné súhrny (odhad nákupu, spolu z bločku) s jemným nádychom akcentovej farby – kľúčové číslo vynikne */
+.w .est.card, .w .hsum.card { background-image: linear-gradient(155deg, color-mix(in srgb, var(--acc) 9%, transparent), transparent 62%), var(--f-sheen); }
+.w.t-d .est.card, .w.t-d .hsum.card { background-image: linear-gradient(155deg, color-mix(in srgb, var(--acc) 10%, transparent), transparent 62%), var(--f-sheen); }
+.g .est.card, .g .hsum.card { background-image: linear-gradient(155deg, color-mix(in srgb, var(--acc) 9%, transparent), transparent 60%), var(--mat-spec); }
+.mrc.card { box-shadow: var(--sh-hi); }
+.mrc.card { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--honey) 50%, transparent), var(--sh-hi) !important; }
+.hrow.warn { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--honey) 50%, transparent), var(--sh-hi) !important;
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--honey) 7%, transparent), transparent 70%); }
+
+/* ---------- ikonové dlaždice: farebné kamienky s vnútorným svetlom ---------- */
+.th.ic, .qab .qi, .hqab .qi, .w .hqab .qi, .g .hqab .qi, .row .th.ic {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 20%, var(--card)), color-mix(in srgb, var(--acc) 9%, var(--card)));
+  box-shadow: var(--f-chip-hi), inset 0 0 0 1px color-mix(in srgb, var(--acc) 14%, transparent); color: var(--acc); }
+.g .th.ic, .g .row .th.ic, .g .qab .qi, .g .hqab .qi {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 22%, rgb(255 255 255 / .7)), color-mix(in srgb, var(--acc) 10%, rgb(255 255 255 / .35))); }
+.g.t-d .th.ic, .g.t-d .row .th.ic, .g.t-d .qab .qi, .g.t-d .hqab .qi {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 30%, rgb(255 255 255 / .06)), color-mix(in srgb, var(--acc) 12%, rgb(255 255 255 / .02))); }
+.hrow.warn .th.ic, .mrc-i { background: linear-gradient(150deg, color-mix(in srgb, var(--honey) 24%, var(--card)), color-mix(in srgb, var(--honey) 10%, var(--card)));
+  box-shadow: var(--f-chip-hi), inset 0 0 0 1px color-mix(in srgb, var(--honey) 20%, transparent); color: var(--honey); }
+.th.ic.dng { background: linear-gradient(150deg, color-mix(in srgb, var(--danger) 18%, var(--card)), color-mix(in srgb, var(--danger) 8%, var(--card))); color: var(--danger);
+  box-shadow: var(--f-chip-hi), inset 0 0 0 1px color-mix(in srgb, var(--danger) 14%, transparent); }
+/* dlaždice s 3D emoji (produkty, kategórie): tanierik so svetlom zhora, emoji s mäkkým tieňom */
+.th:has(> .em), .tile:has(> .em) {
+  background-image: radial-gradient(120% 90% at 50% 18%, rgb(255 255 255 / .75), rgb(255 255 255 / 0) 62%);
+  box-shadow: var(--f-chip-hi), inset 0 0 0 1px rgb(var(--f-ink, 0 0 0) / .05); }
+.t-d .th:has(> .em), .t-d .tile:has(> .em) { background-image: radial-gradient(120% 90% at 50% 18%, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 62%); box-shadow: var(--f-chip-hi), inset 0 0 0 1px rgb(255 255 255 / .05); }
+.th > .em, .tile > .em, .chip > .em, .hrow .th .em { filter: drop-shadow(0 3px 3px rgb(60 35 10 / .2)); }
+.t-d .th > .em, .t-d .tile > .em, .t-d .chip > .em { filter: drop-shadow(0 3px 4px rgb(0 0 0 / .45)); }
+/* dlaždica obchodu: lesk zhora a tenká svetlá hrana */
+.stile { position: relative; overflow: hidden; text-shadow: 0 1px 1px rgb(0 0 0 / .18);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .32), inset 0 0 0 1px rgb(255 255 255 / .1), 0 1px 2px rgb(0 0 0 / .14), 0 6px 12px -6px rgb(0 0 0 / .45); }
+.stile::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, rgb(255 255 255 / .24), rgb(255 255 255 / 0) 46%, rgb(0 0 0 / .1)); }
+
+/* ---------- tlačidlá ---------- */
+.btn { transition: transform 460ms var(--ease-spring), box-shadow var(--dur-3), filter var(--dur-2), opacity var(--dur-2), background-color var(--dur-2), color var(--dur-2); }
+.btn:active:not(:disabled) { transform: scale(.955); filter: brightness(.95) saturate(1.05); transition-duration: 90ms; }
+.btn.pri, .w .btn.pri, .g .btn.pri { background: var(--f-pri); box-shadow: var(--f-pri-sh); text-shadow: 0 1px 1px rgb(0 0 0 / .12); }
+.w.t-d .btn.pri { text-shadow: none; }
+.btn.pri:active:not(:disabled) { box-shadow: inset 0 1px 0 rgb(255 255 255 / .18), inset 0 2px 6px rgb(0 0 0 / .18), 0 4px 10px -6px rgb(0 0 0 / .4); }
+.w .btn.soft { background: var(--f-soft); box-shadow: var(--f-soft-sh); }
+.w .btn.danger.soft { background: var(--dangers); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 16%, transparent); }
+.btn.ok { background: linear-gradient(180deg, color-mix(in srgb, var(--ok) 88%, #fff), var(--ok)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .25), 0 10px 20px -10px color-mix(in srgb, var(--ok) 70%, transparent); }
+.btn:disabled { filter: saturate(.6); }
+/* tónové akcie v riadkoch (košík na karte, ▶ Variť): hrana a pružné stlačenie */
+.lgo, .hplay { box-shadow: var(--f-chip-hi), inset 0 0 0 1px color-mix(in srgb, var(--acc) 16%, transparent);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / .35), rgb(255 255 255 / 0) 60%); transition: transform 460ms var(--ease-spring), filter var(--dur-2); }
+.t-d .lgo, .t-d .hplay { background-image: linear-gradient(180deg, rgb(255 255 255 / .06), rgb(255 255 255 / 0) 60%); }
+.lgo:active, .hplay:active { transform: scale(.9); transition-duration: 90ms; }
+/* okrúhle tlačidlá v hlavičke */
+.ib { transition: transform 460ms var(--ease-spring), box-shadow var(--dur-3); }
+.ib:active { transform: scale(.88); transition-duration: 90ms; }
+.chip.on, .w .chips.filt .chip.on { background: var(--f-pri); color: var(--onpri); box-shadow: var(--f-pri-sh); }
+.g .chip.on { background: var(--fg); color: var(--bg); box-shadow: 0 8px 18px -10px rgb(0 0 0 / .5); }
+
+/* ---------- karty a riadky: odozva na dotyk ---------- */
+.tapc, .hqab, .ctile, .rcard, .tentry, .lcard { transition: transform 460ms var(--ease-spring), box-shadow var(--dur-3) var(--ease-out); }
+.tapc:active, .hqab:active, .ctile:active, .tentry:active { transform: scale(.972); transition-duration: 110ms; }
+/* riadok v zozname sa nezmenšuje (vyzerá to ako odtrhnutý), len sa rozsvieti podklad – ako v iOS */
+.lst > .row.tap:active, .lst > button.row:active { transform: none; background-color: color-mix(in srgb, var(--fg) 6%, transparent); transition-duration: 60ms; }
+@media (hover: hover) and (pointer: fine) {
+  .tapc:hover, .hqab:hover, .ctile:hover, .tentry:hover { transform: translateY(-2px); box-shadow: var(--sh-hi); }
+  .lst > .row.tap:hover, .lst > button.row:hover { background-color: color-mix(in srgb, var(--fg) 3.5%, transparent); }
+  .btn.pri:hover:not(:disabled) { filter: brightness(1.05); }
+}
+
+/* ---------- Domov: rýchle akcie, sekcie ---------- */
+.hqab { box-shadow: var(--sh); background-image: var(--f-sheen); gap: 8px; }
+.hqab .qi { width: 42px; height: 42px; border-radius: 14px; }
+.hqab .qi .ico { width: 22px; height: 22px; }
+.hsec-h h2 { display: flex; align-items: center; gap: 8px; }
+.hsec-h h2::before { content: ""; width: 6px; height: 6px; border-radius: 99px; background: var(--acc); opacity: .7; flex: none; }
+.hplay { width: 46px; height: 46px; }
+
+/* ---------- Nákupy: karta zoznamu ---------- */
+.card.lcard { padding: 14px 14px 14px 16px; }
+.lcard .lgo { width: 46px; height: 46px; border-radius: 16px; }
+.lcard .ra .price { font-variant-numeric: tabular-nums; }
+
+/* ---------- Recepty: kategórie, Ochutnávač ---------- */
+.ctile { box-shadow: var(--sh); isolation: isolate; }
+/* (::after už nesie tmavý prechod pod textom – svetlá hrana je preto na ::before) */
+.ctile::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), inset 0 0 0 1px rgb(255 255 255 / .12); }
+.ctile[class*="pic-"]::after { background: linear-gradient(180deg, rgb(0 0 0 / 0) 28%, rgb(0 0 0 / .18) 50%, rgb(0 0 0 / .72)); }
+.ctile[class*="pic-"] b { text-shadow: 0 1px 2px rgb(0 0 0 / .35), 0 2px 12px rgb(0 0 0 / .3); }
+.ctile[class*="pic-"] small { opacity: .88; text-shadow: 0 1px 2px rgb(0 0 0 / .4); }
+.tentry { box-shadow: var(--sh-hi); }
+.tentry .te-go { box-shadow: 0 8px 18px -8px rgb(0 0 0 / .6), inset 0 -1px 0 rgb(0 0 0 / .08); transition: transform 460ms var(--ease-spring); }
+.tentry:active .te-go { transform: scale(.9); }
+
+/* ---------- prepínač (Seg): posuvný jazdec namiesto preblikovania ---------- */
+.seg { position: relative; isolation: isolate; }
+.seg:has(> button.on)::before { content: ""; position: absolute; z-index: -1; top: 3px; bottom: 3px;
+  width: calc((100% - 6px) / var(--sn, 3)); left: calc(3px + (100% - 6px) / var(--sn, 3) * var(--si, 0));
+  border-radius: 99px; background: var(--mat-spec), var(--segon); box-shadow: var(--mat-edge), 0 1px 2px rgb(0 0 0 / .08), 0 4px 12px -4px rgb(0 0 0 / .22);
+  transition: left 460ms var(--ease-spring); }
+.seg:has(> button.on) > button.on { background: none; box-shadow: none; }
+.seg > button { transition: color var(--dur-3); }
+.seg:has(> :nth-child(2):last-child) { --sn: 2; }
+.seg:has(> :nth-child(3):last-child) { --sn: 3; }
+.seg:has(> :nth-child(4):last-child) { --sn: 4; }
+.seg:has(> :nth-child(5):last-child) { --sn: 5; }
+.seg:has(> button.on:nth-child(2)) { --si: 1; }
+.seg:has(> button.on:nth-child(3)) { --si: 2; }
+.seg:has(> button.on:nth-child(4)) { --si: 3; }
+.seg:has(> button.on:nth-child(5)) { --si: 4; }
+
+/* ---------- spodná lišta ---------- */
+.tabbar { box-shadow: var(--mat-edge), 0 1px 2px rgb(0 0 0 / .05), 0 12px 28px -12px rgb(40 25 10 / .3), 0 30px 50px -30px rgb(40 25 10 / .45) !important; }
+.t-d .tabbar { box-shadow: var(--mat-edge), 0 18px 40px -16px rgb(0 0 0 / .95) !important; }
+.tic { isolation: isolate; }
+.w .tabbar > button .tic::before { content: ""; position: absolute; z-index: -1; inset: -5px -15px; border-radius: 99px;
+  background: color-mix(in srgb, var(--acc) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 10%, transparent);
+  opacity: 0; transform: scale(.55); transition: opacity var(--dur-2), transform 460ms var(--ease-spring); }
+.w .tabbar > button.on .tic::before { opacity: 1; transform: none; }
+.w .tabbar > button.on { color: var(--acc); }
+.g .tabbar > button.on { background: color-mix(in srgb, var(--fg) 7%, transparent); box-shadow: inset 0 1px 0 rgb(255 255 255 / .5), inset 0 0 0 .5px rgb(255 255 255 / .4); }
+.g.t-d .tabbar > button.on { box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), inset 0 0 0 .5px rgb(255 255 255 / .08); }
+.tbadge { background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 85%, #fff), var(--danger)); }
+/* mikrofón: hlavné tlačidlo appky – plná farba s leskom a jemnou žiarou */
+.tmb, .t-d .tmb { background: var(--f-pri); color: var(--onpri);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 -2px 4px rgb(0 0 0 / .14), 0 0 0 4px color-mix(in srgb, var(--acc) 13%, transparent), 0 12px 24px -8px color-mix(in srgb, var(--acc) 60%, transparent);
+  transition: transform 460ms var(--ease-spring), box-shadow var(--dur-3); }
+.g .tmb, .g.t-d .tmb { color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / .32), inset 0 -2px 4px rgb(0 0 0 / .16), 0 0 0 4px rgb(220 90 28 / .14), 0 12px 24px -8px rgb(191 68 13 / .6); }
+.tmb .ico { filter: drop-shadow(0 1px 1px rgb(0 0 0 / .18)); }
+.tmic:active .tmb { transform: scale(.88); transition-duration: 90ms; }
+.tmic.on .tmb, .t-d .tmic.on .tmb, .g .tmic.on .tmb { background: var(--acc); color: var(--onacc, #fff); }
+
+/* ---------- prázdne stavy: emoji sa vznáša nad mäkkým kruhom ---------- */
+.empty { position: relative; isolation: isolate; padding-top: 30px; }
+.empty::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 14px; width: 120px; height: 120px; margin-left: -60px; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--acc) 14%, transparent), color-mix(in srgb, var(--acc) 5%, transparent) 70%, transparent); }
+.empty > .em { filter: drop-shadow(0 12px 12px rgb(60 35 10 / .22)); }
+.empty b { font-size: 19px; letter-spacing: -.35px; }
+.w .empty b { font-family: var(--serif); font-weight: 560; font-variation-settings: "opsz" 36; }
+
+/* ---------- texty: nič nepreteká, dlhé názvy na dva riadky ---------- */
+.tx > b, .hrow .grow b, .mrc-r .grow b, .lcard .tw > span:first-child {
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; line-height: 1.22; }
+.lt, .h2, .ttl, .empty b { text-wrap: balance; }
+.meta, .sub, .empty p, .hint, .tip span { text-wrap: pretty; }
+.price, .sub, .stat, .amt { font-variant-numeric: tabular-nums; }
+/* odškrtnutie v nákupe: čiara cez názov je pozadie textu, takže prečiarkne aj dvojriadkový názov (riadok po riadku) */
+.row.ck .stk::after { display: none; }
+.row.ck .stk { background: linear-gradient(currentColor, currentColor) no-repeat 0 56% / 0 2px; animation: f-strike var(--dur-3) .18s var(--ease-out) forwards; }
+@keyframes f-strike { to { background-size: 100% 2px; } }
+/* štítky stavu (chýba bloček…) sa nezalomia a nestlačia názov */
+.stat { flex: none; }
+.tx .stat { align-self: flex-start; margin-top: 3px; padding: 3px 9px; font-size: 12.5px; }
+/* chýbajúce bločky vo Výdavkoch: názov má miesto, tlačidlá sú kompaktné */
+.mrc-r { gap: 10px; }
+.mrc-r .ib.sm { width: 36px; height: 36px; }
+.mrc-r .ib.mrc-cam { width: 44px; height: 44px; background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 20%, var(--card)), color-mix(in srgb, var(--acc) 9%, var(--card))); color: var(--acc);
+  box-shadow: var(--f-chip-hi), inset 0 0 0 1px color-mix(in srgb, var(--acc) 16%, transparent); }
+.g .mrc-r .ib.mrc-cam { background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 22%, rgb(255 255 255 / .7)), color-mix(in srgb, var(--acc) 10%, rgb(255 255 255 / .35))); }
+.g.t-d .mrc-r .ib.mrc-cam { background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 30%, rgb(255 255 255 / .06)), color-mix(in srgb, var(--acc) 12%, rgb(255 255 255 / .02))); }
+/* štatistiky výrobku a druhu: tri rovnaké stĺpce, číslo sa zmenší a jednotka môže ísť pod neho */
+.card.kstat { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.kstat > div { min-width: 0; }
+.kstat > div + div { padding-left: 10px; border-left: 1px solid var(--line); }
+.kstat .price, .w .kstat .price, .g .kstat .price { font-size: 19px; line-height: 1.1; white-space: normal; overflow-wrap: break-word; letter-spacing: -.4px; }
+.kstat .meta.sm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kstat .price .pu { display: block; margin-top: 3px; font-family: var(--font); font-size: 13px; font-weight: 650; letter-spacing: 0; color: var(--sec); }
+
+/* ---------- postupný nástup obsahu obrazovky ---------- */
+/* Len karty a bloky bez pevných prvkov vnútri (posun by inak pevné prvky odtrhol). Výplň „backwards“ – po
+ * dobehnutí na prvku nič neostane, ťahanie riadkov funguje ako predtým. :where() = najnižšia priorita, takže
+ * existujúce zvýraznenia (nový zoznam z receptu, rozsvietený riadok, odškrtnutie) majú vždy prednosť.
+ * Oneskorenie je v premennej, aby neprepísalo oneskorenie iných animácií. */
+@media (prefers-reduced-motion: no-preference) {
+  .body > :where(.card, .lst, .hsec, .seg, .search, .tentry, .cgrid, .hqa, .rrow, .h2, .empty, .tip, .chips) {
+    animation: f-rise 520ms var(--ease-out) var(--fd, 0ms) backwards; }
+  .body > :nth-child(2) { --fd: 30ms; } .body > :nth-child(3) { --fd: 60ms; } .body > :nth-child(4) { --fd: 90ms; }
+  .body > :nth-child(5) { --fd: 120ms; } .body > :nth-child(6) { --fd: 150ms; } .body > :nth-child(7) { --fd: 180ms; }
+  .body > :nth-child(8) { --fd: 210ms; } .body > :nth-child(n+9) { --fd: 240ms; }
+  /* karty zoznamov v Nákupoch */
+  :where(.lcard) { animation: f-rise 520ms var(--ease-out) var(--ld, 0ms) backwards; }
+  .lcard:nth-of-type(2) { --ld: 40ms; } .lcard:nth-of-type(3) { --ld: 80ms; } .lcard:nth-of-type(4) { --ld: 120ms; }
+  .lcard:nth-of-type(5) { --ld: 160ms; } .lcard:nth-of-type(n+6) { --ld: 200ms; }
+  /* riadky zoznamu naskočia jeden po druhom (prvých 12) */
+  .lst > :where(.row:nth-child(-n+12)) { animation: f-row 440ms var(--ease-out) var(--rd, 0ms) backwards; }
+  .lst > .row:nth-child(2) { --rd: 25ms; } .lst > .row:nth-child(3) { --rd: 50ms; } .lst > .row:nth-child(4) { --rd: 75ms; }
+  .lst > .row:nth-child(5) { --rd: 100ms; } .lst > .row:nth-child(6) { --rd: 125ms; } .lst > .row:nth-child(n+7) { --rd: 150ms; }
+  /* dlaždice Rýchlo a kategórie receptov s pružinou */
+  .hqa > :where(.hqab), .cgrid > :where(.ctile) { animation: f-pop-in 560ms var(--ease-spring) var(--qd, 0ms) backwards; }
+  .hqa > :nth-child(2), .cgrid > :nth-child(2) { --qd: 60ms; } .hqa > :nth-child(3), .cgrid > :nth-child(3) { --qd: 120ms; }
+  .cgrid > :nth-child(4) { --qd: 160ms; } .cgrid > :nth-child(n+5) { --qd: 200ms; }
+  /* vznášajúce sa prvky (len posun – nič sa neprekresľuje) */
+  .empty > .em { animation: f-float 5.5s ease-in-out infinite; }
+  .tentry .te-ph i:nth-child(1) { animation: f-fan1 5s ease-in-out infinite; }
+  .tentry .te-ph i:nth-child(3) { animation: f-fan3 5s ease-in-out infinite; }
+  .tentry .te-ph i:nth-child(2) { animation: f-float 5s ease-in-out infinite; }
+  .tabbar > button.on .tic > .ico { animation: f-tabpop 520ms var(--ease-spring); }
+  .tbadge { animation: f-pop 520ms var(--ease-spring); }
+}
+@keyframes f-rise { from { opacity: 0; transform: translateY(12px) scale(.985); } }
+@keyframes f-row { from { opacity: 0; transform: translateY(6px); } }
+@keyframes f-pop-in { from { opacity: 0; transform: translateY(8px) scale(.92); } }
+@keyframes f-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes f-tabpop { 0% { transform: scale(.82) translateY(2px); } 55% { transform: scale(1.12) translateY(-2px); } 100% { transform: none; } }
+@keyframes f-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes f-fan1 { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(-13deg) translateX(-3px); } }
+@keyframes f-fan3 { 0%, 100% { transform: rotate(9deg); } 50% { transform: rotate(13deg) translateX(3px); } }
+@media (prefers-reduced-motion: reduce) {
+  .seg:has(> button.on)::before { transition: none; }
+}

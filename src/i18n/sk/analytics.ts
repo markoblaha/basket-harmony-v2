@@ -288,6 +288,7 @@ export const skAnalytics = {
   "mn.missingS": "Odfoť ho a skutočné ceny sa priradia k nákupu samé.",
   "mn.noReceipt": "Bez bločku – nákup ostane len s odhadom",
   "mn.noReceiptAria": "Bloček nemám: {name}",
+  "mn.photoAria": "Odfotiť bloček: {name}",
   "mn.moreInMoney": "a ďalšie vo Výdavkoch",
   "mn.priceChart": "Vývoj ceny",
   "mn.budgetTitle": "Mesačný rozpočet",

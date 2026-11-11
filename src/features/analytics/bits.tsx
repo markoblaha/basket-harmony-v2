@@ -64,6 +64,17 @@ export function qtyLabel(units: number | null, basis: Basis | null): string | nu
 export const perUnit = (price: number | null, basis: Basis | null) =>
   price === null || !basis ? null : `${formatEuro(price)} ${unitLabel(basis)}`;
 
+/** Cena za jednotku v štatistike (tri stĺpce): suma veľkým písmom, „/ kg“ menším pod ňou – nikdy sa nerozlomí uprostred. */
+export function PerUnit({ price, basis }: { price: number | null; basis: Basis | null }) {
+  if (price === null || !basis) return <>–</>;
+  return (
+    <>
+      {formatEuro(price)}
+      <small className="pu">{unitLabel(basis)}</small>
+    </>
+  );
+}
+
 export const percent = (ratio: number) =>
   t("fmt.percent", { value: `${ratio > 0 ? "+" : ratio < 0 ? "−" : ""}${formatNumber(Math.abs(Math.round(ratio * 100)))}` });
 

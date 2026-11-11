@@ -12,7 +12,7 @@ import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, Back, Seg, useScrolled } from "@/mockup/ui";
 import { StoreTile, emojiFor, eur, storeKeyOf } from "@/mockup/kit";
 import { useKindDetail, type KindDetail } from "./api";
-import { perUnit, qtyLabel, sizeLabel } from "./bits";
+import { PerUnit, perUnit, qtyLabel, sizeLabel } from "./bits";
 import { cat, usePer } from "./money";
 import { computePeriod, monthName, shiftMonth, thisMonth } from "./period";
 
@@ -93,7 +93,9 @@ export function KindPage() {
                 </div>
                 <div>
                   <div className="k">{t("mn.avg")}</div>
-                  <div className="price">{pu(d.avg_unit) ?? "–"}</div>
+                  <div className="price">
+                    <PerUnit price={d.avg_unit} basis={B} />
+                  </div>
                 </div>
               </div>
               {d.min_unit && d.max_unit && d.max_unit.price > d.min_unit.price + 0.005 && (

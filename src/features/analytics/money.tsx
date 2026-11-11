@@ -203,15 +203,21 @@ export function MissingReceipts({ compact, g }: { compact?: boolean; g: boolean 
             <div className="grow">
               <b>{l.name}</b>
               <span className="sub">
-                {formatDateTime(l.completed_at!, { day: "numeric", month: "numeric", hour: "numeric", minute: "2-digit" })}
-                {n ? ` · ${tn("li.items", n)}` : ""}
+                {/* nezalomiteľné medzery: „7 položiek“ ani dátum sa nerozdelia na dva riadky */}
+                {formatDateTime(l.completed_at!, { day: "numeric", month: "numeric", hour: "numeric", minute: "2-digit" }).replace(/ /g, "\u00a0")}
+                {n ? ` · ${tn("li.items", n).replace(/ /g, "\u00a0")}` : ""}
               </span>
             </div>
+            {/* Vo Výdavkoch sú pri každom nákupe dve akcie – ako ikony, aby mal názov nákupu miesto (nepretečie). */}
             {!compact && <IB n="x" cls="flat sm" label={t("mn.noReceiptAria", { name: l.name })} onClick={() => drop(l.id)} />}
-            <Btn cls="soft sm" onClick={() => navigate(`/scan?nakup=${l.id}`)}>
-              <I n="camera" />
-              {t("mn.photo")}
-            </Btn>
+            {compact ? (
+              <Btn cls="soft sm" onClick={() => navigate(`/scan?nakup=${l.id}`)}>
+                <I n="camera" />
+                {t("mn.photo")}
+              </Btn>
+            ) : (
+              <IB n="camera" w="fill" cls="flat mrc-cam" label={t("mn.photoAria", { name: l.name })} onClick={() => navigate(`/scan?nakup=${l.id}`)} />
+            )}
           </div>
         );
       })}

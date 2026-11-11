@@ -289,6 +289,7 @@ export const enAnalytics: Record<keyof typeof skAnalytics, string> = {
   "mn.missingS": "Take a photo and the real prices are matched to the trip automatically.",
   "mn.noReceipt": "No receipt – the trip keeps only the estimate",
   "mn.noReceiptAria": "I don't have the receipt: {name}",
+  "mn.photoAria": "Photograph the receipt: {name}",
   "mn.moreInMoney": "and more in Spending",
   "mn.priceChart": "Price over time",
   "mn.budgetTitle": "Monthly budget",

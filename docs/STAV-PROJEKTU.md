@@ -450,6 +450,23 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     majiteľ (appku treba úplne zavrieť a znova otvoriť). Oprava po snímke majiteľa: `#sbar` mal na iPhone
     minimálne 6 px – na iPhone majiteľa je stránka pod lištou (výrez 0), pás prekryl vrch stránky a odsekol
     tlačidlá hlavičky na všetkých obrazovkách. Výška je teraz len výrez displeja; farbu vtedy dáva pozadie body/html.
+    **Finálny vzhľad (11. 11., pokyn majiteľa „aby to nevyzeralo ako demo, ale ako appka na predaj“; vetva
+    `claude/jolly-lamport-pu5abj`):** farby tém ostali, pribudla nová vrstva `prototyp/css/finish.css` (posledná v
+    `do-appky.py` aj `build.py` → appka aj ukážka). Povrchy: vrstvený mäkký tieň (`--sh`, `--sh-hi` pre súhrny),
+    svetlá hrana zhora; Sklo s diagonálnym odleskom a svetlom aj na spodnej hrane. Tlačidlá: hlavné s prechodom,
+    odleskom a farebným tieňom (`--f-pri`), tónové s hranou, pružné stlačenie. Ikonové dlaždice ako farebné kamienky,
+    3D emoji s tieňom, dlaždica obchodu s leskom. Teplá: teplé svetlo v rohoch pozadia (`--f-glow-*`, v appke na body
+    v `adapt.css`, pás pod lištou iPhonu ostáva čistý nádych). Lišta: aktívna záložka s podkladom, mikrofón plnou farbou.
+    Pohyb: obsah obrazovky nastúpi postupne (`f-rise`, len karty/bloky, `:where` = existujúce zvýraznenia majú
+    prednosť, oneskorenie v premennej), riadky zoznamov, dlaždice Rýchlo a kategórie s pružinou, prepínač `.seg` má
+    posuvného jazdca (`:has`), prázdne stavy s vznášajúcim sa emoji; pri „obmedziť pohyb“ nič z toho. Načítavanie =
+    tri bodky vo farbe témy, ukážu sa až po 250 ms (`Spinner`, `.bh-load`). Texty: dlhé názvy na dva riadky (riadky,
+    karty zoznamov, Domov, chýbajúce bločky), bodka „·“ sa drží predchádzajúceho úseku, Výdavky → chýbajúce bločky majú
+    ikonu fotoaparátu namiesto širokého „Odfotiť“ (`mn.photoAria`), História má stav bločku pod názvom, štatistiky
+    výrobku/druhu v troch rovnakých stĺpcoch s „/ kg“ pod sumou (`PerUnit`). Oprava prevodu: fotky jedál v dlaždiciach
+    (`.th.pic-…` – Plán týždňa, Ochutnávač, panely) prekrýval podklad `.bhm .th` → triedy fotiek majú aj `.bhm .pic-…`
+    (`do-appky.py`, `kniha.css`). Overené: `npm run check`, preklikanie 4 vzhľady × 32 obrazoviek, testy ukážky
+    (sprievodca, nápovedy, pridávanie), meranie animácií v prehliadači. Na skutočnom iPhone overí majiteľ.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

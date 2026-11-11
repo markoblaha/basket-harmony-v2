@@ -1,4 +1,4 @@
-/* VYGENEROVANÉ z prototyp/css (shell, base, w, g, polish) skriptom prototyp/do-appky.py – needitovať ručne. */
+/* VYGENEROVANÉ z prototyp/css (shell, base, w, g, polish, finish) skriptom prototyp/do-appky.py – needitovať ručne. */
 .bhm .tpick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .bhm .tp { display: flex; flex-direction: column; gap: 10px; text-align: left; border: 0; background: none; padding: 0; cursor: pointer; color: inherit; font-family: inherit; }
 .bhm .tprev { position: relative; height: 128px; border-radius: 22px; overflow: hidden; display: block; box-shadow: 0 0 0 1.5px rgb(0 0 0 / .06); transition: box-shadow .2s, transform .2s; }
@@ -2192,3 +2192,226 @@
 .bhm button.hub-g { min-height: 44px; margin-top: 2px; }
 .bhm .hrow .grow { min-width: 0; }
 .bhm .hrow small .nw { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.w { --f-ink: 84 62 30;
+  --sh: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px rgb(var(--f-ink) / .06), 0 1px 2px rgb(var(--f-ink) / .05), 0 6px 14px -8px rgb(var(--f-ink) / .12), 0 22px 40px -24px rgb(var(--f-ink) / .34);
+  --sh-hi: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px rgb(var(--f-ink) / .07), 0 2px 4px rgb(var(--f-ink) / .06), 0 10px 22px -10px rgb(var(--f-ink) / .18), 0 30px 54px -28px rgb(var(--f-ink) / .4);
+  --ish: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px rgb(var(--f-ink) / .07), 0 2px 6px -2px rgb(var(--f-ink) / .12), 0 10px 20px -12px rgb(var(--f-ink) / .3);
+  --f-sheen: linear-gradient(180deg, rgb(255 255 255 / .7), rgb(255 255 255 / 0) 58%);
+  --f-chip-hi: inset 0 1px 0 rgb(255 255 255 / .75);
+  --f-pri: linear-gradient(180deg, #3b8160 0%, #2f6b4f 52%, #285c44 100%);
+  --f-pri-sh: inset 0 1px 0 rgb(255 255 255 / .24), inset 0 -1px 0 rgb(0 0 0 / .16), 0 1px 2px rgb(20 50 35 / .2), 0 10px 22px -10px rgb(36 92 64 / .62);
+  --f-soft: linear-gradient(180deg, #f7f2ea, #eee7da);
+  --f-soft-sh: inset 0 1px 0 rgb(255 255 255 / .85), inset 0 0 0 1px rgb(var(--f-ink) / .07), 0 1px 2px rgb(var(--f-ink) / .06);
+  --f-glow-a: rgb(244 205 168 / .5); --f-glow-b: rgb(204 224 194 / .75); }
+.w.t-d { --f-ink: 0 0 0;
+  --sh: inset 0 1px 0 rgb(255 255 255 / .055), 0 0 0 1px rgb(255 255 255 / .05), 0 2px 4px rgb(0 0 0 / .3), 0 18px 36px -18px rgb(0 0 0 / .85);
+  --sh-hi: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .07), 0 4px 10px rgb(0 0 0 / .35), 0 26px 48px -22px rgb(0 0 0 / .9);
+  --ish: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .06), 0 8px 18px -10px rgb(0 0 0 / .8);
+  --f-sheen: linear-gradient(180deg, rgb(255 255 255 / .035), rgb(255 255 255 / 0) 55%);
+  --f-chip-hi: inset 0 1px 0 rgb(255 255 255 / .08);
+  --f-pri: linear-gradient(180deg, #a6e2bb 0%, #8fd4a7 55%, #7cc495 100%);
+  --f-pri-sh: inset 0 1px 0 rgb(255 255 255 / .5), inset 0 -1px 0 rgb(0 0 0 / .12), 0 1px 2px rgb(0 0 0 / .4), 0 10px 24px -10px rgb(143 212 167 / .38);
+  --f-soft: linear-gradient(180deg, #30352b, #282c24);
+  --f-soft-sh: inset 0 1px 0 rgb(255 255 255 / .07), inset 0 0 0 1px rgb(255 255 255 / .05), 0 1px 2px rgb(0 0 0 / .3);
+  --f-glow-a: rgb(232 179 102 / .07); --f-glow-b: rgb(143 212 167 / .09); }
+.g { --shade: 0 1px 2px rgb(40 25 10 / .05), 0 8px 18px -10px rgb(40 25 10 / .14), 0 24px 44px -24px rgb(40 25 10 / .42);
+  --mat-spec: linear-gradient(162deg, rgb(255 255 255 / .62) 0%, rgb(255 255 255 / .16) 34%, rgb(255 255 255 / 0) 58%, rgb(255 255 255 / .1) 100%);
+  --mat-edge: inset 0 0 0 .5px rgb(255 255 255 / .8), inset 0 1px 0 rgb(255 255 255 / 1), inset 0 -1px 0 rgb(255 255 255 / .35);
+  --sh-hi: var(--mat-edge), 0 2px 4px rgb(40 25 10 / .06), 0 14px 28px -12px rgb(40 25 10 / .2), 0 34px 60px -30px rgb(40 25 10 / .5);
+  --f-sheen: var(--mat-spec);
+  --f-chip-hi: inset 0 1px 0 rgb(255 255 255 / .8);
+  --f-pri: linear-gradient(180deg, #e46a2c 0%, #cc5317 50%, #b8460f 100%);
+  --f-pri-sh: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 -1px 0 rgb(0 0 0 / .14), 0 1px 2px rgb(120 40 5 / .2), 0 12px 24px -10px rgb(191 68 13 / .62); }
+.g.t-d { --shade: 0 2px 4px rgb(0 0 0 / .3), 0 18px 38px -16px rgb(0 0 0 / .9);
+  --mat-spec: linear-gradient(162deg, rgb(255 255 255 / .14) 0%, rgb(255 255 255 / .04) 34%, rgb(255 255 255 / 0) 58%, rgb(255 255 255 / .03) 100%);
+  --mat-edge: inset 0 0 0 .5px rgb(255 255 255 / .14), inset 0 1px 0 rgb(255 255 255 / .22), inset 0 -1px 0 rgb(255 255 255 / .05);
+  --sh-hi: var(--mat-edge), 0 4px 10px rgb(0 0 0 / .35), 0 28px 50px -22px rgb(0 0 0 / .95);
+  --f-chip-hi: inset 0 1px 0 rgb(255 255 255 / .12);
+  --f-pri-sh: inset 0 1px 0 rgb(255 255 255 / .28), inset 0 -1px 0 rgb(0 0 0 / .2), 0 12px 26px -10px rgb(220 90 28 / .5); }
+.g .bhm .card, .g .bhm .lst, .g .bhm .glass2, .g .bhm .qab, .g .bhm .acts2 > button, .g .bhm .pager > button, .g .bhm .chip:not(.on), .g .bhm .search, .g .bhm .field { box-shadow: var(--mat-edge), var(--shade); }
+.w .bhm .sc { background:
+  linear-gradient(180deg, var(--tint) 0, var(--tint) var(--sat), transparent calc(var(--sat) + 90px)) local,
+  radial-gradient(130% 380px at 100% 40px, var(--f-glow-a), transparent 70%) local,
+  radial-gradient(110% 340px at 0 0, var(--f-glow-b), transparent 70%) local,
+  linear-gradient(180deg, var(--tint) 0, color-mix(in srgb, var(--tint) 40%, var(--bg)) 160px, var(--bg) 320px) local; }
+.w .bhm .card:not([class*="pic-"]), .w .bhm .lst { background-image: var(--f-sheen); }
+.bhm .card, .bhm .lst { transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-3) var(--ease-out); }
+.bhm .est.card, .bhm .sum.card, .bhm .hsum.card, .bhm .kstat.card, .w .bhm .est.card, .w .bhm .hsum.card { background-image: linear-gradient(155deg, color-mix(in srgb, var(--acc) 9%, transparent), transparent 62%), var(--f-sheen); }
+.w.t-d .bhm .est.card, .w.t-d .bhm .hsum.card { background-image: linear-gradient(155deg, color-mix(in srgb, var(--acc) 10%, transparent), transparent 62%), var(--f-sheen); }
+.g .bhm .est.card, .g .bhm .hsum.card { background-image: linear-gradient(155deg, color-mix(in srgb, var(--acc) 9%, transparent), transparent 60%), var(--mat-spec); }
+.bhm .mrc.card { box-shadow: var(--sh-hi); }
+.bhm .mrc.card { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--honey) 50%, transparent), var(--sh-hi) !important; }
+.bhm .hrow.warn { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--honey) 50%, transparent), var(--sh-hi) !important;
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--honey) 7%, transparent), transparent 70%); }
+.bhm .th.ic, .bhm .qab .qi, .bhm .hqab .qi, .w .bhm .hqab .qi, .g .bhm .hqab .qi, .bhm .row .th.ic {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 20%, var(--card)), color-mix(in srgb, var(--acc) 9%, var(--card)));
+  box-shadow: var(--f-chip-hi), inset 0 0 0 1px color-mix(in srgb, var(--acc) 14%, transparent); color: var(--acc); }
+.g .bhm .th.ic, .g .bhm .row .th.ic, .g .bhm .qab .qi, .g .bhm .hqab .qi {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 22%, rgb(255 255 255 / .7)), color-mix(in srgb, var(--acc) 10%, rgb(255 255 255 / .35))); }
+.g.t-d .bhm .th.ic, .g.t-d .bhm .row .th.ic, .g.t-d .bhm .qab .qi, .g.t-d .bhm .hqab .qi {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 30%, rgb(255 255 255 / .06)), color-mix(in srgb, var(--acc) 12%, rgb(255 255 255 / .02))); }
+.bhm .hrow.warn .th.ic, .bhm .mrc-i { background: linear-gradient(150deg, color-mix(in srgb, var(--honey) 24%, var(--card)), color-mix(in srgb, var(--honey) 10%, var(--card)));
+  box-shadow: var(--f-chip-hi), inset 0 0 0 1px color-mix(in srgb, var(--honey) 20%, transparent); color: var(--honey); }
+.bhm .th.ic.dng { background: linear-gradient(150deg, color-mix(in srgb, var(--danger) 18%, var(--card)), color-mix(in srgb, var(--danger) 8%, var(--card))); color: var(--danger);
+  box-shadow: var(--f-chip-hi), inset 0 0 0 1px color-mix(in srgb, var(--danger) 14%, transparent); }
+.bhm .th:has(> .em), .bhm .tile:has(> .em) {
+  background-image: radial-gradient(120% 90% at 50% 18%, rgb(255 255 255 / .75), rgb(255 255 255 / 0) 62%);
+  box-shadow: var(--f-chip-hi), inset 0 0 0 1px rgb(var(--f-ink, 0 0 0) / .05); }
+.t-d .bhm .th:has(> .em), .t-d .bhm .tile:has(> .em) { background-image: radial-gradient(120% 90% at 50% 18%, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 62%); box-shadow: var(--f-chip-hi), inset 0 0 0 1px rgb(255 255 255 / .05); }
+.bhm .th > .em, .bhm .tile > .em, .bhm .chip > .em, .bhm .hrow .th .em { filter: drop-shadow(0 3px 3px rgb(60 35 10 / .2)); }
+.t-d .bhm .th > .em, .t-d .bhm .tile > .em, .t-d .bhm .chip > .em { filter: drop-shadow(0 3px 4px rgb(0 0 0 / .45)); }
+.bhm .stile { position: relative; overflow: hidden; text-shadow: 0 1px 1px rgb(0 0 0 / .18);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .32), inset 0 0 0 1px rgb(255 255 255 / .1), 0 1px 2px rgb(0 0 0 / .14), 0 6px 12px -6px rgb(0 0 0 / .45); }
+.bhm .stile::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, rgb(255 255 255 / .24), rgb(255 255 255 / 0) 46%, rgb(0 0 0 / .1)); }
+.bhm .btn { transition: transform 460ms var(--ease-spring), box-shadow var(--dur-3), filter var(--dur-2), opacity var(--dur-2), background-color var(--dur-2), color var(--dur-2); }
+.bhm .btn:active:not(:disabled) { transform: scale(.955); filter: brightness(.95) saturate(1.05); transition-duration: 90ms; }
+.bhm .btn.pri, .w .bhm .btn.pri, .g .bhm .btn.pri { background: var(--f-pri); box-shadow: var(--f-pri-sh); text-shadow: 0 1px 1px rgb(0 0 0 / .12); }
+.w.t-d .bhm .btn.pri { text-shadow: none; }
+.bhm .btn.pri:active:not(:disabled) { box-shadow: inset 0 1px 0 rgb(255 255 255 / .18), inset 0 2px 6px rgb(0 0 0 / .18), 0 4px 10px -6px rgb(0 0 0 / .4); }
+.w .bhm .btn.soft { background: var(--f-soft); box-shadow: var(--f-soft-sh); }
+.w .bhm .btn.danger.soft { background: var(--dangers); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 16%, transparent); }
+.bhm .btn.ok { background: linear-gradient(180deg, color-mix(in srgb, var(--ok) 88%, #fff), var(--ok)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .25), 0 10px 20px -10px color-mix(in srgb, var(--ok) 70%, transparent); }
+.bhm .btn:disabled { filter: saturate(.6); }
+.bhm .lgo, .bhm .hplay { box-shadow: var(--f-chip-hi), inset 0 0 0 1px color-mix(in srgb, var(--acc) 16%, transparent);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / .35), rgb(255 255 255 / 0) 60%); transition: transform 460ms var(--ease-spring), filter var(--dur-2); }
+.t-d .bhm .lgo, .t-d .bhm .hplay { background-image: linear-gradient(180deg, rgb(255 255 255 / .06), rgb(255 255 255 / 0) 60%); }
+.bhm .lgo:active, .bhm .hplay:active { transform: scale(.9); transition-duration: 90ms; }
+.bhm .ib { transition: transform 460ms var(--ease-spring), box-shadow var(--dur-3); }
+.bhm .ib:active { transform: scale(.88); transition-duration: 90ms; }
+.bhm .chip.on, .w .bhm .chips.filt .chip.on { background: var(--f-pri); color: var(--onpri); box-shadow: var(--f-pri-sh); }
+.g .bhm .chip.on { background: var(--fg); color: var(--bg); box-shadow: 0 8px 18px -10px rgb(0 0 0 / .5); }
+.bhm .tapc, .bhm .hqab, .bhm .ctile, .bhm .rcard, .bhm .tentry, .bhm .lcard { transition: transform 460ms var(--ease-spring), box-shadow var(--dur-3) var(--ease-out); }
+.bhm .tapc:active, .bhm .hqab:active, .bhm .ctile:active, .bhm .tentry:active { transform: scale(.972); transition-duration: 110ms; }
+.bhm .lst > .row.tap:active, .bhm .lst > button.row:active { transform: none; background-color: color-mix(in srgb, var(--fg) 6%, transparent); transition-duration: 60ms; }
+@media (hover: hover) and (pointer: fine) {
+.bhm .tapc:hover, .bhm .hqab:hover, .bhm .ctile:hover, .bhm .tentry:hover { transform: translateY(-2px); box-shadow: var(--sh-hi); }
+.bhm .lst > .row.tap:hover, .bhm .lst > button.row:hover { background-color: color-mix(in srgb, var(--fg) 3.5%, transparent); }
+.bhm .btn.pri:hover:not(:disabled) { filter: brightness(1.05); }
+}
+.bhm .hqab { box-shadow: var(--sh); background-image: var(--f-sheen); gap: 8px; }
+.bhm .hqab .qi { width: 42px; height: 42px; border-radius: 14px; }
+.bhm .hqab .qi .ico { width: 22px; height: 22px; }
+.bhm .hsec-h h2 { display: flex; align-items: center; gap: 8px; }
+.bhm .hsec-h h2::before { content: ""; width: 6px; height: 6px; border-radius: 99px; background: var(--acc); opacity: .7; flex: none; }
+.bhm .hplay { width: 46px; height: 46px; }
+.bhm .card.lcard { padding: 14px 14px 14px 16px; }
+.bhm .lcard .lgo { width: 46px; height: 46px; border-radius: 16px; }
+.bhm .lcard .ra .price { font-variant-numeric: tabular-nums; }
+.bhm .ctile { box-shadow: var(--sh); isolation: isolate; }
+.bhm .ctile::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), inset 0 0 0 1px rgb(255 255 255 / .12); }
+.bhm .ctile[class*="pic-"]::after { background: linear-gradient(180deg, rgb(0 0 0 / 0) 28%, rgb(0 0 0 / .18) 50%, rgb(0 0 0 / .72)); }
+.bhm .ctile[class*="pic-"] b { text-shadow: 0 1px 2px rgb(0 0 0 / .35), 0 2px 12px rgb(0 0 0 / .3); }
+.bhm .ctile[class*="pic-"] small { opacity: .88; text-shadow: 0 1px 2px rgb(0 0 0 / .4); }
+.bhm .tentry { box-shadow: var(--sh-hi); }
+.bhm .tentry .te-go { box-shadow: 0 8px 18px -8px rgb(0 0 0 / .6), inset 0 -1px 0 rgb(0 0 0 / .08); transition: transform 460ms var(--ease-spring); }
+.bhm .tentry:active .te-go { transform: scale(.9); }
+.bhm .seg { position: relative; isolation: isolate; }
+.bhm .seg:has(> button.on)::before { content: ""; position: absolute; z-index: -1; top: 3px; bottom: 3px;
+  width: calc((100% - 6px) / var(--sn, 3)); left: calc(3px + (100% - 6px) / var(--sn, 3) * var(--si, 0));
+  border-radius: 99px; background: var(--mat-spec), var(--segon); box-shadow: var(--mat-edge), 0 1px 2px rgb(0 0 0 / .08), 0 4px 12px -4px rgb(0 0 0 / .22);
+  transition: left 460ms var(--ease-spring); }
+.bhm .seg:has(> button.on) > button.on { background: none; box-shadow: none; }
+.bhm .seg > button { transition: color var(--dur-3); }
+.bhm .seg:has(> :nth-child(2):last-child) { --sn: 2; }
+.bhm .seg:has(> :nth-child(3):last-child) { --sn: 3; }
+.bhm .seg:has(> :nth-child(4):last-child) { --sn: 4; }
+.bhm .seg:has(> :nth-child(5):last-child) { --sn: 5; }
+.bhm .seg:has(> button.on:nth-child(2)) { --si: 1; }
+.bhm .seg:has(> button.on:nth-child(3)) { --si: 2; }
+.bhm .seg:has(> button.on:nth-child(4)) { --si: 3; }
+.bhm .seg:has(> button.on:nth-child(5)) { --si: 4; }
+.bhm .tabbar { box-shadow: var(--mat-edge), 0 1px 2px rgb(0 0 0 / .05), 0 12px 28px -12px rgb(40 25 10 / .3), 0 30px 50px -30px rgb(40 25 10 / .45) !important; }
+.t-d .bhm .tabbar { box-shadow: var(--mat-edge), 0 18px 40px -16px rgb(0 0 0 / .95) !important; }
+.bhm .tic { isolation: isolate; }
+.w .bhm .tabbar > button .tic::before { content: ""; position: absolute; z-index: -1; inset: -5px -15px; border-radius: 99px;
+  background: color-mix(in srgb, var(--acc) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 10%, transparent);
+  opacity: 0; transform: scale(.55); transition: opacity var(--dur-2), transform 460ms var(--ease-spring); }
+.w .bhm .tabbar > button.on .tic::before { opacity: 1; transform: none; }
+.w .bhm .tabbar > button.on { color: var(--acc); }
+.g .bhm .tabbar > button.on { background: color-mix(in srgb, var(--fg) 7%, transparent); box-shadow: inset 0 1px 0 rgb(255 255 255 / .5), inset 0 0 0 .5px rgb(255 255 255 / .4); }
+.g.t-d .bhm .tabbar > button.on { box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), inset 0 0 0 .5px rgb(255 255 255 / .08); }
+.bhm .tbadge { background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 85%, #fff), var(--danger)); }
+.bhm .tmb, .t-d .bhm .tmb { background: var(--f-pri); color: var(--onpri);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 -2px 4px rgb(0 0 0 / .14), 0 0 0 4px color-mix(in srgb, var(--acc) 13%, transparent), 0 12px 24px -8px color-mix(in srgb, var(--acc) 60%, transparent);
+  transition: transform 460ms var(--ease-spring), box-shadow var(--dur-3); }
+.g .bhm .tmb, .g.t-d .bhm .tmb { color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / .32), inset 0 -2px 4px rgb(0 0 0 / .16), 0 0 0 4px rgb(220 90 28 / .14), 0 12px 24px -8px rgb(191 68 13 / .6); }
+.bhm .tmb .ico { filter: drop-shadow(0 1px 1px rgb(0 0 0 / .18)); }
+.bhm .tmic:active .tmb { transform: scale(.88); transition-duration: 90ms; }
+.bhm .tmic.on .tmb, .t-d .bhm .tmic.on .tmb, .g .bhm .tmic.on .tmb { background: var(--acc); color: var(--onacc, #fff); }
+.bhm .empty { position: relative; isolation: isolate; padding-top: 30px; }
+.bhm .empty::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 14px; width: 120px; height: 120px; margin-left: -60px; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--acc) 14%, transparent), color-mix(in srgb, var(--acc) 5%, transparent) 70%, transparent); }
+.bhm .empty > .em { filter: drop-shadow(0 12px 12px rgb(60 35 10 / .22)); }
+.bhm .empty b { font-size: 19px; letter-spacing: -.35px; }
+.w .bhm .empty b { font-family: var(--serif); font-weight: 560; font-variation-settings: "opsz" 36; }
+.bhm .tx > b, .bhm .hrow .grow b, .bhm .mrc-r .grow b, .bhm .lcard .tw > span:first-child {
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; line-height: 1.22; }
+.bhm .lt, .bhm .h2, .bhm .ttl, .bhm .empty b { text-wrap: balance; }
+.bhm .meta, .bhm .sub, .bhm .empty p, .bhm .hint, .bhm .tip span { text-wrap: pretty; }
+.bhm .price, .bhm .sub, .bhm .stat, .bhm .amt { font-variant-numeric: tabular-nums; }
+.bhm .row.ck .stk::after { display: none; }
+.bhm .row.ck .stk { background: linear-gradient(currentColor, currentColor) no-repeat 0 56% / 0 2px; animation: mk-f-strike var(--dur-3) .18s var(--ease-out) forwards; }
+@keyframes mk-f-strike { to { background-size: 100% 2px; } }
+.bhm .stat { flex: none; }
+.bhm .tx .stat { align-self: flex-start; margin-top: 3px; padding: 3px 9px; font-size: 12.5px; }
+.bhm .mrc-r { gap: 10px; }
+.bhm .mrc-r .ib.sm { width: 36px; height: 36px; }
+.bhm .mrc-r .ib.mrc-cam { width: 44px; height: 44px; background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 20%, var(--card)), color-mix(in srgb, var(--acc) 9%, var(--card))); color: var(--acc);
+  box-shadow: var(--f-chip-hi), inset 0 0 0 1px color-mix(in srgb, var(--acc) 16%, transparent); }
+.g .bhm .mrc-r .ib.mrc-cam { background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 22%, rgb(255 255 255 / .7)), color-mix(in srgb, var(--acc) 10%, rgb(255 255 255 / .35))); }
+.g.t-d .bhm .mrc-r .ib.mrc-cam { background: linear-gradient(150deg, color-mix(in srgb, var(--acc) 30%, rgb(255 255 255 / .06)), color-mix(in srgb, var(--acc) 12%, rgb(255 255 255 / .02))); }
+.bhm .card.kstat { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.bhm .kstat > div { min-width: 0; }
+.bhm .kstat > div + div { padding-left: 10px; border-left: 1px solid var(--line); }
+.bhm .kstat .price, .w .bhm .kstat .price, .g .bhm .kstat .price { font-size: 19px; line-height: 1.1; white-space: normal; overflow-wrap: break-word; letter-spacing: -.4px; }
+.bhm .kstat .meta.sm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bhm .kstat .price .pu { display: block; margin-top: 3px; font-family: var(--font); font-size: 13px; font-weight: 650; letter-spacing: 0; color: var(--sec); }
+@media (prefers-reduced-motion: no-preference) {
+.bhm .body > :where(.card, .lst, .hsec, .seg, .search, .tentry, .cgrid, .hqa, .rrow, .h2, .empty, .tip, .chips) {
+    animation: mk-f-rise 520ms var(--ease-out) var(--fd, 0ms) backwards; }
+.bhm .body > :nth-child(2) { --fd: 30ms; }
+.bhm .body > :nth-child(3) { --fd: 60ms; }
+.bhm .body > :nth-child(4) { --fd: 90ms; }
+.bhm .body > :nth-child(5) { --fd: 120ms; }
+.bhm .body > :nth-child(6) { --fd: 150ms; }
+.bhm .body > :nth-child(7) { --fd: 180ms; }
+.bhm .body > :nth-child(8) { --fd: 210ms; }
+.bhm .body > :nth-child(n+9) { --fd: 240ms; }
+.bhm :where(.lcard) { animation: mk-f-rise 520ms var(--ease-out) var(--ld, 0ms) backwards; }
+.bhm .lcard:nth-of-type(2) { --ld: 40ms; }
+.bhm .lcard:nth-of-type(3) { --ld: 80ms; }
+.bhm .lcard:nth-of-type(4) { --ld: 120ms; }
+.bhm .lcard:nth-of-type(5) { --ld: 160ms; }
+.bhm .lcard:nth-of-type(n+6) { --ld: 200ms; }
+.bhm .lst > :where(.row:nth-child(-n+12)) { animation: mk-f-row 440ms var(--ease-out) var(--rd, 0ms) backwards; }
+.bhm .lst > .row:nth-child(2) { --rd: 25ms; }
+.bhm .lst > .row:nth-child(3) { --rd: 50ms; }
+.bhm .lst > .row:nth-child(4) { --rd: 75ms; }
+.bhm .lst > .row:nth-child(5) { --rd: 100ms; }
+.bhm .lst > .row:nth-child(6) { --rd: 125ms; }
+.bhm .lst > .row:nth-child(n+7) { --rd: 150ms; }
+.bhm .hqa > :where(.hqab), .bhm .cgrid > :where(.ctile) { animation: mk-f-pop-in 560ms var(--ease-spring) var(--qd, 0ms) backwards; }
+.bhm .hqa > :nth-child(2), .bhm .cgrid > :nth-child(2) { --qd: 60ms; }
+.bhm .hqa > :nth-child(3), .bhm .cgrid > :nth-child(3) { --qd: 120ms; }
+.bhm .cgrid > :nth-child(4) { --qd: 160ms; }
+.bhm .cgrid > :nth-child(n+5) { --qd: 200ms; }
+.bhm .empty > .em { animation: mk-f-float 5.5s ease-in-out infinite; }
+.bhm .tentry .te-ph i:nth-child(1) { animation: mk-f-fan1 5s ease-in-out infinite; }
+.bhm .tentry .te-ph i:nth-child(3) { animation: mk-f-fan3 5s ease-in-out infinite; }
+.bhm .tentry .te-ph i:nth-child(2) { animation: mk-f-float 5s ease-in-out infinite; }
+.bhm .tabbar > button.on .tic > .ico { animation: mk-f-tabpop 520ms var(--ease-spring); }
+.bhm .tbadge { animation: mk-f-pop 520ms var(--ease-spring); }
+}
+@keyframes mk-f-rise { from { opacity: 0; transform: translateY(12px) scale(.985); } }
+@keyframes mk-f-row { from { opacity: 0; transform: translateY(6px); } }
+@keyframes mk-f-pop-in { from { opacity: 0; transform: translateY(8px) scale(.92); } }
+@keyframes mk-f-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes mk-f-tabpop { 0% { transform: scale(.82) translateY(2px); } 55% { transform: scale(1.12) translateY(-2px); } 100% { transform: none; } }
+@keyframes mk-f-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes mk-f-fan1 { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(-13deg) translateX(-3px); } }
+@keyframes mk-f-fan3 { 0%, 100% { transform: rotate(9deg); } 50% { transform: rotate(13deg) translateX(3px); } }
+@media (prefers-reduced-motion: reduce) {
+.bhm .seg:has(> button.on)::before { transition: none; }
+}
