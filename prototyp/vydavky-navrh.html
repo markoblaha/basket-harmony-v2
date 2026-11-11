@@ -1,0 +1,1601 @@
+<title>Výdavky 2.0</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Rozloženie: vľavo dokument (číta sa zhora nadol), vpravo prilepený telefón s mockupom; na mobile prepínač Mockup / Návrh. */
+:root {
+  --bg: #f3f4f6; --surface: #ffffff; --ink: #15171c; --muted: #596070; --line: #dfe2e8;
+  --accent: #b9481b; --accent-soft: #fbe8de; --ok: #1d7f52; --ok-soft: #dff3e8; --warn: #a65406; --warn-soft: #fcefdc;
+  --bad: #b8322f; --bad-soft: #fbe3e2; --code: #eceef2; --phone: #0b0b0d;
+  --f-display: "Bricolage Grotesque", "Inter", system-ui, sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --topbar: 56px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e0f12; --surface: #17191e; --ink: #eceef3; --muted: #a0a7b4; --line: #2a2e37;
+    --accent: #f29a70; --accent-soft: #3a2117; --ok: #52cf90; --ok-soft: #12291d; --warn: #ffb35e; --warn-soft: #33240f;
+    --bad: #ff8783; --bad-soft: #3a1817; --code: #1f232b; --phone: #000000; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e0f12; --surface: #17191e; --ink: #eceef3; --muted: #a0a7b4; --line: #2a2e37;
+  --accent: #f29a70; --accent-soft: #3a2117; --ok: #52cf90; --ok-soft: #12291d; --warn: #ffb35e; --warn-soft: #33240f;
+  --bad: #ff8783; --bad-soft: #3a1817; --code: #1f232b; --phone: #000000; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* ---------- horná lišta stránky */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1340px; margin: 0 auto; height: var(--topbar); display: flex; align-items: center; gap: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.brand { font-family: var(--f-display); font-weight: 800; font-size: 19px; letter-spacing: -0.02em; white-space: nowrap; }
+.brand small { font-family: var(--f-body); font-weight: 500; font-size: 13px; color: var(--muted); letter-spacing: 0; margin-left: 8px; }
+.views { margin-left: auto; display: none; background: var(--code); border-radius: 99px; padding: 3px; }
+.views button { padding: 6px 14px; border-radius: 99px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.views button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+
+/* ---------- rozloženie */
+.wrap { max-width: 1340px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 430px; gap: 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+.mockcol { position: sticky; top: calc(var(--topbar) + 16px + env(safe-area-inset-top, 0px)); align-self: start; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+@media (max-width: 1099px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block: 16px 48px; }
+  .views { display: inline-flex; }
+  .brand small { display: none; }
+  body[data-view="mock"] .doc { display: none; }
+  body[data-view="doc"] .mockcol { display: none; }
+  .mockcol { position: static; }
+}
+
+/* ---------- dokument */
+.doc { min-width: 0; max-width: 760px; }
+.eyebrow { font-size: 12.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--accent); }
+.doc h1 { font-family: var(--f-display); font-size: clamp(40px, 6vw, 64px); line-height: 1; letter-spacing: -0.035em; margin: 10px 0 16px; text-wrap: balance; }
+.doc h2 { font-family: var(--f-display); font-size: clamp(26px, 3.4vw, 34px); line-height: 1.1; letter-spacing: -0.025em; margin: 64px 0 8px; text-wrap: balance; scroll-margin-top: calc(var(--topbar) + 16px); }
+.doc h3 { font-size: 18px; letter-spacing: -0.01em; margin: 28px 0 6px; text-wrap: balance; }
+.doc p, .doc li { max-width: 66ch; }
+.doc p { margin: 0 0 12px; }
+.lead { font-size: 19px; line-height: 1.5; color: var(--ink); }
+.muted { color: var(--muted); }
+.sec-n { font-family: var(--f-mono); font-size: 14px; color: var(--muted); margin-right: 8px; font-weight: 400; letter-spacing: 0; }
+.doc ul { padding-left: 20px; margin: 0 0 12px; }
+.doc li { margin: 4px 0; }
+.doc code { font-family: var(--f-mono); font-size: .86em; background: var(--code); padding: 1px 5px; border-radius: 5px; }
+.doc .toc { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 22px 0 0; padding: 0; list-style: none; }
+.toc a { display: inline-block; font-size: 14px; color: var(--ink); text-decoration: none; border: 1px solid var(--line); border-radius: 99px; padding: 4px 12px; background: var(--surface); }
+.toc a:hover { border-color: var(--accent); color: var(--accent); }
+
+.qs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 26px 0 6px; }
+.q { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; min-width: 0; }
+.q b { display: block; font-size: 16px; line-height: 1.3; margin-bottom: 4px; }
+.q span { font-size: 14px; color: var(--muted); line-height: 1.4; display: block; }
+.q i { font-style: normal; font-family: var(--f-mono); font-size: 12px; color: var(--accent); display: block; margin-bottom: 6px; }
+@media (max-width: 640px) { .qs { grid-template-columns: minmax(0, 1fr); } }
+
+.finds { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+.find { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.find .see { font-family: var(--f-mono); font-size: 14px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.find .see q { quotes: "„" "“"; }
+.tag { font-family: var(--f-body); font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.tag.bad { background: var(--bad-soft); color: var(--bad); }
+.tag.ux { background: var(--warn-soft); color: var(--warn); }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.find p { margin: 0; font-size: 15px; color: var(--muted); }
+.find p b { color: var(--ink); font-weight: 600; }
+.find .fix { font-size: 15px; }
+.find .fix::before { content: "Oprava: "; font-weight: 700; color: var(--ok); }
+
+.princ { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.pr { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; min-width: 0; }
+.pr b { display: block; font-size: 16px; margin-bottom: 2px; }
+.pr span { font-size: 15px; color: var(--muted); }
+@media (max-width: 640px) { .princ { grid-template-columns: minmax(0, 1fr); } }
+
+.map { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin: 16px 0; overflow-x: auto; }
+.map-g { display: grid; grid-template-columns: auto auto auto auto; gap: 10px 14px; align-items: center; min-width: 560px; }
+.nd { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 14px; font-weight: 600; background: var(--bg); white-space: nowrap; text-align: left; }
+.nd.root { background: var(--accent); color: #fff; border-color: transparent; }
+:root[data-theme="dark"] .nd.root { color: #1a0e08; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .nd.root { color: #1a0e08; } }
+.nd small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+.nd.root small { color: inherit; opacity: .8; }
+button.nd:hover { border-color: var(--accent); }
+.arrow { color: var(--muted); font-family: var(--f-mono); font-size: 13px; }
+
+.scr { border-top: 1px solid var(--line); padding-top: 18px; margin-top: 22px; }
+.scr-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.scr-h h3 { margin: 0; }
+.show { font-size: 14px; font-weight: 600; color: var(--accent); white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.show:hover { text-decoration: underline; }
+.scr ul { margin-top: 8px; }
+
+.math { font-family: var(--f-mono); font-size: 13.5px; line-height: 1.6; background: var(--code); border-radius: 12px; padding: 12px 14px; margin: 10px 0 14px; overflow-x: auto; white-space: pre; }
+.math .c { color: var(--muted); }
+.math .ok { color: var(--ok); font-weight: 600; }
+.math .bad { color: var(--bad); font-weight: 600; }
+
+.tbl-w { overflow-x: auto; margin: 12px 0 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+tr:last-child td { border-bottom: 0; }
+td.mono { font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
+
+.adds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+.add { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.add b { font-size: 15.5px; }
+.add span { font-size: 14px; color: var(--muted); line-height: 1.45; }
+.add .eff { align-self: flex-start; margin-top: 4px; }
+@media (max-width: 640px) { .adds { grid-template-columns: minmax(0, 1fr); } }
+
+.steps { counter-reset: st; list-style: none; padding: 0 !important; margin: 14px 0; display: flex; flex-direction: column; gap: 10px; }
+.steps li { counter-increment: st; position: relative; padding: 12px 14px 12px 54px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; max-width: none; }
+.steps li::before { content: counter(st); position: absolute; left: 14px; top: 12px; width: 28px; height: 28px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-weight: 800; display: grid; place-items: center; font-size: 14px; }
+.steps b { display: block; }
+.steps span { color: var(--muted); font-size: 15px; }
+
+.dec { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+.dq { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.dq b { display: block; margin-bottom: 2px; }
+.dq .rec { font-size: 15px; color: var(--muted); }
+.dq .rec::before { content: "Odporúčam: "; color: var(--ok); font-weight: 700; }
+.foot { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+
+/* ---------- telefón */
+.phone { position: relative; width: 402px; height: min(852px, calc(100vh - var(--topbar) - 96px)); min-height: 560px; border-radius: 56px; padding: 11px; background: var(--phone); box-shadow: 0 0 0 1.5px #3a3a3f, 0 30px 80px -30px rgb(0 0 0 / .55); }
+.phone .mk-bg { position: absolute; inset: 11px; border-radius: 45px; overflow: hidden; }
+.phone .mk { position: relative; height: 100%; border-radius: 45px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: none; }
+.phone .mk::-webkit-scrollbar { display: none; }
+.mock-note { font-size: 13.5px; color: var(--muted); text-align: center; max-width: 400px; margin: 0; }
+.themes { display: inline-flex; gap: 4px; background: var(--code); border-radius: 99px; padding: 3px; }
+.themes button { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 99px; color: var(--muted); }
+.themes button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+@media (max-width: 1099px) {
+  .phone { width: 100%; max-width: 480px; height: auto; min-height: 0; padding: 0; border-radius: 30px; background: none; box-shadow: none; }
+  .phone .mk-bg { inset: 0; border-radius: 30px; }
+  .phone .mk { height: auto; overflow: visible; border-radius: 30px; }
+  .mk { --stick: calc(var(--topbar) + env(safe-area-inset-top, 0px)); }
+}
+
+/* =====================================================================
+   MOCKUP APPKY – vzhľad podľa témy Fotky a sklo (tmavá) / Teplá kuchyňa (svetlá)
+   ===================================================================== */
+.mk { --stick: 0px; font-family: -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif; font-size: 16px; line-height: 1.3; letter-spacing: -0.01em; color: var(--m-fg); }
+.mk-th-g { --m-fg: #ffffff; --m-sec: rgb(255 255 255 / .66); --m-ter: rgb(255 255 255 / .42); --m-card: rgb(40 38 40 / .62); --m-card2: rgb(255 255 255 / .09);
+  --m-line: rgb(255 255 255 / .09); --m-glb: rgb(255 255 255 / .12); --m-hl: rgb(255 255 255 / .14); --m-acc: #f29a70; --m-pri: linear-gradient(180deg, #cf5a29, #a8441f); --m-onpri: #ffffff;
+  --m-ok: #4fd18f; --m-oks: rgb(79 209 143 / .16); --m-up: #ffb057; --m-ups: rgb(255 176 87 / .17); --m-bad: #ff7b7f; --m-seg: rgb(70 66 68 / .9);
+  --m-sh: inset 0 1px 0 var(--m-hl), inset 0 0 0 1px var(--m-glb), 0 16px 36px -18px rgb(0 0 0 / .8); --m-nav: rgb(14 11 10 / .55); --m-blur: blur(26px) saturate(1.7);
+  --m-bg: radial-gradient(70% 34% at 12% 4%, #33452a 0%, transparent 70%), radial-gradient(60% 30% at 92% 8%, #4a2a17 0%, transparent 70%), radial-gradient(90% 40% at 50% 38%, #5a210e 0%, transparent 72%), radial-gradient(80% 30% at 20% 75%, #3a2a12 0%, transparent 70%), linear-gradient(180deg, #120c0a, #0a0807); --m-toast: rgb(245 245 247 / .95); --m-toastfg: #111; }
+.mk-th-w { --m-fg: #1f241d; --m-sec: rgb(31 36 29 / .66); --m-ter: rgb(31 36 29 / .44); --m-card: #ffffff; --m-card2: #efe8dc;
+  --m-line: #ebe4d8; --m-glb: rgb(70 55 30 / .07); --m-hl: rgb(255 255 255 / 0); --m-acc: #2f6b4f; --m-pri: #2f6b4f; --m-onpri: #ffffff;
+  --m-ok: #237a4b; --m-oks: #e0efe5; --m-up: #a8560a; --m-ups: #fbecd9; --m-bad: #c23a3a; --m-seg: #ffffff;
+  --m-sh: 0 0 0 1px rgb(70 55 30 / .06), 0 1px 2px rgb(70 55 30 / .05), 0 10px 26px -18px rgb(70 55 30 / .32); --m-nav: rgb(242 236 226 / .86); --m-blur: blur(18px);
+  --m-bg: linear-gradient(180deg, #e5ece1 0, #f2ece2 300px); --m-toast: rgb(28 28 30 / .92); --m-toastfg: #fff; }
+.mk-bg { background: var(--m-bg); background-color: #0a0807; }
+.mk-th-w.mk-bg { background-color: #f2ece2; }
+.mk button { text-align: left; }
+.mk .scrn { display: flex; flex-direction: column; gap: 14px; padding: 0 14px 18px; animation: mkIn .22s ease-out; }
+@keyframes mkIn { from { opacity: .3; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mk .scrn { animation: none; } }
+.mk svg.i { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.mk svg.i.s { width: 16px; height: 16px; stroke-width: 2.2; }
+
+.mk .nb { position: sticky; top: var(--stick); z-index: 6; display: flex; align-items: center; gap: 8px; padding: 12px 14px 10px; margin: 0 -14px; background: var(--m-nav); -webkit-backdrop-filter: var(--m-blur); backdrop-filter: var(--m-blur); }
+.mk .nb .nbt { flex: 1; text-align: center; font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk .nb .nbr { display: flex; gap: 8px; margin-left: auto; }
+.mk .ib { width: 42px; height: 42px; border-radius: 99px; display: grid; place-items: center; background: var(--m-card); box-shadow: var(--m-sh); -webkit-backdrop-filter: var(--m-blur); backdrop-filter: var(--m-blur); flex: none; }
+.mk .av { width: 42px; height: 42px; border-radius: 99px; display: grid; place-items: center; background: #3fa9a4; color: #fff; font-weight: 800; font-size: 17px; flex: none; }
+.mk .back { display: inline-flex; align-items: center; gap: 2px; color: var(--m-acc); font-weight: 600; font-size: 16px; min-height: 42px; max-width: 34%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk .back svg { width: 20px; height: 20px; }
+.mk .back + .nbt { margin-right: 0; }
+.mk .nb .spacer { width: 42px; flex: none; }
+.mk h1 { font-size: 34px; font-weight: 800; letter-spacing: -1.1px; margin: 4px 2px 0; }
+.mk .k { font-size: 12px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--m-sec); }
+.mk .meta { font-size: 14px; color: var(--m-sec); }
+.mk .sub { font-size: 13px; color: var(--m-sec); line-height: 1.3; }
+.mk .h2 { font-size: 21px; font-weight: 800; letter-spacing: -.5px; margin: 10px 2px -2px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mk .h2 small { font-size: 13px; font-weight: 500; color: var(--m-sec); letter-spacing: 0; }
+.mk .c { background: var(--m-card); border-radius: 24px; box-shadow: var(--m-sh); -webkit-backdrop-filter: var(--m-blur); backdrop-filter: var(--m-blur); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mk .lst { background: var(--m-card); border-radius: 24px; box-shadow: var(--m-sh); -webkit-backdrop-filter: var(--m-blur); backdrop-filter: var(--m-blur); overflow: hidden; }
+.mk .row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; width: 100%; min-height: 60px; position: relative; }
+.mk .row + .row::before { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 1px; background: var(--m-line); }
+.mk .row.tap:active, .mk .row.tap:hover { background: var(--m-card2); }
+.mk .row.hl { background: var(--m-oks); }
+.mk .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.mk .tx b { font-size: 15.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk .tx .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk .ra { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex: none; text-align: right; }
+.mk .amt { font-weight: 700; font-size: 15.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mk .chev { color: var(--m-ter); width: 15px; height: 15px; }
+.mk .th { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; background: var(--m-card2); flex: none; }
+.mk .th.lg { width: 60px; height: 60px; border-radius: 18px; font-size: 34px; }
+.mk .st { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; color: #fff; font-weight: 800; font-size: 14px; letter-spacing: -.3px; background: linear-gradient(160deg, color-mix(in srgb, var(--sc) 82%, #fff), var(--sc)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .3); }
+.mk .st.sm { width: 32px; height: 32px; border-radius: 10px; font-size: 12px; }
+.mk .st.lg { width: 60px; height: 60px; border-radius: 18px; font-size: 22px; }
+.mk .bar { height: 5px; border-radius: 99px; background: var(--m-card2); overflow: hidden; margin-top: 3px; }
+.mk .bar i { display: block; height: 100%; border-radius: 99px; background: var(--bc, var(--m-acc)); }
+.mk .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.mk .pill.ok { background: var(--m-oks); color: var(--m-ok); }
+.mk .pill.up { background: var(--m-ups); color: var(--m-up); }
+.mk .pill.mu { background: var(--m-card2); color: var(--m-sec); }
+.mk .up { color: var(--m-up); } .mk .dn { color: var(--m-ok); }
+
+.mk .seg { display: flex; background: var(--m-card2); border-radius: 99px; padding: 4px; gap: 2px; }
+.mk .seg button { flex: 1; text-align: center; padding: 8px 0; border-radius: 99px; font-size: 15px; font-weight: 700; color: var(--m-sec); }
+.mk .seg button[aria-pressed="true"] { background: var(--m-seg); color: var(--m-fg); box-shadow: 0 2px 8px -2px rgb(0 0 0 / .3); }
+.mk .seg.sm button { font-size: 14px; padding: 7px 0; }
+.mk .pnav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mk .pnav .pt { text-align: center; min-width: 0; }
+.mk .pnav .pt b { display: block; font-size: 17px; font-weight: 750; }
+.mk .pnav .pt span { font-size: 12.5px; color: var(--m-sec); }
+.mk .pnav .ib { width: 38px; height: 38px; }
+.mk .pnav .ib[disabled] { opacity: .35; cursor: default; }
+.mk .pnav.sm { background: var(--m-card2); border-radius: 99px; padding: 3px; }
+.mk .pnav.sm .ib { width: 32px; height: 32px; box-shadow: none; background: transparent; }
+.mk .pnav.sm .pt b { font-size: 14px; }
+
+.mk .miss { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 18px; background: var(--m-card); box-shadow: var(--m-sh); -webkit-backdrop-filter: var(--m-blur); backdrop-filter: var(--m-blur); }
+.mk .miss .tx b { font-size: 14.5px; }
+.mk .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 99px; font-weight: 700; font-size: 14.5px; white-space: nowrap; flex: none; }
+.mk .btn.pri { background: var(--m-pri); color: var(--m-onpri); }
+.mk .btn.soft { background: var(--m-card2); color: var(--m-fg); }
+.mk .btn.full { width: 100%; height: 50px; font-size: 16px; }
+
+.mk .hero { gap: 6px; padding: 18px; }
+.mk .big { font-size: 52px; font-weight: 300; letter-spacing: -2px; line-height: 1; font-variant-numeric: tabular-nums; }
+.mk .big small { font-size: 24px; font-weight: 500; letter-spacing: -.5px; }
+.mk .cmp { display: flex; align-items: center; gap: 6px; font-weight: 650; font-size: 15px; flex-wrap: wrap; }
+.mk .cmp .d { font-weight: 500; color: var(--m-sec); }
+.mk .cmp-sub { font-size: 12.5px; color: var(--m-ter); }
+.mk .bud { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; text-align: left; width: 100%; }
+.mk .bud .track { position: relative; height: 8px; border-radius: 99px; background: var(--m-card2); }
+.mk .bud .track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--bc, var(--m-ok)); }
+.mk .bud .track em { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 2px; background: var(--m-fg); opacity: .7; }
+.mk .bud .bt { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 13px; color: var(--m-sec); }
+.mk .bud .bt span { white-space: nowrap; }
+.mk .bud .bt b { color: var(--m-fg); font-weight: 650; }
+
+.mk svg.ch { width: 100%; height: auto; display: block; overflow: visible; }
+.mk svg.ch text { fill: var(--m-ter); font-size: 10.5px; font-family: inherit; }
+.mk svg.ch .grid { stroke: var(--m-line); stroke-width: 1; }
+.mk svg.ch .now { stroke: var(--m-acc); stroke-width: 2.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.mk svg.ch .prev { stroke: var(--m-ter); stroke-width: 1.8; fill: none; stroke-dasharray: 4 4; }
+.mk svg.ch .proj { stroke: var(--m-acc); stroke-width: 1.8; fill: none; stroke-dasharray: 2 5; opacity: .8; }
+.mk svg.ch .area { fill: var(--m-acc); opacity: .12; }
+.mk svg.ch .med { stroke: var(--m-sec); stroke-width: 1.2; stroke-dasharray: 3 3; }
+.mk svg.ch .barc { fill: var(--m-acc); }
+.mk svg.ch .barp { fill: var(--m-card2); }
+.mk svg.ch .barc.cur { fill: var(--m-acc); }
+.mk svg.ch .barc.fade { opacity: .45; }
+.mk .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--m-sec); }
+.mk .legend span { display: inline-flex; align-items: center; gap: 6px; }
+.mk .legend i { width: 14px; height: 3px; border-radius: 3px; background: var(--lc, var(--m-acc)); display: inline-block; }
+.mk .legend i.dash { background: repeating-linear-gradient(90deg, var(--m-ter) 0 4px, transparent 4px 7px); }
+.mk .legend i.dot { width: 9px; height: 9px; border-radius: 99px; }
+
+.mk .grp { display: flex; flex-direction: column; gap: 8px; }
+.mk .stack { display: flex; height: 10px; border-radius: 99px; overflow: hidden; gap: 2px; }
+.mk .stack i { display: block; height: 100%; }
+.mk .gh { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 14px 2px; font-size: 13px; font-weight: 700; color: var(--m-sec); }
+.mk .gh em { font-style: normal; font-variant-numeric: tabular-nums; }
+
+.mk .ins { display: flex; align-items: center; gap: 12px; padding: 14px; width: 100%; }
+.mk .ins .tx b { white-space: normal; font-size: 15px; line-height: 1.25; }
+.mk .ins .tx .sub { white-space: normal; }
+.mk .tiny { font-size: 12px; color: var(--m-ter); text-align: center; padding: 4px 8px 10px; line-height: 1.4; }
+
+.mk .kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mk .kv > div { min-width: 0; }
+.mk .kv b { display: block; font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk .kv span { font-size: 12px; color: var(--m-sec); }
+.mk .pbig { font-size: 34px; font-weight: 750; letter-spacing: -1px; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.mk .pbig small { font-size: 17px; font-weight: 600; color: var(--m-sec); letter-spacing: 0; }
+.mk .strip { position: relative; height: 34px; margin: 6px 4px 0; }
+.mk .strip .ln { position: absolute; left: 0; right: 0; top: 16px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--m-ok), var(--m-up)); opacity: .55; }
+.mk .strip .dt { position: absolute; top: 11px; width: 13px; height: 13px; margin-left: -6.5px; border-radius: 99px; background: var(--dc); box-shadow: 0 0 0 2px var(--m-card); }
+.mk .strip .md { position: absolute; top: 4px; bottom: 4px; width: 2px; margin-left: -1px; background: var(--m-fg); border-radius: 2px; }
+.mk .strip-l { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--m-sec); gap: 8px; }
+.mk .strip-l b { color: var(--m-fg); }
+.mk .mth { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 12px; color: var(--m-sec); background: var(--m-card2); border-radius: 12px; padding: 8px 10px; line-height: 1.5; white-space: pre-wrap; }
+.mk .note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 18px; background: var(--m-card2); font-size: 13.5px; color: var(--m-sec); line-height: 1.4; }
+.mk .note b { color: var(--m-fg); }
+.mk .note .btn { height: 32px; font-size: 13px; padding: 0 12px; margin-top: 6px; }
+.mk .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mk .chip { height: 34px; padding: 0 12px; border-radius: 99px; background: var(--m-card2); font-weight: 650; font-size: 14px; display: inline-flex; align-items: center; }
+.mk .chip:hover { box-shadow: inset 0 0 0 1.5px var(--m-acc); }
+.mk .lhead { display: flex; align-items: center; gap: 14px; padding: 2px 2px 0; }
+.mk .lhead h1 { font-size: 28px; margin: 0; letter-spacing: -.8px; line-height: 1.1; }
+.mk .search { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px; border-radius: 18px; background: var(--m-card); box-shadow: var(--m-sh); color: var(--m-ter); width: 100%; font-size: 15.5px; -webkit-backdrop-filter: var(--m-blur); backdrop-filter: var(--m-blur); }
+.mk .search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--m-fg); font: inherit; }
+.mk .mx-w { overflow-x: auto; border-radius: 20px; background: var(--m-card); box-shadow: var(--m-sh); }
+.mk table.mx { border-collapse: collapse; width: 100%; font-size: 13px; }
+.mk table.mx th, .mk table.mx td { padding: 9px 8px; border-bottom: 1px solid var(--m-line); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mk table.mx th { font-size: 11px; color: var(--m-sec); text-transform: none; letter-spacing: 0; font-weight: 700; }
+.mk table.mx th:first-child, .mk table.mx td:first-child { text-align: left; position: sticky; left: 0; background: var(--m-card); }
+.mk table.mx td.best { color: var(--m-ok); font-weight: 750; }
+.mk table.mx td.na { color: var(--m-ter); }
+.mk table.mx tr:last-child td { border-bottom: 0; }
+.mk .rcpt { background: #fbfaf6; color: #222; border-radius: 6px; padding: 18px 16px 22px; font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.55; box-shadow: 0 12px 30px -16px rgb(0 0 0 / .6); position: relative; }
+.mk .rcpt::after { content: ""; position: absolute; left: 0; right: 0; bottom: -8px; height: 8px; background: radial-gradient(circle at 6px 0, #fbfaf6 6px, transparent 6.5px) 0 0 / 12px 8px repeat-x; }
+.mk .rcpt .c0 { text-align: center; }
+.mk .rcpt .rl { display: flex; justify-content: space-between; gap: 10px; width: 100%; text-align: left; padding: 1px 4px; margin: 0 -4px; border-radius: 4px; color: #222; }
+.mk .rcpt .rl span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk .rcpt .rl.hl { background: #ffe2a8; }
+.mk .rcpt button.rl:hover { background: #efece2; }
+.mk .rcpt .q2 { color: #666; padding-left: 12px; }
+.mk .rcpt hr { border: 0; border-top: 1px dashed #999; margin: 8px 0; }
+.mk .rcpt .tot { font-weight: 700; font-size: 14px; }
+
+.mk .tabbar { position: sticky; bottom: 0; z-index: 6; margin-top: 4px; padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)); }
+.mk .tabs { display: flex; align-items: center; justify-content: space-between; background: var(--m-card); box-shadow: var(--m-sh); -webkit-backdrop-filter: var(--m-blur); backdrop-filter: var(--m-blur); border-radius: 30px; padding: 6px; }
+.mk .tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11.5px; font-weight: 650; color: var(--m-sec); padding: 6px 0; border-radius: 24px; text-align: center; position: relative; }
+.mk .tabs button.on { color: var(--m-acc); background: var(--m-card2); }
+.mk .tabs .mic { flex: none; width: 54px; height: 54px; border-radius: 99px; background: var(--m-pri); color: #fff; display: grid; place-items: center; margin: -14px 4px 0; box-shadow: 0 10px 20px -8px rgb(0 0 0 / .6); }
+.mk .tabs .badge { position: absolute; top: 0; right: calc(50% - 22px); min-width: 18px; height: 18px; border-radius: 99px; background: #e5484d; color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; padding: 0 5px; }
+.mk-toast { position: absolute; left: 50%; bottom: 104px; transform: translateX(-50%) translateY(10px); background: var(--m-toast); color: var(--m-toastfg); font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: 16px; max-width: 88%; width: max-content; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 9; font-family: -apple-system, "Inter", system-ui, sans-serif; text-align: center; }
+.mk-toast.on { opacity: 1; transform: translateX(-50%); }
+@media (max-width: 1099px) { .mk-toast { position: fixed; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">Výdavky 2.0<small>návrh prestavby karty · Basket Harmony</small></div>
+    <div class="views" role="group" aria-label="Zobraziť">
+      <button type="button" id="v-mock" data-view="mock" aria-pressed="true">Mockup</button>
+      <button type="button" id="v-doc" data-view="doc" aria-pressed="false">Návrh</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<article class="doc" id="doc">
+  <div class="eyebrow">Návrh · 11. 11. 2026</div>
+  <h1>Výdavky 2.0</h1>
+  <p class="lead">Karta Výdavky má odpovedať na tri otázky, presne v tomto poradí. Dnes na ne odpovedá len čiastočne a niektoré čísla sú zlé. Návrh opravuje výpočty, zjednocuje ovládanie a pridáva cestu od kategórie až po cenu jedného výrobku v jednom obchode.</p>
+  <div class="qs">
+    <div class="q"><i>hore na obrazovke</i><b>Koľko míňame a je to v poriadku?</b><span>Súčet, porovnanie s rovnakými dňami minule, tempo mesiaca a rozpočet.</span></div>
+    <div class="q"><i>v strede</i><b>Na čo to ide?</b><span>Tri pohľady na tie isté peniaze: kategórie, obchody, produkty.</span></div>
+    <div class="q"><i>v detaile</i><b>Kde je to lacnejšie?</b><span>Bežná cena za kg / l / kus, poradie obchodov a porovnanie celého košíka.</span></div>
+  </div>
+  <ul class="toc" aria-label="Obsah">
+    <li><a href="#zistenia">Čo je dnes zle</a></li>
+    <li><a href="#principy">Princípy</a></li>
+    <li><a href="#mapa">Mapa obrazoviek</a></li>
+    <li><a href="#obrazovky">Obrazovky</a></li>
+    <li><a href="#ceny">Ceny a jednotky</a></li>
+    <li><a href="#pridat">Čo pridať</a></li>
+    <li><a href="#technika">Technické riešenie</a></li>
+    <li><a href="#postup">Postup</a></li>
+    <li><a href="#rozhodnutia">Na rozhodnutie</a></li>
+  </ul>
+
+  <h2 id="zistenia"><span class="sec-n">1</span>Čo je dnes zle</h2>
+  <p>Prešiel som kód obrazovky aj tvoje skutočné bločky v testovacej databáze (67 bločkov, 523 položiek, 17. 8. – 2. 11. 2026). Toto sú konkrétne príčiny toho, čo vidíš na snímke.</p>
+
+  <h3>Čísla, ktoré nesedia</h3>
+  <div class="finds">
+    <div class="find"><div class="see"><q>o 1775 % viac ako august</q><span class="tag bad">chyba v čísle</span></div>
+      <p>V auguste je v dátach jediný bloček (asi 36 €, 17. 8.). Appka porovnala celý september s takmer prázdnym mesiacom. <b>Chýba pravidlo, kedy porovnanie dáva zmysel.</b></p>
+      <div class="fix">porovnávať len vtedy, keď už v minulom období boli bločky; inak napísať, odkedy porovnanie bude. Veľké rozdiely písať ako „2,4× viac“, malé v eurách.</div></div>
+    <div class="find"><div class="see"><q>Obchod 681 € · Woolworth · 31 nákupov</q><span class="tag bad">chyba v čísle</span></div>
+      <p>V testovacej databáze nemá ani jeden zo 67 bločkov vyplnený kľúč obchodu (<code>store_key</code>). Všetky obchody sa zliali do jedného riadku a meno sa vybralo náhodne. Ostrá databáza kľúč má (96 z 97 bločkov), ale <b>výpočty na ňom nesmú stáť</b> – pri kópii dát sa to rozbilo.</p>
+      <div class="fix">databáza si kľúč obchodu dopočíta z názvu vždy sama a zjednotí siete (Lidl = LIDL).</div></div>
+    <div class="find"><div class="see"><q>Camembert · 3 kg za 2,97 €</q><span class="tag bad">chyba v čísle</span></div>
+      <p>Pri jednotlivých nákupoch druhu a výrobku sa k <b>počtu balení</b> píše jednotka porovnania. Kúpil si 3 balenia po 120 g (spolu 0,36 kg), appka napíše „3 kg“. Pri litroch zas napíše „ks“.</p>
+      <div class="fix">vždy písať „3 × 120 g = 0,36 kg“ a jednotku brať z balenia.</div></div>
+    <div class="find"><div class="see"><q>Pivo · 0,03 €/ks</q><span class="tag bad">chyba v čísle</span></div>
+      <p>Riadok bločku „PLZ 6x“ za 0,90 € je 6 záloh po 0,15 €, ktoré sa priradili k pivu Pilsner Urquell. Výrobok má navyše balenie „6 ks“ a bloček množstvo 6, takže appka ráta 6 × 6 = 36 pív. <b>Dve chyby naraz:</b> záloha ako tovar a dvojité násobenie balenia.</p>
+      <div class="fix">zálohy nikdy nepárovať s výrobkom; ak je násobok v názve aj v množstve, rátať ho raz.</div></div>
+    <div class="find"><div class="see"><q>Camembert 1,45 €/ks · 8,25 €/kg</q><span class="tag bad">chyba v čísle</span></div>
+      <p>315 z 523 položiek (60 %) nemá veľkosť balenia, z toho 107 sú potraviny. Druh potom mieša kusy a kilá. Priemer sa ráta len z jednotky, ktorej je viac, <b>ostatné nákupy potichu vypadnú</b> a nikde to nevidno.</p>
+      <div class="fix">jednotku porovnania určuje druh; nákup bez veľkosti ostane v sume, ale appka ho označí a ponúkne doplnenie jedným ťuknutím.</div></div>
+    <div class="find"><div class="see"><q>Priemer</q> raz tak, raz inak<span class="tag bad">chyba v čísle</span></div>
+      <p>Výrobok počíta priemer ako obyčajný priemer cien nákupov, druh ako všetky peniaze ÷ celé množstvo. Jedna akcia tak posunie číslo na každej obrazovke inak a slovo „Priemer“ nehovorí, z čoho je.</p>
+      <div class="fix">dve pomenované čísla: <b>Bežná cena</b> (stredná hodnota za 3 mesiace, akcia ju nepohne) a <b>Zaplatené priemerne</b> (čo ťa to v období naozaj stálo).</div></div>
+    <div class="find"><div class="see"><q>Dezodorant 75,80 €/l · Detské body 0,04 €/ks</q><span class="tag bad">nezmysel</span></div>
+      <p>Cena za liter pri kozmetike a za kus pri oblečení vo výpredaji (−80 %) nič nehovorí. Chýba pravidlo, pri ktorých druhoch sa cena za jednotku vôbec ukazuje.</p>
+      <div class="fix">malé balenia za 100 g / 100 ml, oblečenie, lieky a služby bez ceny za jednotku.</div></div>
+    <div class="find"><div class="see"><q>Lidl / LIDL · Kraj / KRAJ · Feedo / feedo.sk</q><span class="tag bad">chyba v čísle</span></div>
+      <p>Obchody sa nezjednocujú, v zozname obchodov sú dvakrát a ich súčty sa delia.</p>
+      <div class="fix">jeden kľúč pre sieť a pekný názov, staré bločky sa opravia migráciou.</div></div>
+    <div class="find"><div class="see"><q>Zálohy</q> nikde<span class="tag ux">chýba</span></div>
+      <p>Zálohy sa správne nerátajú do výdavkov, ale appka neukáže, koľko si za ne zaplatil a koľko dostal späť (september: vrátené o 21,60 € viac, než si zaplatil).</p>
+      <div class="fix">riadok „Zálohy za fľaše: zaplatené / vrátené“ v prehľade.</div></div>
+  </div>
+
+  <h3>Ovládanie a prehľadnosť</h3>
+  <div class="finds">
+    <div class="find"><div class="see"><q>September</q> 4× na obrazovke<span class="tag ux">ovládanie</span></div>
+      <p>Obdobie je v nadpise, v prepínači, medzi šípkami aj v nadpise karty týždňov. Detail druhu má navyše vlastný prepínač (Október / September / 3 mesiace), ktorý ignoruje, čo si zvolil na prehľade.</p>
+      <div class="fix">jedno ovládanie obdobia, platí na všetkých obrazovkách Výdavkov; názov obdobia je na obrazovke raz.</div></div>
+    <div class="find"><div class="see">K produktom sa nedá dostať priamo<span class="tag ux">ovládanie</span></div>
+      <p>Produkty sú len cez Kategória → Druh. Nedá sa hľadať. Obchod ukazuje kategórie a bločky, ale nie to, čo v ňom kupuješ a či je to tam lacné.</p>
+      <div class="fix">pohľad Produkty na prehľade, lupa v hlavičke, v obchode zoznam produktov s cenou „tu“ a „inde“.</div></div>
+    <div class="find"><div class="see">Dlaždice Najviac / Obchod / Bločky / <q>Rozpočet –</q><span class="tag ux">prehľadnosť</span></div>
+      <p>Opakujú to, čo je nižšie, a prázdny rozpočet nepovie, čo spraviť. Veľké tlačidlá Odfotiť / Všetky bločky zaberajú najlepšie miesto, hoci fotoaparát je aj v hlavičke.</p>
+      <div class="fix">jeden súhrn s porovnaním, tempom a rozpočtom; „Nastaviť rozpočet“ ako odkaz; bločky ako riadok nižšie.</div></div>
+    <div class="find"><div class="see"><q>1.–7. · 0 €</q> a <q>29.–</q><span class="tag ux">prehľadnosť</span></div>
+      <p>Týždne v mesiaci kreslia prázdny týždeň bodkou a posledný týždeň bez konca. Nevidno, či míňaš viac ako minulý mesiac v rovnakom čase.</p>
+      <div class="fix">graf tempa: čiara tohto a minulého mesiaca deň po dni a odhad na koniec mesiaca.</div></div>
+    <div class="find"><div class="see"><q>5× nákup</q> · <q>priemer za kg</q><span class="tag ux">texty</span></div>
+      <p>Zlé tvary („5× nákup“ namiesto „5 nákupov“), jednotka bez ceny („Kde je najlacnejší · priemer za kg“) a štítky bez vysvetlenia.</p>
+      <div class="fix">tvary cez <code>tn()</code>, cena vždy s jednotkou („8,96 €/kg“) a ku každému číslu „z čoho je“.</div></div>
+  </div>
+
+  <h2 id="principy"><span class="sec-n">2</span>Princípy</h2>
+  <div class="princ">
+    <div class="pr"><b>Jedno obdobie pre celú kartu</b><span>Týždeň / Mesiac / Rok a šípky. Zvolíš raz a platí na prehľade aj v každom detaile.</span></div>
+    <div class="pr"><b>Najprv odpoveď, potom detail</b><span>Hore súčet a či je v poriadku, v strede rozpis, dole jednotlivé nákupy a bločky.</span></div>
+    <div class="pr"><b>Tri pohľady, všetky prepojené</b><span>Kategórie, Obchody, Produkty. Z kategórie do obchodov, z obchodu do produktov, z produktu do obchodov, kde je najlacnejší.</span></div>
+    <div class="pr"><b>Cena má dve podoby</b><span>Koľko si zaplatil za balenie a koľko to vychádza za kg / l / kus. Jednotku určuje druh, nie náhoda.</span></div>
+    <div class="pr"><b>Porovnávame len porovnateľné</b><span>Nákup bez veľkosti balenia sa do ceny za kg nezapočíta. Appka to povie a ponúkne opravu.</span></div>
+    <div class="pr"><b>Každé číslo vie, z čoho je</b><span>Pri cene je výpočet: 2,39 € ÷ 0,25 kg = 9,56 €/kg. Pri porovnaní je napísané, s ktorými dňami.</span></div>
+  </div>
+
+  <h2 id="mapa"><span class="sec-n">3</span>Mapa obrazoviek</h2>
+  <p>Ťukni na obrazovku a mockup ju otvorí. Každá šípka je ťuknutie; z každého detailu vedie cesta späť aj do susedných pohľadov.</p>
+  <div class="map">
+    <div class="map-g">
+      <span class="arrow">prehľad</span><span class="arrow">pohľad →</span><span class="arrow">detail →</span><span class="arrow">hlbšie →</span>
+      <button type="button" class="nd root" data-show="overview" style="grid-row: span 4">Výdavky<small>prehľad obdobia</small></button>
+      <button type="button" class="nd" data-show="lens:cat">Kategórie</button>
+      <button type="button" class="nd" data-show="cat:dairy_eggs">Kategória<small>druhy · obchody</small></button>
+      <button type="button" class="nd" data-show="kind:maslo" style="grid-row: span 3">Druh<small>bežná cena · kde najlacnejšie<br>výrobky · nákupy</small></button>
+      <button type="button" class="nd" data-show="lens:store" style="grid-column: 2">Obchody</button>
+      <button type="button" class="nd" data-show="store:lidl">Obchod<small>produkty tu vs. inde</small></button>
+      <button type="button" class="nd" data-show="lens:kind" style="grid-column: 2">Produkty</button>
+      <button type="button" class="nd" data-show="search">Hľadať<small>druh · výrobok · obchod</small></button>
+      <span class="arrow" style="grid-column: 2">lupa, odkazy dole</span>
+      <button type="button" class="nd" data-show="compare">Porovnať obchody<small>tvoj bežný košík</small></button>
+      <button type="button" class="nd" data-show="product:pilos-maslo">Výrobok<small>balenie · cena v čase</small></button>
+      <span style="grid-column: 2"></span>
+      <button type="button" class="nd" data-show="fix">Na doplnenie<small>veľkosť balenia</small></button>
+      <button type="button" class="nd" data-show="receipt">Bloček<small>zvýraznený riadok</small></button>
+    </div>
+  </div>
+
+  <h2 id="obrazovky"><span class="sec-n">4</span>Obrazovky</h2>
+
+  <div class="scr"><div class="scr-h"><h3>Prehľad (Výdavky)</h3><button type="button" class="show" data-show="overview">Ukázať v mockupe →</button></div>
+    <ul>
+      <li><b>Hlavička:</b> avatar, nadpis Výdavky, lupa, fotoaparát, nápoveda. Veľké tlačidlá Odfotiť / Všetky bločky odchádzajú.</li>
+      <li><b>Chýba bloček</b> ostáva ako jeden riadok s Odfotiť (len keď niečo chýba).</li>
+      <li><b>Obdobie:</b> Týždeň · Mesiac · Rok a pod tým ‹ November 2026 ›. Pri prebiehajúcom období aj „1.–11. 11. · prebieha“.</li>
+      <li><b>Súhrn:</b> minuté, porovnanie s rovnakými dňami minulého obdobia (s napísanými dňami), rozpočet s čiarou „kde by si mal byť dnes“.</li>
+      <li><b>Graf:</b> mesiac = tempo (tento vs. minulý mesiac deň po dni a odhad na koniec), týždeň = dni, rok = mesiace (ťuk otvorí mesiac).</li>
+      <li><b>Kam peniaze odišli:</b> prepínač Kategórie · Obchody · Produkty. Kategórie sú v troch skupinách (Jedlo a nápoje · Drogéria a domácnosť · Ostatné), každá s podielom a zmenou.</li>
+      <li><b>Oplatí sa vedieť:</b> zdraženie, kde je to, čo kupuješ často, lacnejšie (a koľko ušetríš za mesiac), zálohy.</li>
+      <li><b>Presnosť:</b> „Doplň veľkosť balenia pri 2 výrobkoch“ len keď niečo chýba. Dole Bločky a Porovnať obchody.</li>
+    </ul></div>
+
+  <div class="scr"><div class="scr-h"><h3>Kategória</h3><button type="button" class="show" data-show="cat:dairy_eggs">Ukázať v mockupe →</button></div>
+    <ul>
+      <li>Suma za obdobie, zmena a podiel na všetkých výdavkoch; malý graf posledných 6 mesiacov.</li>
+      <li>Prepínač <b>Druhy · Obchody</b>. Druh: koľko, za koľko, bežná cena za jednotku a kde je najlacnejší. Obchody: koľko si za túto kategóriu nechal v ktorom obchode.</li>
+    </ul></div>
+
+  <div class="scr"><div class="scr-h"><h3>Druh (najdôležitejšia obrazovka)</h3><button type="button" class="show" data-show="kind:maslo">Ukázať v mockupe →</button></div>
+    <ul>
+      <li>Pod nadpisom je napísané, <b>za čo sa porovnáva</b> („porovnávame za 1 kg“) – raz a jasne.</li>
+      <li><b>V období:</b> minuté, nakúpené množstvo (aj počet balení) a zaplatené priemerne.</li>
+      <li><b>Cena za 3 mesiace:</b> bežná cena veľkým písmom, pás od najlacnejšieho po najdrahší nákup (bodky farbou obchodu), naposledy s výpočtom.</li>
+      <li><b>Kde kúpiť najlacnejšie:</b> obchody podľa bežnej ceny za jednotku, štítok „najlacnejšie“ alebo „+14 %“, počet nákupov. Ťuk → obchod s týmto druhom zvýrazneným.</li>
+      <li><b>Výrobky:</b> značka a balenie, cena balenia aj za jednotku. <b>Cena v čase</b> a <b>nákupy</b> v období (3 × 250 g = 0,75 kg).</li>
+      <li>Nákupy bez veľkosti balenia: poznámka s počtom a tlačidlom Doplniť.</li>
+    </ul></div>
+
+  <div class="scr"><div class="scr-h"><h3>Výrobok</h3><button type="button" class="show" data-show="product:pilos-maslo">Ukázať v mockupe →</button></div>
+    <ul>
+      <li>Cena balenia veľkým písmom, pod ňou cena za jednotku a zmena („+9 % od 10. 10. v Lidli“).</li>
+      <li>Cena balenia v čase, obchody (naposledy / najnižšie / počet), odkaz „Porovnať s ostatnými: Maslo“, Pridať do zoznamu, ⋯ Upraviť balenie a druh.</li>
+    </ul></div>
+
+  <div class="scr"><div class="scr-h"><h3>Obchod</h3><button type="button" class="show" data-show="store:lidl">Ukázať v mockupe →</button></div>
+    <ul>
+      <li>Minuté, počet nákupov, priemer na nákup, zmena.</li>
+      <li>Prepínač <b>Produkty · Kategórie · Bločky</b>. Produkty: čo tu kupuješ, bežná cena tu a štítok „tu najlacnejšie“ alebo „Kaufland −8 %“.</li>
+    </ul></div>
+
+  <div class="scr"><div class="scr-h"><h3>Porovnať obchody</h3><button type="button" class="show" data-show="compare">Ukázať v mockupe →</button></div>
+    <ul>
+      <li>Tvoj bežný košík = veci kúpené aspoň 3× za 3 mesiace, ktoré poznáme aspoň z 2 obchodov.</li>
+      <li>Hore: koľko ušetríš za mesiac, ak každú vec kúpiš tam, kde je najlacnejšia. Pod tým tabuľka druh × obchod s cenou za jednotku, najlacnejšia zelenou.</li>
+    </ul></div>
+
+  <div class="scr"><div class="scr-h"><h3>Hľadať · Na doplnenie · Bloček</h3><button type="button" class="show" data-show="search">Ukázať v mockupe →</button></div>
+    <ul>
+      <li><b>Hľadať:</b> „maslo“ ukáže druh, výrobky aj obchody s cenou za jednotku.</li>
+      <li><b>Na doplnenie:</b> výrobky bez veľkosti balenia s ponukou veľkostí (100 g · 120 g · 125 g · Iná). Ťuk a cena za kg sa hneď prepočíta.</li>
+      <li><b>Bloček:</b> ako papierový bloček, riadok, z ktorého si prišiel, je zvýraznený; ťuk na riadok otvorí výrobok.</li>
+    </ul></div>
+
+  <h2 id="ceny"><span class="sec-n">5</span>Ceny a jednotky</h2>
+  <p>Toto je jadro presnosti. Jednotku porovnania má každý druh uloženú v databáze; AI ju navrhne pri zjednotení produktov, ty ju môžeš zmeniť.</p>
+  <div class="tbl-w"><table>
+    <thead><tr><th>Druh</th><th>Porovnávame</th><th>Príklad</th></tr></thead>
+    <tbody>
+      <tr><td>Mlieko, pivo, voda, olej, prací gél, palivo</td><td>za 1 l</td><td class="mono">1,29 € za 0,5 l = 2,58 €/l</td></tr>
+      <tr><td>Maslo, syr, mäso, šunka, ovocie, chlieb</td><td>za 1 kg</td><td class="mono">2,39 € za 250 g = 9,56 €/kg</td></tr>
+      <tr><td>Vajcia, rožky, plienky, toaletný papier</td><td>za 1 kus</td><td class="mono">7,99 € za 44 ks = 0,18 €/ks</td></tr>
+      <tr><td>Malé balenia (korenie, zubná pasta, kozmetika)</td><td>za 100 g / 100 ml</td><td class="mono">2,99 € za 75 ml = 3,99 €/100 ml</td></tr>
+      <tr><td>Oblečenie, lieky, elektronika, služby</td><td>neporovnávame</td><td class="mono">len cena za kus</td></tr>
+    </tbody></table></div>
+
+  <h3>Ako sa ráta množstvo</h3>
+  <p>Množstvo = počet balení × veľkosť balenia. Vážené veci (banány, syr z pultu) idú priamo z bločku. Násobok sa ráta raz.</p>
+  <div class="math"><span class="c">PILOS MASLO 82% 250G        2 × 2,39 = 4,78</span>
+množstvo   2 × 0,25 kg           = 0,50 kg
+za kg      4,78 € ÷ 0,50 kg       = <span class="ok">9,56 €/kg</span>
+
+<span class="c">BANANY  1,236 kg × 1,19         = 1,47</span>
+za kg      priamo z bločku        = <span class="ok">1,19 €/kg</span>
+
+<span class="c">PLZ 6x                       6 × 0,15 = 0,90</span>
+dnes       6 × balenie „6 ks“ = 36 ks → <span class="bad">0,03 €/ks</span>
+správne    zálohy 0,90 € (zaplatené), pivo sa neráta</div>
+
+  <h3>Pravidlá</h3>
+  <ul>
+    <li><b>Bežná cena</b> = stredná hodnota (medián) cien za jednotku za posledné 3 mesiace. Jedna akcia ani jeden drahý nákup ju nepohne. Mesiac má na ceny málo nákupov, preto 3 mesiace – a je to napísané.</li>
+    <li><b>Zaplatené priemerne</b> = všetky peniaze ÷ celé množstvo v zvolenom období. To je to, čo ťa to naozaj stálo.</li>
+    <li><b>Najlacnejšie / najdrahšie</b> = konkrétny nákup s obchodom a dátumom, nie priemer.</li>
+    <li><b>Akcia</b> = aspoň o 15 % pod bežnou cenou v tom istom obchode; štítok „akcia“, do zdraženia/zlacnenia sa nepočíta.</li>
+    <li><b>Obchody</b> sa porovnávajú v rovnakej jednotke a za rovnaké 3 mesiace; obchod s jediným nákupom má poznámku „1 nákup“.</li>
+    <li><b>Bez veľkosti balenia:</b> nákup je v sume, nie v cene za jednotku; appka ukáže počet a „Doplniť“.</li>
+    <li><b>Zľavy:</b> ukazuje sa zaplatená cena; cena pred zľavou len v detaile nákupu. <b>Zálohy</b> sú zvlášť (zaplatené / vrátené) a nikdy nie sú tovar.</li>
+    <li><b>Porovnanie s minulým obdobím</b> berie rovnaké dni (1.–11. 11. oproti 1.–11. 10.) a je to napísané. Ak v minulom období ešte neboli bločky, porovnanie sa neukáže. Rozdiel pod 20 € v eurách, nad dvojnásobok ako „2,4×“, inak percentá aj eurá.</li>
+    <li><b>Formát:</b> „8,96 €/kg“, „0,5 l“, „250 g“ cez <code>formatEuro</code> / <code>formatNumber</code>; tvary slov cez <code>tn()</code>.</li>
+  </ul>
+
+  <h2 id="pridat"><span class="sec-n">6</span>Čo navrhujem pridať</h2>
+  <p>Veci, ktoré si nespomenul a podľa mňa robia rozdiel medzi „vidím čísla“ a „viem, čo s nimi“.</p>
+  <div class="adds">
+    <div class="add"><b>Hľadanie</b><span>Napíšeš „maslo“ a hneď vidíš bežnú cenu a kde je najlacnejšie.</span><span class="tag ok eff">malé</span></div>
+    <div class="add"><b>Tempo mesiaca</b><span>Čiara tento vs. minulý mesiac a odhad na koniec mesiaca. Rozpočet s čiarou „kde by si mal byť dnes“.</span><span class="tag ok eff">malé</span></div>
+    <div class="add"><b>Porovnať obchody</b><span>Tvoj bežný košík v každom obchode a koľko by si ušetril za mesiac.</span><span class="tag ux eff">stredné</span></div>
+    <div class="add"><b>Na doplnenie</b><span>Fronta výrobkov bez veľkosti balenia; každá oprava spresní ceny za kg natrvalo.</span><span class="tag ux eff">stredné</span></div>
+    <div class="add"><b>Zálohy za fľaše</b><span>Koľko si zaplatil a koľko dostal späť za obdobie.</span><span class="tag ok eff">malé</span></div>
+    <div class="add"><b>Bežné nákupy / Všetko</b><span>Aby palivo či oblečenie neprekryli potraviny. Databáza už má príznak <code>everyday</code>.</span><span class="tag ok eff">malé</span></div>
+    <div class="add"><b>Rozpočet po kategóriách</b><span>Napr. Jedlo 450 €, Drogéria 80 €. Databáza ho už vie uložiť.</span><span class="tag ux eff">stredné</span></div>
+    <div class="add"><b>Upozornenie na zdraženie</b><span>Keď zdražie niečo, čo kupuješ pravidelne (po zapnutí push upozornení).</span><span class="tag ux eff">stredné</span></div>
+    <div class="add"><b>Osobná inflácia</b><span>O koľko zdražel tvoj bežný košík za 3 a 12 mesiacov. Má zmysel, keď bude rok dát.</span><span class="tag bad eff">väčšie</span></div>
+    <div class="add"><b>Kto nakupoval</b><span>Výdavky podľa člena domácnosti (bloček má autora). Len ak chceš.</span><span class="tag ok eff">malé</span></div>
+  </div>
+
+  <h2 id="technika"><span class="sec-n">7</span>Technické riešenie</h2>
+  <p class="muted">Pre programátora a ďalšiu reláciu AI. Pravidlá sú v databáze, appka ich len zobrazuje.</p>
+  <h3>Databáza (nová migrácia, najprv testovacia DB)</h3>
+  <ul>
+    <li>Tabuľka <code>product_kinds</code> (domácnosť, kľúč, názov, kategória, <code>compare_unit</code> kg / l / ks / žiadna, <code>per_100</code>). Naplní sa z dnešných <code>products.kind</code>; <code>normalize-products</code> navrhne jednotku pre nové druhy.</li>
+    <li><code>_purchases</code> v3: množstvo len pri známej veľkosti (<code>size_known</code>), jednotka z druhu, násobok z názvu („6x“) sa nenásobí dvakrát, zálohy nikdy s výrobkom.</li>
+    <li><code>_store_key(name)</code>: zjednotenie siete, doplnenie kľúča starým bločkom (aj v testovacej DB) a spúšťač pri uložení bločku.</li>
+    <li><code>analytics_overview</code> v3: <code>coverage_from</code> (prvý bloček), porovnanie len ak je pokryté, skupiny kategórií, zálohy zaplatené/vrátené, top druhy, denné súčty pre tempo.</li>
+    <li><code>analytics_kind</code> v2 (medián 3 mesiacov, najlacnejší/najdrahší nákup, obchody, výrobky s cenou balenia aj za jednotku, nákupy bez veľkosti) a <code>analytics_store</code> v2 (produkty: cena tu vs. najlepšia inde).</li>
+    <li>Nové: <code>analytics_search(q)</code>, <code>analytics_compare_stores()</code>, <code>analytics_fix_queue()</code>, <code>set_product_size()</code>.</li>
+    <li>Testy do <code>core_test.sql</code>: 2 × 250 g maslo, banány 1,236 kg, pivo 6 × 0,5 l, „PLZ 6x“ ako záloha, výrobok bez veľkosti, porovnanie s neúplným mesiacom, Lidl = LIDL.</li>
+  </ul>
+  <h3>Appka</h3>
+  <ul>
+    <li>Jedno obdobie <code>usePer</code> pre všetky obrazovky Výdavkov (zmizne vlastný prepínač v detaile druhu); obdobie ostáva v adrese.</li>
+    <li>Spoločné kúsky: <code>PriceTag</code> (balenie + jednotka), <code>UnitMath</code> (výpočet), <code>RangeStrip</code>, <code>PaceChart</code>, <code>LensTabs</code>, <code>CompareTable</code>.</li>
+    <li>Adresy: <code>/analytics</code>, <code>…/category/:id</code>, <code>…/kind/:key</code>, <code>…/product/:id</code>, <code>…/store/:key</code>, <code>…/search</code>, <code>…/compare</code>, <code>…/fix</code>.</li>
+    <li>Všetky texty cez <code>t()</code> (sk + en), formát cez <code>formatEuro</code> / <code>formatNumber</code>, chyby cez <code>lib/errors.ts</code>.</li>
+    <li>Postup ako pri prestavbe: najprv sa upraví vzorový prototyp (<code>prototyp/src/money.jsx</code>), potom sa prenesie do appky.</li>
+  </ul>
+
+  <h2 id="postup"><span class="sec-n">8</span>Postup po krokoch</h2>
+  <ol class="steps">
+    <li><b>Presné čísla</b><span>Databáza: jednotky, zálohy, obchody, porovnanie obdobia. Uvidíš správne ceny za kg / l / ks a žiadne „1775 %“.</span></li>
+    <li><b>Nový prehľad</b><span>Jedno obdobie, súhrn s tempom a rozpočtom, tri pohľady, Oplatí sa vedieť.</span></li>
+    <li><b>Druh, výrobok, obchod</b><span>Bežná cena, kde najlacnejšie, výrobky, cena v čase, produkty v obchode a prepojenie medzi nimi.</span></li>
+    <li><b>Hľadanie, porovnanie obchodov, na doplnenie</b><span>Lupa, tvoj košík v obchodoch, doplnenie veľkostí balenia.</span></li>
+    <li><b>Rozpočty po kategóriách a upozornenia</b><span>Až keď budú prvé štyri kroky odskúšané.</span></li>
+  </ol>
+  <p>Každý krok: migrácia v testovacej DB a testy, texty sk/en, <code>npm run check</code>, preklikanie testovacej adresy, odskúšanie tebou. Ďalší krok až po tvojom „OK“.</p>
+
+  <h2 id="rozhodnutia"><span class="sec-n">9</span>Na rozhodnutie</h2>
+  <div class="dec">
+    <div class="dq"><b>Má prehľad ukazovať všetky výdavky, alebo len bežné nákupy?</b><span class="rec">všetky, s prepínačom „Len bežné nákupy“ (jedlo, drogéria, domácnosť).</span></div>
+    <div class="dq"><b>Pivo porovnávať za liter (2,58 €/l) alebo za fľašu 0,5 l (1,29 €)?</b><span class="rec">za liter, s cenou fľaše hneď vedľa.</span></div>
+    <div class="dq"><b>Veľké tlačidlo „Odfotiť bloček“ na Výdavkoch nechať?</b><span class="rec">nie – ikona v hlavičke a karta „Chýba bloček“ stačia (tak je to v mockupe).</span></div>
+    <div class="dq"><b>Týždeň ako pondelok – nedeľa namiesto „posledných 7 dní“?</b><span class="rec">áno, kalendárny týždeň sa lepšie porovnáva.</span></div>
+    <div class="dq"><b>Ceny v detaile druhu za 3 mesiace, aj keď je zvolený jeden mesiac?</b><span class="rec">áno, a napísať to pri cene. Sumy a množstvá idú podľa zvoleného obdobia.</span></div>
+  </div>
+
+  <p class="foot">Mockup počíta s vymyslenou domácnosťou (jún – november 2026, Lidl, Kaufland, Tesco, Kraj, Metro, dm, Dr.Max, Pepco, Slovnaft) rovnakými pravidlami, aké navrhujem pre appku. Zistenia v kapitole 1 sú z tvojich skutočných dát v testovacej databáze. Vzhľad: téma Fotky a sklo (tmavá), pod telefónom prepínač na Teplú kuchyňu.</p>
+</article>
+
+<aside class="mockcol" id="mock" aria-label="Mockup karty Výdavky">
+  <div class="phone">
+    <div class="mk-bg mk-th-g" id="mkbg"></div>
+    <div class="mk mk-th-g" id="mk"></div>
+    <div class="mk-toast" id="mktoast" role="status" aria-live="polite"></div>
+  </div>
+  <div class="themes" role="group" aria-label="Téma mockupu">
+    <button type="button" data-theme-set="g" aria-pressed="true">Fotky a sklo</button>
+    <button type="button" data-theme-set="w" aria-pressed="false">Teplá kuchyňa</button>
+  </div>
+  <p class="mock-note">Všetko je preklikateľné. Čísla sú ukážkové a počítajú sa z vymyslených bločkov podľa pravidiel návrhu.</p>
+</aside>
+</div>
+
+<script>
+(() => {
+'use strict';
+/* ================================================================ dátumy a formát */
+const TODAY = '2026-11-11';
+const DATA_START = '2026-06-01';
+const D = (s) => new Date(s + 'T00:00:00Z');
+const iso = (d) => d.toISOString().slice(0, 10);
+const addDays = (s, n) => { const d = D(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
+const dow = (s) => (D(s).getUTCDay() + 6) % 7;
+const pad = (n) => String(n).padStart(2, '0');
+const daysIn = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+const monthStart = (y, m) => `${y}-${pad(m)}-01`;
+const monthEnd = (y, m) => `${y}-${pad(m)}-${pad(daysIn(y, m))}`;
+const diffDays = (a, b) => Math.round((D(b) - D(a)) / 864e5);
+const minS = (a, b) => (a < b ? a : b);
+const MN = ['január', 'február', 'marec', 'apríl', 'máj', 'jún', 'júl', 'august', 'september', 'október', 'november', 'december'];
+const MN_LOC = ['januári', 'februári', 'marci', 'apríli', 'máji', 'júni', 'júli', 'auguste', 'septembri', 'októbri', 'novembri', 'decembri'];
+const MN3 = ['jan', 'feb', 'mar', 'apr', 'máj', 'jún', 'júl', 'aug', 'sep', 'okt', 'nov', 'dec'];
+const DOW = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const dm = (s) => `${+s.slice(8)}. ${+s.slice(5, 7)}.`;
+const NB = ' ';
+const nf = (v, min = 0, max = 2) => v.toLocaleString('sk-SK', { minimumFractionDigits: min, maximumFractionDigits: max });
+const eur = (v) => nf(v, 2, 2) + NB + '€';
+const eur0 = (v) => nf(Math.round(v), 0, 0) + NB + '€';
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const plural = (n, one, few, other) => (n === 1 ? one : n >= 2 && n <= 4 ? few : other);
+const nakupov = (n) => `${n} ${plural(n, 'nákup', 'nákupy', 'nákupov')}`;
+const blockov = (n) => `${n} ${plural(n, 'bloček', 'bločky', 'bločkov')}`;
+const sum = (a, f) => a.reduce((t, x) => t + f(x), 0);
+const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const groupBy = (a, f) => { const m = new Map(); for (const x of a) { const k = f(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); } return m; };
+const r2 = (v) => Math.round(v * 100) / 100;
+const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/* jednotky: množstvo, balenie, cena za jednotku */
+function qtyFmt(q, u) {
+  if (u === 'kg') return q < 1 ? `${nf(q * 1000, 0, 0)}${NB}g` : `${nf(q, 0, 2)}${NB}kg`;
+  if (u === 'l') return q < 1 ? `${nf(q * 1000, 0, 0)}${NB}ml` : `${nf(q, 0, 2)}${NB}l`;
+  return `${nf(q, 0, 0)}${NB}ks`;
+}
+const upFmt = (v, u, sm) => (v == null || !u ? '–' : sm && u !== 'ks' ? `${nf(v / 10, 2, 2)}${NB}€/100${NB}${u === 'kg' ? 'g' : 'ml'}` : `${nf(v, 2, 2)}${NB}€/${u}`);
+const perLabel = (u, sm) => (!u ? 'za kus' : sm && u !== 'ks' ? `za 100${NB}${u === 'kg' ? 'g' : 'ml'}` : u === 'ks' ? `za 1${NB}kus` : `za 1${NB}${u}`);
+
+/* ================================================================ ukážkové dáta */
+const STORES = {
+  lidl: { n: 'Lidl', c: '#1257b0', cc: '#4d8de0', t: 'L' },
+  kaufland: { n: 'Kaufland', c: '#cf1d26', cc: '#ef6a5e', t: 'K' },
+  tesco: { n: 'Tesco', c: '#26498f', cc: '#a48ae6', t: 'T' },
+  kraj: { n: 'Kraj', c: '#2f7d3b', cc: '#47c27a', t: 'Kr' },
+  metro: { n: 'Metro', c: '#1b3c74', cc: '#e9b23c', t: 'M' },
+  dm: { n: 'dm', c: '#8a2d6e', cc: '#e070b4', t: 'dm' },
+  drmax: { n: 'Dr.Max', c: '#0f8a52', cc: '#3cc6a0', t: 'Dr' },
+  pepco: { n: 'Pepco', c: '#3a3a3a', cc: '#b9b9b9', t: 'P' },
+  slovnaft: { n: 'Slovnaft', c: '#0c6a45', cc: '#6fd08f', t: 'S' },
+};
+const GROUPS = { food: { n: 'Jedlo a nápoje', c: '#f29a70' }, home: { n: 'Drogéria a domácnosť', c: '#7fb3ea' }, other: { n: 'Ostatné', c: '#b9a6e8' } };
+const CATS = {
+  produce: { n: 'Ovocie a zelenina', e: '🥦', col: '#5fb36b', g: 'food' },
+  bakery: { n: 'Pečivo', e: '🥐', col: '#d9a35b', g: 'food' },
+  dairy_eggs: { n: 'Mliečne a vajcia', e: '🥛', col: '#8fb8e8', g: 'food' },
+  meat_fish: { n: 'Mäso a ryby', e: '🥩', col: '#e07a6a', g: 'food' },
+  deli_chilled: { n: 'Údeniny a chladené', e: '🥓', col: '#e39a8a', g: 'food' },
+  pantry: { n: 'Trvanlivé potraviny', e: '🍝', col: '#d8b26a', g: 'food' },
+  breakfast: { n: 'Raňajky, káva a čaj', e: '☕', col: '#b08a6a', g: 'food' },
+  snacks_sweets: { n: 'Sladkosti a slané', e: '🍫', col: '#c98ab5', g: 'food' },
+  beverages: { n: 'Nápoje', e: '💧', col: '#6cc3d6', g: 'food' },
+  alcohol: { n: 'Alkohol', e: '🍺', col: '#e6c45a', g: 'food' },
+  household_cleaning: { n: 'Domácnosť a čistenie', e: '🧽', col: '#7fb3ea', g: 'home' },
+  personal_care: { n: 'Drogéria', e: '🧴', col: '#9fa8ea', g: 'home' },
+  baby: { n: 'Pre deti', e: '🍼', col: '#f0a3b8', g: 'home' },
+  health: { n: 'Zdravie a lekáreň', e: '💊', col: '#79d1b5', g: 'home' },
+  fuel: { n: 'Pohonné hmoty', e: '⛽', col: '#b9a6e8', g: 'other' },
+  clothing: { n: 'Oblečenie a obuv', e: '👕', col: '#a3c47a', g: 'other' },
+  home: { n: 'Domov a vybavenie', e: '🪴', col: '#c7a37f', g: 'other' },
+};
+/* Druh: u = jednotka porovnania (kg/l/ks, null = neporovnáva sa), sm = malé balenia (za 100 g/ml), w = ako často sa kupuje,
+   q = počet balení, dep = záloha za kus. Výrobok: s = veľkosť balenia v jednotke druhu (null = neznáma), p = cena v obchodoch,
+   st = zmena ceny od dátumu, wq = vážený tovar (rozsah množstva), opts = ponuka veľkostí na doplnenie. */
+const KINDS = [
+  { k: 'mlieko', n: 'Mlieko', c: 'dairy_eggs', e: '🥛', u: 'l', w: 9, q: [2, 4], P: [
+    { id: 'pilos-mlieko', b: 'Pilos', n: 'Mlieko polotučné 1,5 %', s: 1, p: { lidl: 0.95 }, r: 'PILOS MLIEKO 1,5% 1L' },
+    { id: 'kc-mlieko', b: 'K-Classic', n: 'Mlieko polotučné 1,5 %', s: 1, p: { kaufland: 0.99 }, r: 'KC MLIEKO POLOT. 1L' },
+    { id: 'rajo-mlieko', b: 'Rajo', n: 'Mlieko polotučné 1,5 %', s: 1, p: { kaufland: 1.19, tesco: 1.15, kraj: 1.25 }, r: 'RAJO MLIEKO 1,5% 1L' }] },
+  { k: 'maslo', n: 'Maslo', c: 'dairy_eggs', e: '🧈', u: 'kg', w: 6, q: [1, 2], P: [
+    { id: 'pilos-maslo', b: 'Pilos', n: 'Maslo 82 %', s: 0.25, p: { lidl: 2.19 }, st: { lidl: [['2026-10-10', 2.39]] }, r: 'PILOS MASLO 82% 250G' },
+    { id: 'kc-maslo', b: 'K-Classic', n: 'Maslo 82 %', s: 0.25, p: { kaufland: 2.29 }, r: 'KC MASLO 82% 250G' },
+    { id: 'tatr-maslo', b: 'Tatranské', n: 'Maslo', s: 0.25, p: { kaufland: 2.69, tesco: 2.79, kraj: 2.89 }, r: 'TATRANSKE MASLO 250G' }] },
+  { k: 'vajcia', n: 'Vajcia', c: 'dairy_eggs', e: '🥚', u: 'ks', w: 5, q: [1, 1], P: [
+    { id: 'lidl-vajcia', b: '', n: 'Vajcia M z podstielky', s: 10, p: { lidl: 2.39 }, r: 'VAJCIA M PODSTIELKA 10KS' },
+    { id: 'kauf-vajcia', b: '', n: 'Vajcia L', s: 10, p: { kaufland: 2.69, tesco: 2.89 }, r: 'VAJCIA L 10KS' },
+    { id: 'kraj-vajcia', b: 'Farma Lehota', n: 'Vajcia z farmy', s: 6, p: { kraj: 2.1 }, r: 'VAJCIA FARMA 6KS' }] },
+  { k: 'jogurt', n: 'Jogurt biely', c: 'dairy_eggs', e: '🥣', u: 'kg', w: 5, q: [2, 4], P: [
+    { id: 'pilos-jog', b: 'Pilos', n: 'Biely jogurt', s: 0.15, p: { lidl: 0.35 }, r: 'PILOS JOGURT BIELY 150G' },
+    { id: 'rajo-jog', b: 'Rajo', n: 'Jogurt biely', s: 0.15, p: { kaufland: 0.45, tesco: 0.49, kraj: 0.55 }, r: 'RAJO JOGURT BIELY 150G' }] },
+  { k: 'eidam', n: 'Syr eidam', c: 'dairy_eggs', e: '🧀', u: 'kg', w: 4, q: [1, 2], P: [
+    { id: 'pilos-eidam', b: 'Pilos', n: 'Eidam 30 % plátky', s: 0.1, p: { lidl: 0.99 }, r: 'EIDAM 30% PLATKY 100G' },
+    { id: 'kauf-eidam', b: '', n: 'Eidam 45 % z pultu', s: null, wq: [0.18, 0.35], p: { kaufland: 8.99 }, r: 'EIDAM 45% PULT' }] },
+  { k: 'hermelin', n: 'Hermelín', c: 'dairy_eggs', e: '🧀', u: 'kg', w: 3, q: [1, 2], P: [
+    { id: 'kral-herm', b: 'Král Sýrů', n: 'Hermelín', s: 0.12, p: { kaufland: 1.99, tesco: 2.09 }, r: 'KRAL SYRU HERMELIN 120G' },
+    { id: 'lidl-herm', b: 'Pilos', n: 'Hermelín', s: 0.12, p: { lidl: 1.69 }, r: 'PILOS HERMELIN 120G' },
+    { id: 'kraj-herm', b: '', n: 'Hermelín', s: null, opts: [0.1, 0.12, 0.125], p: { kraj: 1.99 }, r: 'HERMELIN' }] },
+  { k: 'rozky', n: 'Rožky', c: 'bakery', e: '🥖', u: 'ks', w: 9, q: [4, 10], P: [
+    { id: 'rozok-lidl', b: '', n: 'Rožok biely 40 g', s: 1, p: { lidl: 0.09 }, r: 'ROZOK 40G' },
+    { id: 'rozok-kauf', b: '', n: 'Rožok biely 43 g', s: 1, p: { kaufland: 0.1, tesco: 0.11 }, r: 'ROZOK BIELY 43G' },
+    { id: 'rozok-kraj', b: 'Pekáreň Kraj', n: 'Rožok', s: 1, p: { kraj: 0.12 }, r: 'ROZOK' }] },
+  { k: 'chlieb', n: 'Chlieb', c: 'bakery', e: '🍞', u: 'kg', w: 5, q: [1, 1], P: [
+    { id: 'chlieb-lidl', b: '', n: 'Chlieb konzumný', s: 1, p: { lidl: 1.79 }, r: 'CHLIEB KONZUMNY 1KG' },
+    { id: 'chlieb-kauf', b: '', n: 'Chlieb pšenično-ražný', s: 1, p: { kaufland: 1.89, tesco: 1.99 }, r: 'CHLIEB PSEN.RAZ. 1KG' },
+    { id: 'chlieb-kraj', b: 'Pekáreň Kraj', n: 'Kváskový chlieb', s: 0.5, p: { kraj: 2.39 }, r: 'KVASKOVY CHLIEB 500G' }] },
+  { k: 'banany', n: 'Banány', c: 'produce', e: '🍌', u: 'kg', w: 7, q: [1, 1], P: [
+    { id: 'banany', b: '', n: 'Banány', s: null, wq: [0.8, 1.6], p: { lidl: 1.19, kaufland: 1.29, tesco: 1.39, kraj: 1.59 }, r: 'BANANY' }] },
+  { k: 'jablka', n: 'Jablká', c: 'produce', e: '🍎', u: 'kg', w: 5, q: [1, 1], P: [
+    { id: 'jablka', b: '', n: 'Jablká Gala', s: null, wq: [0.9, 2], p: { lidl: 1.49, kaufland: 1.39, tesco: 1.69 }, r: 'JABLKA GALA' }] },
+  { k: 'paradajky', n: 'Paradajky', c: 'produce', e: '🍅', u: 'kg', w: 5, q: [1, 2], P: [
+    { id: 'paradajky', b: '', n: 'Paradajky', s: null, wq: [0.4, 0.9], p: { lidl: 2.49, kaufland: 2.79, tesco: 2.99 }, r: 'PARADAJKY' },
+    { id: 'cherry', b: '', n: 'Cherry paradajky', s: 0.25, p: { lidl: 1.29, kaufland: 1.49 }, r: 'CHERRY PARADAJKY 250G' }] },
+  { k: 'kuracie', n: 'Kuracie prsia', c: 'meat_fish', e: '🍗', u: 'kg', w: 4, q: [1, 1], P: [
+    { id: 'kur-lidl', b: '', n: 'Kuracie prsné rezne', s: 0.5, p: { lidl: 4.29 }, r: 'KUR.PRSNE REZNE 500G' },
+    { id: 'kur-kauf', b: '', n: 'Kuracie prsia z pultu', s: null, wq: [0.5, 1], p: { kaufland: 7.99 }, r: 'KUR. PRSIA PULT' },
+    { id: 'kur-metro', b: 'Metro Chef', n: 'Kuracie prsia', s: 2, p: { metro: 13.98 }, r: 'MC KURACIE PRSIA 2KG' }] },
+  { k: 'mlete', n: 'Mleté mäso', c: 'meat_fish', e: '🥩', u: 'kg', w: 3, q: [1, 1], P: [
+    { id: 'mlete-lidl', b: '', n: 'Mleté bravčové', s: 0.5, p: { lidl: 3.49 }, r: 'MLETE BRAVCOVE 500G' },
+    { id: 'mlete-kauf', b: '', n: 'Mleté zmiešané', s: 0.5, p: { kaufland: 3.79, tesco: 3.99 }, r: 'MLETE ZMIESANE 500G' }] },
+  { k: 'sunka', n: 'Šunka', c: 'deli_chilled', e: '🥓', u: 'kg', w: 5, q: [1, 2], P: [
+    { id: 'sunka-lidl', b: 'Pikok', n: 'Šunka výberová', s: 0.1, p: { lidl: 1.29 }, r: 'PIKOK SUNKA VYB. 100G' },
+    { id: 'sunka-kauf', b: '', n: 'Šunka pražská z pultu', s: null, wq: [0.15, 0.25], p: { kaufland: 14.9 }, r: 'SUNKA PRAZSKA PULT' },
+    { id: 'sunka-kraj', b: '', n: 'Šunka', s: null, opts: [0.1, 0.12, 0.15], p: { kraj: 1.59 }, r: 'SUNKA' }] },
+  { k: 'cestoviny', n: 'Cestoviny', c: 'pantry', e: '🍝', u: 'kg', w: 3, q: [1, 2], P: [
+    { id: 'combino', b: 'Combino', n: 'Špagety', s: 0.5, p: { lidl: 0.79 }, r: 'COMBINO SPAGETY 500G' },
+    { id: 'barilla', b: 'Barilla', n: 'Spaghetti n. 5', s: 0.5, p: { kaufland: 1.79, tesco: 1.89 }, r: 'BARILLA SPAGHETTI 500G' }] },
+  { k: 'kava', n: 'Káva zrnková', c: 'breakfast', e: '☕', u: 'kg', w: 1, q: [1, 1], P: [
+    { id: 'bellarom', b: 'Bellarom', n: 'Crema zrnková', s: 1, p: { lidl: 13.99 }, r: 'BELLAROM CREMA 1KG' },
+    { id: 'lavazza', b: 'Lavazza', n: 'Qualità Rossa zrnková', s: 1, p: { kaufland: 17.99, metro: 15.49 }, r: 'LAVAZZA Q.ROSSA 1KG' }] },
+  { k: 'pivo', n: 'Pivo', c: 'alcohol', e: '🍺', u: 'l', w: 5, q: [2, 6], dep: 0.15, P: [
+    { id: 'plzen', b: 'Pilsner Urquell', n: 'Svetlý ležiak 12°', s: 0.5, p: { lidl: 1.29, kaufland: 1.35, tesco: 1.39, kraj: 1.45, metro: 1.19 }, r: 'PILSNER URQUELL 0,5L' },
+    { id: 'radegast', b: 'Radegast', n: 'Rázna 10°', s: 0.5, p: { kraj: 0.85, kaufland: 0.89 }, r: 'RADEGAST RAZNA 10 0,5L' },
+    { id: 'kozel', b: 'Kozel', n: 'Svetlý 10° plech', s: 0.5, p: { tesco: 0.95, lidl: 0.89 }, r: 'KOZEL SVETLY PLECH 0,5L' }] },
+  { k: 'voda', n: 'Minerálna voda', c: 'beverages', e: '💧', u: 'l', w: 5, q: [2, 6], dep: 0.15, P: [
+    { id: 'budis', b: 'Budiš', n: 'Jemne perlivá', s: 1.5, p: { lidl: 0.65, kaufland: 0.69 }, r: 'BUDIS JEMNE PERL 1,5L' },
+    { id: 'rajec', b: 'Rajec', n: 'Pramenitá voda', s: 1.5, p: { tesco: 0.79, kraj: 0.89 }, r: 'RAJEC NESYT 1,5L' }] },
+  { k: 'cokolada', n: 'Čokoláda', c: 'snacks_sweets', e: '🍫', u: 'kg', w: 3, q: [1, 3], P: [
+    { id: 'milka', b: 'Milka', n: 'Mliečna čokoláda', s: 0.1, p: { kaufland: 1.49, tesco: 1.59 }, r: 'MILKA MLIECNA 100G' },
+    { id: 'fin', b: 'Fin Carré', n: 'Mliečna čokoláda', s: 0.1, p: { lidl: 0.89 }, r: 'FIN CARRE MLIECNA 100G' }] },
+  { k: 'toalet', n: 'Toaletný papier', c: 'household_cleaning', e: '🧻', u: 'ks', w: 1.5, q: [1, 1], P: [
+    { id: 'floralys', b: 'Floralys', n: '3-vrstvový, 8 roliek', s: 8, p: { lidl: 2.99 }, r: 'FLORALYS TP 3VR 8KS' },
+    { id: 'zewa', b: 'Zewa', n: 'Deluxe 3-vrstvový, 8 roliek', s: 8, p: { kaufland: 4.49, dm: 4.29 }, r: 'ZEWA DELUXE 8KS' }] },
+  { k: 'pracigel', n: 'Prací gél', c: 'household_cleaning', e: '🫧', u: 'l', w: 0.8, q: [1, 1], P: [
+    { id: 'formil', b: 'Formil', n: 'Prací gél Color', s: 2.2, p: { lidl: 4.99 }, r: 'FORMIL GEL COLOR 2,2L' },
+    { id: 'persil', b: 'Persil', n: 'Prací gél Color', s: 2.25, p: { dm: 10.99, kaufland: 9.99 }, r: 'PERSIL GEL COLOR 2,25L' }] },
+  { k: 'plienky', n: 'Plienky', c: 'baby', e: '🍼', u: 'ks', w: 1.4, q: [1, 2], P: [
+    { id: 'lupilu', b: 'Lupilu', n: 'Plienky 4, 44 ks', s: 44, p: { lidl: 7.99 }, r: 'LUPILU PLIENKY 4 44KS' },
+    { id: 'pampers', b: 'Pampers', n: 'Active Baby 4, 58 ks', s: 58, p: { dm: 16.99 }, r: 'PAMPERS AB 4 58KS' },
+    { id: 'babylove', b: 'babylove', n: 'Plienky 4, 50 ks', s: 50, p: { dm: 8.95 }, r: 'BABYLOVE PLIENKY 4 50KS' }] },
+  { k: 'obrusky', n: 'Vlhčené obrúsky', c: 'baby', e: '🧻', u: 'ks', w: 1.2, q: [1, 3], P: [
+    { id: 'bl-obr', b: 'babylove', n: 'Vlhčené obrúsky, 80 ks', s: 80, p: { dm: 1.45 }, r: 'BABYLOVE OBRUSKY 80KS' },
+    { id: 'lupilu-obr', b: 'Lupilu', n: 'Vlhčené obrúsky, 72 ks', s: 72, p: { lidl: 1.29 }, r: 'LUPILU OBRUSKY 72KS' }] },
+  { k: 'pasta', n: 'Zubná pasta', c: 'personal_care', e: '🪥', u: 'l', sm: true, w: 0.8, q: [1, 2], P: [
+    { id: 'colgate', b: 'Colgate', n: 'Total', s: 0.075, p: { dm: 2.99, kaufland: 3.29 }, r: 'COLGATE TOTAL 75ML' },
+    { id: 'dentalux', b: 'Dentalux', n: 'Complex 3', s: 0.125, p: { lidl: 0.99 }, r: 'DENTALUX COMPLEX 125ML' }] },
+  { k: 'lieky', n: 'Lieky a vitamíny', c: 'health', e: '💊', u: null, w: 1, q: [1, 1], P: [
+    { id: 'paralen', b: 'Paralen', n: '500 mg, 24 tabliet', s: null, p: { drmax: 3.49 }, r: 'PARALEN 500 24TBL' },
+    { id: 'vitc', b: '', n: 'Vitamín C 1000, 30 tabliet', s: null, p: { drmax: 6.99 }, r: 'VITAMIN C 1000 30TBL' },
+    { id: 'sprej', b: '', n: 'Nosový sprej', s: null, p: { drmax: 4.59 }, r: 'NOSOVY SPREJ 10ML' }] },
+  { k: 'palivo', n: 'Natural 95', c: 'fuel', e: '⛽', u: 'l', w: 1, q: [1, 1], P: [
+    { id: 'n95', b: 'Slovnaft', n: 'Natural 95', s: null, wq: [32, 45], p: { slovnaft: 1.59 }, st: { slovnaft: [['2026-09-20', 1.55], ['2026-10-25', 1.57]] }, r: 'NATURAL 95' }] },
+  { k: 'oblecenie', n: 'Detské oblečenie', c: 'clothing', e: '👕', u: null, w: 1, q: [1, 2], P: [
+    { id: 'body', b: '', n: 'Detské body, 2 ks', s: null, p: { pepco: 6.99 }, r: 'BODY DETSKE 2PACK' },
+    { id: 'tricko', b: '', n: 'Detské tričko', s: null, p: { pepco: 3.99 }, r: 'TRICKO DETSKE' },
+    { id: 'pyzamo', b: '', n: 'Detské pyžamo', s: null, p: { pepco: 7.99 }, r: 'PYZAMO DETSKE' }] },
+  { k: 'domov', n: 'Do domácnosti', c: 'home', e: '🪴', u: null, w: 1, q: [1, 2], P: [
+    { id: 'box', b: '', n: 'Úložný box', s: null, p: { pepco: 5.99 }, r: 'ULOZNY BOX' },
+    { id: 'sviecka', b: '', n: 'Vonná sviečka', s: null, p: { pepco: 2.49 }, r: 'SVIECKA VONNA' }] },
+];
+const KIND = Object.fromEntries(KINDS.map((K) => [K.k, K]));
+const PROD = {};
+for (const K of KINDS) for (const P of K.P) { P.kind = K.k; PROD[P.id] = P; }
+
+/* generovanie bločkov (pevné semienko → vždy rovnaké čísla) */
+function mulberry32(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const rnd = mulberry32(20261111);
+const ri = (a, b) => a + Math.floor(rnd() * (b - a + 1));
+const rf = (a, b, d) => { const f = 10 ** d; return Math.round((a + rnd() * (b - a)) * f) / f; };
+function wpick(items, w) { const t = sum(items, w); let r = rnd() * t; for (const x of items) { r -= w(x); if (r <= 0) return x; } return items[items.length - 1]; }
+function priceAt(P, store, date) { let v = P.p[store]; for (const [d, x] of (P.st && P.st[store]) || []) if (date >= d) v = x; return v; }
+
+const PUR = []; const DEP = []; const RCP = [];
+let nid = 0;
+const FOODGRP = (K) => CATS[K.c].g === 'food';
+function trip(store, date, allow, n) {
+  const avail = KINDS.filter((K) => allow(K) && K.P.some((P) => P.p[store] != null));
+  if (!avail.length) return;
+  const chosen = [];
+  const pool = [...avail];
+  for (let i = 0; i < n && pool.length; i++) { const K = wpick(pool, (x) => x.w || 1); chosen.push(K); pool.splice(pool.indexOf(K), 1); }
+  const rid = 'r' + ++nid;
+  const time = `${pad(ri(8, 19))}:${pad(ri(0, 59))}`;
+  const lines = [];
+  for (const K of chosen) {
+    const prods = K.P.filter((P) => P.p[store] != null);
+    const P = prods[ri(0, prods.length - 1)];
+    let price = priceAt(P, store, date);
+    let promo = false;
+    if (!P.wq && K.u && rnd() < 0.06) { price = r2(price * 0.8); promo = true; }
+    let packs = 1, weight = null, total;
+    if (P.wq) { weight = rf(P.wq[0], P.wq[1], K.c === 'fuel' ? 2 : 3); total = r2(price * weight); }
+    else { packs = ri(K.q[0], K.q[1]); total = r2(price * packs); }
+    const p = { id: 'i' + ++nid, rid, date, time, store, kind: K.k, pid: P.id, packs, weight, price, total, promo };
+    PUR.push(p); lines.push({ t: 'item', p });
+    if (K.dep) { const d = { rid, date, store, amt: r2(K.dep * packs), n: packs }; DEP.push(d); lines.push({ t: 'dep', d }); }
+  }
+  if ((store === 'lidl' || store === 'kaufland') && rnd() < 0.3) { const n2 = ri(4, 16); const d = { rid, date, store, amt: -r2(0.15 * n2), n: n2 }; DEP.push(d); lines.push({ t: 'ret', d }); }
+  RCP.push({ id: rid, store, date, time, lines, total: r2(sum(lines, (l) => (l.t === 'item' ? l.p.total : l.d.amt))) });
+}
+for (let d = DATA_START; d <= TODAY; d = addDays(d, 1)) {
+  const dom = +d.slice(8);
+  const notFoodHome = (K) => FOODGRP(K) || (['household_cleaning', 'baby', 'personal_care'].includes(K.c) && rnd() < 0.35);
+  if (rnd() < 0.27) trip('lidl', d, notFoodHome, ri(5, 9));
+  if (rnd() < 0.09) trip('kaufland', d, notFoodHome, ri(6, 11));
+  if (rnd() < 0.05) trip('tesco', d, FOODGRP, ri(3, 6));
+  if (rnd() < 0.13) trip('kraj', d, FOODGRP, ri(2, 4));
+  if (dom === 4 && rnd() < 0.85) trip('metro', d, (K) => ['kuracie', 'kava', 'pivo'].includes(K.k), 3);
+  if ((dom === 8 || dom === 23) && rnd() < 0.9) trip('dm', d, (K) => ['baby', 'personal_care', 'household_cleaning'].includes(K.c), ri(2, 4));
+  if (dom === 15 && rnd() < 0.75) trip('drmax', d, (K) => K.c === 'health', 1);
+  if (dom === 19 && rnd() < 0.7) trip('pepco', d, (K) => ['clothing', 'home'].includes(K.c), 2);
+  if (diffDays(DATA_START, d) % 12 === 4) trip('slovnaft', d, (K) => K.c === 'fuel', 1);
+}
+RCP.sort((a, b) => (a.date + a.time < b.date + b.time ? 1 : -1));
+const RCPI = Object.fromEntries(RCP.map((r) => [r.id, r]));
+PUR.sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1));
+
+/* ================================================================ výpočty (pravidlá návrhu) */
+const S = { per: 'month', off: 0, lens: 'cat', clens: 'kinds', slens: 'kinds', stack: [{ s: 'overview' }], sizes: {}, theme: 'g', q: '' };
+const BUDGET = 650;
+const sizeOf = (P) => (S.sizes[P.id] != null ? S.sizes[P.id] : P.s);
+/** množstvo v jednotke druhu; null = nevieme (bez veľkosti balenia alebo druh sa neporovnáva) */
+function units(p) {
+  const K = KIND[p.kind], P = PROD[p.pid];
+  if (!K.u) return null;
+  if (P.wq) return p.weight;
+  const s = sizeOf(P);
+  return s == null ? null : p.packs * s;
+}
+const unitPrice = (p) => { const u = units(p); return u ? p.total / u : null; };
+const sizeFmt = (P) => { const K = KIND[P.kind], s = sizeOf(P); if (s == null || !K.u) return null; return K.u === 'ks' ? (s === 1 ? null : `${s}${NB}ks`) : qtyFmt(s, K.u); };
+const pname = (P) => [P.b, P.n].filter(Boolean).join(' ');
+
+function period(per, off) {
+  if (per === 'week') {
+    const mon = addDays(TODAY, -dow(TODAY));
+    const from = addDays(mon, 7 * off), end = addDays(from, 6), to = minS(end, TODAY);
+    return { per, off, from, to, end, prevFrom: addDays(from, -7), prevTo: addDays(to, -7), title: off === 0 ? 'Tento týždeň' : off === -1 ? 'Minulý týždeň' : `${dm(from)} – ${dm(end)}`, range: `${dm(from)} – ${dm(end)}`, prevIn: off === 0 ? 'minulý týždeň' : 'týždeň predtým' };
+  }
+  if (per === 'year') {
+    const y = +TODAY.slice(0, 4) + off;
+    const from = `${y}-01-01`, end = `${y}-12-31`, to = minS(end, TODAY);
+    return { per, off, y, from, to, end, prevFrom: `${y - 1}-01-01`, prevTo: addDays(`${y - 1}-01-01`, diffDays(from, to)), title: `Rok ${y}`, range: `1. 1. – ${dm(to)}`, prevIn: `v roku ${y - 1}` };
+  }
+  let y = +TODAY.slice(0, 4), m = +TODAY.slice(5, 7) + off;
+  while (m < 1) { m += 12; y--; }
+  const from = monthStart(y, m), end = monthEnd(y, m), to = minS(end, TODAY);
+  let py = y, pm = m - 1; if (pm < 1) { pm = 12; py--; }
+  const prevFrom = monthStart(py, pm);
+  return { per, off, y, m, from, to, end, prevFrom, prevTo: minS(addDays(prevFrom, diffDays(from, to)), monthEnd(py, pm)), prevFull: monthEnd(py, pm), title: `${cap(MN[m - 1])} ${y}`, range: `${+from.slice(8)}.–${+to.slice(8)}. ${m}.`, prevIn: `v ${MN_LOC[pm - 1]}`, prevName: MN[pm - 1], days: daysIn(y, m) };
+}
+const curP = () => period(S.per, S.off);
+const partial = (P) => P.to < P.end;
+const inR = (p, a, b) => p.date >= a && p.date <= b;
+
+function agg(a, b) {
+  const ps = PUR.filter((p) => inR(p, a, b));
+  const byCat = {}, byStore = {}, byKind = {};
+  for (const p of ps) {
+    const c = KIND[p.kind].c;
+    byCat[c] = (byCat[c] || 0) + p.total;
+    const s = (byStore[p.store] ||= { amt: 0, r: new Set() }); s.amt += p.total; s.r.add(p.rid);
+    const k = (byKind[p.kind] ||= { amt: 0, ps: [] }); k.amt += p.total; k.ps.push(p);
+  }
+  return { ps, total: sum(ps, (p) => p.total), byCat, byStore, byKind, receipts: new Set(ps.map((p) => p.rid)).size };
+}
+
+/** Porovnanie s minulým obdobím: rovnaké dni, len ak sú v ňom bločky; veľké rozdiely ako násobok, malé v eurách. */
+function compare(now, prev, P) {
+  if (P.prevFrom < DATA_START) return { dir: 0, txt: null, note: `Porovnanie zatiaľ nie je – bločky máš od ${dm(DATA_START)} ${DATA_START.slice(0, 4)}.` };
+  const d = now - prev;
+  if (Math.abs(d) < 1) return { dir: 0, txt: `rovnako ako ${P.prevIn}` };
+  const up = d > 0;
+  if (prev < 20) return { dir: up ? 1 : -1, txt: `o ${eur0(Math.abs(d))} ${up ? 'viac' : 'menej'} ako ${P.prevIn}` };
+  if (now / prev >= 2) return { dir: 1, txt: `${nf(now / prev, 1, 1)}× viac ako ${P.prevIn}`, d: `+${eur0(d)}` };
+  return { dir: up ? 1 : -1, txt: `o ${Math.round((Math.abs(d) / prev) * 100)} % ${up ? 'viac' : 'menej'} ako ${P.prevIn}`, d: `${up ? '+' : '−'}${eur0(Math.abs(d))}` };
+}
+function smallDelta(now, prev, P) {
+  if (P.prevFrom < DATA_START || (prev < 1 && now < 1)) return '';
+  const d = now - prev;
+  if (Math.abs(d) < 1) return '<span class="sub">bez zmeny</span>';
+  if (prev < 20) return `<span class="sub ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '+' : '−'}${eur0(Math.abs(d))}</span>`;
+  return `<span class="sub ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '▲' : '▼'} ${Math.round((Math.abs(d) / prev) * 100)} %</span>`;
+}
+
+/** Ceny druhu za 3 mesiace končiace koncom obdobia: bežná cena = medián, obchody podľa mediánu, výrobky. */
+function kindStats(k, end) {
+  const K = KIND[k];
+  const from = addDays(end, -89);
+  const ps = PUR.filter((p) => p.kind === k && inR(p, from, end));
+  const ups = ps.filter((p) => units(p) != null).map((p) => ({ p, v: unitPrice(p) }));
+  const med = median(ups.map((x) => x.v));
+  let min = null, max = null;
+  for (const x of ups) { if (!min || x.v < min.v) min = x; if (!max || x.v > max.v) max = x; }
+  const stores = [...groupBy(ups, (x) => x.p.store)].map(([s, xs]) => ({ s, med: median(xs.map((x) => x.v)), n: xs.length, last: xs[xs.length - 1].p.date })).sort((a, b) => a.med - b.med);
+  const prods = [...groupBy(ps, (p) => p.pid)].map(([pid, xs]) => {
+    const kn = xs.filter((p) => units(p) != null);
+    return { pid, n: xs.length, last: xs[xs.length - 1], med: kn.length ? median(kn.map(unitPrice)) : null };
+  }).sort((a, b) => (a.med ?? 1e9) - (b.med ?? 1e9) || b.n - a.n);
+  const unknown = K.u ? ps.filter((p) => units(p) == null) : [];
+  return { K, from, ps, ups, med, min, max, stores, prods, unknown, last: ps[ps.length - 1] || null };
+}
+
+/* ================================================================ ikony a kúsky */
+const ICONS = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>',
+  camera: '<path d="M4 8.5h3.2L9 6h6l1.8 2.5H20V19H4z"/><circle cx="12" cy="13.2" r="3.4"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .8-1 1.6"/><path d="M12 16.9v.2"/>',
+  left: '<path d="m15 5-7 7 7 7"/>', right: '<path d="m9 5 7 7-7 7"/>',
+  receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  store: '<path d="M4 9.5 5.6 4h12.8L20 9.5M4 9.5V20h16V9.5M4 9.5h16"/><path d="M10 20v-5h4v5"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.2"/>',
+  home: '<path d="M4 11 12 4l8 7v9h-5.5v-6h-5v6H4z"/>',
+  basket: '<path d="M3 10h18l-2 10H5z"/><path d="m8 10 4-6 4 6M9.5 14v3M14.5 14v3"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
+  pot: '<path d="M4 10h16v4.5A5.5 5.5 0 0 1 14.5 20h-5A5.5 5.5 0 0 1 4 14.5z"/><path d="M2 10h20M9 4v3M12 3v4M15 4v3"/>',
+  wallet: '<path d="M4 7h14.5A1.5 1.5 0 0 1 20 8.5v10a1.5 1.5 0 0 1-1.5 1.5H4z"/><path d="M4 7V5.8A1.8 1.8 0 0 1 5.8 4H16"/><path d="M16 13.5h.2"/>',
+  scale: '<path d="M12 4v16M8 20h8M5 7h14"/><path d="m5 7-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', dots: '<path d="M6 12h.2M12 12h.2M18 12h.2"/>',
+  tag: '<path d="M3.5 12.5V4h8.5l9 9-8.5 8.5z"/><path d="M8 8.5h.2"/>',
+  pencil: '<path d="M4 20h4L19.5 8.5l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  bottle: '<path d="M10 2.5h4v3.5l2 3V21H8V9l2-3z"/><path d="M8 13h8"/>',
+  trend: '<path d="m4 16 6-6 4 4 6-6"/><path d="M15 8h5v5"/>', trendd: '<path d="m4 8 6 6 4-4 6 6"/><path d="M15 16h5v-5"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>', cal: '<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+};
+const ic = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+const chev = ic('right', 'chev');
+const stile = (s, cls = '') => `<span class="st ${cls}" style="--sc:${STORES[s].c}" aria-hidden="true">${STORES[s].t}</span>`;
+const bar = (pct, col) => `<div class="bar"><i style="width:${Math.max(2, Math.min(100, pct)).toFixed(1)}%;${col ? `--bc:${col}` : ''}"></i></div>`;
+const go = (s, a = '') => `data-a="go:${s}${a ? ':' + a : ''}"`;
+const lensTabs = (key, items, val) => `<div class="seg sm" role="group">${items.map(([v, l]) => `<button type="button" data-a="${key}:${v}" aria-pressed="${v === val}">${l}</button>`).join('')}</div>`;
+function pnav(P, small) {
+  const canPrev = P.from > DATA_START;
+  return `<div class="pnav${small ? ' sm' : ''}">
+    <button type="button" class="ib" data-a="off:-1" aria-label="Predchádzajúce obdobie" ${canPrev ? '' : 'disabled'}>${ic('left', 's')}</button>
+    <div class="pt"><b>${P.title}</b>${small ? '' : `<span>${partial(P) ? `${P.range} · prebieha` : P.range}</span>`}</div>
+    <button type="button" class="ib" data-a="off:1" aria-label="Novšie obdobie" ${S.off < 0 ? '' : 'disabled'}>${ic('right', 's')}</button></div>`;
+}
+const backBtn = () => { const prev = S.stack[S.stack.length - 2]; return `<button type="button" class="back" data-a="back">${ic('left')}${esc(titleOf(prev))}</button>`; };
+function nbDetail(title, right = '') { return `<header class="nb">${backBtn()}<span class="nbt">${esc(title)}</span><span class="nbr">${right || '<span class="spacer"></span>'}</span></header>`; }
+function titleOf(x) {
+  switch (x.s) {
+    case 'overview': return 'Výdavky';
+    case 'cat': return CATS[x.id].n;
+    case 'kind': return KIND[x.k].n;
+    case 'product': return PROD[x.id].b || PROD[x.id].n;
+    case 'store': return STORES[x.id.split('|')[0]].n;
+    case 'compare': return 'Porovnanie';
+    case 'search': return 'Hľadať';
+    case 'fix': return 'Na doplnenie';
+    case 'receipt': return 'Bloček';
+    case 'receipts': return 'Bločky';
+    default: return '';
+  }
+}
+
+/* ================================================================ grafy */
+function paceChart(P) {
+  const W = 340, H = 150, L = 34, R = 8, T = 10, B = 22;
+  const days = P.days;
+  const cum = (from, n, to) => { const out = []; let t = 0; for (let i = 0; i < n; i++) { const d = addDays(from, i); if (d > to) break; t += sum(PUR.filter((p) => p.date === d), (p) => p.total); out.push(t); } return out; };
+  const now = cum(P.from, days, P.to);
+  const pdays = daysIn(+P.prevFrom.slice(0, 4), +P.prevFrom.slice(5, 7));
+  const covered = P.prevFrom >= DATA_START;
+  const prev = covered ? cum(P.prevFrom, pdays, P.prevFull) : [];
+  const elapsed = now.length;
+  const proj = partial(P) && elapsed >= 3 ? (now[elapsed - 1] / elapsed) * days : null;
+  const max = Math.max(1, ...now, ...prev, proj || 0, P.off === 0 ? BUDGET * 0.4 : 0) * 1.08;
+  const X = (i) => L + (i / (Math.max(days, pdays) - 1)) * (W - L - R);
+  const Y = (v) => T + (1 - v / max) * (H - T - B);
+  const path = (a) => a.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join('');
+  const step = max > 600 ? 200 : max > 300 ? 100 : 50;
+  let grid = '';
+  for (let v = 0; v <= max; v += step) grid += `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 3.5}" text-anchor="end">${v}</text>`;
+  const xl = [1, 10, 20, days].map((d) => `<text x="${X(d - 1)}" y="${H - 6}" text-anchor="middle">${d}.</text>`).join('');
+  const last = now.length ? `<circle cx="${X(elapsed - 1)}" cy="${Y(now[elapsed - 1])}" r="4.5" fill="var(--m-acc)" stroke="var(--m-card)" stroke-width="2"/>` : '';
+  const area = now.length ? `<path class="area" d="${path(now)}L${X(elapsed - 1)},${Y(0)}L${X(0)},${Y(0)}Z"/>` : '';
+  const pj = proj ? `<path class="proj" d="M${X(elapsed - 1)},${Y(now[elapsed - 1])}L${X(days - 1)},${Y(proj)}"/><text x="${X(days - 1)}" y="${Y(proj) - 7}" text-anchor="end" style="fill:var(--m-acc);font-weight:700">~${eur0(proj)}</text>` : '';
+  const prevName = MN[+P.prevFrom.slice(5, 7) - 1];
+  return { svg: `<svg class="ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="Tempo míňania v mesiaci">${grid}${xl}${prev.length ? `<path class="prev" d="${path(prev)}"/>` : ''}${area}<path class="now" d="${path(now)}"/>${pj}${last}</svg>`,
+    legend: `<div class="legend"><span><i></i>${cap(MN[P.m - 1])}</span>${prev.length ? `<span><i class="dash"></i>${cap(prevName)}</span>` : ''}${proj ? '<span><i class="dash" style="--m-ter:var(--m-acc)"></i>odhad na koniec mesiaca</span>' : ''}</div>`, proj };
+}
+function barsChart(labels, vals, prevVals, onTap, curIdx) {
+  const W = 340, H = 140, L = 30, R = 6, T = 14, B = 22;
+  const n = labels.length, max = Math.max(1, ...vals, ...(prevVals || [])) * 1.12;
+  const bw = (W - L - R) / n;
+  const Y = (v) => T + (1 - v / max) * (H - T - B);
+  const step = max > 600 ? 200 : max > 240 ? 100 : max > 100 ? 50 : 20;
+  let g = '';
+  for (let v = 0; v <= max; v += step) g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 5}" y="${Y(v) + 3.5}" text-anchor="end">${v}</text>`;
+  const bars = labels.map((lb, i) => {
+    const x = L + i * bw;
+    const pv = prevVals ? `<rect class="barp" x="${x + bw * 0.14}" y="${Y(prevVals[i])}" width="${bw * 0.72}" height="${Math.max(0, Y(0) - Y(prevVals[i]))}" rx="4"/>` : '';
+    const h = Math.max(vals[i] > 0 ? 2 : 0, Y(0) - Y(vals[i]));
+    const tap = onTap && onTap[i] ? ` data-a="${onTap[i]}" style="cursor:pointer"` : '';
+    return `<g${tap}>${pv}<rect class="barc${curIdx === i ? ' cur' : vals[i] ? '' : ' fade'}" x="${x + bw * 0.26}" y="${Y(0) - h}" width="${bw * 0.48}" height="${h}" rx="3.5"/><rect x="${x}" y="${T}" width="${bw}" height="${H - T}" fill="transparent"/><text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${lb}</text></g>`;
+  }).join('');
+  return `<svg class="ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="Výdavky v období">${g}${bars}</svg>`;
+}
+function priceChart(points, med, u, sm) {
+  if (points.length < 2) return '';
+  const W = 340, H = 150, L = 40, R = 10, T = 12, B = 22;
+  const conv = (v) => (sm && u !== 'ks' ? v / 10 : v);
+  const xs = points.map((x) => D(x.d).getTime());
+  const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1;
+  const vs = points.map((x) => conv(x.v));
+  const lo = Math.min(...vs) * 0.9, hi = Math.max(...vs) * 1.06;
+  const X = (t) => L + ((t - x0) / (x1 - x0 || 1)) * (W - L - R);
+  const Y = (v) => T + (1 - (v - lo) / (hi - lo || 1)) * (H - T - B);
+  const ticks = [lo + (hi - lo) * 0.1, (lo + hi) / 2, hi - (hi - lo) * 0.08];
+  const dec = hi < 1 ? 3 : 2;
+  const g = ticks.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 3.5}" text-anchor="end">${nf(v, dec, dec)}</text>`).join('');
+  const m = med != null ? `<line class="med" x1="${L}" x2="${W - R}" y1="${Y(conv(med))}" y2="${Y(conv(med))}"/>` : '';
+  const dots = points.map((x) => `<circle cx="${X(D(x.d).getTime()).toFixed(1)}" cy="${Y(conv(x.v)).toFixed(1)}" r="4.5" fill="${STORES[x.s].cc}" stroke="var(--m-card)" stroke-width="1.5"/>`).join('');
+  return `<svg class="ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cena v čase">${g}${m}${dots}<text x="${L}" y="${H - 6}">${dm(points[0].d)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">${dm(points[points.length - 1].d)}</text></svg>`;
+}
+const storeLegend = (ss) => `<div class="legend">${ss.map((s) => `<span><i class="dot" style="--lc:${STORES[s].cc}"></i>${STORES[s].n}</span>`).join('')}<span><i class="dash"></i>bežná cena</span></div>`;
+
+/* ================================================================ obrazovky */
+function scrOverview() {
+  const P = curP();
+  const cur = agg(P.from, P.to);
+  const prv = agg(P.prevFrom, P.prevTo);
+  const cmp = compare(cur.total, prv.total, P);
+  const [ei, ec] = nf(cur.total, 2, 2).split(',');
+  let budget = '';
+  if (P.per === 'month') {
+    const frac = diffDays(P.from, P.to) + 1;
+    const ideal = (BUDGET * frac) / P.days;
+    const left = BUDGET - cur.total;
+    const over = cur.total - ideal;
+    const daysLeft = diffDays(P.to, P.end);
+    const col = cur.total > BUDGET ? 'var(--m-bad)' : over > 15 ? 'var(--m-up)' : 'var(--m-ok)';
+    const status = !partial(P) ? (left >= 0 ? `ušetrené ${eur0(left)}` : `prekročený o ${eur0(-left)}`) : over > 15 ? `o ${eur0(over)} nad plánom` : over < -15 ? `o ${eur0(-over)} pod plánom` : 'podľa plánu';
+    budget = `<button type="button" class="bud" data-a="toast:Rozpočet sa nastavuje rovnakým panelom ako dnes.">
+      <div class="track"><i style="width:${Math.min(100, (cur.total / BUDGET) * 100).toFixed(1)}%;--bc:${col}"></i>${partial(P) ? `<em style="left:${((ideal / BUDGET) * 100).toFixed(1)}%" title="Kde by si mal byť dnes"></em>` : ''}</div>
+      <div class="bt"><span>Rozpočet <b>${eur0(BUDGET)}</b> · ${status}</span><span>${partial(P) ? `zostáva <b>${eur0(Math.max(0, left))}</b> · ${daysLeft} ${plural(daysLeft, 'deň', 'dni', 'dní')}` : ''}</span></div></button>`;
+  }
+  // graf
+  let chart = '';
+  if (P.per === 'month') {
+    const pc = paceChart(P);
+    chart = `<div class="c"><div class="k">Tempo mesiaca</div>${pc.svg}${pc.legend}</div>`;
+  } else if (P.per === 'week') {
+    const vals = [], pv = [];
+    for (let i = 0; i < 7; i++) { const d = addDays(P.from, i); vals.push(d <= P.to ? sum(PUR.filter((p) => p.date === d), (p) => p.total) : 0); pv.push(sum(PUR.filter((p) => p.date === addDays(d, -7)), (p) => p.total)); }
+    chart = `<div class="c"><div class="k">Po dňoch</div>${barsChart(DOW, vals, P.prevFrom >= DATA_START ? pv : null, null, P.off === 0 ? dow(TODAY) : -1)}<div class="legend"><span><i></i>${P.title.toLowerCase()}</span><span><i style="--lc:var(--m-card2);height:8px"></i>${P.prevIn}</span></div></div>`;
+  } else {
+    const vals = [], taps = [];
+    for (let m = 1; m <= 12; m++) {
+      const a = monthStart(P.y, m), b = monthEnd(P.y, m);
+      vals.push(sum(PUR.filter((p) => inR(p, a, b)), (p) => p.total));
+      const back = (P.y - +TODAY.slice(0, 4)) * 12 + (m - +TODAY.slice(5, 7));
+      taps.push(vals[m - 1] > 0 && back <= 0 ? `month:${back}` : null);
+    }
+    chart = `<div class="c"><div class="k">Mesiace · ťukni na mesiac</div>${barsChart(MN3.map((x) => x.slice(0, 1).toUpperCase()), vals, null, taps, P.y === +TODAY.slice(0, 4) ? +TODAY.slice(5, 7) - 1 : -1)}${P.from < DATA_START ? `<div class="sub">Bločky máš od ${MN_LOC[5]} ${DATA_START.slice(0, 4)}.</div>` : ''}</div>`;
+  }
+
+  // pohľady
+  let lens = '';
+  if (S.lens === 'cat') {
+    const gsum = { food: 0, home: 0, other: 0 };
+    for (const [c, v] of Object.entries(cur.byCat)) gsum[CATS[c].g] += v;
+    const tot = cur.total || 1;
+    lens += `<div class="c" style="gap:8px"><div class="stack">${Object.entries(gsum).filter(([, v]) => v > 0).map(([g, v]) => `<i style="width:${((v / tot) * 100).toFixed(1)}%;background:${GROUPS[g].c}"></i>`).join('')}</div>
+      <div class="legend">${Object.entries(gsum).map(([g, v]) => `<span><i class="dot" style="--lc:${GROUPS[g].c}"></i>${GROUPS[g].n} ${Math.round((v / tot) * 100)}${NB}%</span>`).join('')}</div></div>`;
+    for (const g of ['food', 'home', 'other']) {
+      const rows = Object.entries(cur.byCat).filter(([c, v]) => CATS[c].g === g && v > 0.5).sort((a, b) => b[1] - a[1]);
+      if (!rows.length) continue;
+      const max = rows[0][1];
+      lens += `<div class="lst"><div class="gh"><span>${GROUPS[g].n}</span><em>${eur(gsum[g])}</em></div>${rows.map(([c, v]) => `
+        <button type="button" class="row tap" ${go('cat', c)}><span class="th">${CATS[c].e}</span><div class="tx"><b>${CATS[c].n}</b><span class="sub">${Math.round((v / tot) * 100)}${NB}% výdavkov</span>${bar((v / max) * 100, CATS[c].col)}</div>
+        <div class="ra"><span class="amt">${eur(v)}</span>${smallDelta(v, prv.byCat[c] || 0, P)}</div>${chev}</button>`).join('')}</div>`;
+    }
+  } else if (S.lens === 'store') {
+    const rows = Object.entries(cur.byStore).sort((a, b) => b[1].amt - a[1].amt);
+    const max = rows[0] ? rows[0][1].amt : 1;
+    lens += `<div class="lst">${rows.map(([s, v]) => `
+      <button type="button" class="row tap" ${go('store', s)}>${stile(s)}<div class="tx"><b>${STORES[s].n}</b><span class="sub">${nakupov(v.r.size)} · priemerne ${eur0(v.amt / v.r.size)}</span>${bar((v.amt / max) * 100, STORES[s].cc)}</div>
+      <div class="ra"><span class="amt">${eur(v.amt)}</span>${smallDelta(v.amt, prv.byStore[s] ? prv.byStore[s].amt : 0, P)}</div>${chev}</button>`).join('')}</div>
+      <button type="button" class="row tap lst" ${go('compare')}><span class="th">${ic('scale')}</span><div class="tx"><b>Porovnať obchody</b><span class="sub">tvoj bežný košík v každom obchode</span></div>${chev}</button>`;
+  } else {
+    const rows = Object.entries(cur.byKind).sort((a, b) => b[1].amt - a[1].amt).slice(0, 12);
+    lens += `<button type="button" class="search" ${go('search')}>${ic('search', 's')}<span>Hľadať produkt, napr. maslo</span></button>
+      <div class="lst">${rows.map(([k, v]) => {
+        const K = KIND[k];
+        const st = kindStats(k, P.to);
+        const u = sum(v.ps.filter((p) => units(p) != null), units);
+        const subt = K.u ? [u ? qtyFmt(u, K.u) : null, st.med != null ? `bežne ${upFmt(st.med, K.u, K.sm)}` : null].filter(Boolean).join(' · ') : `${sum(v.ps, (p) => p.packs)}${NB}ks · cena za kus`;
+        return `<button type="button" class="row tap" ${go('kind', k)}><span class="th">${K.e}</span><div class="tx"><b>${K.n}</b><span class="sub">${subt}</span></div><div class="ra"><span class="amt">${eur(v.amt)}</span><span class="sub">${nakupov(v.ps.length)}</span></div>${chev}</button>`;
+      }).join('')}</div>`;
+  }
+
+  // oplatí sa vedieť
+  const ins = insights(P);
+  const deps = DEP.filter((d) => inR(d, P.from, P.to));
+  const paid = sum(deps.filter((d) => d.amt > 0), (d) => d.amt), ret = -sum(deps.filter((d) => d.amt < 0), (d) => d.amt);
+  if (paid || ret) ins.push({ e: '🍾', t: `Zálohy za fľaše: vrátené ${eur(ret)}`, d: `zaplatené ${eur(paid)} · do výdavkov sa nerátajú`, a: 'go:receipts' });
+  const unknown = KINDS.filter((K) => K.u).flatMap((K) => kindStats(K.k, P.to).unknown);
+  const unkProds = new Set(unknown.map((p) => p.pid));
+
+  return `<header class="nb"><span class="av" aria-label="Profil">M</span><span class="nbt"></span><span class="nbr">
+      <button type="button" class="ib" ${go('search')} aria-label="Hľadať">${ic('search')}</button>
+      <button type="button" class="ib" data-a="toast:Otvorí sa fotoaparát na bloček." aria-label="Odfotiť bloček">${ic('camera')}</button>
+      <button type="button" class="ib" data-a="toast:Nápovedy obrazovky ako dnes." aria-label="Nápoveda">${ic('help')}</button></span></header>
+    <h1>Výdavky</h1>
+    ${S.off === 0 && S.per !== 'year' ? `<div class="miss">${stile('kaufland', 'sm')}<div class="tx"><b>Chýba bloček · Kaufland</b><span class="sub">utorok ${dm('2026-11-10')} · 12 položiek</span></div><button type="button" class="btn soft" data-a="toast:Otvorí sa fotoaparát pre tento nákup.">${ic('camera', 's')}Odfotiť</button></div>` : ''}
+    ${lensTabs('per', [['week', 'Týždeň'], ['month', 'Mesiac'], ['year', 'Rok']], S.per).replace('seg sm', 'seg')}
+    ${pnav(P)}
+    <div class="c hero">
+      <div class="k">Minuté${partial(P) ? ' zatiaľ' : ''}</div>
+      <div class="big">${ei}<small>,${ec}${NB}€</small></div>
+      ${cmp.txt ? `<div class="cmp ${cmp.dir > 0 ? 'up' : cmp.dir < 0 ? 'dn' : ''}">${cmp.dir ? ic(cmp.dir > 0 ? 'trend' : 'trendd', 's') : ''}${cmp.txt}${cmp.d ? `<span class="d">${cmp.d}</span>` : ''}</div>
+      <div class="cmp-sub">porovnávam ${dm(P.from)}–${dm(P.to)} s ${dm(P.prevFrom)}–${dm(P.prevTo)}</div>` : `<div class="cmp-sub">${cmp.note}</div>`}
+      ${budget}
+    </div>
+    ${chart}
+    <div class="h2">Kam peniaze odišli</div>
+    ${lensTabs('lens', [['cat', 'Kategórie'], ['store', 'Obchody'], ['kind', 'Produkty']], S.lens)}
+    ${lens}
+    ${ins.length ? `<div class="h2">Oplatí sa vedieť</div><div class="lst">${ins.map((x) => `<button type="button" class="ins row tap" data-a="${x.a}"><span class="th">${x.e}</span><div class="tx"><b>${x.t}</b><span class="sub">${x.d}</span></div>${chev}</button>`).join('')}</div>` : ''}
+    ${unkProds.size ? `<button type="button" class="note" ${go('fix')} style="text-align:left">${ic('pencil')}<span><b>Doplň veľkosť balenia pri ${unkProds.size} ${plural(unkProds.size, 'výrobku', 'výrobkoch', 'výrobkoch')}</b><br>Bez nej nevieme cenu za kg. ${nakupov(unknown.length)} teraz nie je v porovnaní cien.</span></button>` : ''}
+    <div class="lst">
+      <button type="button" class="row tap" ${go('receipts')}><span class="th">${ic('receipt')}</span><div class="tx"><b>Bločky</b><span class="sub">${blockov(cur.receipts)} · ${P.title.toLowerCase()}</span></div>${chev}</button>
+      <button type="button" class="row tap" ${go('compare')}><span class="th">${ic('scale')}</span><div class="tx"><b>Porovnať obchody</b><span class="sub">kde je tvoj bežný košík najlacnejší</span></div>${chev}</button>
+    </div>
+    <p class="tiny">Ukážkové čísla vymyslenej domácnosti (jún – november 2026).</p>`;
+}
+
+function insights(P) {
+  const out = [];
+  // 1. zdraženie: posledná cena v obchode vs. stredná hodnota predchádzajúcich nákupov v tom istom obchode
+  const win = PUR.filter((p) => inR(p, addDays(P.to, -179), P.to) && !p.promo && KIND[p.kind].u && !PROD[p.pid].wq);
+  let best = null;
+  for (const [key, xs] of groupBy(win, (p) => p.pid + '|' + p.store)) {
+    if (xs.length < 3) continue;
+    const last = xs[xs.length - 1];
+    if (last.date < addDays(P.to, -30)) continue;
+    const base = median(xs.slice(0, -1).map((p) => p.price));
+    const ch = last.price / base - 1;
+    if (Math.abs(ch) >= 0.05 && (!best || Math.abs(ch) > Math.abs(best.ch))) best = { p: last, base, ch };
+  }
+  if (best) {
+    const Pp = PROD[best.p.pid];
+    const since = PUR.find((p) => p.pid === best.p.pid && p.store === best.p.store && p.price === best.p.price);
+    out.push({ e: best.ch > 0 ? '📈' : '📉', t: `${best.ch > 0 ? 'Zdraženie' : 'Zlacnenie'} o ${Math.round(Math.abs(best.ch) * 100)}${NB}%: ${pname(Pp)}`, d: `${STORES[best.p.store].n}: bežne ${eur(best.base)}, teraz ${eur(best.p.price)}${since ? ` (od ${dm(since.date)})` : ''}`, a: `go:product:${best.p.pid}` });
+  }
+  // 2. inde lacnejšie: obchod, kde kupuješ najviac, vs. najlacnejší obchod; úspora za mesiac
+  let cheap = null;
+  for (const K of KINDS.filter((x) => x.u && CATS[x.c].g === 'food')) {
+    const st = kindStats(K.k, P.to);
+    if (st.stores.length < 2) continue;
+    const byUnits = [...groupBy(st.ups, (x) => x.p.store)].map(([s, xs]) => ({ s, u: sum(xs, (x) => units(x.p)) })).sort((a, b) => b.u - a.u);
+    const main = st.stores.find((x) => x.s === byUnits[0].s);
+    const low = st.stores[0];
+    if (main.s === low.s) continue;
+    const save = ((main.med - low.med) * byUnits[0].u) / 3;
+    if (save > 0.8 && (!cheap || save > cheap.save)) cheap = { K, main, low, save };
+  }
+  if (cheap) out.push({ e: '💰', t: `Lacnejšie v obchode ${STORES[cheap.low.s].n}: ${cheap.K.n}`, d: `${upFmt(cheap.low.med, cheap.K.u, cheap.K.sm)} oproti ${upFmt(cheap.main.med, cheap.K.u, cheap.K.sm)} v obchode ${STORES[cheap.main.s].n}, kde ho kupuješ najčastejšie · ušetríš asi ${eur(cheap.save)} mesačne`, a: `go:kind:${cheap.K.k}` });
+  return out;
+}
+
+function scrCategory(id) {
+  const P = curP();
+  const C = CATS[id];
+  const cur = agg(P.from, P.to), prv = agg(P.prevFrom, P.prevTo);
+  const amt = cur.byCat[id] || 0;
+  const cmp = compare(amt, prv.byCat[id] || 0, P);
+  // 6 mesiacov
+  const labels = [], vals = [];
+  for (let i = 5; i >= 0; i--) {
+    let y = +P.to.slice(0, 4), m = +P.to.slice(5, 7) - i; while (m < 1) { m += 12; y--; }
+    labels.push(MN3[m - 1].slice(0, 1).toUpperCase() + MN3[m - 1].slice(1, 3));
+    vals.push(sum(PUR.filter((p) => KIND[p.kind].c === id && inR(p, monthStart(y, m), monthEnd(y, m))), (p) => p.total));
+  }
+  const kinds = Object.entries(cur.byKind).filter(([k]) => KIND[k].c === id).sort((a, b) => b[1].amt - a[1].amt);
+  const kmax = kinds[0] ? kinds[0][1].amt : 1;
+  let body = '';
+  if (S.clens === 'kinds') {
+    body = `<div class="lst">${kinds.map(([k, v]) => {
+      const K = KIND[k], st = kindStats(k, P.to);
+      const u = sum(v.ps.filter((p) => units(p) != null), units);
+      const line1 = K.u ? [u ? qtyFmt(u, K.u) : null, st.med != null ? `bežne ${upFmt(st.med, K.u, K.sm)}` : null].filter(Boolean).join(' · ') : `${sum(v.ps, (p) => p.packs)}${NB}ks`;
+      const line2 = K.u && st.stores.length > 1 ? `najlacnejšie: ${STORES[st.stores[0].s].n} ${upFmt(st.stores[0].med, K.u, K.sm)}` : nakupov(v.ps.length);
+      return `<button type="button" class="row tap" ${go('kind', k)}><span class="th">${K.e}</span><div class="tx"><b>${K.n}</b><span class="sub">${line1}</span><span class="sub">${line2}</span>${bar((v.amt / kmax) * 100, C.col)}</div><div class="ra"><span class="amt">${eur(v.amt)}</span></div>${chev}</button>`;
+    }).join('') || '<p class="tiny">V tomto období nič.</p>'}</div>`;
+  } else {
+    const bySt = {};
+    for (const p of cur.ps.filter((p) => KIND[p.kind].c === id)) bySt[p.store] = (bySt[p.store] || 0) + p.total;
+    const rows = Object.entries(bySt).sort((a, b) => b[1] - a[1]);
+    const mx = rows[0] ? rows[0][1] : 1;
+    body = `<div class="lst">${rows.map(([s, v]) => `<button type="button" class="row tap" ${go('store', s)}>${stile(s)}<div class="tx"><b>${STORES[s].n}</b><span class="sub">${Math.round((v / (amt || 1)) * 100)}${NB}% tejto kategórie</span>${bar((v / mx) * 100, STORES[s].cc)}</div><div class="ra"><span class="amt">${eur(v)}</span></div>${chev}</button>`).join('')}</div>`;
+  }
+  return `${nbDetail(C.n)}
+    <div class="lhead"><span class="th lg" style="background:color-mix(in srgb, ${C.col} 26%, transparent)">${C.e}</span><div class="tx"><h1>${C.n}</h1><span class="meta">${GROUPS[C.g].n}</span></div></div>
+    ${pnav(P, true)}
+    <div class="c"><div class="kv">
+      <div><span>Minuté</span><b>${eur(amt)}</b></div>
+      <div><span>Podiel</span><b>${Math.round((amt / (cur.total || 1)) * 100)}${NB}%</b></div>
+      <div><span>Zmena</span><b class="${cmp.dir > 0 ? 'up' : cmp.dir < 0 ? 'dn' : ''}">${cmp.txt ? (cmp.d || cmp.txt.split(' ako')[0]) : '–'}</b></div></div>
+      ${barsChart(labels, vals, null, null, 5)}</div>
+    ${lensTabs('clens', [['kinds', 'Druhy'], ['stores', 'Obchody']], S.clens)}
+    ${body}`;
+}
+
+function scrKind(k) {
+  const P = curP();
+  const K = KIND[k];
+  const st = kindStats(k, P.to);
+  const inP = PUR.filter((p) => p.kind === k && inR(p, P.from, P.to));
+  const paid = sum(inP, (p) => p.total);
+  const known = inP.filter((p) => units(p) != null);
+  const uSum = sum(known, units);
+  const packs = sum(inP.filter((p) => !PROD[p.pid].wq), (p) => p.packs);
+  const avgPaid = uSum ? sum(known, (p) => p.total) / uSum : null;
+  const up = (v) => upFmt(v, K.u, K.sm);
+  let price = '';
+  if (K.u && st.med != null) {
+    const lo = st.min.v, hi = st.max.v;
+    const pos = (v) => (hi - lo < 1e-6 ? 50 : ((v - lo) / (hi - lo)) * 100);
+    const last = [...st.ups].pop();
+    const LP = PROD[last.p.pid];
+    const lastU = units(last.p);
+    price = `<div class="c">
+      <div class="k">Cena · posledné 3 mesiace</div>
+      <div><span class="pbig">${up(st.med).replace(`${NB}€`, `<small>${NB}€`).replace(/$/, '</small>')}</span></div>
+      <div class="sub">bežná cena (stredná hodnota ${nakupov(st.ups.length)}); akcia ju nepohne</div>
+      <div class="strip" aria-hidden="true"><span class="ln"></span>${st.ups.map((x) => `<span class="dt" style="left:${pos(x.v).toFixed(1)}%;--dc:${STORES[x.p.store].cc}"></span>`).join('')}<span class="md" style="left:${pos(st.med).toFixed(1)}%"></span></div>
+      <div class="strip-l"><span>najlacnejšie <b>${up(lo)}</b><br>${STORES[st.min.p.store].n} ${dm(st.min.p.date)}</span><span style="text-align:right">najdrahšie <b>${up(hi)}</b><br>${STORES[st.max.p.store].n} ${dm(st.max.p.date)}</span></div>
+      <div class="mth">Naposledy ${dm(last.p.date)} · ${STORES[last.p.store].n}
+${LP.wq ? `${qtyFmt(last.p.weight, K.u)} × ${up(last.p.price)} = ${eur(last.p.total)}` : `${last.p.packs > 1 ? `${last.p.packs} × ${sizeFmt(LP) || '1 ks'} = ` : ''}${qtyFmt(lastU, K.u)} za ${eur(last.p.total)}
+${eur(last.p.total)} ÷ ${qtyFmt(lastU, K.u)} = ${up(last.v)}`}</div></div>`;
+  } else if (!K.u) {
+    price = `<div class="note">${ic('info')}<span><b>Cenu za jednotku tu neporovnávame.</b><br>Pri tomto druhu (${CATS[K.c].n.toLowerCase()}) by cena za kg či kus nič nepovedala – ukazujeme cenu za kus.</span></div>`;
+  }
+  const stores = K.u && st.stores.length ? `<div class="h2">Kde kúpiť najlacnejšie <small>${perLabel(K.u, K.sm)}</small></div><div class="lst">${st.stores.map((s, i) => {
+    const diff = i === 0 ? null : s.med / st.stores[0].med - 1;
+    return `<button type="button" class="row tap" ${go('store', s.s + '|' + k)}>${stile(s.s)}<div class="tx"><b>${STORES[s.s].n}</b><span class="sub">${nakupov(s.n)} · naposledy ${dm(s.last)}</span></div><div class="ra"><span class="amt">${up(s.med)}</span>${i === 0 && st.stores.length > 1 ? '<span class="pill ok">najlacnejšie</span>' : diff != null ? `<span class="pill up">+${Math.max(1, Math.round(diff * 100))}${NB}%</span>` : ''}</div>${chev}</button>`;
+  }).join('')}</div>` : '';
+  const prods = `<div class="h2">Výrobky <small>značka a balenie</small></div><div class="lst">${st.prods.map((x) => {
+    const Pp = PROD[x.pid];
+    const sz = sizeFmt(Pp);
+    const left = Pp.wq ? `${K.u === 'l' ? 'podľa litrov' : 'vážené'} · ${up(x.last.price)}` : `${eur(x.last.price)}${sz ? ` za ${sz}` : ''}${!sz && K.u ? ' · <span class="up">bez veľkosti</span>' : ''}`;
+    return `<button type="button" class="row tap" ${go('product', x.pid)}><span class="th">${K.e}</span><div class="tx"><b>${esc(pname(Pp))}</b><span class="sub">${left} · ${STORES[x.last.store].n}</span></div><div class="ra"><span class="amt">${K.u ? (x.med != null ? up(x.med) : '–') : eur(x.last.price)}</span><span class="sub">${nakupov(x.n)}</span></div>${chev}</button>`;
+  }).join('')}</div>`;
+  const pts = st.ups.map((x) => ({ d: x.p.date, s: x.p.store, v: x.v }));
+  const chart = K.u && pts.length > 1 ? `<div class="c"><div class="k">Cena ${perLabel(K.u, K.sm)} v čase</div>${priceChart(pts, st.med, K.u, K.sm)}${storeLegend([...new Set(pts.map((x) => x.s))])}</div>` : '';
+  const unk = st.unknown.length ? `<div class="note">${ic('pencil')}<span><b>${nakupov(st.unknown.length)} bez veľkosti balenia</b> (${[...new Set(st.unknown.map((p) => STORES[p.store].n))].join(', ')}) – sú v sume, ale nie v cene ${perLabel(K.u, K.sm)}.<br><button type="button" class="btn soft" ${go('fix')}>Doplniť veľkosť</button></span></div>` : '';
+  const buys = inP.length ? `<div class="h2">Nákupy <small>${P.title.toLowerCase()}</small></div><div class="lst">${[...inP].reverse().map((p) => {
+    const Pp = PROD[p.pid];
+    const u = units(p);
+    const sz = sizeFmt(Pp);
+    const q = Pp.wq ? `${qtyFmt(p.weight, K.u)} × ${up(p.price)}` : p.packs > 1 ? `${p.packs} × ${sz ? sz + ' ' : ''}po ${eur(p.price)}${u && sz ? ` = ${qtyFmt(u, K.u)}` : ''}` : sz || '1 ks';
+    return `<button type="button" class="row tap" ${go('receipt', p.rid + '|' + p.id)}>${stile(p.store, 'sm')}<div class="tx"><b>${esc(pname(Pp))}</b><span class="sub">${dm(p.date)} · ${q}${p.promo ? ' · <span class="pill ok">akcia</span>' : ''}</span></div><div class="ra"><span class="amt">${eur(p.total)}</span>${K.u ? `<span class="sub">${u ? up(u ? p.total / u : null) : 'bez veľkosti'}</span>` : ''}</div>${chev}</button>`;
+  }).join('')}</div>` : `<p class="tiny">${P.title}: žiadny nákup. Ceny vyššie sú za posledné 3 mesiace.</p>`;
+  return `${nbDetail(K.n)}
+    <div class="lhead"><span class="th lg">${K.e}</span><div class="tx"><h1>${K.n}</h1><span class="meta">${CATS[K.c].n} · ${K.u ? `porovnávame ${perLabel(K.u, K.sm)}` : 'cena za kus'}</span></div></div>
+    ${pnav(P, true)}
+    <div class="c"><div class="kv">
+      <div><span>Minuté</span><b>${eur(paid)}</b></div>
+      <div><span>Nakúpené</span><b>${K.u && uSum ? qtyFmt(uSum, K.u) : `${packs}${NB}ks`}</b></div>
+      <div><span>Priemerne</span><b>${avgPaid != null ? up(avgPaid) : '–'}</b></div></div>
+      <div class="sub">${nakupov(inP.length)}${packs && K.u && K.u !== 'ks' ? ` · ${packs} ${plural(packs, 'balenie', 'balenia', 'balení')}` : ''}${inP.some((p) => PROD[p.pid].wq) ? ' · aj vážené' : ''}</div></div>
+    ${price}${unk}${stores}${prods}${chart}${buys}`;
+}
+
+function scrProduct(id) {
+  const P = curP();
+  const Pp = PROD[id], K = KIND[Pp.kind];
+  const ps = PUR.filter((p) => p.pid === id && p.date <= P.to);
+  const last = ps[ps.length - 1];
+  const sz = sizeFmt(Pp);
+  const up = (v) => upFmt(v, K.u, K.sm);
+  const stores = [...groupBy(ps, (p) => p.store)].map(([s, xs]) => ({ s, last: xs[xs.length - 1], min: Math.min(...xs.map((p) => p.price)), n: xs.length }));
+  // zmena: posledná cena vs. stredná hodnota predchádzajúcich v tom istom obchode
+  let chg = '';
+  if (last) {
+    const same = ps.filter((p) => p.store === last.store && !p.promo);
+    if (same.length > 2) {
+      const base = median(same.slice(0, -1).map((p) => p.price));
+      const c = last.price / base - 1;
+      if (Math.abs(c) >= 0.03) { const since = same.find((p) => p.price === last.price); chg = `<span class="pill ${c > 0 ? 'up' : 'ok'}">${c > 0 ? '▲' : '▼'} ${Math.round(Math.abs(c) * 100)}${NB}% od ${dm(since.date)} · ${STORES[last.store].n}</span>`; }
+    }
+  }
+  const pts = ps.map((p) => ({ d: p.date, s: p.store, v: Pp.wq ? p.price : p.price }));
+  const priceHead = last ? (Pp.wq
+    ? `<div class="pbig">${nf(last.price, 2, 2)}<small>${NB}€/${K.u}</small></div><div class="sub">vážené · naposledy ${qtyFmt(last.weight, K.u)} za ${eur(last.total)}</div>`
+    : `<div class="pbig">${nf(last.price, 2, 2)}<small>${NB}€${sz ? ` za ${sz}` : ''}</small></div><div class="sub">${K.u ? (units({ ...last, packs: 1 }) ? `= ${up(units({ ...last, packs: 1 }) ? last.price / units({ ...last, packs: 1 }) : null)}` : '<span class="up">bez veľkosti balenia – cenu za jednotku nevieme</span>') : 'cena za kus'}</div>`) : '';
+  return `${nbDetail(Pp.b || Pp.n, `<button type="button" class="ib" data-a="toast:Upraviť názov, značku, balenie a druh – ako dnes pod ⋯." aria-label="Upraviť">${ic('dots')}</button>`)}
+    <div class="lhead"><span class="th lg">${K.e}</span><div class="tx"><h1>${esc(pname(Pp))}</h1><span class="meta">${[sz, K.n, CATS[K.c].n].filter(Boolean).join(' · ')}</span></div></div>
+    <div class="c"><div class="k">Naposledy · ${last ? `${STORES[last.store].n} ${dm(last.date)}` : '–'}</div>${priceHead}${chg ? `<div>${chg}</div>` : ''}</div>
+    ${pts.length > 1 ? `<div class="c"><div class="k">${Pp.wq ? `Cena za ${K.u}` : 'Cena balenia'} v čase</div>${priceChart(pts, median(pts.map((x) => x.v)), Pp.wq ? K.u : null, false)}${storeLegend(stores.map((s) => s.s))}</div>` : ''}
+    <div class="h2">Obchody</div>
+    <div class="lst">${stores.sort((a, b) => a.last.price - b.last.price).map((s) => `<button type="button" class="row tap" ${go('store', s.s)}>${stile(s.s)}<div class="tx"><b>${STORES[s.s].n}</b><span class="sub">najnižšie ${eur(s.min)} · ${nakupov(s.n)}</span></div><div class="ra"><span class="amt">${eur(s.last.price)}</span><span class="sub">naposledy ${dm(s.last.date)}</span></div>${chev}</button>`).join('')}</div>
+    <button type="button" class="row tap lst" ${go('kind', K.k)}><span class="th">${ic('scale')}</span><div class="tx"><b>Porovnať s ostatnými: ${K.n}</b><span class="sub">všetky značky a balenia ${K.u ? perLabel(K.u, K.sm) : ''}</span></div>${chev}</button>
+    <button type="button" class="btn pri full" data-a="toast:Pridané do zoznamu Nákup Lidl (štvrtok).">${ic('plus', 's')}Pridať do zoznamu</button>
+    <div class="h2">Nákupy</div>
+    <div class="lst">${[...ps].reverse().slice(0, 12).map((p) => `<button type="button" class="row tap" ${go('receipt', p.rid + '|' + p.id)}>${stile(p.store, 'sm')}<div class="tx"><b>${dm(p.date)} · ${STORES[p.store].n}</b><span class="sub">${Pp.wq ? `${qtyFmt(p.weight, K.u)} × ${up(p.price)}` : `${p.packs} × ${eur(p.price)}`}${p.promo ? ' · akcia' : ''}</span></div><div class="ra"><span class="amt">${eur(p.total)}</span></div>${chev}</button>`).join('')}</div>`;
+}
+
+function scrStore(arg) {
+  const [id, hk] = arg.split('|');
+  const P = curP();
+  const cur = agg(P.from, P.to), prv = agg(P.prevFrom, P.prevTo);
+  const me = cur.byStore[id] || { amt: 0, r: new Set() };
+  const cmp = compare(me.amt, prv.byStore[id] ? prv.byStore[id].amt : 0, P);
+  let body = '';
+  if (S.slens === 'kinds') {
+    const from = addDays(P.to, -89);
+    const ks = [...new Set(PUR.filter((p) => p.store === id && inR(p, from, P.to)).map((p) => p.kind))];
+    const rows = ks.map((k) => {
+      const st = kindStats(k, P.to);
+      const here = st.stores.find((s) => s.s === id);
+      const spent = sum(cur.ps.filter((p) => p.kind === k && p.store === id), (p) => p.total);
+      const others = st.stores.filter((s) => s.s !== id);
+      return { k, K: KIND[k], here, best: others[0] || null, spent };
+    }).sort((a, b) => b.spent - a.spent || (a.K.n < b.K.n ? -1 : 1));
+    body = `<div class="lst">${rows.map((x) => {
+      const up = (v) => upFmt(v, x.K.u, x.K.sm);
+      let badge = '';
+      if (x.here && x.best) badge = x.best.med < x.here.med * 0.98 ? `<span class="pill up">${STORES[x.best.s].n} −${Math.round((1 - x.best.med / x.here.med) * 100)}${NB}%</span>` : '<span class="pill ok">tu najlacnejšie</span>';
+      return `<button type="button" class="row tap${hk === x.k ? ' hl' : ''}" ${go('kind', x.k)}><span class="th">${x.K.e}</span><div class="tx"><b>${x.K.n}</b><span class="sub">${x.here ? `tu ${up(x.here.med)}` : x.K.u ? 'tu bez ceny za jednotku' : 'cena za kus'}${x.spent ? ` · ${eur(x.spent)} v období` : ''}</span></div><div class="ra">${badge}</div>${chev}</button>`;
+    }).join('')}</div><p class="tiny">Ceny za jednotku za posledné 3 mesiace. „Kaufland −8 %“ = tam to isté vychádza o 8 % lacnejšie.</p>`;
+  } else if (S.slens === 'cats') {
+    const bc = {};
+    for (const p of cur.ps.filter((p) => p.store === id)) bc[KIND[p.kind].c] = (bc[KIND[p.kind].c] || 0) + p.total;
+    const rows = Object.entries(bc).sort((a, b) => b[1] - a[1]);
+    const mx = rows[0] ? rows[0][1] : 1;
+    body = `<div class="lst">${rows.map(([c, v]) => `<button type="button" class="row tap" ${go('cat', c)}><span class="th">${CATS[c].e}</span><div class="tx"><b>${CATS[c].n}</b>${bar((v / mx) * 100, CATS[c].col)}</div><div class="ra"><span class="amt">${eur(v)}</span></div>${chev}</button>`).join('') || '<p class="tiny">V tomto období tu žiadny nákup.</p>'}</div>`;
+  } else {
+    const rs = RCP.filter((r) => r.store === id && inR(r, P.from, P.to));
+    body = `<div class="lst">${rs.map((r) => `<button type="button" class="row tap" ${go('receipt', r.id)}><span class="th">${ic('receipt')}</span><div class="tx"><b>${dm(r.date)} · ${r.time}</b><span class="sub">${r.lines.filter((l) => l.t === 'item').length} položiek</span></div><div class="ra"><span class="amt">${eur(r.total)}</span></div>${chev}</button>`).join('') || '<p class="tiny">V tomto období tu žiadny bloček.</p>'}</div>`;
+  }
+  return `${nbDetail(STORES[id].n)}
+    <div class="lhead">${stile(id, 'lg')}<div class="tx"><h1>${STORES[id].n}</h1><span class="meta">${me.r.size ? `${nakupov(me.r.size)} · priemerne ${eur0(me.amt / me.r.size)}` : 'v tomto období bez nákupu'}</span></div></div>
+    ${pnav(P, true)}
+    <div class="c hero" style="padding:16px"><div class="k">Minuté</div><div class="pbig">${eur(me.amt)}</div>${cmp.txt ? `<div class="cmp ${cmp.dir > 0 ? 'up' : cmp.dir < 0 ? 'dn' : ''}">${cmp.txt}${cmp.d ? `<span class="d">${cmp.d}</span>` : ''}</div>` : `<div class="cmp-sub">${cmp.note}</div>`}</div>
+    ${lensTabs('slens', [['kinds', 'Produkty'], ['cats', 'Kategórie'], ['rcpt', 'Bločky']], S.slens)}
+    ${body}`;
+}
+
+function scrCompare() {
+  const P = curP();
+  const from = addDays(P.to, -89);
+  const cand = ['lidl', 'kaufland', 'tesco', 'kraj'].filter((s) => new Set(PUR.filter((p) => p.store === s && inR(p, from, P.to)).map((p) => p.rid)).size >= 3);
+  const rows = KINDS.filter((K) => K.u && CATS[K.c].g !== 'other').map((K) => {
+    const st = kindStats(K.k, P.to);
+    const meds = {}; for (const s of st.stores) if (cand.includes(s.s)) meds[s.s] = s.med;
+    const uSum = sum(st.ups, (x) => units(x.p));
+    const paid = sum(st.ups, (x) => x.p.total);
+    return { K, meds, n: st.ps.length, monthU: uSum / 3, avgPaid: uSum ? paid / uSum : null };
+  }).filter((x) => x.n >= 3 && Object.keys(x.meds).length >= 2);
+  let save = 0; const wins = {};
+  for (const x of rows) {
+    const best = Object.entries(x.meds).sort((a, b) => a[1] - b[1])[0];
+    x.best = best[0];
+    wins[best[0]] = (wins[best[0]] || 0) + 1;
+    save += Math.max(0, (x.avgPaid - best[1]) * x.monthU);
+  }
+  const rank = Object.entries(wins).sort((a, b) => b[1] - a[1]);
+  const cell = (x, s) => (x.meds[s] == null ? '<td class="na">–</td>' : `<td class="${x.best === s ? 'best' : ''}">${nf(x.K.sm ? x.meds[s] / 10 : x.meds[s], 2, 2)}</td>`);
+  return `${nbDetail('Porovnať obchody')}
+    <div class="lhead"><span class="th lg">${ic('scale')}</span><div class="tx"><h1>Tvoj košík</h1><span class="meta">${rows.length} vecí, ktoré kupuješ pravidelne · 3 mesiace</span></div></div>
+    <div class="c"><div class="k">Keby si každú vec kúpil tam, kde je najlacnejšia</div><div class="pbig">~${eur0(save)}<small>${NB}mesačne ušetríš</small></div>
+      <div class="chips">${rank.map(([s, n]) => `<span class="chip" style="gap:8px">${stile(s, 'sm')}${STORES[s].n}: najlacnejšie ${n}× z ${rows.length}</span>`).join('')}</div></div>
+    <div class="mx-w"><table class="mx"><thead><tr><th>Cena za jednotku</th>${cand.map((s) => `<th>${STORES[s].n}</th>`).join('')}</tr></thead><tbody>
+      ${rows.map((x) => `<tr data-a="go:kind:${x.K.k}" style="cursor:pointer"><td>${x.K.e} ${x.K.n}<div class="sub">${x.K.sm ? '€/100 ml' : `€/${x.K.u}`}</div></td>${cand.map((s) => cell(x, s)).join('')}</tr>`).join('')}
+    </tbody></table></div>
+    <p class="tiny">Bežná cena (stredná hodnota) za posledné 3 mesiace v každom obchode. Zelená = najlacnejšie. „–“ = tam si to nekupoval. Úspora = rozdiel oproti tomu, čo si naozaj platil, × tvoje bežné množstvo za mesiac.</p>`;
+}
+
+function scrSearch() {
+  return `${nbDetail('Hľadať')}
+    <label class="search" for="mk-q">${ic('search', 's')}<input id="mk-q" type="search" placeholder="Druh, výrobok alebo obchod" value="${esc(S.q)}" autocomplete="off"></label>
+    <div class="chips">${['maslo', 'pivo', 'mlieko', 'plienky', 'Lidl'].map((x) => `<button type="button" class="chip" data-a="q:${x}">${x}</button>`).join('')}</div>
+    <div id="mk-res">${searchResults(S.q)}</div>`;
+}
+function searchResults(q) {
+  const f = fold(q.trim());
+  if (!f) return '<p class="tiny">Napíš napríklad „maslo“ – uvidíš bežnú cenu, výrobky aj obchody.</p>';
+  const P = curP();
+  const kinds = KINDS.filter((K) => fold(K.n).includes(f) || K.P.some((x) => fold(pname(x)).includes(f)));
+  const prods = KINDS.flatMap((K) => K.P).filter((x) => fold(pname(x)).includes(f) || fold(KIND[x.kind].n).includes(f)).slice(0, 8);
+  const stores = Object.keys(STORES).filter((s) => fold(STORES[s].n).includes(f));
+  let h = '';
+  if (kinds.length) h += `<div class="h2">Druhy</div><div class="lst">${kinds.map((K) => { const st = kindStats(K.k, P.to); return `<button type="button" class="row tap" ${go('kind', K.k)}><span class="th">${K.e}</span><div class="tx"><b>${K.n}</b><span class="sub">${st.stores[0] ? `najlacnejšie ${STORES[st.stores[0].s].n}` : CATS[K.c].n}</span></div><div class="ra"><span class="amt">${K.u && st.med != null ? upFmt(st.med, K.u, K.sm) : ''}</span>${K.u && st.med != null ? '<span class="sub">bežne</span>' : ''}</div>${chev}</button>`; }).join('')}</div>`;
+  if (prods.length) h += `<div class="h2">Výrobky</div><div class="lst">${prods.map((x) => { const K = KIND[x.kind]; const ps = PUR.filter((p) => p.pid === x.id); const l = ps[ps.length - 1]; return `<button type="button" class="row tap" ${go('product', x.id)}><span class="th">${K.e}</span><div class="tx"><b>${esc(pname(x))}</b><span class="sub">${[sizeFmt(x), l ? STORES[l.store].n : null].filter(Boolean).join(' · ')}</span></div><div class="ra"><span class="amt">${l ? eur(l.price) : '–'}</span>${l && K.u && unitPrice({ ...l, packs: 1, total: l.price }) ? `<span class="sub">${upFmt(unitPrice({ ...l, packs: 1, total: l.price }), K.u, K.sm)}</span>` : ''}</div>${chev}</button>`; }).join('')}</div>`;
+  if (stores.length) h += `<div class="h2">Obchody</div><div class="lst">${stores.map((s) => `<button type="button" class="row tap" ${go('store', s)}>${stile(s)}<div class="tx"><b>${STORES[s].n}</b></div>${chev}</button>`).join('')}</div>`;
+  return h || `<p class="tiny">Nič sa nenašlo pre „${esc(q)}“.</p>`;
+}
+
+function scrFix() {
+  const todo = KINDS.filter((K) => K.u).flatMap((K) => K.P.filter((x) => !x.wq && sizeOf(x) == null));
+  const done = KINDS.filter((K) => K.u).flatMap((K) => K.P.filter((x) => S.sizes[x.id] != null));
+  const card = (x) => {
+    const K = KIND[x.kind];
+    const ps = PUR.filter((p) => p.pid === x.id);
+    const opts = x.opts || [0.1, 0.25, 0.5, 1];
+    return `<div class="c"><div style="display:flex;gap:12px;align-items:center"><span class="th">${K.e}</span><div class="tx"><b>${esc(pname(x))} · ${[...new Set(ps.map((p) => STORES[p.store].n))].join(', ')}</b><span class="sub">${nakupov(ps.length)} · ${ps.length ? eur(ps[ps.length - 1].price) : '–'} · na bločku „${esc(x.r)}“</span></div></div>
+      <div class="sub">Aké veľké je balenie?</div>
+      <div class="chips">${opts.map((v) => `<button type="button" class="chip" data-a="fix:${x.id}:${v}">${qtyFmt(v, K.u)}</button>`).join('')}<button type="button" class="chip" data-a="toast:Napíšeš vlastnú veľkosť, napr. 180 g.">Iná…</button></div></div>`;
+  };
+  return `${nbDetail('Na doplnenie')}
+    <div class="lhead"><span class="th lg">${ic('pencil')}</span><div class="tx"><h1>Na doplnenie</h1><span class="meta">každá oprava spresní ceny natrvalo</span></div></div>
+    ${todo.length ? todo.map(card).join('') : '<div class="note">' + ic('check') + '<span><b>Všetko doplnené.</b><br>Ceny za kg, l a kus sú zo všetkých nákupov.</span></div>'}
+    ${done.length ? `<div class="h2">Hotovo</div><div class="lst">${done.map((x) => { const K = KIND[x.kind]; const ps = PUR.filter((p) => p.pid === x.id); return `<button type="button" class="row tap" ${go('kind', K.k)}><span class="th">${K.e}</span><div class="tx"><b>${esc(pname(x))} · ${qtyFmt(S.sizes[x.id], K.u)}</b><span class="sub">teraz ${upFmt(median(ps.map(unitPrice)), K.u, K.sm)} · ${nakupov(ps.length)} v cene ${perLabel(K.u, K.sm)}</span></div>${chev}</button>`; }).join('')}</div>` : ''}
+    <p class="tiny">V appke sem patrí aj „obchod sa nespoznal“ a „druh chýba“. Doplnenie platí pre všetky staré aj budúce nákupy toho výrobku.</p>`;
+}
+
+function scrReceipt(arg) {
+  const [rid, hid] = arg.split('|');
+  const r = RCPI[rid];
+  const lines = r.lines.map((l) => {
+    if (l.t === 'item') {
+      const p = l.p, Pp = PROD[p.pid], K = KIND[p.kind];
+      const q = Pp.wq ? `${nf(p.weight, 3, 3)} ${K.u} × ${nf(p.price, 2, 2)}` : p.packs > 1 ? `${p.packs} × ${nf(p.price, 2, 2)}` : '';
+      return `<button type="button" class="rl${p.id === hid ? ' hl' : ''}" ${go('product', p.pid)}><span>${esc(Pp.r)}</span><span>${nf(p.total, 2, 2)}</span></button>${q ? `<div class="q2">${q}</div>` : ''}${p.promo ? '<div class="q2">ZLAVA 20%</div>' : ''}`;
+    }
+    if (l.t === 'dep') return `<div class="rl"><span>ZALOHA OBAL ${l.d.n}×0,15</span><span>${nf(l.d.amt, 2, 2)}</span></div>`;
+    return `<div class="rl"><span>VRATENE ZALOHY ${l.d.n} KS</span><span>${nf(l.d.amt, 2, 2)}</span></div>`;
+  }).join('');
+  const items = sum(r.lines.filter((l) => l.t === 'item'), (l) => l.p.total);
+  return `${nbDetail('Bloček')}
+    <div class="lhead">${stile(r.store, 'lg')}<div class="tx"><h1>${STORES[r.store].n}</h1><span class="meta">${dm(r.date)} ${r.date.slice(0, 4)} · ${r.time} · ${r.lines.filter((l) => l.t === 'item').length} položiek</span></div></div>
+    <div class="rcpt"><div class="c0"><b>${STORES[r.store].n.toUpperCase()}</b><br>${dm(r.date)}${r.date.slice(0, 4)}  ${r.time}</div><hr>${lines}<hr>
+      <div class="rl tot"><span>SPOLU</span><span>${nf(r.total, 2, 2)}${NB}EUR</span></div></div>
+    <div class="c"><div class="kv"><div><span>Tovar</span><b>${eur(items)}</b></div><div><span>Zálohy</span><b>${eur(r.total - items)}</b></div><div><span>Zaplatené</span><b>${eur(r.total)}</b></div></div><div class="sub">Do výdavkov ide len tovar. Ťukni na riadok a otvorí sa výrobok.</div></div>`;
+}
+
+function scrReceipts() {
+  const P = curP();
+  const rs = RCP.filter((r) => inR(r, P.from, P.to));
+  const byDay = groupBy(rs, (r) => r.date);
+  return `${nbDetail('Bločky')}
+    <div class="lhead"><span class="th lg">${ic('receipt')}</span><div class="tx"><h1>Bločky</h1><span class="meta">${blockov(rs.length)} · ${eur(sum(rs, (r) => r.total))} zaplatené</span></div></div>
+    ${pnav(P, true)}
+    ${[...byDay].map(([d, xs]) => `<div class="k" style="margin:6px 4px -6px">${['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota', 'Nedeľa'][dow(d)]} ${dm(d)}</div><div class="lst">${xs.map((r) => `<button type="button" class="row tap" ${go('receipt', r.id)}>${stile(r.store)}<div class="tx"><b>${STORES[r.store].n}</b><span class="sub">${r.time} · ${r.lines.filter((l) => l.t === 'item').length} položiek</span></div><div class="ra"><span class="amt">${eur(r.total)}</span></div>${chev}</button>`).join('')}</div>`).join('') || '<p class="tiny">V tomto období žiadny bloček.</p>'}`;
+}
+
+/* ================================================================ vykreslenie a ovládanie */
+const mk = document.getElementById('mk');
+const mkbg = document.getElementById('mkbg');
+const toastEl = document.getElementById('mktoast');
+let toastT = 0;
+function toast(t) { toastEl.textContent = t; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('on'), 2600); }
+const tabbar = `<div class="tabbar"><nav class="tabs" aria-label="Záložky appky">
+  <button type="button" data-a="toast:V mockupe je len karta Výdavky.">${ic('home')}Domov</button>
+  <button type="button" data-a="toast:V mockupe je len karta Výdavky.">${ic('basket')}Nákupy</button>
+  <button type="button" class="mic" data-a="toast:Hlas – bez zmeny." aria-label="Hlas">${ic('mic')}</button>
+  <button type="button" data-a="toast:V mockupe je len karta Výdavky.">${ic('pot')}Recepty</button>
+  <button type="button" class="on" data-a="home">${ic('wallet')}Výdavky<span class="badge">1</span></button></nav></div>`;
+
+function render(keepScroll) {
+  const top = S.stack[S.stack.length - 1];
+  let h = '';
+  switch (top.s) {
+    case 'overview': h = scrOverview(); break;
+    case 'cat': h = scrCategory(top.id); break;
+    case 'kind': h = scrKind(top.k); break;
+    case 'product': h = scrProduct(top.id); break;
+    case 'store': h = scrStore(top.id); break;
+    case 'compare': h = scrCompare(); break;
+    case 'search': h = scrSearch(); break;
+    case 'fix': h = scrFix(); break;
+    case 'receipt': h = scrReceipt(top.id); break;
+    case 'receipts': h = scrReceipts(); break;
+  }
+  const y = mk.scrollTop;
+  mk.innerHTML = `<div class="scrn${keepScroll ? '' : ''}">${h}</div>${tabbar}`;
+  if (keepScroll) { mk.scrollTop = y; mk.firstElementChild.style.animation = 'none'; }
+  else {
+    mk.scrollTop = 0;
+    const r = mk.getBoundingClientRect();
+    if (getComputedStyle(mk).overflowY !== 'auto' && r.top < 0) window.scrollTo(0, window.scrollY + r.top - 70);
+  }
+  const q = document.getElementById('mk-q');
+  if (q) {
+    q.addEventListener('input', () => { S.q = q.value; document.getElementById('mk-res').innerHTML = searchResults(S.q); });
+    if (!keepScroll) setTimeout(() => { try { q.focus({ preventScroll: true }); } catch (e) { /* bez zamerania */ } }, 60);
+  }
+}
+function push(s, arg) {
+  const x = { s };
+  if (s === 'cat' || s === 'product' || s === 'store' || s === 'receipt') x.id = arg;
+  if (s === 'kind') x.k = arg;
+  if (s === 'store') S.slens = 'kinds';
+  S.stack.push(x);
+  render();
+}
+function act(a) {
+  const [cmd, ...rest] = a.split(':');
+  const v = rest.join(':');
+  switch (cmd) {
+    case 'go': { const [s, ...arg] = v.split(':'); push(s, arg.join(':')); break; }
+    case 'back': if (S.stack.length > 1) { S.stack.pop(); render(); } break;
+    case 'home': S.stack = [{ s: 'overview' }]; render(); break;
+    case 'per': S.per = v; S.off = 0; render(true); break;
+    case 'off': { const n = S.off + Number(v); const P = period(S.per, n); if (n <= 0 && P.end >= DATA_START) { S.off = n; render(true); } break; }
+    case 'month': S.per = 'month'; S.off = Number(v); render(true); break;
+    case 'lens': S.lens = v; render(true); break;
+    case 'clens': S.clens = v; render(true); break;
+    case 'slens': S.slens = v; render(true); break;
+    case 'q': S.q = v; render(true); break;
+    case 'fix': {
+      const [pid, val] = v.split(':');
+      S.sizes[pid] = Number(val);
+      const x = PROD[pid], K = KIND[x.kind];
+      const ps = PUR.filter((p) => p.pid === pid);
+      render(true);
+      toast(`Uložené: ${qtyFmt(Number(val), K.u)}. ${nakupov(ps.length)} je teraz v cene ${perLabel(K.u, K.sm)}.`);
+      break;
+    }
+    case 'toast': toast(v); break;
+  }
+}
+mk.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-a]');
+  if (!el || !mk.contains(el) || el.disabled) return;
+  act(el.dataset.a);
+});
+
+/* téma mockupu */
+document.querySelectorAll('[data-theme-set]').forEach((b) => b.addEventListener('click', () => {
+  S.theme = b.dataset.themeSet;
+  for (const el of [mk, mkbg]) { el.classList.toggle('mk-th-g', S.theme === 'g'); el.classList.toggle('mk-th-w', S.theme === 'w'); }
+  toastEl.classList.toggle('mk-th-g', S.theme === 'g'); toastEl.classList.toggle('mk-th-w', S.theme === 'w');
+  document.querySelectorAll('[data-theme-set]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  try { localStorage.setItem('vyd.theme', S.theme); } catch (e) { /* bez pamäte */ }
+}));
+toastEl.classList.add('mk-th-g');
+
+/* prepínač Mockup / Návrh (len na užšej obrazovke) */
+function setView(v, fromHash) {
+  document.body.dataset.view = v;
+  document.querySelectorAll('.views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+  if (!fromHash) { try { history.replaceState(null, '', v === 'doc' ? '#navrh' : '#mockup'); } catch (e) { /* bez adresy */ } }
+}
+document.querySelectorAll('.views button').forEach((b) => b.addEventListener('click', () => { setView(b.dataset.view); window.scrollTo({ top: 0 }); }));
+const fromHash = () => { const h = location.hash.replace('#', ''); if (h === 'navrh') setView('doc', true); else if (h === 'mockup') setView('mock', true); };
+window.addEventListener('hashchange', fromHash);
+setView(location.hash === '#navrh' ? 'doc' : 'mock', true);
+
+/* odkazy z dokumentu do mockupu */
+document.querySelectorAll('[data-show]').forEach((b) => b.addEventListener('click', () => {
+  const t = b.dataset.show;
+  const [s, ...arg] = t.split(':');
+  S.stack = [{ s: 'overview' }];
+  if (s === 'lens') { S.lens = arg[0]; render(); }
+  else if (s === 'overview') render();
+  else if (s === 'receipt') { const p = PUR.filter((x) => x.pid === 'pilos-maslo').pop(); push('receipt', p.rid + '|' + p.id); }
+  else push(s === 'cat' ? 'cat' : s, arg.join(':'));
+  if (window.matchMedia('(max-width: 1099px)').matches) { setView('mock'); window.scrollTo({ top: 0 }); }
+}));
+
+try { const t = localStorage.getItem('vyd.theme'); if (t === 'w') document.querySelector('[data-theme-set="w"]').click(); } catch (e) { /* bez pamäte */ }
+render();
+})();
+</script>

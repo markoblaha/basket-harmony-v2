@@ -250,6 +250,17 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
+- **Výdavky 2.0 – návrh prestavby karty (11. 11. 2026):** https://claude.ai/artifact/TRAxKhERGN3ZcRiLSiMDQw
+  (zdroj `prototyp/vydavky-navrh.html`: dokument + preklikateľný mockup s vymyslenými dátami). Zistenia z testovacej DB:
+  „o 1775 % viac ako august“ (v auguste 1 bloček), „Obchod 681 € · Woolworth“ (v testovacej DB 0 zo 67 bločkov má
+  `store_key` – všetko sa zlialo do `_none`; ostrá DB 96/97), „3 kg“ pri 3 baleniach po 120 g (KindPage/ProductPage
+  píšu k počtu balení jednotku porovnania, pri litroch „ks“), pivo 0,03 €/ks („PLZ 6x“ = zálohy priradené k pivu
+  + dvojité násobenie balenia 6 × 6), 315 z 523 položiek bez veľkosti balenia (107 potraviny) → druh mieša €/ks a €/kg,
+  dva rôzne „priemery“, Lidl/LIDL nezjednotené, zálohy nikde, obdobie 4× na obrazovke, detail druhu má vlastné obdobie.
+  Návrh: jedno obdobie, súhrn s tempom a rozpočtom, pohľady Kategórie / Obchody / Produkty, druh s bežnou cenou
+  (medián 3 mesiacov) a poradím obchodov, obchod s „tu vs. inde“, hľadanie, porovnanie obchodov, fronta „Na doplnenie“;
+  jednotka porovnania uložená pri druhu (`product_kinds`). 5 krokov, 5 otázok na rozhodnutie. Nič nie je implementované.
+
 - **Revízia pred ostrým spustením (3. 11. 2026):** https://claude.ai/artifact/X8aprnTLiiWL5bgiDQwNAT – preklikané
   4 vzhľady × 19 obrazoviek (0 chýb JS/servera), kód, DB, AI. Blokery P0: zmazanie účtu len predstiera (dialóg + hláška
   „zatiaľ nevie“), chýbajú zásady súkromia/podmienky, offline v obchode (žiadny service worker), push upozornenia,
