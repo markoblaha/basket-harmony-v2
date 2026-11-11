@@ -77,6 +77,11 @@ export function RecipesPage() {
     .filter((l) => !l.completed_at)
     .sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999"))[0];
   const planned = days.filter((x) => x.r);
+  // Naplánované bez dňa (napr. suroviny pridané do nákupu) a neuvarené z minulých dní – aby nič nečakalo nevidno.
+  const todayK = isoDay(today);
+  const undated = plans.filter((p) => p.status === "PENDING" && !p.planned_on);
+  const overdue = plans.filter((p) => p.status === "PENDING" && !!p.planned_on && p.planned_on < todayK);
+  const [moving, setMoving] = useState<{ id: string; key: string } | null>(null);
   const missingRows = planned.flatMap((x) => recipeRows(x.r!, x.p!.portions, recipes.find, est, isHome).filter((row) => !row.home));
   const addPlanned = () => {
     if (!target) return;
@@ -361,6 +366,45 @@ export function RecipesPage() {
                   );
                 })}
               </div>
+              {[
+                { title: t("rk.noDay"), rows: undated },
+                { title: t("rk.overdue"), rows: overdue },
+              ]
+                .filter((sct) => sct.rows.length > 0)
+                .map((sct) => (
+                  <div key={sct.title}>
+                    <div className="h2 sm">{sct.title}</div>
+                    <div className={`lst weekl undated${g ? " glass2" : ""}`}>
+                      {sct.rows.map((p) => {
+                        const r = recipes.find(p.recipe_key);
+                        const a = art(r ?? { id: p.recipe_key, name: p.recipe_name, mine: false });
+                        const list = p.list_id ? lists.find((l) => l.id === p.list_id) : undefined;
+                        const miss = r ? recipeRows(r, p.portions, recipes.find, est, isHome).filter((x) => !x.home).length : 0;
+                        const sub = [
+                          p.planned_on ? t("rk.wasOn", { day: formatDateTime(`${p.planned_on}T12:00:00`, { weekday: "short", day: "numeric", month: "numeric" }) }) : null,
+                          list ? t("rk.ingIn", { name: list.name }) : r ? (miss ? t("rk.missN", { n: miss }) : t("rk.allHome")) : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ");
+                        return (
+                          <div key={p.id} className="row">
+                            <button type="button" className="rmain" onClick={() => r && navigate(`/recipes/r/${encodeURIComponent(r.id)}`)} disabled={!r}>
+                              <span className={`th${a.pic ? ` pic-${a.pic}` : ` bg-${a.bg}`}`}>{!a.pic && <E k={a.e} />}</span>
+                              <div className="tx">
+                                <b>{p.recipe_name}</b>
+                                {sub && <span className="sub">{sub}</span>}
+                              </div>
+                            </button>
+                            <Btn cls="soft sm" onClick={() => setMoving({ id: p.id, key: p.recipe_key })}>
+                              <I n="calendar-blank" />
+                              {t("rk.setDay")}
+                            </Btn>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               {missingRows.length > 0 && target && (
                 <div className={`card dockc${g ? " glass2" : ""}`}>
                   <div className="grow">
@@ -394,6 +438,7 @@ export function RecipesPage() {
       )}
       <ImportSheet open={!!importing} source={importing ?? "photo"} onClose={() => setImporting(null)} />
       <PlanSheet open={!!planDay} day={planDay} onClose={() => setPlanDay(null)} />
+      <PlanSheet open={!!moving} rid={moving?.key} planId={moving?.id} onClose={() => setMoving(null)} />
     </div>
   );
 }
