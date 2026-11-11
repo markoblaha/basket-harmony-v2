@@ -218,6 +218,7 @@ Potiahnutie späť z okraja: pevné prvky dostanú vyrovnanie, návrat len prel�
 odídu. Bez podpory View Transitions (iOS < 18) len krátke prelínanie. Pri „obmedziť pohyb“ v telefóne bez animácií.
 3. 11.: Recepty bez čísla na lište (počítalo aj recepty bez dňa, ktoré v Receptoch nevidno; mockup číslo nemá).
 Výdavky: listovanie obdobím ‹ › (mesiac, týždeň, rok) – `?o=-1` v adrese, platí aj na detailoch; v Roku ťuk na mesiac.
+11. 11.: Plán týždňa – časti „Bez dňa“ (recepty pridané do nákupu bez dňa) a „Z minulých dní“ (neuvarené); „Určiť deň“ = `plan_recipes` s pôvodným zoznamom a bez surovín (nič sa nepridá dvakrát), dá sa aj odstrániť z plánu. Bez zmeny DB (migráciu `set_recipe_plan_day` majiteľ nepovolil – netreba).
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:
