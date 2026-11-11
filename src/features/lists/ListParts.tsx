@@ -188,6 +188,7 @@ export function Composer({
   onAdd,
   onAdded,
   onVoice,
+  title,
 }: {
   householdId: string;
   items: Item[];
@@ -200,6 +201,8 @@ export function Composer({
   onAdd: ComposerAdd;
   onAdded?: () => void;
   onVoice: () => void;
+  /** Názov zoznamu v hlavičke okna pridávania. */
+  title: string;
 }) {
   const [txt, setTxt] = useState("");
   const inp = useRef<HTMLInputElement>(null);
@@ -252,6 +255,10 @@ export function Composer({
     return out.slice(0, head ? 4 : 5);
   }, [one?.name, cat, head]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  type Pick = { name: string; cat: string | null; q: number; u: string | null; k: number; done?: boolean };
+  type Added = { k: number; name: string; cat: string | null; q: number | null; u: string | null };
+  const [picks, setPicks] = useState<Record<string, Pick>>({});
+  const [added, setAdded] = useState<Added[]>([]);
   // dlaždice „Často kupujete“ – ťuk = +1, po 2 s sa pridá a nahradí ďalšou
   const staplesQ = useStapleItems(householdId);
   const frequentQ = useFrequentItems(householdId);
@@ -274,7 +281,8 @@ export function Composer({
     }
     return out;
   }, [staples, frequent]);
-  const chips = pool.filter((p) => !inList(p.name) || pend[p.name]).slice(0, 8);
+  // V okne pridávania ostanú aj práve pridané (dá sa ťuknúť znova a zoznam neposkakuje).
+  const chips = pool.filter((p) => !inList(p.name) || pend[p.name] || picks[`s:${p.name}`] || added.some((a) => sameProduct(a.name, p.name))).slice(0, 8);
   const tapStaple = (p: { name: string; cat: string }) => {
     cnt.current[p.name] = (cnt.current[p.name] ?? 0) + 1;
     setPend((x) => ({ ...x, [p.name]: { n: cnt.current[p.name]!, k: Math.random() } }));
@@ -299,10 +307,9 @@ export function Composer({
     return { name: fixed, categoryId: r?.category ?? null };
   };
 
-  // Naklikanie kusov priamo v bubline návrhu: ťuk = +1 (prvý ťuk = napísané množstvo alebo 1 ks), − / + ,
-  // po 1,8 s bez ťuknutia sa položka pridá do zoznamu. Rozklikané bubliny sa pridajú aj pri ďalšom písaní.
-  type Pick = { name: string; cat: string | null; q: number; u: string | null; k: number; done?: boolean };
-  const [picks, setPicks] = useState<Record<string, Pick>>({});
+  // Naklikanie kusov priamo v bubline: ťuk = +1 (prvý ťuk = napísané množstvo alebo 1 ks), − uberie.
+  // Krúžok okolo čísla odpočítava 1,8 s; keď dobehne bez ďalšieho ťuknutia, položka sa pridá do zoznamu
+  // a objaví sa v „Pridané teraz“. Pri ďalšom písaní alebo zavretí okna sa naklikané pridá hneď.
   const pk = useRef<Record<string, Pick>>({});
   const ptm = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const setPk = (key: string, v: Pick | null) => {
@@ -310,6 +317,7 @@ export function Composer({
     else delete pk.current[key];
     setPicks({ ...pk.current });
   };
+  const logAdded = (a: Omit<Added, "k">) => setAdded((x) => [{ ...a, k: Date.now() + Math.random() }, ...x].slice(0, 30));
   const commit = (key: string) => {
     const p = pk.current[key];
     clearTimeout(ptm.current[key]);
@@ -317,24 +325,23 @@ export function Composer({
     setPk(key, { ...p, done: true });
     haptic([8, 40, 14]);
     void onAdd({ name: p.name, quantity: p.q, unit: p.u, categoryId: p.cat });
+    logAdded({ name: p.name, cat: p.cat, q: p.q, u: p.u });
     onAdded?.();
-    // klávesnica ostane otvorená – ďalšia položka sa dá hneď písať a „✓ Pridané“ je vidno
-    inp.current?.focus();
     ptm.current[key] = setTimeout(() => {
       setPk(key, null);
-      // posledná rozklikaná bublina → pole sa vyprázdni na ďalšiu položku
-      if (!Object.keys(pk.current).length) setTxt("");
-    }, 650);
+      // posledná rozklikaná bublina návrhu → pole sa vyprázdni na ďalšiu položku (klávesnica ostáva)
+      if (!key.startsWith("s:") && !Object.keys(pk.current).some((x) => !x.startsWith("s:"))) setTxt("");
+    }, 700);
   };
   const arm = (key: string) => {
     clearTimeout(ptm.current[key]);
-    ptm.current[key] = setTimeout(() => commit(key), 1800);
+    ptm.current[key] = setTimeout(() => commit(key), PICK_MS);
   };
-  const tap = (key: string, name: string, catId: string | null) => {
+  const tap = (key: string, name: string, catId: string | null, start?: { q: number | null; u: string | null }) => {
     const p = pk.current[key];
     if (p?.done) return;
     haptic(8);
-    if (!p) setPk(key, { name, cat: catId, q: one?.quantity ?? 1, u: one?.quantity ? (one.unit ?? null) : null, k: Date.now() });
+    if (!p) setPk(key, { name, cat: catId, q: start?.q ?? 1, u: start?.q ? (start.u ?? null) : null, k: Date.now() });
     else setPk(key, { ...p, q: bump(p.q, unitOf(p.u), 1), k: Date.now() });
     arm(key);
   };
@@ -350,11 +357,21 @@ export function Composer({
     setPk(key, { ...p, q: bump(p.q, unitOf(p.u), -1), k: Date.now() });
     arm(key);
   };
-  // ďalšie písanie: rozklikané bubliny sa pridajú hneď (inak by zmizli spolu s návrhmi)
-  useEffect(() => {
+  const flush = () => {
     for (const key of Object.keys(pk.current)) commit(key);
+  };
+  // ďalšie písanie: rozklikané bubliny návrhov sa pridajú hneď (inak by zmizli spolu s návrhmi)
+  useEffect(() => {
+    for (const key of Object.keys(pk.current)) if (!key.startsWith("s:")) commit(key);
   }, [one?.name]); // eslint-disable-line react-hooks/exhaustive-deps
-  // odchod z obrazovky: nič naklikané sa nestratí
+  // zavretie okna: nič naklikané sa nestratí; „Pridané teraz“ sa po zavretí vynuluje
+  useEffect(() => {
+    if (typing) return;
+    flush();
+    const id = setTimeout(() => setAdded([]), 400);
+    return () => clearTimeout(id);
+  }, [typing]); // eslint-disable-line react-hooks/exhaustive-deps
+  // odchod z obrazovky
   useEffect(
     () => () => {
       Object.values(ptm.current).forEach(clearTimeout);
@@ -363,60 +380,95 @@ export function Composer({
     [], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  // Okno pridávania sa drží presne vo viditeľnej časti obrazovky nad klávesnicou (nič neposkakuje).
+  const [vv, setVv] = useState<{ top: number; h: number } | null>(null);
+  useEffect(() => {
+    const v = window.visualViewport;
+    if (!typing || !v) {
+      setVv(null);
+      return;
+    }
+    const up = () => setVv((o) => (o && o.top === Math.round(v.offsetTop) && o.h === Math.round(v.height) ? o : { top: Math.round(v.offsetTop), h: Math.round(v.height) }));
+    up();
+    v.addEventListener("resize", up);
+    v.addEventListener("scroll", up);
+    return () => {
+      v.removeEventListener("resize", up);
+      v.removeEventListener("scroll", up);
+    };
+  }, [typing]);
+  // stránka pod oknom sa neposúva
+  useEffect(() => {
+    if (!typing) return;
+    const r = document.documentElement;
+    const prev = r.style.overflow;
+    r.style.overflow = "hidden";
+    return () => {
+      r.style.overflow = prev;
+    };
+  }, [typing]);
+
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!enter.length) return;
+    // „Hotovo“ na klávesnici pri prázdnom poli zavrie okno
+    if (!enter.length) {
+      if (typing && !txt.trim()) inp.current?.blur();
+      return;
+    }
     const before = txt;
     for (const x of enter) {
       const l = label(x.name);
       void onAdd({ name: l.name, quantity: x.quantity, unit: x.unit, categoryId: l.categoryId }).then((o) => o === "FAILED" && setTxt(before));
+      logAdded({ name: l.name, cat: l.categoryId, q: x.quantity, u: x.unit });
     }
+    haptic([8, 40, 14]);
     setTxt("");
     onAdded?.();
   };
 
   const keep = (e: React.PointerEvent) => e.preventDefault();
-  const estOf = (name: string, p?: Pick) => estimator.est({ name, quantity: p ? p.q : (one?.quantity ?? null), unit: p ? p.u : (one?.unit ?? null) }, listStore);
+  const estOf = (name: string, p?: Pick, start?: { q: number | null; u: string | null }) =>
+    estimator.est({ name, quantity: p ? p.q : (start?.q ?? null), unit: p ? p.u : (start?.u ?? null) }, listStore);
+  const showSugg = typing && txt.trim().length >= 2;
 
-  /** Riadok návrhu s naklikaním kusov. */
-  const pickRow = (key: string, name: string, catId: string | null, icon: React.ReactNode, title: React.ReactNode, sub: React.ReactNode, priced: boolean, ent?: boolean) => {
-    const p = picks[key];
-    const e = priced ? estOf(name, p) : null;
+  /** Bublina s naklikaním kusov: ťuk kamkoľvek = +1, krúžok vpravo odpočítava pridanie. */
+  const pickRow = (o: { key: string; name: string; cat: string | null; icon: React.ReactNode; sub: React.ReactNode; priced: boolean; ent?: boolean; start?: { q: number | null; u: string | null } }) => {
+    const p = picks[o.key];
+    const e = o.priced ? estOf(o.name, p, o.start) : null;
+    const go = () => tap(o.key, o.name, o.cat, o.start);
     return (
-      <div key={key} className={`sgr pk${ent ? " ent" : ""}${p ? " on" : ""}${p?.done ? " done" : ""}`}>
-        <button type="button" className="sgm" onPointerDown={keep} onClick={() => tap(key, name, catId)} aria-label={t("li.pickAria", { name })}>
+      <div key={o.key} className={`sgr pk${o.ent ? " ent" : ""}${p ? " on" : ""}${p?.done ? " done" : ""}`}>
+        <button type="button" className="sgm" onPointerDown={keep} onClick={go} aria-label={t("li.pickAria", { name: o.name })}>
           <span className="sgi" key={p?.k ?? 0}>
-            {icon}
+            {o.icon}
           </span>
           <span className="sgt">
-            <b>{title}</b>
-            <small>{sub}</small>
+            <b>{o.name}</b>
+            <small>{p?.done ? t("li.pickedQty", { q: fmtQty(p.q, p.u) }) : p ? t("li.pickMore") : o.sub}</small>
           </span>
-          {e && <span className="sgp">~{eur(e.v)}</span>}
+          {e && !p?.done && <span className="sgp">~{eur(e.v)}</span>}
         </button>
-        {p?.done ? (
-          <span className="pk-ok" role="status">
-            <I n="check" w="bold" />
-            {t("li.picked")}
-          </span>
-        ) : p ? (
-          <span className="pk-step">
-            <button type="button" className="pk-b" onPointerDown={keep} onClick={() => less(key)} aria-label={t("li.less")}>
-              <I n={p.q <= minQty(unitOf(p.u)) ? "x" : "minus"} w="bold" />
-            </button>
-            <b className="pk-n" key={p.k} aria-live="polite">
-              {fmtQty(p.q, p.u)}
-            </b>
-            <button type="button" className="pk-b" onPointerDown={keep} onClick={() => tap(key, name, catId)} aria-label={t("li.more")}>
-              <I n="plus" w="bold" />
-            </button>
-          </span>
-        ) : (
-          <button type="button" className="pk-add" onPointerDown={keep} onClick={() => tap(key, name, catId)} aria-label={t("li.pickAria", { name })}>
-            <I n="plus" w="bold" />
+        {p && !p.done && (
+          <button type="button" className="pk-minus" onPointerDown={keep} onClick={() => less(o.key)} aria-label={t("li.less")}>
+            <I n={p.q <= minQty(unitOf(p.u)) ? "x" : "minus"} w="bold" />
           </button>
         )}
-        {p && !p.done && <i className="pk-bar" key={`b${p.k}`} aria-hidden="true" />}
+        <button type="button" className="pk-c" onPointerDown={keep} onClick={go} aria-label={p ? t("li.more") : t("li.pickAria", { name: o.name })}>
+          {p && !p.done && (
+            <svg viewBox="0 0 44 44" className="pk-ring" key={`r${p.k}`} aria-hidden="true">
+              <circle cx="22" cy="22" r="19" />
+            </svg>
+          )}
+          {p?.done ? (
+            <I n="check" w="bold" />
+          ) : p ? (
+            <b className="pk-n" key={p.k} aria-live="polite">
+              {unitOf(p.u) === "ks" ? formatNumber(p.q) : fmtQty(p.q, p.u)}
+            </b>
+          ) : (
+            <I n="plus" w="bold" />
+          )}
+        </button>
         {p && !p.done && unitOf(p.u) === "ks" && (
           <span className="pk-fly" key={`f${p.k}`} aria-hidden="true">
             +1
@@ -425,50 +477,112 @@ export function Composer({
       </div>
     );
   };
-  const showSugg = typing && txt.trim().length >= 2;
+
+  const suggestions = (
+    <div className={`sgl${glass ? " glass2" : ""}`} role="listbox" aria-label={t("li.suggestions")}>
+      {enter.length > 1 && (
+        <button type="button" className="sgr ent" onPointerDown={keep} onClick={() => submit()}>
+          <span className="sgi nwi">
+            <I n="plus" w="bold" />
+          </span>
+          <span className="sgt">
+            <b>{tn("li.items", enter.length)}</b>
+            <small>{enter.map((x) => label(x.name).name).join(", ")}</small>
+          </span>
+          <kbd aria-label="Enter">↵</kbd>
+        </button>
+      )}
+      {one &&
+        oneFix &&
+        pickRow({
+          key: "ent",
+          name: oneFix.text,
+          cat: head?.category ?? null,
+          icon: head ? <E k={estimator.emoji(oneFix.text, head.category)} s={30} /> : <I n="plus" w="bold" />,
+          sub: (
+            <>
+              {fmtQty(one.quantity, one.unit)} · {oneFix.typo ? t("li.typoFixed", { w: one.name }) : (whatOf(head) ?? t("li.newItem"))}
+            </>
+          ),
+          priced: !!head,
+          ent: true,
+          start: { q: one.quantity, u: one.unit },
+        })}
+      {sugg.map((r) =>
+        pickRow({
+          key: `${r.level}:${r.label}`,
+          name: r.label,
+          cat: r.category,
+          icon: <E k={estimator.emoji(r.label, r.category)} s={30} />,
+          sub: r.level === "general" ? whatOf(r) : r.level === "brand" ? t("li.brand") : t("li.kind"),
+          priced: true,
+          start: { q: one?.quantity ?? null, u: one?.unit ?? null },
+        }),
+      )}
+    </div>
+  );
+
+  // Okno pridávania (pri písaní): hlavička · obsah (návrhy / pridané teraz + ukážka + často kupované) · pole.
+  const winBody = showSugg ? (
+    suggestions
+  ) : (
+    <>
+      {added.length > 0 ? (
+        <div className={`aw-tray${glass ? " glass2" : ""}`} aria-live="polite">
+          <div className="aw-th">
+            <I n="check-circle" w="fill" />
+            <b>{t("li.addedNow")}</b>
+            <span>{tn("li.items", added.length)}</span>
+          </div>
+          {added.map((a) => (
+            <div className="aw-it" key={a.k}>
+              <E k={estimator.emoji(a.name, a.cat)} s={24} />
+              <b>{a.name}</b>
+              <span>{fmtQty(a.q, a.u)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <PickDemo glass={glass} />
+      )}
+      {chips.length > 0 && (
+        <>
+          <div className="aw-h">{t("li.staples")}</div>
+          <div className={`sgl${glass ? " glass2" : ""}`}>
+            {chips.slice(0, 6).map((c) =>
+              pickRow({ key: `s:${c.name}`, name: c.name, cat: c.cat, icon: <E k={estimator.emoji(c.name, c.cat)} s={30} />, sub: t("li.tapToAdd"), priced: true }),
+            )}
+          </div>
+        </>
+      )}
+    </>
+  );
 
   return (
-    <div className="dock" ref={root}>
-      {showSugg ? (
-        <div className={`sgl${glass ? " glass2" : ""}`} role="listbox" aria-label={t("li.suggestions")}>
-          {enter.length > 1 && (
-            <button type="button" className="sgr ent" onPointerDown={keep} onClick={() => submit()}>
-              <span className="sgi nwi">
-                <I n="plus" w="bold" />
+    <div
+      className={`dock${typing ? " addwin" : ""}${glass ? " g-win" : ""}`}
+      ref={root}
+      style={typing ? ({ top: vv ? vv.top : 0, height: vv ? vv.h : "100dvh" } as CSSProperties) : undefined}
+    >
+      {typing && (
+        <div className="aw-head">
+          <div className="aw-ti">
+            <small>{requestMode ? t("li.addAsk") : t("li.addTo")}</small>
+            <b>{title}</b>
+          </div>
+          <button type="button" className="aw-done" onClick={() => inp.current?.blur()}>
+            {added.length > 0 && (
+              <span className="aw-cnt" key={added.length}>
+                {added.length}
               </span>
-              <span className="sgt">
-                <b>{tn("li.items", enter.length)}</b>
-                <small>{enter.map((x) => label(x.name).name).join(", ")}</small>
-              </span>
-              <kbd aria-label="Enter">↵</kbd>
-            </button>
-          )}
-          {one &&
-            oneFix &&
-            pickRow(
-              "ent",
-              oneFix.text,
-              head?.category ?? null,
-              head ? <E k={estimator.emoji(oneFix.text, head.category)} s={30} /> : <I n="plus" w="bold" />,
-              oneFix.text,
-              <>
-                {fmtQty(picks.ent?.q ?? one.quantity, picks.ent ? picks.ent.u : one.unit)} ·{" "}
-                {oneFix.typo ? t("li.typoFixed", { w: one.name }) : (whatOf(head) ?? t("li.newItem"))}
-              </>,
-              !!head,
-              true,
             )}
-          {sugg.map((r) =>
-            pickRow(
-              `${r.level}:${r.label}`,
-              r.label,
-              r.category,
-              <E k={estimator.emoji(r.label, r.category)} s={30} />,
-              r.label,
-              r.level === "general" ? whatOf(r) : r.level === "brand" ? t("li.brand") : t("li.kind"),
-              true,
-            ),
-          )}
+            {t("li.done")}
+          </button>
+        </div>
+      )}
+      {typing ? (
+        <div className="aw-body">
+          <div className="aw-in">{winBody}</div>
         </div>
       ) : chipsLoading ? (
         <div className="chips staples" aria-hidden="true" style={{ visibility: "hidden" }}>
@@ -480,7 +594,7 @@ export function Composer({
             {chips.map((p) => {
               const pd = pend[p.name];
               return (
-                <button type="button" key={p.name} className={`chip${pd ? " pend" : ""}${glass ? " glass2" : ""}`} onPointerDown={typing ? keep : undefined} onClick={() => tapStaple(p)}>
+                <button type="button" key={p.name} className={`chip${pd ? " pend" : ""}${glass ? " glass2" : ""}`} onClick={() => tapStaple(p)}>
                   <E k={estimator.emoji(p.name, p.cat)} />
                   {p.name}
                   {pd ? (
@@ -521,11 +635,49 @@ export function Composer({
             <I n="arrow-up" w="bold" />
           </button>
         ) : (
-          <button type="button" className="m" onClick={onVoice} aria-label={t("li.voice")}>
+          <button type="button" className="m" onPointerDown={typing ? keep : undefined} onClick={onVoice} aria-label={t("li.voice")}>
             <I n="microphone" />
           </button>
         )}
       </form>
+    </div>
+  );
+}
+
+const PICK_MS = 1800;
+
+/** Názorná ukážka v prázdnom okne: prst trikrát ťukne na bublinu, krúžok odpočíta a „Pridané 3 ks“ (len CSS, opakuje sa). */
+function PickDemo({ glass }: { glass?: boolean }) {
+  return (
+    <div className="aw-demo">
+      <div className={`awd-row${glass ? " glass2" : ""}`} aria-hidden="true">
+        <span className="sgi">
+          <E k="beer" s={30} />
+        </span>
+        <span className="awd-t">
+          <b>{t("li.demoItem")}</b>
+          <small className="awd-s1">{t("li.tapToAdd")}</small>
+          <small className="awd-s2">{t("li.pickedQty", { q: fmtQty(3, null) })}</small>
+        </span>
+        <span className="awd-c">
+          <svg viewBox="0 0 44 44" className="awd-ring">
+            <circle cx="22" cy="22" r="19" />
+          </svg>
+          <i className="awd-n awd-p">
+            <I n="plus" w="bold" />
+          </i>
+          <i className="awd-n awd-1">1</i>
+          <i className="awd-n awd-2">2</i>
+          <i className="awd-n awd-3">3</i>
+          <i className="awd-n awd-ok">
+            <I n="check" w="bold" />
+          </i>
+        </span>
+        <span className="awd-f">
+          <I n="hand-tap" w="fill" />
+        </span>
+      </div>
+      <p>{t("li.demoText")}</p>
     </div>
   );
 }

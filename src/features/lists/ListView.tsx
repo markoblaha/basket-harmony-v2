@@ -19,7 +19,7 @@ import { openVoice } from "@/features/voice/open";
 import type { RecipePlan } from "@/features/recipes/api";
 import { useDeleteItem, useUpdateItem, type Item, type ShoppingList } from "./api";
 import { listTotals, useEstimator } from "./estimate";
-import { Composer, ItemRow, ItemSheet, PriceLine, useKeyboardEdge, useRestoreItem } from "./ListParts";
+import { Composer, ItemRow, ItemSheet, PriceLine, useRestoreItem } from "./ListParts";
 import { ListMenuSheet } from "./ListMenuSheet";
 import type { AddOutcome } from "./useSmartAdd";
 
@@ -96,7 +96,6 @@ export function ListView({
 
   // Pole pri písaní sa drží nad klávesnicou; spodný okraj zoznamu podľa výšky doku.
   const [typing, setTyping] = useState(false);
-  const kbEdge = useKeyboardEdge(typing);
   useEffect(() => {
     document.body.classList.toggle("kb-typing", typing);
     return () => document.body.classList.remove("kb-typing");
@@ -106,7 +105,8 @@ export function ListView({
   useEffect(() => {
     const el = dockRef.current?.querySelector(".dock") as HTMLElement | null;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => setDockH(el.offsetHeight));
+    // okno pridávania (celá obrazovka) výšku doku nemení – zoznam pod ním neposkočí
+    const ro = new ResizeObserver(() => !el.classList.contains("addwin") && setDockH(el.offsetHeight));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -339,7 +339,7 @@ export function ListView({
         </div>
       </div>
 
-      <div className="bhm bhm-dock" ref={dockRef} style={typing && kbEdge != null ? ({ "--kb-top": `${kbEdge}px` } as React.CSSProperties) : undefined}>
+      <div className="bhm bhm-dock" ref={dockRef}>
         <Composer
           key={list.id}
           householdId={householdId}
@@ -351,8 +351,10 @@ export function ListView({
           typing={typing}
           onTyping={setTyping}
           onAdd={(x) => smartAdd(x)}
-          onAdded={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          // počas písania je otvorené okno pridávania – zoznam pod ním sa neposúva (nič neposkočí)
+          onAdded={() => !typing && window.scrollTo({ top: 0, behavior: "smooth" })}
           onVoice={() => openVoice(list.id)}
+          title={list.name}
         />
       </div>
 

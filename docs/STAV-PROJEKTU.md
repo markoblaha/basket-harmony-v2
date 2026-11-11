@@ -493,6 +493,13 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     (`pickRow`) v `ListParts.tsx`, štýly `src/features/lists/pick.css`. Overené v prehliadači (Teplá svetlá/tmavá,
     Sklo svetlé); do testovacieho zoznamu „Tok nákupu 11-03 15:01“ pribudli skúšobné položky (Svetlé pivo 12°, Plzeň,
     Banány, Mlieko +3).
+    **Okno pridávania (11. 11., pokyn majiteľa „aby nič neskákalo a klávesnica nepreskakovala“):** ťuk do poľa zoznamu
+    zmení pole na okno cez celú viditeľnú plochu nad klávesnicou (výška z `visualViewport`, stránka pod ním sa neposúva,
+    to isté pole = klávesnica sa nezavrie). Hlavička „Pridávaš do zoznamu · názov“ + Hotovo (s počtom pridaných), v strede
+    návrhy, „Pridané teraz“ (čo pribudlo v tomto okne), názorná ukážka (prst 3× ťukne, krúžok odpočíta, „pridané · 3 ks“ –
+    kým nič nepribudlo) a Často kupuješ ako rovnaké bubliny, dole pole. Bublina: ťuk = +1, krúžok okolo čísla odpočíta
+    1,8 s, potom zelené ✓ a položka je v „Pridané teraz“; − uberie. „Hotovo“ na klávesnici pri prázdnom poli okno zavrie.
+    Overené Playwrightom (pole na rovnakom mieste vo všetkých stavoch, fokus ostáva), test toku nákupu prešiel.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
