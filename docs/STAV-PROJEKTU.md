@@ -260,6 +260,12 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   Návrh: jedno obdobie, súhrn s tempom a rozpočtom, pohľady Kategórie / Obchody / Produkty, druh s bežnou cenou
   (medián 3 mesiacov) a poradím obchodov, obchod s „tu vs. inde“, hľadanie, porovnanie obchodov, fronta „Na doplnenie“;
   jednotka porovnania uložená pri druhu (`product_kinds`). 5 krokov, 5 otázok na rozhodnutie. Nič nie je implementované.
+  **Verzia 2 (11. 11., po pripomienke majiteľa „neprehľadné, zbytočnosti, vzhľad dospelejší“):** mockup prekreslený –
+  hlavička avatar · lupa · fotoaparát, pod ňou Týždeň/Mesiac/Rok, súhrn (‹ obdobie ›, suma, jedna veta porovnania),
+  pásik „Chýba bloček“, jedna karta s grafom (priebeh mesiaca + rozpočet + odhad), Kam išli peniaze (6 najväčších),
+  Oplatí sa vedieť (max 3), Bločky. Detaily bez vlastného prepínača obdobia. Čiarové ikony kategórií namiesto emoji,
+  produkty len text + cena, karty s tenkou linkou bez tieňov, jeden systém tlačidiel / štítkov / upozornení
+  (kapitola 5 „Vzhľad a prvky“ v dokumente). Čaká na vyjadrenie majiteľa.
 
 - **Revízia pred ostrým spustením (3. 11. 2026):** https://claude.ai/artifact/X8aprnTLiiWL5bgiDQwNAT – preklikané
   4 vzhľady × 19 obrazoviek (0 chýb JS/servera), kód, DB, AI. Blokery P0: zmazanie účtu len predstiera (dialóg + hláška
