@@ -320,8 +320,9 @@ export function Composer({
   const logAdded = (a: Omit<Added, "k">) => setAdded((x) => [{ ...a, k: Date.now() + Math.random() }, ...x].slice(0, 30));
   const commit = (key: string) => {
     const p = pk.current[key];
-    clearTimeout(ptm.current[key]);
+    // už pridaná bublina: nechať dobehnúť jej dokončenie (inak by ostala „rozklikaná“ a okno by sa nedalo zavrieť)
     if (!p || p.done) return;
+    clearTimeout(ptm.current[key]);
     setPk(key, { ...p, done: true });
     haptic([8, 40, 14]);
     // pole sa vymaže hneď po pridaní – dá sa písať ďalší produkt (bublina z „Často kupuješ“ text nemení)
@@ -331,10 +332,14 @@ export function Composer({
     onAdded?.();
     ptm.current[key] = setTimeout(() => {
       setPk(key, null);
-      // posledná rozklikaná bublina → položka je v zozname; okno aj klávesnica ostávajú otvorené na mieste,
-      // pole sa len vyprázdni na ďalšiu položku (pokyn majiteľa 11. 11.). Zavrie sa až cez Hotovo.
-      if (!Object.keys(pk.current).length && document.activeElement !== inp.current) inp.current?.focus({ preventScroll: true });
+      // Klávesnica je otvorená → okno ostáva na ďalšiu položku. Keď počas odpočítavania zmizla (iPhone ju bez
+      // ťuknutia znova neotvorí), okno sa zavrie – človek je späť v zozname (Nakupovať, Späť na Nákupy).
+      if (!Object.keys(pk.current).length && document.activeElement !== inp.current) closeWin();
     }, 700);
+  };
+  const closeWin = () => {
+    inp.current?.blur();
+    onTyping(false);
   };
   const arm = (key: string) => {
     clearTimeout(ptm.current[key]);
@@ -574,11 +579,15 @@ export function Composer({
     >
       {typing && (
         <div className="aw-head">
+          {/* Späť = zavrieť okno a vrátiť sa do zoznamu (tam je Nakupovať a ‹ Nákupy) */}
+          <button type="button" className="aw-back" onClick={closeWin} aria-label={t("li.backToList")}>
+            <I n="caret-left" w="bold" />
+          </button>
           <div className="aw-ti">
             <small>{requestMode ? t("li.addAsk") : t("li.addTo")}</small>
-            <b>{title}</b>
+            <b>{/[\p{L}\d]/u.test(title) ? title : t("li.thisList")}</b>
           </div>
-          <button type="button" className="aw-done" onClick={() => inp.current?.blur()}>
+          <button type="button" className="aw-done" onClick={closeWin}>
             {added.length > 0 && (
               <span className="aw-cnt" key={added.length}>
                 {added.length}

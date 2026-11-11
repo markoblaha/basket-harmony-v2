@@ -291,6 +291,8 @@ export const skLs = {
   "li.typo": "preklep? ťukni pre opravu",
   "li.typoFixed": "opravený preklep „{w}“",
   "li.picked": "Pridané",
+  "li.backToList": "Späť do zoznamu",
+  "li.thisList": "Bez názvu",
   "li.addTo": "Pridávaš do zoznamu",
   "li.addAsk": "Poprosíš o pridanie do zoznamu",
   "li.addedNow": "Pridané teraz",

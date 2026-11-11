@@ -507,7 +507,11 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Tretí pokyn (11. 11.): `spellFix` už slová NEVYMIEŇA za podobné (preklepy sa neopravujú – „mleko“ ostane Mleko,
     na výber iného produktu sú bubliny), len diakritika podľa názvov produktov a veľké písmeno. Enter berie text priamo
     z poľa (Gboard mal posledné písmeno ešte rozpísané → „masl“ → oprava preklepu → „Mäso“). Pole sa vymaže hneď pri
-    pridaní z bubliny. Pod oknom je jeho pozadie (pri pásiku ˄ ˅ ✓ neprešvitá zoznam). Pásik ˄ ˅ ✓ nad klávesnicou
+    pridaní z bubliny.
+    Štvrtý pokyn (11. 11., „z okna sa nedá vyjsť“): chyba – po pridaní z bubliny sa zrušil časovač dokončenia, bublina
+    ostala „rozklikaná“ a okno sa nedalo zavrieť ani skrytím klávesnice. Opravené; keď klávesnica zmizne počas
+    odpočítavania, okno sa po pridaní zavrie (iPhone klávesnicu bez ťuknutia znova neotvorí). V hlavičke okna je šípka
+    späť (zavrie okno → zoznam s Nakupovať a ‹ Nákupy) a Hotovo; zoznam bez písmen v názve = „Bez názvu“. Pod oknom je jeho pozadie (pri pásiku ˄ ˅ ✓ neprešvitá zoznam). Pásik ˄ ˅ ✓ nad klávesnicou
     web skryť nevie (rozhodnutie z minulosti platí – len natívna appka).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),

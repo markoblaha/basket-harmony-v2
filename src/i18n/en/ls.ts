@@ -293,6 +293,8 @@ export const enLs: Record<keyof typeof skLs, string> = {
   "li.typo": "typo? tap to fix",
   "li.typoFixed": "fixed typo “{w}”",
   "li.picked": "Added",
+  "li.backToList": "Back to list",
+  "li.thisList": "Untitled",
   "li.addTo": "Adding to list",
   "li.addAsk": "Asking to add to list",
   "li.addedNow": "Added just now",
