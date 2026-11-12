@@ -10,7 +10,12 @@
  *  inak sa položka pridá presne tak, ako je napísaná, bez ceny.
  */
 
-export type Buy = { d: string; s: string; t: number; q: number | null; u: string };
+/**
+ * Nákup z bločku (item_catalog): d deň, s obchod, k kľúč obchodu, t zaplatené za riadok, q množstvo
+ * (počet balení, pri váženom kg/l), u jednotka (ks | kg | l), p cena za balenie (pri váženom za kg/l), a akcia.
+ * Zálohy v nákupoch nie sú (DB _price_facts).
+ */
+export type Buy = { d: string; s: string; k?: string | null; t: number; q: number | null; u: string; p?: number | null; a?: boolean };
 export type CatProduct = {
   id: string;
   name: string;
@@ -324,56 +329,84 @@ const median = (a: number[]) => {
   const m = s.length >> 1;
   return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
 };
-const isKgBuy = (b: Buy) => /^(kg|g)$/i.test(b.u);
+const isWeighed = (b: Buy) => /^(kg|g|l|ml)$/i.test(b.u);
+/** Cena za balenie (pri váženom za kg/l) – z DB, pri starších dátach dopočítaná. */
+const packPrice = (b: Buy) => (b.p != null && b.p > 0 ? b.p : b.t / Math.max(isWeighed(b) ? 0.001 : 1, b.q ?? 1));
+const RECENT = 120 * DAY;
 
 export type Price = {
-  /** Cena za kus (alebo za kg pri váženom tovare v kg). */
+  /** Cena za balenie (alebo za kg pri váženom tovare). */
   up: number;
+  /** Najlacnejší a najdrahší výrobok položky (rovnaký obchod, ak tam boli nákupy). */
   min: number;
   max: number;
-  /** Počet nákupov, z ktorých sa rátalo. */
+  /** Počet nákupov vybraného výrobku. */
   k: number;
-  /** Priemer druhov (všeobecná položka). */
-  avg: boolean;
-  /** Obchod posledného nákupu (pri druhu a značke). */
+  /** Zachované kvôli starším obrazovkám – priemer sa už nepoužíva. */
+  avg: false;
+  /** Obchod, z ktorého je cena. */
   store: string | null;
-  /** Rátané len z nákupov v obchode zoznamu. */
+  /** Cena je z obchodu zoznamu. */
   same: boolean;
+  /** Výrobok, s ktorým odhad počíta („Pilos Maslo 82 %“). */
+  product: CatProduct;
+  /** Deň nákupu, z ktorého je cena. */
+  date: string;
+  /** Cenu poznáme len z akcie. */
+  promo: boolean;
   history: { d: string; s: string; p: number }[];
 };
 
-/** Jednotková cena z nákupov: za kus, alebo za kg, keď položka je v kg. */
-function unitOf(b: Buy, perKg: boolean): number | null {
-  if (perKg) return isKgBuy(b) && b.q ? (b.u.toLowerCase() === "g" ? (b.t / b.q) * 1000 : b.t / b.q) : null;
-  // vážený tovar kupovaný na kg, položka v kusoch = bežný nákup (celý riadok bločku)
-  if (isKgBuy(b)) return b.t;
-  return b.t / Math.max(1, b.q ?? 1);
+/** Krátky popis výrobku pri položke: „Pilos 250 g“, „Radegast 0,5 l“. */
+export function productTag(p: CatProduct): string {
+  const size = p.size_value && p.size_unit
+    ? p.size_unit === "g" ? (p.size_value >= 1000 ? `${String(p.size_value / 1000).replace(".", ",")} kg` : `${p.size_value} g`)
+      : p.size_unit === "ml" ? (p.size_value >= 1000 ? `${String(p.size_value / 1000).replace(".", ",")} l` : p.size_value % 100 === 0 && p.size_value >= 250 ? `${String(p.size_value / 1000).replace(".", ",")} l` : `${p.size_value} ml`)
+      : `${p.size_value} ks`
+    : null;
+  return [p.brand || p.name, size].filter(Boolean).join(" ");
 }
 
 /**
- * Bežná cena: druh a značka = medián posledných 3 nákupov za 120 dní (v obchode zoznamu, ak tam boli);
- * všeobecná položka = priemer nákupov všetkých druhov (bez extrémov), v obchode zoznamu pri aspoň 2 nákupoch.
+ * Cena položky (pravidlo 12. 11. 2026): nie priemer „masla“, ale cena masla, ktoré naozaj kupuješ,
+ * v obchode, kam ideš.
+ *  1. výrobok = tvoj najčastejší výrobok položky v obchode zoznamu za 120 dní (inak najčastejší celkovo);
+ *  2. cena = jeho posledný nákup bez akcie v obchode zoznamu, inak posledný bez akcie inde
+ *     (a len keď iný nie je, posledná akcia);
+ *  3. rozpätie = najlacnejší a najdrahší výrobok položky (ich posledné ceny), v obchode zoznamu, ak tam boli.
  */
 export function unitPrice(r: Resolved, storeKey: string | null, keyOf: (s: string) => string | null, perKg = false, now = Date.now()): Price | null {
-  const all = r.members
-    .flatMap((p) => p.buys)
-    .filter((b) => now - new Date(b.d).getTime() <= 120 * DAY)
-    .map((b) => ({ b, p: unitOf(b, perKg) }))
-    .filter((x): x is { b: Buy; p: number } => x.p != null && x.p > 0)
-    .sort((a, b) => a.b.d.localeCompare(b.b.d));
-  if (!all.length) return null;
-  const same = storeKey ? all.filter((x) => keyOf(x.b.s) === storeKey) : [];
-  const ps = all.map((x) => x.p);
-  const history = all.slice(-5).reverse().map((x) => ({ d: x.b.d, s: x.b.s, p: x.p }));
-  if (r.level === "general") {
-    const pool = same.length >= 2 ? same : all;
-    const md = median(pool.map((x) => x.p));
-    const ok = pool.filter((x) => x.p <= md * 3 && x.p >= md / 3);
-    return { up: ok.reduce((a, x) => a + x.p, 0) / ok.length, min: Math.min(...ps), max: Math.max(...ps), k: ok.length, avg: true, store: null, same: same.length >= 2, history };
-  }
-  const pool = same.length ? same : all;
-  const last3 = pool.slice(-3);
-  return { up: median(last3.map((x) => x.p)), min: Math.min(...ps), max: Math.max(...ps), k: last3.length, avg: false, store: pool[pool.length - 1]!.b.s, same: same.length > 0, history };
+  const key = (b: Buy) => b.k ?? keyOf(b.s);
+  const recent = (p: CatProduct) => p.buys.filter((b) => now - new Date(b.d).getTime() <= RECENT && (!perKg || isWeighed(b))).sort((x, y) => x.d.localeCompare(y.d));
+  const cands = r.members.map((p) => ({ p, buys: recent(p) })).filter((x) => x.buys.length);
+  if (!cands.length) return null;
+  const here = storeKey ? cands.map((x) => ({ ...x, buys: x.buys.filter((b) => key(b) === storeKey) })).filter((x) => x.buys.length) : [];
+  const pool = here.length ? here : cands;
+  const byUse = (a: (typeof pool)[number], b: (typeof pool)[number]) => b.buys.length - a.buys.length || b.buys[b.buys.length - 1]!.d.localeCompare(a.buys[a.buys.length - 1]!.d);
+  const chosen = [...pool].sort(byUse)[0]!;
+  const lastOf = (buys: Buy[]) => {
+    const reg = buys.filter((b) => !b.a);
+    return (reg.length ? reg : buys)[(reg.length ? reg : buys).length - 1]!;
+  };
+  // cena: obchod zoznamu → iný obchod (bez akcie) → akcia
+  const all = cands.find((x) => x.p.id === chosen.p.id)!.buys;
+  const inStore = storeKey ? all.filter((b) => key(b) === storeKey) : [];
+  const src = inStore.length ? lastOf(inStore) : lastOf(all);
+  const prices = pool.map((x) => packPrice(lastOf(x.buys)));
+  const history = [...all].reverse().slice(0, 5).map((b) => ({ d: b.d, s: b.s, p: packPrice(b) }));
+  return {
+    up: packPrice(src),
+    min: Math.min(...prices),
+    max: Math.max(...prices),
+    k: all.length,
+    avg: false,
+    store: src.s,
+    same: inStore.length > 0,
+    product: chosen.p,
+    date: src.d,
+    promo: !!src.a,
+    history,
+  };
 }
 
 export type Estimate = { v: number; lo: number; hi: number; price: Price; perKg: boolean; /** Odhadnutá váha pri váženom tovare v kusoch. */ kg?: number };
@@ -390,32 +423,41 @@ const pieceKg = (label: string) => {
 };
 
 /**
- * Odhad za položku: cena × počet kusov (alebo × kg, keď je množstvo v kg/g). Vážený tovar zadaný v kusoch
- * („jablká 1 ks“ = jedno bežné balenie z bločkov, „6 banánov“ = 6 × váha kusu) sa ráta podľa ceny za kg.
+ * Odhad za položku:
+ *  - kusy („maslo 2“) = 2 balenia vybraného výrobku, neprepočítava sa;
+ *  - vážený tovar v kusoch („banány“) = bežná váha z bločkov (pri 3+ kusoch váha kusa) × cena za kg;
+ *  - presné množstvo („pol kila mletého“) = kg × cena za kg (pri balenom výrobku cena balenia ÷ jeho veľkosť).
  */
 export function estimate(r: Resolved | null, quantity: number | null, unit: string | null, storeKey: string | null, keyOf: (s: string) => string | null, now = Date.now()): Estimate | null {
   if (!r) return null;
   const u = (unit ?? "").toLowerCase();
-  const perKg = u === "kg" || u === "g" || u === "dkg";
+  const exact = u === "kg" || u === "g" || u === "dkg" || u === "l" || u === "ml" || u === "dl";
   const qty = quantity ?? 1;
-  const pieces = !perKg && (u === "" || u === "ks" || u === "bal");
-  if (pieces) {
-    const recent = r.members.flatMap((p) => p.buys).filter((b) => now - new Date(b.d).getTime() <= 120 * DAY);
-    const kgBuys = recent.filter((b) => isKgBuy(b) && b.q);
-    if (recent.length && kgBuys.length * 2 >= recent.length) {
-      const price = unitPrice(r, storeKey, keyOf, true, now);
-      if (price) {
-        const typical = median(kgBuys.slice(-3).map((b) => (b.u.toLowerCase() === "g" ? b.q! / 1000 : b.q!)));
-        const piece = qty >= 3 ? pieceKg(r.label) : null;
-        const kg = Math.round(qty * (piece ?? typical) * 1000) / 1000;
-        return { v: price.up * kg, lo: price.min * kg, hi: price.max * kg, price, perKg: true, kg };
-      }
-    }
-  }
-  const kg = u === "g" ? qty / 1000 : u === "dkg" ? qty / 100 : qty;
-  const price = unitPrice(r, storeKey, keyOf, perKg, now);
+  const price = unitPrice(r, storeKey, keyOf, false, now);
   if (!price) return null;
-  // ml a dl = jedno balenie (napr. 500 ml smotany), litre = počet fliaš
-  const n = perKg ? kg : u === "ml" || u === "dl" ? 1 : Math.max(1, Math.round(qty));
-  return { v: price.up * n, lo: price.min * n, hi: price.max * n, price, perKg };
+  const buys = price.product.buys.filter((b) => now - new Date(b.d).getTime() <= RECENT).sort((x, y) => x.d.localeCompare(y.d));
+  const weighed = buys.length > 0 && buys.filter(isWeighed).length * 2 >= buys.length;
+  const scale = (n: number) => ({ v: price.up * n, lo: price.min * n, hi: price.max * n });
+  if (weighed) {
+    // cena je za kg (l); množstvo: presné, alebo bežný nákup domácnosti
+    const kgOf = (b: Buy) => (b.u.toLowerCase() === "g" || b.u.toLowerCase() === "ml" ? (b.q ?? 0) / 1000 : (b.q ?? 0));
+    const kg = exact
+      ? u === "g" || u === "ml" ? qty / 1000 : u === "dkg" || u === "dl" ? qty / 10 / (u === "dkg" ? 10 : 1) : qty
+      : Math.round(qty * ((qty >= 3 ? pieceKg(r.label) : null) ?? median(buys.filter(isWeighed).slice(-3).map(kgOf))) * 1000) / 1000;
+    return { ...scale(kg), price, perKg: true, kg };
+  }
+  if (exact && (u === "kg" || u === "g" || u === "dkg")) {
+    // presná váha pri balenom výrobku: cena za kg z veľkosti balenia
+    const p = price.product;
+    const kg = u === "g" ? qty / 1000 : u === "dkg" ? qty / 100 : qty;
+    if (p.size_unit === "g" && p.size_value) {
+      const f = kg / (p.size_value / 1000);
+      return { ...scale(f), price, perKg: false, kg };
+    }
+    return { ...scale(1), price, perKg: false };
+  }
+  // ml a dl = jedno balenie (napr. 500 ml smotany), litre pri balenom výrobku podľa veľkosti, inak počet kusov
+  if (u === "l" && price.product.size_unit === "ml" && price.product.size_value) return { ...scale(qty / (price.product.size_value / 1000)), price, perKg: false };
+  const n = u === "ml" || u === "dl" ? 1 : Math.max(1, Math.round(qty));
+  return { ...scale(n), price, perKg: false };
 }

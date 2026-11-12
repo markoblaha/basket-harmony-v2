@@ -15,7 +15,7 @@ import { Btn, STORES, StoreTile, eur, memberColor, storeKeyOf, storeName } from 
 import { haptic } from "@/components/kit";
 import { useAddItem, useDeleteItem, useFrequentItems, useMoveItem, useStapleItems, useUpdateItem, type Item, type ShoppingList } from "./api";
 import type { Estimator } from "./estimate";
-import { refinements, resolveName, searchNames, spellFix, type Estimate, type Resolved } from "./itemCatalog";
+import { productTag, refinements, resolveName, searchNames, spellFix, type Estimate, type Resolved } from "./itemCatalog";
 import { sameProduct } from "./qty";
 import type { AddOutcome } from "./useSmartAdd";
 
@@ -68,11 +68,9 @@ export function PriceLine({ e, kinds, listStore, note, by, bare }: { e: Estimate
             ~{eur(e.v)}
             {e.perKg ? <small className="pk"> · {eur(e.price.up)}/kg</small> : null}
           </span>
-          {e.price.avg && kinds > 1 ? (
-            <span className="mk ap">{t("li.avgKinds", { n: kinds })}</span>
-          ) : e.price.store && storeKeyOf(e.price.store) !== listStore ? (
-            <StoreMark store={e.price.store} />
-          ) : null}
+          {/* s akým výrobkom odhad počíta; obchod len keď cena nie je z obchodu zoznamu */}
+          {kinds > 0 || e.price.product.brand ? <span className="mk ap">{productTag(e.price.product)}</span> : null}
+          {e.price.store && !e.price.same && storeKeyOf(e.price.store) !== listStore ? <StoreMark store={e.price.store} /> : null}
         </>
       )}
       {note ? <span className="note">· {note}</span> : null}
@@ -822,18 +820,13 @@ export function ItemSheet({
             )}
           </div>
           {e?.perKg && <p className="meta">{e.kg != null ? t("li.weighNote", { kg: fmtQty(e.kg, "kg") }) : t("li.perKgNote")}</p>}
-          {up && up.avg && r && (
+          {up && (
             <p className="meta">
-              {r.kinds > 1 ? t("li.avgNoteKinds", { k: up.k, n: r.kinds }) : t("li.avgNote", { k: up.k })}
-              {up.same && store ? t("li.inStore", { store }) : ""}. {eur(up.min) !== eur(up.max) ? t("li.rangeNote", { min: eur(up.min), max: eur(up.max) }) : ""} {t("li.refineNote")}
-            </p>
-          )}
-          {up && !up.avg && (
-            <p className="meta">
-              {r?.level === "brand" && r.brand ? `${t("li.brandOnly", { brand: r.brand })} ` : ""}
-              {up.k === 1 ? t("li.lastBuy") : t("li.median", { k: up.k })}
-              {up.same && store ? t("li.inStore", { store }) : listStore ? t("li.allStores") : ""}. {eur(up.min) !== eur(up.max) ? t("li.rangeNote", { min: eur(up.min), max: eur(up.max) }) : ""}
-              {!up.same && listStore && up.store ? ` ${t("li.notHere", { store, other: storeName(storeKeyOf(up.store)) ?? up.store })}` : ""}
+              {t("li.withProduct", { product: productTag(up.product) })}{" "}
+              {t(up.promo ? "li.priceFromPromo" : "li.priceFrom", { store: storeName(storeKeyOf(up.store ?? "")) ?? up.store ?? "", date: shortDate(up.date) })}
+              {r && r.members.length > 1 && eur(up.min) !== eur(up.max) ? ` ${t("li.rangeProducts", { min: eur(up.min), max: eur(up.max) })}` : ""}
+              {!up.same && listStore && store ? ` ${t("li.notHereYet", { store })}` : ""}
+              {r && r.members.length > 1 ? ` ${t("li.refineProduct")}` : ""}
             </p>
           )}
           {!up && <p className="meta">{t("li.noPriceNote")}</p>}

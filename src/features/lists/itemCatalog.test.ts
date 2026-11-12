@@ -97,17 +97,42 @@ describe("rozpoznanie položky (appka nič nedomýšľa)", () => {
   });
 });
 
-describe("odhad ceny", () => {
-  const keyOf = (s: string) => (s.toLowerCase().startsWith("lidl") ? "lidl" : null);
-  it("značka = medián jej posledných nákupov", () => {
+describe("odhad ceny (12. 11.: tvoj najčastejší výrobok v obchode zoznamu)", () => {
+  const keyOf = (s: string) => (s.toLowerCase().startsWith("lidl") ? "lidl" : s.toLowerCase().startsWith("kaufland") ? "kaufland" : null);
+  it("značka = posledná bežná cena v obchode", () => {
     const e = estimate(resolveName(cat, "plzeň"), 6, null, "lidl", keyOf)!;
-    expect(e.price.up).toBeCloseTo(1.32, 2);
-    expect(e.v).toBeCloseTo(1.32 * 6, 2);
+    expect(e.price.up).toBeCloseTo(1.29, 2);
+    expect(e.v).toBeCloseTo(1.29 * 6, 2);
+    expect(e.price.same).toBe(true);
   });
-  it("všeobecná položka = priemer druhov", () => {
+  it("všeobecná položka = najčastejší výrobok, nie priemer druhov", () => {
     const e = estimate(resolveName(cat, "pivo"), 1, null, null, keyOf)!;
-    expect(e.price.avg).toBe(true);
-    expect(e.v).toBeCloseTo((1.29 + 1.35 + 0.99 + 1.05) / 4, 2);
+    // obe pivá 2 nákupy – rozhodne novší nákup (Pilsner pred 3 dňami)
+    expect(e.price.product.brand).toBe("Pilsner Urquell");
+    expect(e.v).toBeCloseTo(1.29, 2);
+    expect(e.lo).toBeCloseTo(0.99, 2);
+    expect(e.hi).toBeCloseTo(1.29, 2);
+  });
+  it("v obchode zoznamu vyhrá výrobok, ktorý kupuješ tam", () => {
+    const c = buildCatalog([
+      { ...P("Maslo 82 %", "Maslo", "Pilos", "dairy_eggs"), size_value: 250, size_unit: "g", buys: [1, 8, 15, 22].map((ago): Buy => ({ d: day(ago), s: "Lidl", k: "lidl", t: 2.39, q: 1, u: "ks", p: 2.39 })) },
+      { ...P("Maslo", "Maslo", "Tatranské", "dairy_eggs"), size_value: 250, size_unit: "g", buys: [3, 12].map((ago): Buy => ({ d: day(ago), s: "Kaufland", k: "kaufland", t: 2.69, q: 1, u: "ks", p: 2.69 })) },
+    ]);
+    expect(estimate(resolveName(c, "maslo"), 2, null, "kaufland", keyOf)!.price.product.brand).toBe("Tatranské");
+    const lidl = estimate(resolveName(c, "maslo"), 2, null, "lidl", keyOf)!;
+    expect(lidl.price.product.brand).toBe("Pilos");
+    expect(lidl.v).toBeCloseTo(4.78, 2);
+    // presná váha pri balenom výrobku: 0,5 kg = 2 balenia po 250 g
+    expect(estimate(resolveName(c, "maslo"), 500, "g", "lidl", keyOf)!.v).toBeCloseTo(4.78, 2);
+  });
+  it("akcia nie je bežná cena", () => {
+    const c = buildCatalog([{ ...P("Jogurt biely", "Jogurt", "Rajo", "dairy_eggs"), buys: [
+      { d: day(9), s: "Lidl", k: "lidl", t: 0.49, q: 1, u: "ks", p: 0.49 },
+      { d: day(2), s: "Lidl", k: "lidl", t: 0.35, q: 1, u: "ks", p: 0.35, a: true },
+    ] }]);
+    const e = estimate(resolveName(c, "jogurt"), 1, null, "lidl", keyOf)!;
+    expect(e.v).toBeCloseTo(0.49, 2);
+    expect(e.price.promo).toBe(false);
   });
   it("vážený tovar v kusoch sa ráta podľa ceny za kg", () => {
     const c2 = buildCatalog([{ ...P("Banány", "Banány", null, "produce"), buys: [{ d: day(2), s: "LIDL", t: 1.6, q: 1, u: "kg" }, { d: day(9), s: "LIDL", t: 1.2, q: 0.75, u: "kg" }] }]);
