@@ -276,6 +276,13 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   (Výdavky › kategória › produkt), prechody `in-push`/`in-pop` z appky. Model cien: „Priemerne platíš“ = peniaze ÷
   množstvo za 3 mesiace; „Cena teraz“ = posledný nákup výrobku v obchode bez akcie; obchod pri produkte = jeho
   najlacnejší výrobok podľa ceny za jednotku; „Ušetríš“ = (priemer − najlacnejšie teraz) × mesačné množstvo.
+  **Revízia verzie 3 (12. 11.):** automatická kontrola všetkých obrazoviek × obdobia × tmavý/svetlý × 393/360 px
+  (pretekanie, orezané texty, písmo < 12,5 px, ťukacie plochy < 40 px, NaN, chyby JS) – opravené: pád pri výrobku bez
+  nákupu, pretekanie „Dni v týždni“ na 360 px, písmo 11–11,5 px v grafoch, cesta v hlavičke s plochou 28 px.
+  Logika: ceny produktov sú vždy k dnešku (obdobie mení len sumy), trend porovnáva rovnaký výrobok v rovnakom obchode,
+  úspora len z ceny do 6 týždňov a nie z akcie, obchod s cenou len z akcie nie je „najlacnejší“, v grafe druhu je za
+  obchod čiara jeho najlacnejšieho výrobku, odhad na časovej osi má vlastné číslo. Pri implementácii: grafy sú čisté SVG
+  bez knižnice; ťah po grafe a výseky prstenca potrebujú textovú alternatívu pre čítačky; id v SVG musia byť jedinečné.
   Čaká na vyjadrenie majiteľa; v appke nič nie je implementované.
 
 - **Revízia pred ostrým spustením (3. 11. 2026):** https://claude.ai/artifact/X8aprnTLiiWL5bgiDQwNAT – preklikané

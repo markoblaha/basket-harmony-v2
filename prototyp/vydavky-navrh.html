@@ -517,8 +517,9 @@ správne    zálohy 0,90 € (zaplatené), pivo sa neráta</div>
     <li><b>Priemerne platíš</b> = všetky peniaze ÷ celé množstvo za posledné 3 mesiace. Väčšie balenie váži viac, takže číslo sedí s tým, čo si naozaj minul. Mesiac má na ceny málo nákupov, preto 3 mesiace – a je to pri čísle napísané.</li>
     <li><b>Cena teraz</b> = cena posledného nákupu výrobku v danom obchode bez akcie, s dátumom. Cena staršia ako 6 týždňov je označená („pred 2 mes.“).</li>
     <li><b>Najlacnejšie / najdrahšie teraz</b> pri produkte = obchod, v ktorom je najlacnejší (najdrahší) výrobok toho druhu podľa ceny za jednotku. Vždy je napísané, ktorý výrobok to je.</li>
-    <li><b>Ušetríš</b> = (priemerne platíš − najlacnejšie teraz) × tvoje bežné mesačné množstvo. Ukáže sa len od 0,50 € mesačne.</li>
-    <li><b>Trend</b> = priemer posledných 6 týždňov oproti 6 týždňom predtým; ukáže sa od 3 %.</li>
+    <li><b>Ušetríš</b> = (priemerne platíš − najlacnejšie teraz) × tvoje bežné mesačné množstvo. Počíta sa len z ceny, ktorá nie je staršia ako 6 týždňov a nie je z akcie. Ukáže sa od 0,50 € mesačne.</li>
+    <li><b>Trend</b> (zdražuje / zlacňuje) porovnáva rovnaký výrobok v rovnakom obchode: posledných 6 týždňov oproti 6 týždňom predtým. Tak ho neskreslí, že si raz kúpil v drahšom obchode. Ukáže sa od 3 %.</li>
+    <li><b>Ceny sú vždy k dnešku.</b> Listovanie obdobím mení sumy (prehľad, kategória, obchod), nie ceny produktov.</li>
     <li><b>Akcia</b> = aspoň o 15 % pod cenou v tom istom obchode; má štítok „akcia“ a do „ceny teraz“ ani do zdraženia sa nepočíta.</li>
     <li><b>Bez veľkosti balenia:</b> nákup je v sume, nie v cene za jednotku; appka ukáže počet a „Doplniť“.</li>
     <li><b>Zľavy:</b> ukazuje sa zaplatená cena; cena pred zľavou len v detaile nákupu. <b>Zálohy</b> sú zvlášť (zaplatené / vrátené) a nikdy nie sú tovar.</li>
@@ -922,7 +923,7 @@ function kindModel(k) {
   }
   // bežná cena má prednosť pred cenou, ktorú poznáme len z akcie
   const byU = (a, b) => (a.promo - b.promo) || ((a.unit ?? a.price) - (b.unit ?? b.price));
-  const stores = [...groupBy(offers.filter((o) => o.unit != null), (o) => o.store)].map(([s, os]) => ({ s, best: [...os].sort(byU)[0], n: sum(os, (o) => o.n) })).sort((a, b) => a.best.unit - b.best.unit);
+  const stores = [...groupBy(offers.filter((o) => o.unit != null), (o) => o.store)].map(([s, os]) => ({ s, best: [...os].sort(byU)[0], n: sum(os, (o) => o.n) })).sort((a, b) => (a.best.promo - b.best.promo) || (a.best.unit - b.best.unit));
   const prods = [...groupBy(offers, (o) => o.pid)].map(([pid, os]) => ({ pid, best: [...os].sort(byU)[0], stores: os.map((o) => o.store), n: sum(os, (o) => o.n) })).sort((a, b) => ((a.best.unit ?? 1e9) - (b.best.unit ?? 1e9)) || b.n - a.n);
   // trend porovnáva rovnaký výrobok v rovnakom obchode (inak by ho skreslilo, že si raz kúpil inde)
   const half = addDays(end, -44);
@@ -936,7 +937,7 @@ function kindModel(k) {
   const avg = qty ? paid / qty : null;
   // úspora sa počíta len z ceny, ktorá je čerstvá a nie je z akcie
   const saveAt = stores.find((s) => s.best.fresh && !s.best.promo) || null;
-  const m = { K, ps, kn, qty, paid, avg, offers, stores, prods, trend: td ? tn / td - 1 : null, cheapest: stores[0] || null, priciest: stores.length > 1 ? stores[stores.length - 1] : null,
+  const m = { K, ps, kn, qty, paid, avg, offers, stores, prods, trend: td ? tn / td - 1 : null, cheapest: stores[0] || null, priciest: stores.filter((s) => !s.best.promo).length > 1 ? stores.filter((s) => !s.best.promo).pop() : null,
     saveAt, save: avg != null && saveAt ? Math.max(0, ((avg - saveAt.best.unit) * qty) / 3) : 0, unknown: K.u ? ps.filter((p) => units(p) == null) : [] };
   KM.set(key, m);
   return m;
@@ -1192,12 +1193,12 @@ SCR.kind = (x) => {
   } else {
     cards = `<div class="an-pcs"><div class="mod glass2 an-w"><span class="kk">${I('receipt')}Minuté za 3 mesiace</span><span class="v">${vE(sum(m.ps, (p) => p.total))}</span><span class="d">${nakupov(m.ps.length)} · ${K.u ? 'cenu za jednotku ukážeme po doplnení veľkosti balenia' : 'pri tomto druhu sa cena za jednotku neporovnáva'}</span></div></div>`;
   }
-  const series = [...groupBy(m.kn, (p) => p.store)].map(([s, xs]) => ({ s, pts: xs.map((p) => ({ d: p.date, v: K.sm && K.u !== 'ks' ? (p.total / units(p)) / 10 : p.total / units(p), promo: p.promo })) }));
-  const chart = K.u && m.kn.length > 2 ? `<div class="card glass2"><div class="an-ch"><div class="k">Vývoj ceny ${perLabel(K.u, K.sm)}</div></div>${priceChart(series, P, { avg: K.sm && K.u !== 'ks' ? m.avg / 10 : m.avg, fmt: (v) => `${nf(v, 2, 2)}${NB}€` })}</div>${scrubHint('Potiahni prstom po grafe a uvidíš cenu každého nákupu.')}` : '';
-  const maxU = m.stores.length ? m.stores[m.stores.length - 1].best.unit : 1;
+  const series = m.stores.map((st) => [st.s, m.kn.filter((p) => p.store === st.s && p.pid === st.best.pid)]).filter(([, xs]) => xs.length).map(([s, xs]) => ({ s, pts: xs.map((p) => ({ d: p.date, v: K.sm && K.u !== 'ks' ? (p.total / units(p)) / 10 : p.total / units(p), promo: p.promo })) }));
+  const chart = K.u && m.kn.length > 2 ? `<div class="card glass2"><div class="an-ch"><div class="k">Vývoj ceny ${perLabel(K.u, K.sm)}</div><div class="an-lg"><span>najlacnejší výrobok v obchode</span></div></div>${priceChart(series, P, { avg: K.sm && K.u !== 'ks' ? m.avg / 10 : m.avg, fmt: (v) => `${nf(v, 2, 2)}${NB}€` })}</div>${scrubHint('Potiahni prstom po grafe a uvidíš cenu každého nákupu.')}` : '';
+  const maxU = Math.max(1e-9, ...m.stores.map((s) => s.best.unit));
   const stores = K.u && m.stores.length ? `${h2('Obchody a ceny', true)}<div class="lst glass2">${m.stores.map((s, i) => {
     const Pp = PROD[s.best.pid], diff = i ? Math.max(1, Math.round((s.best.unit / m.stores[0].best.unit - 1) * 100)) : 0;
-    return `<button type="button" class="row tap" ${go('product', s.best.pid)}>${stile(s.s, 40)}<div class="tx"><b>${STORES[s.s].n}</b><span class="sub w2">${Pp.b || Pp.n}${Pp.wq ? ' · vážené' : ` ${sizeFmt(Pp) || ''} · ${eur(s.best.price)}`} · ${s.best.promo ? 'akcia ' : ''}${when(s.best.date)}</span><span class="ln"><i style="width:${((s.best.unit / maxU) * 100).toFixed(1)}%;background:${i ? 'color-mix(in srgb, var(--fg) 40%, transparent)' : 'var(--ok)'}"></i></span></div><div class="an-r"><b class="amt">${upv(s.best.unit, K)}</b>${m.stores.length > 1 ? (i ? `<span class="an-tag up">+${diff}${NB}%</span>` : '<span class="an-tag good">najlacnejšie</span>') : ''}</div>${chev}</button>`;
+    return `<button type="button" class="row tap" ${go('product', s.best.pid)}>${stile(s.s, 40)}<div class="tx"><b>${STORES[s.s].n}</b><span class="sub w2">${Pp.b || Pp.n}${Pp.wq ? ' · vážené' : ` ${sizeFmt(Pp) || ''} · ${eur(s.best.price)}`} · ${s.best.promo ? 'akcia ' : ''}${when(s.best.date)}</span><span class="ln"><i style="width:${((s.best.unit / maxU) * 100).toFixed(1)}%;background:${i ? 'color-mix(in srgb, var(--fg) 40%, transparent)' : 'var(--ok)'}"></i></span></div><div class="an-r"><b class="amt">${upv(s.best.unit, K)}</b>${s.best.promo ? '<span class="an-tag mu">len akcia</span>' : m.stores.length > 1 ? (i ? `<span class="an-tag up">+${diff}${NB}%</span>` : '<span class="an-tag good">najlacnejšie</span>') : ''}</div>${chev}</button>`;
   }).join('')}</div>` : '';
   const prods = `${h2('Značky a balenia', true)}<div class="lst glass2">${m.prods.map((r) => {
     const Pp = PROD[r.pid], miss = K.u && !Pp.wq && sizeOf(Pp) == null;
