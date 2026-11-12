@@ -353,6 +353,7 @@ export function useListPriceHints(listId: string | undefined) {
 
 const invalidateAll = (qc: ReturnType<typeof useQueryClient>) => {
   qc.invalidateQueries({ queryKey: analyticsKeys.all });
+  qc.invalidateQueries({ queryKey: ["price"] });
   qc.invalidateQueries({ queryKey: ["receipt"] });
 };
 
@@ -479,4 +480,205 @@ export function useProductNormalization(householdId: string, pending: number | u
   }, [pending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { ...state, retry: run };
+}
+
+// ------------------------------------------------------------------ model cien (Výdavky 2.0)
+export type PriceStore = {
+  key: string;
+  name: string;
+  /** Cena za jednotku druhu (kg / l / ks) najlacnejšieho výrobku v obchode. */
+  unit: number;
+  /** Cena balenia (pri váženom za kg / l). */
+  price: number;
+  product_id: string;
+  product: string;
+  brand: string | null;
+  size_value: number | null;
+  size_unit: "g" | "ml" | "ks" | null;
+  date: string;
+  promo: boolean;
+  /** Cena nie je staršia ako 45 dní. */
+  fresh: boolean;
+  buys: number;
+};
+export type PriceKind = {
+  key: string;
+  name: string;
+  category_id: string;
+  basis: Basis;
+  count: number;
+  spent: number;
+  sized_count: number | null;
+  qty: number | null;
+  paid: number | null;
+  /** Priemerne platíš: peniaze ÷ množstvo za 90 dní. */
+  avg_unit: number | null;
+  /** Rovnaký výrobok v rovnakom obchode: posledných 45 dní oproti 45 predtým. */
+  trend: number | null;
+  /** Nákupy bez veľkosti balenia (nie sú v cene za jednotku). */
+  unknown: number;
+  stores: PriceStore[];
+  products: {
+    product_id: string;
+    name: string;
+    brand: string | null;
+    size_value: number | null;
+    size_unit: "g" | "ml" | "ks" | null;
+    price: number;
+    unit: number | null;
+    store_key: string;
+    store_name: string;
+    date: string;
+    promo: boolean;
+    buys: number;
+    stores: string[];
+    size_missing: boolean;
+  }[];
+  save: { store_key: string; store: string; amount: number; monthly_qty: number } | null;
+  series: { store_key: string; store: string; d: string; v: number; promo: boolean }[];
+  purchases: {
+    item_id: string;
+    receipt_id: string;
+    product_id: string;
+    date: string;
+    store_key: string;
+    store: string;
+    name: string;
+    brand: string | null;
+    size_value: number | null;
+    size_unit: "g" | "ml" | "ks" | null;
+    packs: number | null;
+    basis: Basis;
+    units: number;
+    line_total: number;
+    promo: boolean;
+    unit: number | null;
+  }[];
+};
+export type PriceProduct = {
+  basis: Basis | null;
+  weighed: boolean | null;
+  count: number;
+  now: { price: number; store_key: string; store: string; date: string; promo: boolean; unit: number | null } | null;
+  avg: number | null;
+  avg_count: number;
+  min: { price: number; store: string; date: string; promo: boolean } | null;
+  change: { pct: number; since: string | null } | null;
+  stores: { key: string; name: string; price: number; date: string; promo: boolean; min: number; buys: number; fresh: boolean }[];
+  series: { store_key: string; store: string; d: string; v: number; promo: boolean }[];
+  purchases: { item_id: string; receipt_id: string; date: string; store_key: string; store: string; packs: number | null; basis: Basis; units: number; price: number; line_total: number; promo: boolean }[];
+};
+export type PriceStoreRow = {
+  kind_key: string;
+  name: string;
+  category_id: string;
+  basis: Basis;
+  unit: number;
+  promo: boolean;
+  date: string;
+  best_key: string | null;
+  best_store: string | null;
+  best_unit: number | null;
+};
+export type MissingSize = {
+  product_id: string;
+  name: string;
+  brand: string | null;
+  kind: string;
+  category_id: string;
+  basis: "kg" | "l";
+  buys: number;
+  price: number;
+  stores: string[];
+  sizes: number[] | null;
+};
+export type Daily = { first: string | null; days: { d: string; a: number }[] };
+
+export const priceKeys = {
+  all: ["price"] as const,
+  kind: (hid: string, key: string) => ["price", "kind", hid, key] as const,
+  product: (id: string) => ["price", "product", id] as const,
+  store: (hid: string, key: string) => ["price", "store", hid, key] as const,
+  sizes: (hid: string) => ["price", "sizes", hid] as const,
+  daily: (hid: string, from: string, to: string, cat: string | null, store: string | null) => ["analytics", "daily", hid, from, to, cat, store] as const,
+};
+
+export function usePriceKind(householdId: string, kindKey: string) {
+  return useQuery({
+    queryKey: priceKeys.kind(householdId, kindKey),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("analytics_price_kind", { p_household_id: householdId, p_kind_key: kindKey });
+      if (error) throw error;
+      return numbers<PriceKind>(data);
+    },
+  });
+}
+
+export function usePriceProduct(productId: string | undefined) {
+  return useQuery({
+    queryKey: priceKeys.product(productId ?? "none"),
+    enabled: !!productId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("analytics_price_product", { p_product_id: productId! });
+      if (error) throw error;
+      return numbers<PriceProduct>(data);
+    },
+  });
+}
+
+export function usePriceStore(householdId: string, storeKey: string, enabled = true) {
+  return useQuery({
+    queryKey: priceKeys.store(householdId, storeKey),
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("analytics_price_store", { p_household_id: householdId, p_store_key: storeKey });
+      if (error) throw error;
+      return numbers<PriceStoreRow[]>(data);
+    },
+  });
+}
+
+export function useMissingSizes(householdId: string) {
+  return useQuery({
+    queryKey: priceKeys.sizes(householdId),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("analytics_missing_sizes", { p_household_id: householdId });
+      if (error) throw error;
+      return numbers<MissingSize[]>(data);
+    },
+  });
+}
+
+/** Denné súčty pre časovú os a priebeh mesiaca (bez filtra = ako veľká suma prehľadu). */
+export function useDaily(householdId: string, from: string, to: string, categoryId: string | null = null, storeKey: string | null = null) {
+  return useQuery({
+    queryKey: priceKeys.daily(householdId, from, to, categoryId, storeKey),
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("analytics_daily", {
+        p_household_id: householdId,
+        p_from: from,
+        p_to: to,
+        p_category_id: categoryId,
+        p_store_key: storeKey,
+      });
+      if (error) throw error;
+      return numbers<Daily>(data);
+    },
+  });
+}
+
+export function useSetProductSize() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ productId, value, unit }: { productId: string; value: number; unit: "g" | "ml" | "ks" }) => {
+      const { error } = await supabase.rpc("set_product_size", { p_product_id: productId, p_size_value: value, p_size_unit: unit });
+      if (error) throw error;
+    },
+    onSettled: () => {
+      invalidateAll(qc);
+      qc.invalidateQueries({ queryKey: priceKeys.all });
+      qc.invalidateQueries({ queryKey: ["item-catalog"] });
+    },
+  });
 }

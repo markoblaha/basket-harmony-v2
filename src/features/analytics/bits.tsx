@@ -62,7 +62,7 @@ export function qtyLabel(units: number | null, basis: Basis | null): string | nu
 
 /** Cena za jednotku: „7,25 € / kg“. */
 export const perUnit = (price: number | null, basis: Basis | null) =>
-  price === null || !basis ? null : `${formatEuro(price)} ${unitLabel(basis)}`;
+  price === null || price === undefined || !basis ? null : `${formatEuro(price)}/${basis === "ks" ? t("unit.ks") : basis}`;
 
 /** Cena za jednotku v štatistike (tri stĺpce): suma veľkým písmom, „/ kg“ menším pod ňou – nikdy sa nerozlomí uprostred. */
 export function PerUnit({ price, basis }: { price: number | null; basis: Basis | null }) {

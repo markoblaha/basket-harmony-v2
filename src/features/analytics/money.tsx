@@ -20,7 +20,7 @@ import { computePeriod, customPeriod, monthName, shiftMonth, thisMonth, todayIso
 
 /* ------------------------------------------------------------------ obdobie */
 export type Per = "week" | "month" | "year";
-const addIso = (iso: string, d: number) => {
+export const addIso = (iso: string, d: number) => {
   const x = new Date(`${iso}T00:00:00Z`);
   x.setUTCDate(x.getUTCDate() + d);
   return x.toISOString().slice(0, 10);
@@ -28,8 +28,13 @@ const addIso = (iso: string, d: number) => {
 /** Obdobie posunuté o `off` dozadu (0 = aktuálne, −1 = predchádzajúce…). */
 export function periodOf(per: Per, off = 0): Period {
   if (per === "week") {
-    const to = addIso(todayIso(), 7 * off);
-    return customPeriod(addIso(to, -6), to, "all");
+    // kalendárny týždeň pondelok – nedeľa (rozhodnutie 12. 11. 2026); prebiehajúci týždeň končí dneškom
+    const today = todayIso();
+    const dow = (new Date(`${today}T12:00:00`).getDay() + 6) % 7;
+    const from = addIso(today, -dow + 7 * off);
+    const end = addIso(from, 6);
+    const p = customPeriod(from, end < today ? end : today, "all");
+    return { ...p, prevFrom: addIso(p.from, -7), prevTo: addIso(p.to, -7) };
   }
   if (per === "year") return computePeriod("year", `${Number(thisMonth().slice(0, 4)) + off}${thisMonth().slice(4)}`, "all", "year");
   return computePeriod("month", shiftMonth(thisMonth(), off), "all", "month");
@@ -75,7 +80,7 @@ const dm = (iso: string) => formatDateTime(`${iso}T12:00:00`, { day: "numeric", 
 /** Názov obdobia: „November“, „December 2025“, „Týždeň“ / „26. 10. – 1. 11.“, „Rok 2025“. */
 export function perTitle(per: Per, off = 0) {
   const p = periodOf(per, off);
-  if (per === "week") return off ? `${dm(p.from)} – ${dm(p.to)}` : t("mn.week");
+  if (per === "week") return `${dm(p.from)} – ${dm(addIso(p.from, 6))}`;
   if (per === "year") return t("mn.yearN", { y: p.from.slice(0, 4) });
   const m = cap(monthName(Number(p.month.slice(5))));
   return p.month.slice(0, 4) === thisMonth().slice(0, 4) ? m : `${m} ${p.month.slice(0, 4)}`;
@@ -116,8 +121,10 @@ export function Donut({ cats, center, sub, size = 132 }: { cats: { id: string; a
   );
 }
 
-export function CatRows({ cats, onOpen, limit = 6, g }: { cats: { id: string; amount: number }[]; onOpen: (id: string) => void; limit?: number; g: boolean }) {
-  const [all, setAll] = useState(false);
+export function CatRows({ cats, onOpen, limit = 6, g, sel, all: allP, onAll }: { cats: { id: string; amount: number }[]; onOpen: (id: string) => void; limit?: number; g: boolean; /** Kategória zvýraznená v prstenci. */ sel?: string | null; all?: boolean; onAll?: (v: boolean) => void }) {
+  const [allS, setAllS] = useState(false);
+  const all = allP ?? allS;
+  const setAll = onAll ?? setAllS;
   const top = cats.filter((c) => c.amount > 0.5).sort((a, b) => b.amount - a.amount);
   const max = top[0]?.amount ?? 1;
   return (
@@ -126,7 +133,7 @@ export function CatRows({ cats, onOpen, limit = 6, g }: { cats: { id: string; am
         {(all ? top : top.slice(0, limit)).map((x) => {
           const c = cat(x.id);
           return (
-            <button type="button" key={x.id} className="cat" onClick={() => onOpen(x.id)}>
+            <button type="button" key={x.id} className={`cat${sel === x.id ? " sel" : ""}`} onClick={() => onOpen(x.id)}>
               <span className="tile" style={{ "--tc": c.col } as React.CSSProperties}>
                 <E k={c.e} />
               </span>

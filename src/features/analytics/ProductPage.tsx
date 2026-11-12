@@ -9,15 +9,17 @@ import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { CATEGORIES, normalizeName } from "@/lib/categories";
 import { parseAmount, readErrorMessage } from "@/features/receipts/format";
-import { formatDateTime, formatEuro, formatNumber, t } from "@/i18n";
+import { formatDateTime, formatEuro, formatNumber, t, tn } from "@/i18n";
 import { unitLabel as pieceUnit } from "@/lib/parseItem";
-import { useMergeProducts, useProduct, useProducts, useSetProductKind, useUpdateProduct, type ProductDetail } from "./api";
+import { useMergeProducts, usePriceProduct, useProduct, useProducts, useSetProductKind, useUpdateProduct, type Basis, type ProductDetail } from "./api";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, Back, useScrolled } from "@/mockup/ui";
 import { Sheet } from "@/mockup/Sheet";
 import { Btn, StoreTile, emojiFor, eur, storeKeyOf } from "@/mockup/kit";
-import { PriceChart, cat, storeColors } from "./money";
-import { PerUnit, perUnit, sizeLabel, storeLabel } from "./bits";
+import { cat } from "./money";
+import { PriceChart, type Series } from "./charts";
+import { When } from "./KindPage";
+import { perUnit, sizeLabel, storeLabel } from "./bits";
 
 
 /**
@@ -29,11 +31,13 @@ export function ProductPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const query = useProduct(id);
+  const price = usePriceProduct(id);
   const { household } = useHousehold();
   const lists = useLists(household.id);
   const add = useAddItem();
   const toast = useToast();
   const g = useTheme().style === "glass";
+  const gl = g ? " glass2" : "";
   const scrolled = useScrolled();
   const [editing, setEditing] = useState(false);
   const [merging, setMerging] = useState(false);
@@ -54,22 +58,24 @@ export function ProductPage() {
   const p = d.product;
   const c = cat(p.category_id);
   const size = sizeLabel(p.size_value, p.size_unit);
-  const basis = d.purchases[0]?.basis ?? "ks";
-  const unitOf = (x: ProductDetail["purchases"][number]) => (x.paid_unit ?? x.line_total / Math.max(1, x.quantity));
-  const h = [...d.purchases].reverse().map((x) => ({ d: x.date, s: x.store, p: unitOf(x) }));
-  const avg = h.length ? h.reduce((a, x) => a + x.p, 0) / h.length : null;
-  const last = d.purchases[0];
-  const total = d.purchases.reduce((a, x) => a + x.line_total, 0);
-  const SC = storeColors(h);
-  const stores = [...d.stores].sort((a, b) => a.avg_unit - b.avg_unit);
+  const pr = price.data;
+  const weighed = !!pr?.weighed;
+  const basis: Basis = pr?.basis ?? "ks";
+  const val = (v: number) => (weighed ? perUnit(v, basis) : eur(v)) ?? eur(v);
   const target = (lists.data ?? []).filter((l) => !l.completed_at).sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999"))[0];
-  const short = (x: string) => formatDateTime(new Date(`${x}T00:00`), { day: "numeric", month: "numeric" });
-  const pu = (v: number | null) => perUnit(v, basis);
+  const short = (x: string) => formatDateTime(new Date(`${x}T12:00:00`), { day: "numeric", month: "numeric" });
+  const now = pr?.now ?? null;
+  const unitLine = !now ? "" : weighed ? t("mn.byWeight") : now.unit != null && basis !== "ks" ? `${size ? `${size} · ` : ""}${perUnit(now.unit, basis)}` : (size ?? "");
+  const series: Series[] = [];
+  for (const s of pr?.stores ?? []) {
+    const pts = (pr?.series ?? []).filter((x) => x.store_key === s.key).map((x) => ({ d: x.d, v: x.v, promo: x.promo }));
+    if (pts.length) series.push({ store: s.name, pts });
+  }
 
   async function addTo() {
     if (!target) return toast.show(t("addtolist.noList"), "error");
     try {
-      const res = await add.mutateAsync({ listId: target.id, name: p.kind || p.name, categoryId: p.category_id });
+      const res = await add.mutateAsync({ listId: target.id, name: [p.brand, p.name].filter(Boolean).join(" "), categoryId: p.category_id });
       toast.show(res.kind === "REQUEST" ? t("addtolist.request") : t("addtolist.added", { name: target.name }), "success");
     } catch (err) {
       toast.show(errorMessage(err), "error");
@@ -81,8 +87,8 @@ export function ProductPage() {
       <div className="bhm bhm-top">
         <div className={`sc${scrolled ? " scrolled" : ""}`}>
           <header className="nb">
-            <Back label={c.name} onClick={() => navigate(-1)} />
-            <span className="nbt">{p.brand || p.name}</span>
+            <Back label={p.kind || c.name} onClick={() => navigate(-1)} />
+            <span className={`nbt${scrolled ? " sh" : ""}`}>{p.brand || p.name}</span>
             <div className="nbr">
               <IB n="dots-three" label={t("pp.edit")} onClick={() => setMenu(true)} />
             </div>
@@ -96,99 +102,135 @@ export function ProductPage() {
               <E k={emojiFor(p.kind || p.name, p.category_id)} s={44} />
             </span>
             <div className="grow">
-              <h1 className="lt">{p.name}</h1>
-              <div className="meta">{[p.brand, size, c.name].filter(Boolean).join(" · ")}</div>
+              <h1 className="lt">{[p.brand, p.name].filter(Boolean).join(" ")}</h1>
+              <div className="meta an-cr">
+                <button type="button" onClick={() => navigate("/analytics")}>
+                  {t("mn.title")}
+                </button>
+                <I n="caret-right" w="bold" />
+                <button type="button" onClick={() => navigate(`/analytics/category/${p.category_id}`)}>
+                  {c.name}
+                </button>
+                {p.kind ? (
+                  <>
+                    <I n="caret-right" w="bold" />
+                    <button type="button" onClick={() => navigate(`/analytics/kind/${encodeURIComponent(p.kind!)}`)}>
+                      {p.kind}
+                    </button>
+                  </>
+                ) : null}
+              </div>
             </div>
           </div>
-          {p.kind && (
-            <button type="button" className={`card krow${g ? " glass2" : ""}`} onClick={() => navigate(`/analytics/kind/${encodeURIComponent(p.kind!)}`)}>
-              <span className="kc">
-                <span className="k">{t("mn.kind")}</span>
-                <b>{p.kind}</b>
-              </span>
-              <span className="meta">{t("mn.compareBrands")}</span>
-              <I n="caret-right" w="bold" cls="chev" />
-            </button>
-          )}
-          <div className={`card kstat${g ? " glass2" : ""}`}>
-            <div>
-              <div className="k">{t("mn.avg")}</div>
-              <div className="price">
-                <PerUnit price={avg} basis={basis} />
-              </div>
-            </div>
-            <div>
-              <div className="k">{t("mn.last")}</div>
-              <div className="price">
-                <PerUnit price={last ? unitOf(last) : null} basis={basis} />
-              </div>
-              {last && (
-                <div className="meta sm">
-                  {last.store} · {short(last.date)}
-                </div>
-              )}
-            </div>
-            <div>
-              <div className="k">{t("mn.total")}</div>
-              <div className="price">{eur(total)}</div>
-              <div className="meta sm">{t("mn.times", { n: d.purchases.length })}</div>
-            </div>
-          </div>
-          {h.length > 1 && (
-            <div className={`card${g ? " glass2" : ""}`}>
-              <div className="k">{t("mn.priceIn", { basis })}</div>
-              <PriceChart h={h} />
-              <div className="legend">
-                {Object.keys(SC).map((s) => (
-                  <span key={s}>
-                    <i style={{ background: SC[s] }} />
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          {stores.length > 1 && (
-            <div className={`card insight${g ? " glass2" : ""}`}>
-              <span className="tile">
-                <E k="moneybag" />
-              </span>
-              <div className="grow">
-                <div className="ib-t">{t("mn.cheapestAt", { store: stores[0]!.name, price: pu(stores[0]!.avg_unit) ?? "" })}</div>
-                <div className="meta">{stores.slice(1).map((s) => `${s.name} ${pu(s.avg_unit)}`).join(" · ")}</div>
-              </div>
-            </div>
-          )}
-          {d.purchases.length > 0 ? (
-            <>
-              <div className="h2 sm">{t("mn.fromReceipts")}</div>
-              <div className={`lst${g ? " glass2" : ""}`}>
-                {d.purchases.map((x) => (
-                  <button type="button" className="row tap" key={x.item_id} onClick={() => navigate(`/receipts/${x.receipt_id}`)}>
-                    <StoreTile k={storeKeyOf(x.store)} n={x.store} s={34} />
-                    <div className="tx">
-                      <b>{x.store}</b>
-                      <span className="sub">
-                        {short(x.date)} · {formatNumber(x.quantity, { maximumFractionDigits: 3 })} {x.basis === "kg" ? "kg" : t("unit.ks")} {t("mn.for")} {eur(x.line_total)}
-                      </span>
-                    </div>
-                    <b className="amt">{pu(unitOf(x))}</b>
-                    <I n="caret-right" w="bold" cls="chev" />
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
+          {price.isPending ? (
+            <Spinner />
+          ) : price.isError ? (
+            <ErrorState error={readErrorMessage(price.error)} onRetry={() => price.refetch()} />
+          ) : !now ? (
             <p className="vnote">
               <I n="info" />
               {t("mn.noPurchases")}
             </p>
+          ) : (
+            <>
+              <div className="an-pcs">
+                <div className={`mod an-w${gl}`}>
+                  <span className="kk">
+                    <I n="receipt" />
+                    {t("mn.priceNow")}
+                  </span>
+                  <div className="an-wr">
+                    <span className="v">{val(now.price)}</span>
+                    {pr!.change ? (
+                      <span className={`an-tag ${pr!.change.pct > 0 ? "up" : "good"}`}>
+                        {pr!.change.pct > 0 ? "▲" : "▼"} {Math.round(Math.abs(pr!.change.pct) * 100)} %{pr!.change.since ? ` ${t("mn.since", { date: short(pr!.change.since) })}` : ""}
+                      </span>
+                    ) : null}
+                  </div>
+                  <span className="d">
+                    {unitLine ? `${unitLine} · ` : ""}
+                    {now.store} · {now.promo ? `${t("mn.promo")} ` : ""}
+                    <When d={now.date} />
+                  </span>
+                </div>
+                <div className={`mod${gl}`}>
+                  <span className="kk">
+                    <I n="clock" />
+                    {t("mn.avgPays")}
+                  </span>
+                  <span className="v">{pr!.avg != null ? val(pr!.avg) : "–"}</span>
+                  <span className="d">{t(weighed ? "mn.avgWeighedD" : "mn.avgPackD", { n: tn("mn.trips", pr!.avg_count) })}</span>
+                </div>
+                {pr!.min && (
+                  <div className={`mod good${gl}`}>
+                    <span className="kk">
+                      <I n="trend-down" w="bold" />
+                      {t("mn.lowest")}
+                    </span>
+                    <span className="v">{val(pr!.min.price)}</span>
+                    <span className="d">
+                      {pr!.min.store} · {short(pr!.min.date)}
+                      {pr!.min.promo ? ` · ${t("mn.promo")}` : ""}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {series.length > 0 && <PriceChart series={series} avg={pr!.avg} fmt={val} title={weighed ? t("mn.priceDev", { per: t("mn.per1", { u: basis }) }) : t("mn.packDev")} />}
+              <div className="h2 sm">{t("mn.storesPrices")}</div>
+              <div className={`lst${gl}`}>
+                {pr!.stores.map((s, i) => (
+                  <button type="button" className="row tap" key={s.key} onClick={() => navigate(`/analytics/store/${encodeURIComponent(s.key)}?kind=${encodeURIComponent(p.kind ?? "")}`)}>
+                    <StoreTile k={storeKeyOf(s.name)} n={s.name} s={40} />
+                    <div className="tx">
+                      <b>{s.name}</b>
+                      <span className="sub">
+                        <When d={s.date} />
+                        {s.min < s.price - 0.005 ? ` · ${t("mn.lowestAt", { price: val(s.min) })}` : ` · ${tn("mn.trips", s.buys)}`}
+                      </span>
+                    </div>
+                    <div className="an-r">
+                      <b className="amt">{val(s.price)}</b>
+                      {s.promo ? <span className="an-tag mu">{t("mn.onlyPromo")}</span> : pr!.stores.length > 1 ? i ? <span className="an-tag up">+{Math.max(1, Math.round((s.price / pr!.stores[0]!.price - 1) * 100))} %</span> : <span className="an-tag good">{t("mn.cheapestTag")}</span> : null}
+                    </div>
+                    <I n="caret-right" w="bold" cls="chev" />
+                  </button>
+                ))}
+              </div>
+              {p.kind && (
+                <button type="button" className="lnk c" onClick={() => navigate(`/analytics/kind/${encodeURIComponent(p.kind!)}`)}>
+                  {t("mn.compareWith", { kind: p.kind })}
+                </button>
+              )}
+            </>
           )}
           {target && (
             <Btn cls={`pri${g ? " a" : ""}`} onClick={() => void addTo()} disabled={add.isPending}>
               <I n="plus" w="bold" />
               {t("an.addToList")}
             </Btn>
+          )}
+          {pr && pr.purchases.length > 0 && (
+            <>
+              <div className="h2 sm">{t("mn.fromReceipts")}</div>
+              <div className={`lst${gl}`}>
+                {pr.purchases.map((x) => (
+                  <button type="button" className="row tap" key={x.item_id} onClick={() => navigate(`/receipts/${x.receipt_id}`)}>
+                    <StoreTile k={storeKeyOf(x.store)} n={x.store} s={34} />
+                    <div className="tx">
+                      <b>
+                        {short(x.date)} · {x.store}
+                      </b>
+                      <span className="sub">
+                        {x.packs == null ? `${formatNumber(x.units, { maximumFractionDigits: 3 })} ${x.basis} × ${perUnit(x.price, x.basis)}` : `${formatNumber(x.packs)} × ${eur(x.price)}`}
+                        {x.promo ? ` · ${t("mn.promo")}` : ""}
+                      </span>
+                    </div>
+                    <b className="amt">{eur(x.line_total)}</b>
+                    <I n="caret-right" w="bold" cls="chev" />
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
