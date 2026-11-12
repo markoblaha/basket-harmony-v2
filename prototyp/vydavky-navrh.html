@@ -191,18 +191,21 @@ td.mono { font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
 .bhm .an-tlt { position: relative; display: flex; gap: 2px; min-width: 100%; width: max-content; }
 .bhm .an-b { flex: 1 0 46px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0; transition: transform var(--dur-1); }
 .bhm .an-b:active:not([disabled]) { transform: scale(.94); }
+.bhm .an-days { width: 100%; }
+.bhm .an-days .an-b { flex: 1 1 0; min-width: 0; }
 .bhm .an-bw { position: relative; width: 100%; height: 116px; display: flex; align-items: flex-end; justify-content: center; }
-.bhm .an-bw i { display: block; width: 28px; max-width: 62%; height: calc(var(--h) * .8); min-height: 4px; border-radius: 10px; background: color-mix(in srgb, var(--fg) 16%, transparent); transition: background-color var(--dur-3), box-shadow var(--dur-3); }
-.bhm .an-b.cur .an-bw i { background: color-mix(in srgb, var(--fg) 32%, transparent); }
+.bhm .an-bw i { position: relative; display: block; width: 28px; max-width: 62%; height: calc(var(--h) * .8); min-height: 4px; border-radius: 10px; background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 26%, transparent), color-mix(in srgb, var(--fg) 12%, transparent)); transition: background-color var(--dur-3), box-shadow var(--dur-3); }
+.bhm .an-b.cur .an-bw i { background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 44%, transparent), color-mix(in srgb, var(--fg) 24%, transparent)); }
 .bhm .an-b.on .an-bw i { background: linear-gradient(180deg, #ffcf5a, #ff7a3d); box-shadow: 0 8px 20px -8px rgb(255 122 61 / .8), inset 0 1px 0 rgb(255 255 255 / .35); }
 .bhm .an-bw u { position: absolute; bottom: 0; left: 50%; width: 28px; max-width: 62%; transform: translateX(-50%); height: calc(var(--g) * .8); border-radius: 10px; border: 1.5px dashed color-mix(in srgb, var(--fg) 36%, transparent); }
-.bhm .an-bw em { position: absolute; left: -6px; right: -6px; text-align: center; bottom: calc(max(var(--h), var(--g)) * .8 + 6px); font-style: normal; font-size: 11.5px; font-weight: 650; color: var(--ter); font-variant-numeric: tabular-nums; white-space: nowrap; transition: color var(--dur-3); }
+.bhm .an-bw em { position: absolute; left: -6px; right: -6px; text-align: center; bottom: calc(var(--h) * .8 + 6px); z-index: 1; font-style: normal; font-size: 12.5px; font-weight: 650; color: var(--ter); font-variant-numeric: tabular-nums; white-space: nowrap; transition: color var(--dur-3); }
 .bhm .an-b.on em { color: var(--fg); font-weight: 750; }
+.bhm .an-gl { position: absolute; left: -6px; right: -6px; text-align: center; bottom: calc(var(--g) * .8 + 6px); font-size: 12.5px; font-weight: 650; color: var(--ter); white-space: nowrap; }
 .bhm .an-bl { font-size: 12.5px; font-weight: 650; color: var(--sec); white-space: nowrap; transition: color var(--dur-3); }
 .bhm .an-b.on .an-bl { color: var(--fg); }
 .bhm .an-b[disabled] .an-bl { color: var(--ter); }
 .bhm .an-tl.go .an-bw i { animation: an-grow .7s var(--ease-out) backwards; animation-delay: calc(var(--i) * 40ms); }
-.bhm .an-tl.go .an-bw em, .bhm .an-tl.go .an-bw u { animation: an-in .5s ease-out backwards; animation-delay: calc(var(--i) * 40ms + .35s); }
+.bhm .an-tl.go .an-bw em, .bhm .an-tl.go .an-bw u, .bhm .an-tl.go .an-gl { animation: an-in .5s ease-out backwards; animation-delay: calc(var(--i) * 40ms + .35s); }
 @keyframes an-grow { from { height: 4px; } }
 @keyframes an-in { from { opacity: 0; } }
 .bhm .an-bud { position: absolute; left: 0; right: 0; bottom: calc(27px + 92.8px * var(--y) / 100); border-top: 1.5px dashed color-mix(in srgb, var(--fg) 30%, transparent); pointer-events: none; }
@@ -217,7 +220,7 @@ td.mono { font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
 .bhm .an-lg i.o { width: 9px; height: 9px; border-radius: 99px; background: var(--c); }
 .bhm .an-plot { position: relative; touch-action: pan-y; margin: 0 -4px; cursor: crosshair; }
 .bhm .an-svg { display: block; width: 100%; height: auto; overflow: visible; }
-.bhm .an-svg text { fill: var(--ter); font-size: 11px; font-weight: 600; font-family: inherit; }
+.bhm .an-svg text { fill: var(--ter); font-size: 12.5px; font-weight: 600; font-family: inherit; }
 .bhm .an-svg .grid { stroke: var(--line); stroke-width: 1; }
 .bhm .an-svg .ln { fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 5px 10px rgb(255 122 61 / .5)); }
 .bhm .an-svg .prev { fill: none; stroke: color-mix(in srgb, var(--fg) 40%, transparent); stroke-width: 1.8; stroke-dasharray: 2 5; stroke-linecap: round; }
@@ -254,7 +257,7 @@ td.mono { font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
 .bhm .an-dc:active { transform: scale(.95); }
 .bhm .an-dc b { font-size: 15px; font-weight: 700; max-width: 112px; line-height: 1.15; letter-spacing: -.2px; }
 .bhm .an-dc span { font-size: 13px; color: var(--sec); font-variant-numeric: tabular-nums; }
-.bhm .an-dc small { font-size: 11.5px; color: var(--acc); font-weight: 700; margin-top: 2px; }
+.bhm .an-dc small { font-size: 12.5px; color: var(--acc); font-weight: 700; margin-top: 2px; }
 .bhm .cats .cat.sel { background: var(--selbg); border-radius: 16px; box-shadow: 0 0 0 8px var(--selbg); }
 
 /* karty cien */
@@ -285,24 +288,25 @@ td.mono { font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
 .bhm .an-big small { font-size: 20px; font-weight: 500; letter-spacing: 0; color: var(--sec); margin-left: 2px; }
 .bhm .an-sumr { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; font-size: 13px; color: var(--sec); }
 .bhm .an-cr { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; }
-.bhm .an-cr button { color: var(--acc); font-weight: 650; font-size: inherit; min-height: 28px; }
+.bhm .an-cr button { color: var(--acc); font-weight: 650; font-size: inherit; padding: 12px 3px; margin: -12px -3px; min-width: 44px; text-align: left; }
 .bhm .an-cr .ico { width: 11px; height: 11px; color: var(--ter); }
 .bhm .an-sr { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; margin: 0 -18px; padding: 2px 18px 6px; }
 .bhm .an-sr::-webkit-scrollbar { display: none; }
 .bhm .an-sr button { flex: none; display: flex; align-items: center; gap: 10px; padding: 9px 14px 9px 9px; border-radius: 18px; background: var(--glass2); box-shadow: var(--sh); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); text-align: left; }
+.bhm .an-sr button { min-height: 52px; }
 .bhm .an-sr b { display: block; font-size: 15px; font-weight: 650; } .bhm .an-sr small { font-size: 13px; color: var(--sec); font-variant-numeric: tabular-nums; }
 .bhm .an-mxw { overflow-x: auto; scrollbar-width: none; border-radius: 28px; background: var(--glass2); box-shadow: var(--sh); -webkit-backdrop-filter: blur(30px) saturate(1.9); backdrop-filter: blur(30px) saturate(1.9); }
 .bhm table.an-mx { border-collapse: collapse; width: 100%; font-size: 14.5px; }
 .bhm .an-mx th, .bhm .an-mx td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; vertical-align: middle; }
 .bhm .an-mx th { font-size: 12.5px; color: var(--sec); font-weight: 700; }
 .bhm .an-mx td:first-child, .bhm .an-mx th:first-child { text-align: left; padding-left: 16px; font-weight: 620; }
-.bhm .an-mx td:first-child small { display: block; font-size: 12px; font-weight: 500; color: var(--sec); }
+.bhm .an-mx td:first-child small { display: block; font-size: 12.5px; font-weight: 500; color: var(--sec); }
 .bhm .an-mx td.best { color: var(--ok); font-weight: 750; }
 .bhm .an-mx td.na { color: var(--ter); }
 .bhm .an-mx tr:last-child td { border-bottom: 0; }
 .bhm .an-miss { flex-direction: row; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; }
 .bhm .an-miss .grow { min-width: 0; } .bhm .an-miss b { display: block; font-size: 15px; font-weight: 650; } .bhm .an-miss small { font-size: 13px; color: var(--sec); }
-.bhm .an-miss .ib { width: 40px; height: 40px; box-shadow: none; background: var(--card2); }
+.bhm .an-miss .ib { width: 44px; height: 44px; box-shadow: none; background: var(--card2); }
 .bhm .an-miss .ib.an-cam { background: var(--pri); color: #fff; }
 .bhm .an-toast { position: absolute; left: 50%; bottom: calc(86px + var(--sab)); transform: translate(-50%, 12px); max-width: 88%; width: max-content; z-index: 60; background: color-mix(in srgb, var(--fg) 94%, transparent); color: var(--bg); font-size: 14px; font-weight: 620; line-height: 1.35; padding: 11px 15px; border-radius: 16px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .25s var(--ease-out); display: flex; gap: 8px; align-items: flex-start; box-shadow: 0 16px 34px -14px rgb(0 0 0 / .6); }
 .bhm .an-toast.on { opacity: 1; transform: translate(-50%, 0); }
@@ -903,8 +907,9 @@ const cmpTag = (c) => (c.note ? '' : `<span class="an-tag ${c.dir > 0 ? 'up' : '
  *  save     = (priemer − najlacnejšie teraz) × bežné mesačné množstvo
  */
 const KM = new Map();
-function kindModel(k, end) {
-  const key = `${k}|${end}|${Object.keys(S.sizes).join()}`;
+const FRESH = 45; // dní, dokedy sa „cena teraz“ berie ako aktuálna
+function kindModel(k) {
+  const end = TODAY, key = `${k}|${Object.entries(S.sizes).join()}`;
   if (KM.has(key)) return KM.get(key);
   const K = KIND[k], from = addDays(end, -89);
   const ps = PUR.filter((p) => p.kind === k && inR(p, from, end));
@@ -913,25 +918,37 @@ function kindModel(k, end) {
   const offers = [];
   for (const [, xs] of groupBy(ps, (p) => p.pid + '|' + p.store)) {
     const reg = xs.filter((p) => !p.promo), src = reg.length ? reg : xs, l = src[src.length - 1];
-    offers.push({ pid: l.pid, store: l.store, price: l.price, unit: unit1(l), date: l.date, n: xs.length });
+    offers.push({ pid: l.pid, store: l.store, price: l.price, unit: unit1(l), date: l.date, n: xs.length, promo: !reg.length, fresh: diffDays(l.date, end) <= FRESH });
   }
-  const byU = (a, b) => (a.unit ?? a.price) - (b.unit ?? b.price);
+  // bežná cena má prednosť pred cenou, ktorú poznáme len z akcie
+  const byU = (a, b) => (a.promo - b.promo) || ((a.unit ?? a.price) - (b.unit ?? b.price));
   const stores = [...groupBy(offers.filter((o) => o.unit != null), (o) => o.store)].map(([s, os]) => ({ s, best: [...os].sort(byU)[0], n: sum(os, (o) => o.n) })).sort((a, b) => a.best.unit - b.best.unit);
   const prods = [...groupBy(offers, (o) => o.pid)].map(([pid, os]) => ({ pid, best: [...os].sort(byU)[0], stores: os.map((o) => o.store), n: sum(os, (o) => o.n) })).sort((a, b) => ((a.best.unit ?? 1e9) - (b.best.unit ?? 1e9)) || b.n - a.n);
-  const half = addDays(end, -44), w = (xs) => (sum(xs, units) ? sum(xs, (p) => p.total) / sum(xs, units) : null);
-  const w1 = w(kn.filter((p) => p.date < half)), w2 = w(kn.filter((p) => p.date >= half));
+  // trend porovnáva rovnaký výrobok v rovnakom obchode (inak by ho skreslilo, že si raz kúpil inde)
+  const half = addDays(end, -44);
+  let tn = 0, td = 0;
+  for (const [, xs] of groupBy(kn.filter((p) => !p.promo), (p) => p.pid + '|' + p.store)) {
+    const a = xs.filter((p) => p.date < half), b = xs.filter((p) => p.date >= half);
+    if (!a.length || !b.length) continue;
+    const w = sum(b, (p) => p.total);
+    tn += w * ((w / sum(b, units)) / (sum(a, (p) => p.total) / sum(a, units))); td += w;
+  }
   const avg = qty ? paid / qty : null;
-  const m = { K, ps, kn, qty, paid, avg, offers, stores, prods, trend: w1 && w2 ? w2 / w1 - 1 : null, cheapest: stores[0] || null, priciest: stores.length > 1 ? stores[stores.length - 1] : null,
-    save: avg != null && stores[0] ? Math.max(0, ((avg - stores[0].best.unit) * qty) / 3) : 0, unknown: K.u ? ps.filter((p) => units(p) == null) : [] };
+  // úspora sa počíta len z ceny, ktorá je čerstvá a nie je z akcie
+  const saveAt = stores.find((s) => s.best.fresh && !s.best.promo) || null;
+  const m = { K, ps, kn, qty, paid, avg, offers, stores, prods, trend: td ? tn / td - 1 : null, cheapest: stores[0] || null, priciest: stores.length > 1 ? stores[stores.length - 1] : null,
+    saveAt, save: avg != null && saveAt ? Math.max(0, ((avg - saveAt.best.unit) * qty) / 3) : 0, unknown: K.u ? ps.filter((p) => units(p) == null) : [] };
   KM.set(key, m);
   return m;
 }
-const when = (date, end) => { const d = diffDays(date, end); return d > 45 ? `<span class="an-old">pred ${Math.round(d / 30)} mes.</span>` : dm(date); };
+const when = (date) => { const d = diffDays(date, TODAY); return d > FRESH ? `<span class="an-old">pred ${Math.round(d / 30)} mes.</span>` : dm(date); };
+let UID = 0;
+const uid = () => `an${++UID}`;
 
 /* ================================================================ ikony, 3D emoji, dlaždice (rovnaké ako v appke) */
 const I = (n, cls = '') => `<span class="ico ${cls}" aria-hidden="true"><svg viewBox="0 0 256 256">${ICONS[n] || ''}</svg></span>`;
 const E = (k, s) => `<span class="em" aria-hidden="true" style="background-image:url(mk/em/${k}.webp)${s ? `;width:${s}px;height:${s}px` : ''}"></span>`;
-const stile = (k, s = 40) => { const st = STORES[k]; return `<span class="stile" style="width:${s}px;height:${s}px;border-radius:${Math.round(s * 0.32)}px;font-size:${(st.s.length > 1 ? s * 0.34 : s * 0.4).toFixed(1)}px;background:linear-gradient(160deg,${st.c1},${st.c2})">${st.s}</span>`; };
+const stile = (k, s = 40) => { const st = STORES[k]; return `<span class="stile" style="width:${s}px;height:${s}px;border-radius:${Math.round(s * 0.32)}px;font-size:${Math.max(12.5, st.s.length > 1 ? s * 0.34 : s * 0.4).toFixed(1)}px;background:linear-gradient(160deg,${st.c1},${st.c2})">${st.s}</span>`; };
 const tile = (c, lg) => `<span class="tile${lg ? ' lg' : ''}" style="--tc:${CATS[c].col}">${E(CATS[c].e, lg ? 40 : 0)}</span>`;
 const ktile = (K, lg) => `<span class="tile${lg ? ' lg' : ''}" style="--tc:${CATS[K.c].col}">${E(K.e, lg ? 40 : 0)}</span>`;
 const th = (e) => `<span class="th">${E(e)}</span>`;
@@ -963,7 +980,8 @@ function mono(p) {
   for (let i = 0; i < n - 1; i++) d += `C${(p[i][0] + dx[i] / 3).toFixed(1)},${(p[i][1] + (t[i] * dx[i]) / 3).toFixed(1)} ${(p[i + 1][0] - dx[i] / 3).toFixed(1)},${(p[i + 1][1] - (t[i + 1] * dx[i]) / 3).toFixed(1)} ${p[i + 1][0].toFixed(1)},${p[i + 1][1].toFixed(1)}`;
   return d;
 }
-const DEFS = '<defs><linearGradient id="an-g1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffcf5a"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient><linearGradient id="an-g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a4a" stop-opacity=".42"/><stop offset="1" stop-color="#ff8a4a" stop-opacity="0"/></linearGradient></defs>';
+const defs = (u) => `<defs><linearGradient id="${u}a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffcf5a"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient><linearGradient id="${u}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a4a" stop-opacity=".42"/><stop offset="1" stop-color="#ff8a4a" stop-opacity="0"/></linearGradient></defs>`;
+const scrubHint = (t) => (S.scrubbed ? '' : `<div class="an-hint">${t}</div>`);
 const plot = (svg, pts, W, H) => `<div class="an-plot" data-w="${W}" data-h="${H}" data-pts="${esc(JSON.stringify(pts))}">${svg}<div class="an-tip"></div></div>`;
 
 /** časová os: jeden stĺpec = jedno obdobie; ťuk ho vyberie (v Roku ťuk otvorí mesiac) */
@@ -991,7 +1009,7 @@ function tlItems(f) {
 function timeline(f, budget) {
   const it = tlItems(f), max = Math.max(1, ...it.map((x) => Math.max(x.v, x.ghost || 0)), budget || 0);
   const ghost = it.some((x) => x.ghost);
-  return `<div class="card glass2 an-tl${ANIM ? ' go' : ''}"><div class="an-ch an-tlh"><div class="k">${S.per === 'week' ? 'Týždne' : S.per === 'year' ? 'Mesiace · ťukni a otvor' : 'Mesiace'}</div><div class="an-lg">${budget ? `<span><i class="d"></i>rozpočet ${eur0(budget)}</span>` : ''}${ghost ? '<span><i class="g"></i>odhad</span>' : ''}</div></div><div class="an-tls"><div class="an-tlt">${budget ? `<div class="an-bud" style="--y:${((budget / max) * 100).toFixed(1)}"></div>` : ''}${it.map((x, i) => `<button type="button" class="an-b${x.on ? ' on' : ''}${x.cur ? ' cur' : ''}" ${x.a ? `data-a="${x.a}"` : 'disabled'} style="--h:${((x.v / max) * 100).toFixed(1)}%;--g:${(((x.ghost || 0) / max) * 100).toFixed(1)}%;--i:${i}" aria-label="${x.lab}: ${eur0(x.v)}"><span class="an-bw">${x.ghost ? '<u></u>' : ''}<em>${x.v ? nf(Math.round(x.v)) : ''}</em><i></i></span><span class="an-bl">${x.lab}</span></button>`).join('')}</div></div></div>`;
+  return `<div class="card glass2 an-tl${ANIM ? ' go' : ''}"><div class="an-ch an-tlh"><div class="k">${S.per === 'week' ? 'Týždne' : 'Mesiace'}</div><div class="an-lg">${S.per === 'year' ? '<span>ťukni na mesiac</span>' : ''}${budget ? `<span><i class="d"></i>rozpočet ${eur0(budget)}</span>` : ''}${ghost ? '<span><i class="g"></i>odhad</span>' : ''}</div></div><div class="an-tls"><div class="an-tlt">${budget ? `<div class="an-bud" style="--y:${((budget / max) * 100).toFixed(1)}"></div>` : ''}${it.map((x, i) => `<button type="button" class="an-b${x.on ? ' on' : ''}${x.cur ? ' cur' : ''}" ${x.a ? `data-a="${x.a}"` : 'disabled'} style="--h:${((x.v / max) * 100).toFixed(1)}%;--g:${(((x.ghost || 0) / max) * 100).toFixed(1)}%;--i:${i}" aria-label="${x.lab}: ${eur0(x.v)}"><span class="an-bw">${x.ghost ? `<u></u>${((x.ghost - x.v) / max) * 93 > 24 ? `<b class="an-gl">~${nf(Math.round(x.ghost))}</b>` : ''}` : ''}<em>${x.v ? nf(Math.round(x.v)) : ''}</em><i></i></span><span class="an-bl">${x.lab}</span></button>`).join('')}</div></div></div>`;
 }
 
 /** priebeh mesiaca: kumulatívne míňanie oproti minulému mesiacu a rozpočtu; ťahom prsta sa číta deň */
@@ -1005,14 +1023,14 @@ function paceCard(P, total) {
   const max = Math.max(1, ...now, ...prev, proj || 0, BUDGET) * 1.04;
   const X = (i) => L + (i / (Math.max(days, pdays) - 1)) * (W - L - R), Y = (v) => T + (1 - v / max) * (H - T - B);
   const np = now.map((v, i) => [X(i), Y(v)]), pp = prev.map((v, i) => [X(i), Y(v)]);
-  const line = mono(np);
-  const svg = `<svg class="an-svg${ANIM ? ' go' : ''}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Priebeh míňania v mesiaci">${DEFS}
+  const line = mono(np), u = uid();
+  const svg = `<svg class="an-svg${ANIM ? ' go' : ''}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Priebeh míňania v mesiaci">${defs(u)}
     <line class="grid" x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}"/>
     <line class="bud" x1="${L}" x2="${W - R}" y1="${Y(BUDGET)}" y2="${Y(BUDGET)}"/><text x="${W - R}" y="${Y(BUDGET) - 6}" text-anchor="end">rozpočet ${eur0(BUDGET)}</text>
     <text x="${L}" y="${H - 5}">1.</text><text x="${X(14)}" y="${H - 5}" text-anchor="middle">15.</text><text x="${W - R}" y="${H - 5}" text-anchor="end">${days}.</text>
     ${pp.length ? `<path class="prev" d="${mono(pp)}"/>` : ''}
-    ${el ? `<path class="ar" d="${line}L${np[el - 1][0].toFixed(1)},${Y(0)}L${np[0][0].toFixed(1)},${Y(0)}Z" fill="url(#an-g2)"/>` : ''}
-    <path class="ln" d="${line}" stroke="url(#an-g1)" pathLength="1"/>
+    ${el ? `<path class="ar" d="${line}L${np[el - 1][0].toFixed(1)},${Y(0)}L${np[0][0].toFixed(1)},${Y(0)}Z" fill="url(#${u}b)"/>` : ''}
+    <path class="ln" d="${line}" stroke="url(#${u}a)" pathLength="1"/>
     ${proj ? `<path class="proj" d="M${np[el - 1][0].toFixed(1)},${np[el - 1][1].toFixed(1)}L${X(days - 1).toFixed(1)},${Y(proj).toFixed(1)}"/><circle class="proj" cx="${X(days - 1)}" cy="${Y(proj)}" r="3" fill="#ff9a5c" stroke="none"/>` : ''}
     ${el && partial(P) ? `<circle class="an-end" cx="${np[el - 1][0]}" cy="${np[el - 1][1]}" r="6" fill="#ff7a3d" opacity=".35"/><circle cx="${np[el - 1][0]}" cy="${np[el - 1][1]}" r="4.5" fill="#fff" stroke="#ff7a3d" stroke-width="3"/>` : ''}
     <g class="an-cur"><line y1="${T - 6}" y2="${Y(0)}"/><circle r="5.5"/></g></svg>`;
@@ -1022,14 +1040,14 @@ function paceCard(P, total) {
     ? [['Odhad na koniec', proj ? `~${eur0(proj)}` : '–', proj && proj > BUDGET ? 'up' : ''], ['Zostáva', eur0(Math.max(0, left)), left < 0 ? 'bad' : ''], ['Na deň ti ostáva', dleft > 0 && left > 0 ? eur(left / dleft) : '–', '']]
     : [['Priemerne na deň', eur(total / days), ''], ['Rozpočet', eur0(BUDGET), ''], [left >= 0 ? 'Ušetrené' : 'Prekročené o', eur0(Math.abs(left)), left >= 0 ? 'dn' : 'bad']];
   return `<div class="card glass2"><div class="an-ch"><div class="k">Priebeh mesiaca</div><div class="an-lg"><span><i></i>${MN[P.m - 1]}</span>${pp.length ? `<span><i class="d"></i>${MN[+P.prevFrom.slice(5, 7) - 1]}</span>` : ''}</div></div>
-    ${plot(svg, pts, W, H)}
+    ${plot(svg, pts, W, H)}${scrubHint('Potiahni prstom po grafe a uvidíš ktorýkoľvek deň.')}
     <button type="button" class="an-st" data-a="toast:Tu sa otvorí nastavenie rozpočtu (posuvník ako dnes).">${st.map((s) => `<div><span>${s[0]}</span><b class="${s[2]}">${s[1]}</b></div>`).join('')}</button></div>`;
 }
 function daysCard(P) {
   const it = [];
   for (let i = 0; i < 7; i++) { const d = addDays(P.from, i); it.push({ lab: DOW[i], v: d <= P.to ? DAY[d] || 0 : 0, cur: d === TODAY }); }
   const max = Math.max(1, ...it.map((x) => x.v));
-  return `<div class="card glass2 an-tl${ANIM ? ' go' : ''}" style="gap:8px;padding-top:14px"><div class="k" style="padding:0 6px">Dni v týždni</div><div class="an-tlt">${it.map((x, i) => `<div class="an-b${x.cur ? ' on' : ''}" style="--h:${((x.v / max) * 100).toFixed(1)}%;--g:0%;--i:${i}"><span class="an-bw" style="height:96px"><em>${x.v ? nf(Math.round(x.v)) : ''}</em><i></i></span><span class="an-bl">${x.lab}</span></div>`).join('')}</div></div>`;
+  return `<div class="card glass2 an-tl${ANIM ? ' go' : ''}" style="gap:8px;padding-top:14px"><div class="k" style="padding:0 6px">Dni v týždni</div><div class="an-tlt an-days">${it.map((x, i) => `<div class="an-b${x.cur ? ' on' : ''}" style="--h:${((x.v / max) * 100).toFixed(1)}%;--g:0%;--i:${i}"><span class="an-bw" style="height:96px"><em>${x.v ? nf(Math.round(x.v)) : ''}</em><i></i></span><span class="an-bl">${x.lab}</span></div>`).join('')}</div></div>`;
 }
 
 /** vývoj ceny: schodíková čiara za každý obchod (cena platí, kým ju ďalší nákup nezmení) */
@@ -1037,7 +1055,7 @@ function priceChart(series, P, o) {
   const all = series.flatMap((s) => s.pts.map((q) => ({ ...q, s: s.s })));
   if (all.length < 2) return '';
   const W = 340, H = 180, L = 40, R = 8, T = 34, B = 22;
-  const t0 = Math.min(...all.map((q) => D(q.d).getTime())), t1 = D(P.to).getTime() + 1;
+  const t0 = Math.min(...all.map((q) => D(q.d).getTime())), t1 = D(TODAY).getTime() + 1;
   const vs = all.map((q) => q.v), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo || hi * 0.1) * 0.2;
   const X = (d) => L + 6 + ((D(d).getTime() - t0) / (t1 - t0 || 1)) * (W - L - R - 12), Y = (v) => T + (1 - (v - (lo - pad)) / (hi - lo + 2 * pad)) * (H - T - B);
   const dec = hi < 1 ? 3 : 2;
@@ -1061,12 +1079,12 @@ function priceChart(series, P, o) {
 
 /** prstenec kategórií: ťuk na výsek ho zvýrazní, ťuk do stredu kategóriu otvorí */
 function donut(rows, total) {
-  const R = 62, C = 2 * Math.PI * R, top = rows.slice(0, 7), rest = sum(rows.slice(7), (r) => r[1]);
+  const R = 62, C = 2 * Math.PI * R, top = rows.slice(0, 7), rest = sum(rows.slice(7), (r) => r[1]), u = uid();
   const segs = top.map(([c, v]) => ({ id: c, v, col: CATS[c].col }));
   if (rest > 0.5) segs.push({ id: '_rest', v: rest, col: 'rgb(150 150 150 / .5)' });
   let acc = 0;
-  const circles = segs.map((s) => { const fr = s.v / total, len = Math.max(1, fr * C - 3.5); const h = `<circle class="an-sg${S.dsel === s.id ? ' on' : ''}" data-a="dsel:${s.id}" data-id="${s.id}" cx="90" cy="90" r="${R}" fill="none" stroke="${s.col}" stroke-width="21" stroke-linecap="butt" stroke-dasharray="${len.toFixed(1)} ${(C - len).toFixed(1)}" stroke-dashoffset="${(-acc * C).toFixed(1)}"/>`; acc += fr; return h; }).join('');
-  return `<div class="an-dn${S.dsel ? ' sel' : ''}"><svg viewBox="0 0 180 180" class="${ANIM ? 'go' : ''}"><defs><mask id="an-dm" maskUnits="userSpaceOnUse" x="0" y="0" width="180" height="180"><circle class="an-sw" cx="90" cy="90" r="${R}" fill="none" stroke="#fff" stroke-width="27" pathLength="1" transform="rotate(-90 90 90)"/></mask></defs><g transform="rotate(-90 90 90)" mask="url(#an-dm)">${circles}</g></svg>
+  const circles = segs.map((s) => { const fr = s.v / total, len = Math.max(1, fr * C - 3.5); const h = `<circle class="an-sg${S.dsel === s.id ? ' on' : ''}" data-a="dsel:${s.id}" data-id="${s.id}" tabindex="0" role="button" aria-label="${s.id === '_rest' ? 'Ostatné' : CATS[s.id].n} ${eur0(s.v)}" cx="90" cy="90" r="${R}" fill="none" stroke="${s.col}" stroke-width="21" stroke-linecap="butt" stroke-dasharray="${len.toFixed(1)} ${(C - len).toFixed(1)}" stroke-dashoffset="${(-acc * C).toFixed(1)}"/>`; acc += fr; return h; }).join('');
+  return `<div class="an-dn${S.dsel ? ' sel' : ''}"><svg viewBox="0 0 180 180" class="${ANIM ? 'go' : ''}"><defs><mask id="${u}" maskUnits="userSpaceOnUse" x="0" y="0" width="180" height="180"><circle class="an-sw" cx="90" cy="90" r="${R}" fill="none" stroke="#fff" stroke-width="27" pathLength="1" transform="rotate(-90 90 90)"/></mask></defs><g transform="rotate(-90 90 90)" mask="url(#${u})">${circles}</g></svg>
     <button type="button" class="an-dc" data-a="dopen" id="an-dc">${donutCenter(rows, total)}</button></div>`;
 }
 function donutCenter(rows, total) {
@@ -1077,25 +1095,25 @@ function donutCenter(rows, total) {
 }
 
 /* ================================================================ obrazovky */
-function insights(P) {
+function insights() {
   const out = [];
-  const win = PUR.filter((p) => inR(p, addDays(P.to, -179), P.to) && !p.promo && KIND[p.kind].u && !PROD[p.pid].wq);
+  const win = PUR.filter((p) => inR(p, addDays(TODAY, -179), TODAY) && !p.promo && KIND[p.kind].u && !PROD[p.pid].wq);
   let best = null;
   for (const [, xs] of groupBy(win, (p) => p.pid + '|' + p.store)) {
     if (xs.length < 3) continue;
     const last = xs[xs.length - 1];
-    if (last.date < addDays(P.to, -30)) continue;
+    if (last.date < addDays(TODAY, -30)) continue;
     const base = median(xs.slice(0, -1).map((p) => p.price)), ch = last.price / base - 1;
     if (Math.abs(ch) >= 0.05 && (!best || Math.abs(ch) > Math.abs(best.ch))) best = { p: last, base, ch };
   }
   if (best) out.push({ e: best.ch > 0 ? 'up' : 'down', t: `${pname(PROD[best.p.pid])} ${best.ch > 0 ? 'zdraželo' : 'zlacnelo'} o${NB}${Math.round(Math.abs(best.ch) * 100)}${NB}%`, d: `${STORES[best.p.store].n}: z ${eur(best.base)} na ${eur(best.p.price)}`, a: `go:product:${best.p.pid}` });
   let cheap = null;
   for (const K of KINDS.filter((x) => x.u && CATS[x.c].g === 'food')) {
-    const m = kindModel(K.k, P.to);
-    if (m.stores.length < 2 || m.save < 0.8) continue;
+    const m = kindModel(K.k);
+    if (m.stores.length < 2 || m.save < 0.8 || m.saveAt.s === m.stores[m.stores.length - 1].s) continue;
     if (!cheap || m.save > cheap.save) cheap = m;
   }
-  if (cheap) out.push({ e: 'moneybag', t: `${cheap.K.n}: najlacnejšie teraz v obchode ${STORES[cheap.cheapest.s].n}`, d: `${upv(cheap.cheapest.best.unit, cheap.K)} · priemerne platíš ${upv(cheap.avg, cheap.K)} · asi ${eur(cheap.save)} mesačne`, a: `go:kind:${cheap.K.k}` });
+  if (cheap) out.push({ e: 'moneybag', t: `${cheap.K.n}: lacnejšie v obchode ${STORES[cheap.saveAt.s].n}`, d: `${upv(cheap.saveAt.best.unit, cheap.K)} · priemerne platíš ${upv(cheap.avg, cheap.K)} · asi ${eur(cheap.save)} mesačne`, a: `go:kind:${cheap.K.k}` });
   const todo = KINDS.filter((K) => K.u).flatMap((K) => K.P.filter((x) => !x.wq && sizeOf(x) == null));
   if (todo.length) out.push({ e: 'tag', t: `Doplň veľkosť balenia pri ${todo.length} ${plural(todo.length, 'výrobku', 'výrobkoch', 'výrobkoch')}`, d: 'Ceny za kg budú presnejšie', a: 'go:fix' });
   return out;
@@ -1129,10 +1147,10 @@ SCR.overview = () => {
   } else {
     const rows = Object.entries(cur.byKind).sort((a, b) => b[1].amt - a[1].amt).slice(0, 8);
     lens = `<button type="button" class="search" ${go('search')} style="width:100%">${I('magnifying-glass:bold')}<span style="font-size:17px">Hľadať produkt, napr. maslo</span></button>
-      <div class="lst glass2">${rows.map(([k, v]) => { const K = KIND[k], m = kindModel(k, P.to); return `<button type="button" class="row tap" ${go('kind', k)}>${th(K.e)}<div class="tx"><b>${K.n}</b><span class="sub">${m.avg != null ? `priemerne ${upv(m.avg, K)}` : CATS[K.c].n}</span></div><b class="amt">${eur(v.amt)}</b>${chev}</button>`; }).join('')}</div>`;
+      <div class="lst glass2">${rows.map(([k, v]) => { const K = KIND[k], m = kindModel(k); return `<button type="button" class="row tap" ${go('kind', k)}>${th(K.e)}<div class="tx"><b>${K.n}</b><span class="sub">${m.avg != null ? `priemerne ${upv(m.avg, K)}` : CATS[K.c].n}</span></div><b class="amt">${eur(v.amt)}</b>${chev}</button>`; }).join('')}</div>`;
   }
-  const ins = insights(P);
-  return { head: mainHead(ptitle(P)), dyn: ['hero', 'miss', 'pace', 'lens', 'ins', 'foot'], zones: [
+  const ins = S.off === 0 ? insights() : [];
+  return { head: mainHead(P.per === 'month' && P.y === TY ? cap(MN[P.m - 1]) : ptitle(P)), dyn: ['hero', 'miss', 'pace', 'lens', 'ins', 'foot'], zones: [
     ['hero', hero],
     ['seg', seg('per', [['week', 'Týždeň'], ['month', 'Mesiac'], ['year', 'Rok']], S.per)],
     ['tl', timeline(null, S.per === 'month' ? BUDGET : 0)],
@@ -1154,32 +1172,32 @@ SCR.cat = (x) => {
     ['head', `<div class="lhead">${tile(id, true)}<div class="grow"><h1 class="lt">${C.n}</h1>${crumbs([['Výdavky', 'home'], ['kategória']])}</div></div>`],
     ['sum', `<div class="card glass2 an-sum"><div><div class="k">${ptitle(P)}</div><div class="an-big">${cnt(amt, 'sum')}<small>€</small></div></div><div class="an-sumr">${cmpTag(cmp)}<span>${cmp.note || `${cmp.word} ${cmp.ph}`}</span><span>${Math.round((amt / (cur.total || 1)) * 100)}${NB}% všetkých výdavkov</span></div></div>`],
     ['tl', timeline((p) => KIND[p.kind].c === id, 0)],
-    ['list', `${h2('Produkty', true)}${kinds.length ? `<div class="lst glass2">${kinds.map(([k, v]) => { const K = KIND[k], m = kindModel(k, P.to), q = sum(v.ps.filter((p) => units(p) != null), units); return `<button type="button" class="row tap" ${go('kind', k)}>${th(K.e)}<div class="tx"><b>${K.n}</b><span class="sub">${[nakupov(v.ps.length), K.u && q ? qtyFmt(q, K.u) : null].filter(Boolean).join(' · ')}</span><span class="ln"><i style="width:${((v.amt / kinds[0][1].amt) * 100).toFixed(1)}%;background:${C.col}"></i></span></div><div class="an-r"><b class="amt">${eur(v.amt)}</b>${m.avg != null ? `<span class="sub">${upv(m.avg, K)}</span>` : ''}</div>${chev}</button>`; }).join('')}</div>` : `<p class="vnote">${I('info')}V tomto období nič z tejto kategórie.</p>`}`],
+    ['list', `${h2('Produkty', true)}${kinds.length ? `<div class="lst glass2">${kinds.map(([k, v]) => { const K = KIND[k], m = kindModel(k), q = sum(v.ps.filter((p) => units(p) != null), units); return `<button type="button" class="row tap" ${go('kind', k)}>${th(K.e)}<div class="tx"><b>${K.n}</b><span class="sub">${[nakupov(v.ps.length), K.u && q ? qtyFmt(q, K.u) : null].filter(Boolean).join(' · ')}</span><span class="ln"><i style="width:${((v.amt / kinds[0][1].amt) * 100).toFixed(1)}%;background:${C.col}"></i></span></div><div class="an-r"><b class="amt">${eur(v.amt)}</b>${m.avg != null ? `<span class="sub">${upv(m.avg, K)}</span>` : ''}</div>${chev}</button>`; }).join('')}</div>` : `<p class="vnote">${I('info')}V tomto období nič z tejto kategórie.</p>`}`],
     ['stores', st.length ? `${h2('Kde to kupuješ', true)}<div class="an-sr">${st.map(([s, v]) => `<button type="button" ${go('store', s)}>${stile(s, 34)}<span><b>${STORES[s].n}</b><small>${eur(v)} · ${Math.round((v / (amt || 1)) * 100)}${NB}%</small></span></button>`).join('')}</div>` : ''],
   ] };
 };
 
 SCR.kind = (x) => {
-  const k = x.id, P = curP(), K = KIND[k], m = kindModel(k, P.to), C = CATS[K.c];
+  const k = x.id, P = curP(), K = KIND[k], m = kindModel(k), C = CATS[K.c];
   const head = `<div class="lhead">${ktile(K, true)}<div class="grow"><h1 class="lt">${K.n}</h1>${crumbs([['Výdavky', 'home'], [C.n, `nav:cat:${K.c}`], ['produkt']])}</div></div>`;
   let cards;
   if (K.u && m.avg != null) {
-    const tr = m.trend != null && Math.abs(m.trend) >= 0.03 ? `<span class="an-tag ${m.trend > 0 ? 'up' : 'good'}">${m.trend > 0 ? '▲' : '▼'} ${Math.round(Math.abs(m.trend) * 100)}${NB}% za 6 týždňov</span>` : '<span class="an-tag mu">cena sa nemení</span>';
-    const off = (o) => { const Pp = PROD[o.pid]; return `${STORES[o.store].n} · ${Pp.b || Pp.n}${Pp.wq ? '' : ` ${sizeFmt(Pp) || ''} za ${eur(o.price)}`}`; };
+    const tr = m.trend == null ? '' : Math.abs(m.trend) >= 0.03 ? `<span class="an-tag ${m.trend > 0 ? 'up' : 'good'}">${m.trend > 0 ? 'zdražuje' : 'zlacňuje'} ${m.trend > 0 ? '▲' : '▼'} ${Math.round(Math.abs(m.trend) * 100)}${NB}%</span>` : '<span class="an-tag mu">cena sa nemení</span>';
+    const off = (o) => { const Pp = PROD[o.pid]; return `${STORES[o.store].n} · ${Pp.b || Pp.n}${Pp.wq ? '' : ` ${sizeFmt(Pp) || ''} za ${eur(o.price)}`} · ${o.promo ? 'akcia ' : ''}${when(o.date)}`; };
     cards = `<div class="an-pcs"><div class="mod glass2 an-w"><span class="kk">${I('receipt')}Priemerne platíš</span><div class="an-wr"><span class="v">${vU(m.avg, K)}</span>${tr}</div><span class="d">posledné 3 mesiace · ${nakupov(m.kn.length)} · ${qtyFmt(m.qty, K.u)} za ${eur(m.paid)}</span></div>
       ${m.cheapest ? `<button type="button" class="mod glass2 good" ${go('store', m.cheapest.s + '|' + k)}><span class="kk">${I('trend-down:bold')}Najlacnejšie teraz</span><span class="v">${vU(m.cheapest.best.unit, K)}</span><span class="d">${off(m.cheapest.best)}</span></button>` : ''}
       ${m.priciest ? `<button type="button" class="mod glass2" ${go('store', m.priciest.s + '|' + k)}><span class="kk">${I('trend-up:bold')}Najdrahšie teraz</span><span class="v">${vU(m.priciest.best.unit, K)}</span><span class="d">${off(m.priciest.best)}</span></button>` : ''}</div>
-      ${m.save >= 0.5 ? `<div class="card insight glass2"><span class="tile">${E('moneybag')}</span><div class="grow"><div class="ib-t">V obchode ${STORES[m.cheapest.s].n} ušetríš asi ${eur(m.save)} mesačne</div><div class="meta">Oproti tomu, čo platíš priemerne, pri tvojom bežnom množstve ${qtyFmt(m.qty / 3, K.u)} za mesiac.</div></div></div>` : ''}
+      ${m.save >= 0.5 ? `<div class="card insight glass2"><span class="tile">${E('moneybag')}</span><div class="grow"><div class="ib-t">V obchode ${STORES[m.saveAt.s].n} ušetríš asi ${eur(m.save)} mesačne</div><div class="meta">Oproti tomu, čo platíš priemerne, pri tvojom bežnom množstve ${qtyFmt(m.qty / 3, K.u)} za mesiac.</div></div></div>` : ''}
       ${m.unknown.length ? `<button type="button" class="card insight tapc glass2" ${go('fix')}><span class="tile">${E('tag')}</span><div class="grow"><div class="ib-t">${cap(nakupov(m.unknown.length))} bez veľkosti balenia</div><div class="meta">Sú v sume, ale nie v cene ${perLabel(K.u, K.sm)}. Doplň veľkosť.</div></div>${chev}</button>` : ''}`;
   } else {
     cards = `<div class="an-pcs"><div class="mod glass2 an-w"><span class="kk">${I('receipt')}Minuté za 3 mesiace</span><span class="v">${vE(sum(m.ps, (p) => p.total))}</span><span class="d">${nakupov(m.ps.length)} · ${K.u ? 'cenu za jednotku ukážeme po doplnení veľkosti balenia' : 'pri tomto druhu sa cena za jednotku neporovnáva'}</span></div></div>`;
   }
   const series = [...groupBy(m.kn, (p) => p.store)].map(([s, xs]) => ({ s, pts: xs.map((p) => ({ d: p.date, v: K.sm && K.u !== 'ks' ? (p.total / units(p)) / 10 : p.total / units(p), promo: p.promo })) }));
-  const chart = K.u && m.kn.length > 2 ? `<div class="card glass2"><div class="an-ch"><div class="k">Vývoj ceny ${perLabel(K.u, K.sm)}</div></div>${priceChart(series, P, { avg: K.sm && K.u !== 'ks' ? m.avg / 10 : m.avg, fmt: (v) => `${nf(v, 2, 2)}${NB}€` })}</div><div class="an-hint">Potiahni prstom po grafe a uvidíš cenu každého nákupu.</div>` : '';
+  const chart = K.u && m.kn.length > 2 ? `<div class="card glass2"><div class="an-ch"><div class="k">Vývoj ceny ${perLabel(K.u, K.sm)}</div></div>${priceChart(series, P, { avg: K.sm && K.u !== 'ks' ? m.avg / 10 : m.avg, fmt: (v) => `${nf(v, 2, 2)}${NB}€` })}</div>${scrubHint('Potiahni prstom po grafe a uvidíš cenu každého nákupu.')}` : '';
   const maxU = m.stores.length ? m.stores[m.stores.length - 1].best.unit : 1;
   const stores = K.u && m.stores.length ? `${h2('Obchody a ceny', true)}<div class="lst glass2">${m.stores.map((s, i) => {
     const Pp = PROD[s.best.pid], diff = i ? Math.max(1, Math.round((s.best.unit / m.stores[0].best.unit - 1) * 100)) : 0;
-    return `<button type="button" class="row tap" ${go('product', s.best.pid)}>${stile(s.s, 40)}<div class="tx"><b>${STORES[s.s].n}</b><span class="sub w2">${Pp.b || Pp.n}${Pp.wq ? ' · vážené' : ` ${sizeFmt(Pp) || ''} · ${eur(s.best.price)}`} · ${when(s.best.date, P.to)}</span><span class="ln"><i style="width:${((s.best.unit / maxU) * 100).toFixed(1)}%;background:${i ? 'color-mix(in srgb, var(--fg) 40%, transparent)' : 'var(--ok)'}"></i></span></div><div class="an-r"><b class="amt">${upv(s.best.unit, K)}</b>${m.stores.length > 1 ? (i ? `<span class="an-tag up">+${diff}${NB}%</span>` : '<span class="an-tag good">najlacnejšie</span>') : ''}</div>${chev}</button>`;
+    return `<button type="button" class="row tap" ${go('product', s.best.pid)}>${stile(s.s, 40)}<div class="tx"><b>${STORES[s.s].n}</b><span class="sub w2">${Pp.b || Pp.n}${Pp.wq ? ' · vážené' : ` ${sizeFmt(Pp) || ''} · ${eur(s.best.price)}`} · ${s.best.promo ? 'akcia ' : ''}${when(s.best.date)}</span><span class="ln"><i style="width:${((s.best.unit / maxU) * 100).toFixed(1)}%;background:${i ? 'color-mix(in srgb, var(--fg) 40%, transparent)' : 'var(--ok)'}"></i></span></div><div class="an-r"><b class="amt">${upv(s.best.unit, K)}</b>${m.stores.length > 1 ? (i ? `<span class="an-tag up">+${diff}${NB}%</span>` : '<span class="an-tag good">najlacnejšie</span>') : ''}</div>${chev}</button>`;
   }).join('')}</div>` : '';
   const prods = `${h2('Značky a balenia', true)}<div class="lst glass2">${m.prods.map((r) => {
     const Pp = PROD[r.pid], miss = K.u && !Pp.wq && sizeOf(Pp) == null;
@@ -1196,10 +1214,13 @@ SCR.kind = (x) => {
 
 SCR.product = (x) => {
   const id = x.id, P = curP(), Pp = PROD[id], K = KIND[Pp.kind], C = CATS[K.c];
-  const ps = PUR.filter((p) => p.pid === id && p.date <= P.to), last = ps[ps.length - 1], sz = sizeFmt(Pp), s1 = sizeOf(Pp);
+  const ps = PUR.filter((p) => p.pid === id), last = ps[ps.length - 1], sz = sizeFmt(Pp), s1 = sizeOf(Pp);
+  if (!ps.length) return { head: backHead(prevLabel(), Pp.b || Pp.n), dyn: [], zones: [
+    ['head', `<div class="lhead">${ktile(K, true)}<div class="grow"><h1 class="lt">${esc(pname(Pp))}</h1>${crumbs([['Výdavky', 'home'], [C.n, `nav:cat:${K.c}`], [K.n, `nav:kind:${K.k}`]])}</div></div>`],
+    ['empty', `<p class="vnote">${I('info')}Tento výrobok zatiaľ nie je na žiadnom bločku.</p><button type="button" class="lnk c" data-a="nav:kind:${K.k}">Porovnať značky: ${K.n}</button>`]] };
   const reg = ps.filter((p) => !p.promo), now = reg[reg.length - 1] || last;
   const offers = [...groupBy(ps, (p) => p.store)].map(([s, xs]) => { const r = xs.filter((p) => !p.promo), l = (r.length ? r : xs).slice(-1)[0]; return { s, price: l.price, date: l.date, min: Math.min(...xs.map((p) => p.price)), n: xs.length }; }).sort((a, b) => a.price - b.price);
-  const w90 = ps.filter((p) => p.date >= addDays(P.to, -89));
+  const w90 = ps.filter((p) => p.date >= addDays(TODAY, -89));
   const avgPack = Pp.wq ? (sum(w90, (p) => p.weight) ? sum(w90, (p) => p.total) / sum(w90, (p) => p.weight) : null) : (sum(w90, (p) => p.packs) ? sum(w90, (p) => p.total) / sum(w90, (p) => p.packs) : null);
   const minP = ps.reduce((a, p) => (!a || p.price < a.price ? p : a), null);
   let chg = '';
@@ -1214,7 +1235,7 @@ SCR.product = (x) => {
       <div class="mod glass2"><span class="kk">${I('clock')}Priemerne platíš</span><span class="v">${avgPack != null ? val(avgPack) : '–'}</span><span class="d">${Pp.wq ? '' : 'za balenie · '}3 mesiace · ${nakupov(w90.length)}</span></div>
       <div class="mod glass2 good"><span class="kk">${I('trend-down:bold')}Najnižšia cena</span><span class="v">${val(minP.price)}</span><span class="d">${STORES[minP.store].n} ${dm(minP.date)}${minP.promo ? ' · akcia' : ''}</span></div></div>`],
     ['chart', ps.length > 2 ? `<div class="card glass2"><div class="an-ch"><div class="k">Vývoj ceny${Pp.wq ? ` za 1${NB}${K.u}` : ' balenia'}</div></div>${priceChart(series, P, { avg: avgPack, fmt: (v) => `${nf(v, 2, 2)}${NB}€` })}</div>` : ''],
-    ['stores', `${h2('Obchody a ceny', true)}<div class="lst glass2">${offers.map((o, i) => `<button type="button" class="row tap" ${go('store', o.s + '|' + K.k)}>${stile(o.s, 40)}<div class="tx"><b>${STORES[o.s].n}</b><span class="sub">${when(o.date, P.to)}${o.min < o.price - 0.005 ? ` · najnižšie ${eur(o.min)}` : ` · ${nakupov(o.n)}`}</span></div><div class="an-r"><b class="amt">${Pp.wq ? upv(o.price, K) : eur(o.price)}</b>${offers.length > 1 ? (i ? `<span class="an-tag up">+${Math.max(1, Math.round((o.price / offers[0].price - 1) * 100))}${NB}%</span>` : '<span class="an-tag good">najlacnejšie</span>') : ''}</div>${chev}</button>`).join('')}</div>
+    ['stores', `${h2('Obchody a ceny', true)}<div class="lst glass2">${offers.map((o, i) => `<button type="button" class="row tap" ${go('store', o.s + '|' + K.k)}>${stile(o.s, 40)}<div class="tx"><b>${STORES[o.s].n}</b><span class="sub">${when(o.date)}${o.min < o.price - 0.005 ? ` · najnižšie ${eur(o.min)}` : ` · ${nakupov(o.n)}`}</span></div><div class="an-r"><b class="amt">${Pp.wq ? upv(o.price, K) : eur(o.price)}</b>${offers.length > 1 ? (i ? `<span class="an-tag up">+${Math.max(1, Math.round((o.price / offers[0].price - 1) * 100))}${NB}%</span>` : '<span class="an-tag good">najlacnejšie</span>') : ''}</div>${chev}</button>`).join('')}</div>
       <button type="button" class="lnk c" data-a="nav:kind:${K.k}">Porovnať s inými značkami: ${K.n}</button>`],
     ['add', `<button type="button" class="btn pri a" data-a="toast:Pridané do zoznamu Nákup Lidl.">${I('plus:bold')}Pridať do zoznamu</button>`],
     ['buys', `${h2('Nákupy', true)}<div class="lst glass2">${[...ps].reverse().slice(0, 8).map((p) => `<button type="button" class="row tap" ${go('receipt', p.rid + '|' + p.id)}>${stile(p.store, 34)}<div class="tx"><b>${dm(p.date)} · ${STORES[p.store].n}</b><span class="sub">${Pp.wq ? `${qtyFmt(p.weight, K.u)} × ${upv(p.price, K)}` : `${p.packs} × ${eur(p.price)}`}${p.promo ? ' · akcia' : ''}</span></div><b class="amt">${eur(p.total)}</b>${chev}</button>`).join('')}</div>`],
@@ -1226,8 +1247,8 @@ SCR.store = (x) => {
   const me = cur.byStore[id] || { amt: 0, r: new Set() }, cmp = compare(me.amt, prv.byStore[id] ? prv.byStore[id].amt : 0, P);
   let body;
   if (S.slens === 'kinds') {
-    const ks = [...new Set(PUR.filter((p) => p.store === id && inR(p, addDays(P.to, -89), P.to)).map((p) => p.kind))];
-    const rows = ks.map((k) => { const m = kindModel(k, P.to); return { k, K: KIND[k], here: m.stores.find((s) => s.s === id), best: m.stores[0], spent: sum(cur.ps.filter((p) => p.kind === k && p.store === id), (p) => p.total) }; }).sort((a, b) => b.spent - a.spent || (a.K.n < b.K.n ? -1 : 1));
+    const ks = [...new Set(PUR.filter((p) => p.store === id && inR(p, addDays(TODAY, -89), TODAY)).map((p) => p.kind))];
+    const rows = ks.map((k) => { const m = kindModel(k); return { k, K: KIND[k], here: m.stores.find((s) => s.s === id), best: m.stores[0], spent: sum(cur.ps.filter((p) => p.kind === k && p.store === id), (p) => p.total) }; }).sort((a, b) => b.spent - a.spent || (a.K.n < b.K.n ? -1 : 1));
     const win = rows.filter((r) => r.here && r.best.s === id).length, cmpn = rows.filter((r) => r.here).length;
     body = `<div class="card insight glass2"><span class="tile">${E(win * 2 >= cmpn ? 'moneybag' : 'coin')}</span><div class="grow"><div class="ib-t">Najlacnejší pri ${win} z ${cmpn} produktov</div><div class="meta">Pri ostatných je napísané, kde je to lacnejšie.</div></div></div>
       <div class="lst glass2">${rows.map((r) => {
@@ -1252,17 +1273,17 @@ SCR.store = (x) => {
 };
 
 SCR.compare = () => {
-  const P = curP(), from = addDays(P.to, -89);
-  const cand = ['lidl', 'kaufland', 'tesco', 'kraj'].filter((s) => new Set(PUR.filter((p) => p.store === s && inR(p, from, P.to)).map((p) => p.rid)).size >= 3);
-  const rows = KINDS.filter((K) => K.u && CATS[K.c].g !== 'other').map((K) => ({ K, m: kindModel(K.k, P.to) })).filter((r) => r.m.ps.length >= 3 && r.m.stores.filter((s) => cand.includes(s.s)).length >= 2);
+  const from = addDays(TODAY, -89);
+  const cand = ['lidl', 'kaufland', 'tesco', 'kraj'].filter((s) => new Set(PUR.filter((p) => p.store === s && inR(p, from, TODAY)).map((p) => p.rid)).size >= 3);
+  const rows = KINDS.filter((K) => K.u && CATS[K.c].g !== 'other').map((K) => ({ K, m: kindModel(K.k) })).filter((r) => r.m.ps.length >= 3 && r.m.stores.filter((s) => cand.includes(s.s)).length >= 2);
   const wins = {}; let save = 0;
-  for (const r of rows) { const b = r.m.stores.find((s) => cand.includes(s.s)); r.best = b.s; wins[b.s] = (wins[b.s] || 0) + 1; save += Math.max(0, ((r.m.avg - b.best.unit) * r.m.qty) / 3); }
+  for (const r of rows) { const b = r.m.stores.find((s) => cand.includes(s.s)), f = r.m.stores.find((s) => cand.includes(s.s) && s.best.fresh && !s.best.promo); r.best = b.s; wins[b.s] = (wins[b.s] || 0) + 1; if (f) save += Math.max(0, ((r.m.avg - f.best.unit) * r.m.qty) / 3); }
   const cell = (r, s) => { const o = r.m.stores.find((z) => z.s === s); return o ? `<td class="${r.best === s ? 'best' : ''}">${nf(r.K.sm && r.K.u !== 'ks' ? o.best.unit / 10 : o.best.unit, 2, 2)}</td>` : '<td class="na">–</td>'; };
   return { head: backHead(prevLabel(), 'Porovnanie obchodov'), dyn: [], zones: [
     ['head', `<div class="lhead"><span class="tile lg">${E('coin', 40)}</span><div class="grow"><h1 class="lt">Porovnanie obchodov</h1><div class="meta">${rows.length} produktov, ktoré kupuješ pravidelne</div></div></div>`],
-    ['cards', `<div class="an-pcs"><div class="mod glass2 an-w good"><span class="kk">${I('trend-down:bold')}Môžeš ušetriť</span><span class="v">~${nf(Math.round(save))}<small>€ mesačne</small></span><span class="d">keď každú vec kúpiš tam, kde je teraz najlacnejšia</span></div></div>`],
+    ['cards', `<div class="an-pcs"><div class="mod glass2 an-w good"><span class="kk">${I('trend-down:bold')}Môžeš ušetriť</span><span class="v">~${nf(Math.round(save))}<small>€ mesačne</small></span><span class="d">keď každú vec kúpiš tam, kde je teraz najlacnejšia (len ceny z posledných 6 týždňov, bez akcií)</span></div></div>`],
     ['rank', `<div class="lst glass2">${Object.entries(wins).sort((a, b) => b[1] - a[1]).map(([s, n]) => `<button type="button" class="row tap" ${go('store', s)}>${stile(s, 40)}<div class="tx"><b>${STORES[s].n}</b><span class="ln"><i style="width:${((n / rows.length) * 100).toFixed(1)}%;background:var(--ok)"></i></span></div><div class="an-r"><b class="amt">${n} z ${rows.length}</b><span class="sub">najlacnejší</span></div>${chev}</button>`).join('')}</div>`],
-    ['table', `${h2('Cena teraz za jednotku', true)}<div class="an-mxw"><table class="an-mx"><thead><tr><th></th>${cand.map((s) => `<th>${STORES[s].n}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr data-a="go:kind:${r.K.k}"><td>${r.K.n}<small>${r.K.sm && r.K.u !== 'ks' ? '€/100 ml' : `€/${r.K.u}`}</small></td>${cand.map((s) => cell(r, s)).join('')}</tr>`).join('')}</tbody></table></div><div class="an-hint" style="margin-top:0">Zelená je najlacnejšia. Pomlčka: tam si to nekupoval.</div>`],
+    ['table', `${h2('Cena teraz za jednotku', true)}<div class="an-mxw"><table class="an-mx"><thead><tr><th></th>${cand.map((s) => `<th>${STORES[s].n}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr data-a="go:kind:${r.K.k}" tabindex="0" role="link"><td>${r.K.n}<small>${r.K.sm && r.K.u !== 'ks' ? '€/100 ml' : `€/${r.K.u}`}</small></td>${cand.map((s) => cell(r, s)).join('')}</tr>`).join('')}</tbody></table></div><div class="an-hint" style="margin-top:0">Zelená je najlacnejšia. Pomlčka: tam si to nekupoval.</div>`],
   ] };
 };
 
@@ -1270,10 +1291,10 @@ function searchResults(q) {
   const f = fold(q.trim()), P = curP();
   if (!f) return `<div class="chips wrap">${['maslo', 'pivo', 'mlieko', 'plienky', 'Lidl'].map((x) => `<button type="button" class="chip" data-a="q:${x}">${x}</button>`).join('')}</div>`;
   const kinds = KINDS.filter((K) => fold(K.n).includes(f) || K.P.some((x) => fold(pname(x)).includes(f)));
-  const prods = KINDS.flatMap((K) => K.P).filter((x) => fold(pname(x)).includes(f) || fold(KIND[x.kind].n).includes(f)).slice(0, 8);
+  const prods = KINDS.flatMap((K) => K.P).filter((x) => (fold(pname(x)).includes(f) || fold(KIND[x.kind].n).includes(f)) && PUR.some((p) => p.pid === x.id)).slice(0, 8);
   const stores = Object.keys(STORES).filter((s) => fold(STORES[s].n).includes(f));
   let h = '';
-  if (kinds.length) h += `${h2('Produkty', true)}<div class="lst glass2">${kinds.map((K) => { const m = kindModel(K.k, P.to); return `<button type="button" class="row tap" ${go('kind', K.k)}>${th(K.e)}<div class="tx"><b>${K.n}</b><span class="sub">${m.cheapest ? `najlacnejšie ${STORES[m.cheapest.s].n}` : CATS[K.c].n}</span></div>${m.avg != null ? `<div class="an-r"><b class="amt">${upv(m.avg, K)}</b><span class="sub">priemerne</span></div>` : ''}${chev}</button>`; }).join('')}</div>`;
+  if (kinds.length) h += `${h2('Produkty', true)}<div class="lst glass2">${kinds.map((K) => { const m = kindModel(K.k); return `<button type="button" class="row tap" ${go('kind', K.k)}>${th(K.e)}<div class="tx"><b>${K.n}</b><span class="sub">${m.cheapest ? `najlacnejšie ${STORES[m.cheapest.s].n}` : CATS[K.c].n}</span></div>${m.avg != null ? `<div class="an-r"><b class="amt">${upv(m.avg, K)}</b><span class="sub">priemerne</span></div>` : ''}${chev}</button>`; }).join('')}</div>`;
   if (prods.length) h += `${h2('Značky a balenia', true)}<div class="lst glass2">${prods.map((x) => { const K = KIND[x.kind], ps = PUR.filter((p) => p.pid === x.id), l = ps[ps.length - 1], s1 = sizeOf(x); return `<button type="button" class="row tap" ${go('product', x.id)}>${th(K.e)}<div class="tx"><b>${esc(pname(x))}</b><span class="sub">${[sizeFmt(x), l ? STORES[l.store].n : null].filter(Boolean).join(' · ')}</span></div><div class="an-r"><b class="amt">${l ? (x.wq ? upv(l.price, K) : eur(l.price)) : '–'}</b>${l && K.u && !x.wq && s1 ? `<span class="sub">${upv(l.price / s1, K)}</span>` : ''}</div>${chev}</button>`; }).join('')}</div>`;
   if (stores.length) h += `${h2('Obchody', true)}<div class="lst glass2">${stores.map((s) => `<button type="button" class="row tap" ${go('store', s)}>${stile(s, 40)}<div class="tx"><b>${STORES[s].n}</b></div>${chev}</button>`).join('')}</div>`;
   return h || `<p class="vnote">${I('info')}Pre „${esc(q)}“ sa nič nenašlo.</p>`;
@@ -1450,6 +1471,7 @@ app.addEventListener('click', (e) => {
   if (!el || !app.contains(el) || el.disabled) return;
   act(el.dataset.a, el);
 });
+app.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-a]:not(button)')) { e.preventDefault(); act(e.target.dataset.a, e.target); } });
 /* ťahom prsta po grafe sa číta hodnota */
 function scrub(e) {
   const pl = e.target.closest('.an-plot');
@@ -1467,6 +1489,7 @@ function scrub(e) {
   const half = tip.offsetWidth / 2 / r.width * 100, pos = (best[0] / W) * 100;
   tip.style.left = `${Math.min(100 - half, Math.max(half, pos))}%`;
   pl.classList.add('act');
+  if (!S.scrubbed) { S.scrubbed = true; app.querySelectorAll('.an-hint').forEach((h) => { if (/Potiahni/.test(h.textContent)) h.remove(); }); }
   clearTimeout(pl._t);
   if (e.type === 'pointerup' || e.pointerType === 'mouse') pl._t = setTimeout(() => pl.classList.remove('act'), e.pointerType === 'mouse' ? 1500 : 2200);
 }
