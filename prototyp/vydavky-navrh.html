@@ -1111,7 +1111,7 @@ SCR.overview = () => {
   const left = BUDGET - cur.total;
   const hero = `<div class="wx an-hero" data-swipe="1"><div class="an-per"><button type="button" data-a="off:-1" aria-label="Predchádzajúce obdobie" ${P.from > DATA_START ? '' : 'disabled'}>${I('caret-left:bold')}</button><span class="place">${ptitle(P)}</span><button type="button" data-a="off:1" aria-label="Novšie obdobie" ${S.off < 0 ? '' : 'disabled'}>${I('caret-right:bold')}</button></div>
     <span class="temp">${cnt(cur.total, 'hero')}<small>€</small></span>${cmpCond(compare(cur.total, prv.total, P))}
-    ${P.per === 'month' ? `<button type="button" class="cond bud" data-a="toast:Tu sa otvorí nastavenie rozpočtu (posuvník ako dnes).">Rozpočet ${eur0(BUDGET)} · ${left >= 0 ? `zostáva ${eur0(left)}` : `prekročený o ${eur0(-left)}`}</button>` : ''}</div>`;
+    ${P.per === 'month' ? `<button type="button" class="cond bud" data-a="toast:Tu sa otvorí nastavenie rozpočtu (posuvník ako dnes).">Rozpočet ${eur0(BUDGET)} · ${left >= 0 ? `${partial(P) ? 'zostáva' : 'ostalo'} ${eur0(left)}` : `prekročený o ${eur0(-left)}`}</button>` : ''}</div>`;
   const miss = S.off === 0 && S.per !== 'year' && !S.noMiss ? `<div class="card glass2 an-miss">${stile('kaufland', 40)}<div class="grow"><b>Chýba bloček</b><small>Kaufland · utorok ${dm('2026-11-10')}</small></div><button type="button" class="ib an-cam" data-a="toast:Tu sa otvorí fotoaparát pre tento nákup." aria-label="Odfotiť bloček">${I('camera:bold')}</button><button type="button" class="ib" data-a="nomiss" aria-label="Bloček nemám">${I('x:bold')}</button></div>` : '';
   const pace = P.per === 'month' ? paceCard(P, cur.total) : P.per === 'week' ? daysCard(P) : '';
   const tot = cur.total || 1;

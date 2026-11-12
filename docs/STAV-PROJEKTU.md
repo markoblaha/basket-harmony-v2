@@ -265,7 +265,18 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   pásik „Chýba bloček“, jedna karta s grafom (priebeh mesiaca + rozpočet + odhad), Kam išli peniaze (6 najväčších),
   Oplatí sa vedieť (max 3), Bločky. Detaily bez vlastného prepínača obdobia. Čiarové ikony kategórií namiesto emoji,
   produkty len text + cena, karty s tenkou linkou bez tieňov, jeden systém tlačidiel / štítkov / upozornení
-  (kapitola 5 „Vzhľad a prvky“ v dokumente). Čaká na vyjadrenie majiteľa.
+  (kapitola 5 „Vzhľad a prvky“ v dokumente). Majiteľ odmietol: čiarové ikony nie sú z appky.
+  **Verzia 3 (12. 11., pokyn majiteľa: náhľad musí vyzerať ako testovacia appka, farebné ikony, krajšie grafy, lepšie
+  listovanie obdobím, logika kategória → produkt → konkrétny výrobok, použiteľné ceny, animácie):** náhľad sa vykresľuje
+  priamo štýlmi appky (`src/mockup/mockup.css` pod `.bhm`, téma Fotky a sklo tmavá/svetlá) a jej 3D ikonami a fotkou
+  pozadia (`public/mk/em`, `public/mk/pic/trh_p.webp`) – pri publikovaní sa prikladajú ako súbory `mk/…`; nové prvky
+  majú triedy `an-*` v `prototyp/vydavky-navrh.html`. Pozor: triedy `.ok`, `.top`, `.wrap`, `.scr`, `.cam` appka už
+  používa (kolízie). Nové: časová os (stĺpec = mesiac/týždeň, ťuk vyberie, čiarkovaný odhad a rozpočet; v Roku ťuk otvorí
+  mesiac), Priebeh mesiaca s čítaním dňa ťahom prsta, prstenec kategórií, karty cien, cesta v hlavičke detailu
+  (Výdavky › kategória › produkt), prechody `in-push`/`in-pop` z appky. Model cien: „Priemerne platíš“ = peniaze ÷
+  množstvo za 3 mesiace; „Cena teraz“ = posledný nákup výrobku v obchode bez akcie; obchod pri produkte = jeho
+  najlacnejší výrobok podľa ceny za jednotku; „Ušetríš“ = (priemer − najlacnejšie teraz) × mesačné množstvo.
+  Čaká na vyjadrenie majiteľa; v appke nič nie je implementované.
 
 - **Revízia pred ostrým spustením (3. 11. 2026):** https://claude.ai/artifact/X8aprnTLiiWL5bgiDQwNAT – preklikané
   4 vzhľady × 19 obrazoviek (0 chýb JS/servera), kód, DB, AI. Blokery P0: zmazanie účtu len predstiera (dialóg + hláška
