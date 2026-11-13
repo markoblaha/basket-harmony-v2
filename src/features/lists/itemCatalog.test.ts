@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCatalog, estimate, refinements, resolveName, searchNames, spellFix, typoFix, type Buy, type CatProduct } from "./itemCatalog";
+import { buildCatalog, compareStores, estimate, refinements, resolveName, searchNames, spellFix, typoFix, type Buy, type CatProduct } from "./itemCatalog";
 
 const today = new Date();
 const day = (ago: number) => new Date(today.getTime() - ago * 86_400_000).toISOString().slice(0, 10);
@@ -169,5 +169,34 @@ describe("Enter pridá napísané – opraví sa len pravopis (11. 11.)", () => 
   it("neznáme slovo ostane, pri viacerých slovách sa preklep nehádže", () => {
     expect(fix("cukrík")).toBe("Cukrík");
     expect(fix("mleko čerstvé")).toBe("Mleko čerstvé");
+  });
+});
+
+describe("porovnanie obchodov pre zoznam (13. 11.)", () => {
+  const keyOf = (s: string) => s.toLowerCase();
+  const b = (ago: number, k: string, p: number, a = false, u = "ks", q = 1): Buy => ({ d: day(ago), s: k, k, t: p * q, q, u, p, a });
+  const c = buildCatalog([
+    { ...P("Maslo 82 %", "Maslo", "Pilos", "dairy_eggs"), buys: [b(2, "lidl", 2.39), b(5, "kaufland", 2.69)] },
+    { ...P("Mlieko", "Mlieko", "Rajo", "dairy_eggs"), buys: [b(3, "lidl", 0.95), b(4, "kaufland", 1.19)] },
+    { ...P("Banány", "Banány", null, "produce"), buys: [b(2, "lidl", 1.19, false, "kg", 1.2), b(6, "kaufland", 1.29, false, "kg", 0.8)] },
+    { ...P("Káva", "Káva", "Lavazza", "breakfast"), buys: [b(10, "kaufland", 17.99), b(100, "lidl", 13.99)] },
+    { ...P("Jogurt", "Jogurt", "Rajo", "dairy_eggs"), buys: [b(2, "kaufland", 0.45), b(3, "tesco", 0.3, true)] },
+  ]);
+  const resolve = (n: string) => resolveName(c, n);
+  const items = ["maslo", "mlieko 2", "banány", "káva", "jogurt"].map((x) => { const [name, q] = x.split(" "); return { name: name!, quantity: q ? Number(q) : null, unit: null }; });
+  it("porovná len položky s čerstvou cenou bez akcie v oboch obchodoch", () => {
+    const r = compareStores(items, resolve, "kaufland", keyOf);
+    expect(r.map((x) => x.key)).toEqual(["lidl"]);
+    const l = r[0]!;
+    // maslo, mlieko a banány; káva v Lidli je stará, jogurt v Tescu len z akcie (a Tesco nemá polovicu položiek)
+    expect(l.n).toBe(3);
+    expect(l.lines.map((x) => x.name)).toEqual(["maslo", "mlieko", "banány"]);
+    // banány na rovnakú váhu v oboch obchodoch (bežný nákup domácnosti = 1 kg)
+    const ban = l.lines[2]!;
+    expect(ban.there / ban.here).toBeCloseTo(1.19 / 1.29, 3);
+    expect(l.diff).toBeCloseTo(0.3 + 2 * 0.24 + 1 * 0.1, 2);
+  });
+  it("bez dosť spoločných položiek sa neporovnáva", () => {
+    expect(compareStores(items.slice(3), resolve, "kaufland", keyOf)).toEqual([]);
   });
 });

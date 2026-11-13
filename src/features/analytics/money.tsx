@@ -169,12 +169,14 @@ export function MissingReceipts({ compact, g }: { compact?: boolean; g: boolean 
   const lists = useLists(household.id).data ?? [];
   const stats = useListStats(household.id).data;
   const later = useSetReceiptLater(household.id);
+  // Vo Výdavkoch je pásik zbalený do jedného riadku, aby neodtlačil prehľad; nákupy sa ukážu po ťuknutí.
+  const [open, setOpen] = useState(false);
   const now = Date.now();
   const ms = lists
     .filter((l) => l.completed_at && l.receipt_state === "LATER" && now - new Date(l.completed_at).getTime() <= MONTH_MS)
     .sort((a, b) => b.completed_at!.localeCompare(a.completed_at!));
   if (!ms.length) return null;
-  const list = compact ? ms.slice(0, 1) : ms;
+  const list = compact ? ms.slice(0, 1) : open ? ms : [];
   const drop = (id: string) =>
     later.mutate(
       { listId: id, later: false },
@@ -185,16 +187,28 @@ export function MissingReceipts({ compact, g }: { compact?: boolean; g: boolean 
     );
   return (
     <div className={`card mrc${g ? " glass2" : ""}`} role="region" aria-label={t("mn.missingAria")}>
-      <div className="mrc-h">
-        <span className="mrc-i">
-          <I n="receipt" />
-          <b>{ms.length}</b>
-        </span>
-        <div className="grow">
-          <div className="t1">{ms.length === 1 ? t("mn.missingOne") : t("mn.missingN", { n: ms.length })}</div>
-          <div className="meta sm">{t("mn.missingS")}</div>
-        </div>
-      </div>
+      {(() => {
+        const head = (
+          <>
+            <span className="mrc-i">
+              <I n="receipt" />
+              <b>{ms.length}</b>
+            </span>
+            <div className="grow">
+              <div className="t1">{ms.length === 1 ? t("mn.missingOne") : t("mn.missingN", { n: ms.length })}</div>
+              <div className="meta sm">{t("mn.missingS")}</div>
+            </div>
+          </>
+        );
+        return compact ? (
+          <div className="mrc-h">{head}</div>
+        ) : (
+          <button type="button" className="mrc-h an-mrct" aria-expanded={open} onClick={() => setOpen(!open)}>
+            {head}
+            <I n={open ? "caret-up" : "caret-down"} w="bold" cls="chev" />
+          </button>
+        );
+      })()}
       {list.map((l) => {
         const k = storeKeyOf(l.name);
         const n = stats?.get(l.id)?.bought ?? 0;
@@ -211,7 +225,7 @@ export function MissingReceipts({ compact, g }: { compact?: boolean; g: boolean 
               <b>{l.name}</b>
               <span className="sub">
                 {/* nezalomiteľné medzery: „7 položiek“ ani dátum sa nerozdelia na dva riadky */}
-                {formatDateTime(l.completed_at!, { day: "numeric", month: "numeric", hour: "numeric", minute: "2-digit" }).replace(/ /g, "\u00a0")}
+                {formatDateTime(l.completed_at!, { weekday: "short", day: "numeric", month: "numeric" }).replace(/ /g, "\u00a0")}
                 {n ? ` · ${tn("li.items", n).replace(/ /g, "\u00a0")}` : ""}
               </span>
             </div>

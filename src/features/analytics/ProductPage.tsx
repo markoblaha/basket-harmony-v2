@@ -66,6 +66,12 @@ export function ProductPage() {
   const short = (x: string) => formatDateTime(new Date(`${x}T12:00:00`), { day: "numeric", month: "numeric" }).replace(/ /g, "\u00a0");
   const now = pr?.now ?? null;
   const unitLine = !now ? "" : weighed ? t("mn.byWeight") : now.unit != null && basis !== "ks" ? `${size ? `${size} · ` : ""}${perUnit(now.unit, basis)}` : (size ?? "");
+  // jedno číslo len raz: kúpené raz → jedna karta; priemer a najnižšia len ak sa líšia od ceny teraz
+  const once = (pr?.count ?? 0) <= 1;
+  const showAvg = !!now && !once && pr!.avg != null && Math.abs(pr!.avg - now.price) >= 0.005;
+  const showMin = !!now && !once && !!pr!.min && pr!.min.price < now.price - 0.005;
+  const same = !!now && !once && !showAvg && !showMin;
+  const lone = showAvg !== showMin ? " an-w" : "";
   const series: Series[] = [];
   for (const s of pr?.stores ?? []) {
     const pts = (pr?.series ?? []).filter((x) => x.store_key === s.key).map((x) => ({ d: x.d, v: x.v, promo: x.promo }));
@@ -137,7 +143,7 @@ export function ProductPage() {
                 <div className={`mod an-w${gl}`}>
                   <span className="kk">
                     <I n="receipt" />
-                    {t("mn.priceNow")}
+                    {t(once ? "mn.boughtOnce" : "mn.priceNow")}
                   </span>
                   <div className="an-wr">
                     <span className="v">{val(now.price)}</span>
@@ -151,33 +157,42 @@ export function ProductPage() {
                     {unitLine ? `${unitLine} · ` : ""}
                     {now.store} · {now.promo ? `${t("mn.promo")} ` : ""}
                     <When d={now.date} />
+                    {same ? ` · ${t("mn.samePrice", { n: tn("mn.trips", pr!.count) })}` : ""}
                   </span>
                 </div>
-                <div className={`mod${gl}`}>
+                {showAvg && (
+                <div className={`mod${lone}${gl}`}>
                   <span className="kk">
                     <I n="clock" />
                     {t("mn.avgPays")}
                   </span>
-                  <span className="v">{pr!.avg != null ? val(pr!.avg) : "–"}</span>
+                  <span className="v">{val(pr!.avg!)}</span>
                   <span className="d">{t(weighed ? "mn.avgWeighedD" : "mn.avgPackD", { n: tn("mn.trips", pr!.avg_count) })}</span>
                 </div>
-                {pr!.min && (
-                  <div className={`mod good${gl}`}>
+                )}
+                {showMin && (
+                  <div className={`mod good${lone}${gl}`}>
                     <span className="kk">
                       <I n="trend-down" w="bold" />
                       {t("mn.lowest")}
                     </span>
-                    <span className="v">{val(pr!.min.price)}</span>
+                    <span className="v">{val(pr!.min!.price)}</span>
                     <span className="d">
-                      {pr!.min.store} · {short(pr!.min.date)}
-                      {pr!.min.promo ? ` · ${t("mn.promo")}` : ""}
+                      {pr!.min!.store} · {short(pr!.min!.date)}
+                      {pr!.min!.promo ? ` · ${t("mn.promo")}` : ""}
                     </span>
                   </div>
                 )}
               </div>
-              {series.length > 0 && <PriceChart series={series} avg={pr!.avg} fmt={val} title={weighed ? t("mn.priceDev", { per: t("mn.per1", { u: basis }) }) : t("mn.packDev")} />}
-              <div className="h2 sm">{t("mn.storesPrices")}</div>
-              <div className={`lst${gl}`}>
+              {once && (
+                <p className="vnote">
+                  <I n="info" />
+                  {t("mn.onceNote")}
+                </p>
+              )}
+              {series.length > 0 && !same && !once && <PriceChart series={series} avg={pr!.avg} fmt={val} title={weighed ? t("mn.priceDev", { per: t("mn.per1", { u: basis }) }) : t("mn.packDev")} />}
+              {!once && <div className="h2 sm">{t("mn.storesPrices")}</div>}
+              {!once && <div className={`lst${gl}`}>
                 {pr!.stores.map((s, i) => (
                   <button type="button" className="row tap" key={s.key} onClick={() => navigate(`/analytics/store/${encodeURIComponent(s.key)}?kind=${encodeURIComponent(p.kind ?? "")}`)}>
                     <StoreTile k={storeKeyOf(s.name)} n={s.name} s={40} />
@@ -195,7 +210,7 @@ export function ProductPage() {
                     <I n="caret-right" w="bold" cls="chev" />
                   </button>
                 ))}
-              </div>
+              </div>}
               {p.kind && (
                 <button type="button" className="lnk c" onClick={() => navigate(`/analytics/kind/${encodeURIComponent(p.kind!)}`)}>
                   {t("mn.compareWith", { kind: p.kind })}

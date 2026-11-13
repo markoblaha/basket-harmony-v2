@@ -19,6 +19,7 @@ import { openVoice } from "@/features/voice/open";
 import type { RecipePlan } from "@/features/recipes/api";
 import { useDeleteItem, useUpdateItem, type Item, type ShoppingList } from "./api";
 import { listTotals, useEstimator } from "./estimate";
+import { StoreCompareTip } from "./StoreCompare";
 import { Composer, ItemRow, ItemSheet, PriceLine, useRestoreItem } from "./ListParts";
 import { ListMenuSheet } from "./ListMenuSheet";
 import type { AddOutcome } from "./useSmartAdd";
@@ -265,6 +266,7 @@ export function ListView({
               </Btn>
             )}
           </div>
+          {showEstimate && !iAmShopping && <StoreCompareTip items={open} estimator={estimator} storeKey={storeKey} gl={gl} />}
 
           {itemsState === "loading" ? null : itemsState === "error" ? (
             itemsError

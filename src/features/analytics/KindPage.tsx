@@ -100,6 +100,9 @@ function Body({ d, gl }: { d: PriceKind; gl: string }) {
     const pts = d.series.filter((x) => x.store_key === s.key).map((x) => ({ d: x.d, v: x.v, promo: x.promo }));
     if (pts.length) series.push({ store: s.name, pts });
   }
+  // rovnaké číslo dvakrát nezobrazovať: jediný obchod za cenu priemeru; graf s rovnou čiarou nič nepovie
+  const sameC = !!cheapest && !priciest && d.avg_unit != null && Math.abs(cheapest.unit / d.avg_unit - 1) < 0.01;
+  const flat = new Set(d.series.map((x) => x.v.toFixed(3))).size < 2;
   return (
     <>
       {d.avg_unit != null ? (
@@ -115,9 +118,12 @@ function Body({ d, gl }: { d: PriceKind; gl: string }) {
               </span>
               {trend == null ? null : trend === 0 ? <span className="an-tag mu">{t("mn.trendFlat")}</span> : <span className={`an-tag ${trend > 0 ? "up" : "good"}`}>{t(trend > 0 ? "mn.trendUp" : "mn.trendDown", { pct: Math.round(Math.abs(trend) * 100) })}</span>}
             </div>
-            <span className="d">{t("mn.avgPaysD", { n: tn("mn.trips", d.sized_count ?? 0), qty: qty(d.qty ?? 0, B), paid: eur(d.paid ?? 0) })}</span>
+            <span className="d">
+              {t("mn.avgPaysD", { n: tn("mn.trips", d.sized_count ?? 0), qty: qty(d.qty ?? 0, B), paid: eur(d.paid ?? 0) })}
+              {sameC ? ` · ${t("mn.onlyStore", { store: cheapest!.name })}` : ""}
+            </span>
           </div>
-          {cheapest && (
+          {cheapest && !sameC && (
             <button type="button" className={`mod good${priciest ? "" : " an-w"}${gl}`} onClick={() => navigate(`/analytics/product/${cheapest.product_id}`)}>
               <span className="kk">
                 <I n="trend-down" w="bold" />
@@ -187,7 +193,7 @@ function Body({ d, gl }: { d: PriceKind; gl: string }) {
           <I n="caret-right" w="bold" cls="chev" />
         </button>
       )}
-      {series.length > 0 && <PriceChart series={series} avg={d.avg_unit} fmt={(v) => perUnit(v, B) ?? eur(v)} title={t("mn.priceDev", { per: unitWord })} note={t("mn.cheapestProduct")} />}
+      {series.length > 0 && !flat && <PriceChart series={series} avg={d.avg_unit} fmt={(v) => perUnit(v, B) ?? eur(v)} title={t("mn.priceDev", { per: unitWord })} note={t("mn.cheapestProduct")} />}
       {d.stores.length > 0 && (
         <>
           <div className="h2 sm">{t("mn.storesPrices")}</div>

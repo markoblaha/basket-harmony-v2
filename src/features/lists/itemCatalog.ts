@@ -461,3 +461,46 @@ export function estimate(r: Resolved | null, quantity: number | null, unit: stri
   const n = u === "ml" || u === "dl" ? 1 : Math.max(1, Math.round(qty));
   return { ...scale(n), price, perKg: false };
 }
+
+const FRESH = 42 * DAY;
+export type CompareLine = { name: string; here: number; there: number };
+/** Porovnanie zoznamu s iným obchodom; diff > 0 = tam lacnejšie o toľko eur. */
+export type StoreCompare = { key: string; diff: number; here: number; there: number; n: number; lines: CompareLine[] };
+
+/**
+ * „V obchode X by to vyšlo lacnejšie“ (13. 11. 2026): pre každý obchod, kde domácnosť nakupuje, sa porovnajú len
+ * položky, ktoré majú v oboch obchodoch čerstvú cenu (do 6 týždňov) bez akcie – výrobok v každom obchode je ten,
+ * ktorý tam kupuješ najčastejšie. Vážený tovar sa porovná na rovnakú váhu. Obchod sa porovnáva, len keď pokryje
+ * aspoň polovicu položiek (min. 2). Výsledok je zoradený od obchodu, kde by to vyšlo najlacnejšie.
+ */
+export function compareStores(
+  items: { name: string; quantity: number | null; unit: string | null }[],
+  resolve: (name: string) => Resolved | null,
+  listKey: string,
+  keyOf: (s: string) => string | null,
+  now = Date.now(),
+): StoreCompare[] {
+  const fresh = (e: Estimate | null): e is Estimate => !!e && e.price.same && !e.price.promo && now - new Date(e.price.date).getTime() <= FRESH;
+  const rs = items.map((it) => ({ it, r: resolve(it.name) })).filter((x): x is { it: (typeof items)[number]; r: Resolved } => !!x.r);
+  const keys = new Set<string>();
+  for (const { r } of rs) for (const p of r.members) for (const b of p.buys) if (now - new Date(b.d).getTime() <= FRESH) { const k = b.k ?? keyOf(b.s); if (k && k !== listKey) keys.add(k); }
+  const need = Math.max(2, Math.ceil(items.length / 2));
+  const out: StoreCompare[] = [];
+  for (const k of keys) {
+    const c: StoreCompare = { key: k, diff: 0, here: 0, there: 0, n: 0, lines: [] };
+    for (const { it, r } of rs) {
+      const a = estimate(r, it.quantity, it.unit, listKey, keyOf, now);
+      const b = estimate(r, it.quantity, it.unit, k, keyOf, now);
+      if (!fresh(a) || !fresh(b)) continue;
+      const there = a.perKg && b.perKg && a.kg != null ? b.price.up * a.kg : b.v;
+      c.here += a.v;
+      c.there += there;
+      c.n++;
+      c.lines.push({ name: it.name, here: a.v, there });
+    }
+    if (c.n < need) continue;
+    c.diff = Math.round((c.here - c.there) * 100) / 100;
+    out.push(c);
+  }
+  return out.sort((x, y) => y.diff - x.diff);
+}

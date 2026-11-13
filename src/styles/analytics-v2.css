@@ -163,3 +163,8 @@
 .bhm .an-cr button { padding: 6px 3px; margin: 0 -3px; }
 /* čísla nad stĺpcami týždňov sa neprekrývajú */
 .bhm .an-tls .an-bw em { left: -2px; right: -2px; }
+
+/* chýbajúce bločky vo Výdavkoch: zbalené do jedného riadku, ťuk rozbalí */
+.bhm .mrc-h.an-mrct { width: 100%; min-height: 48px; align-items: center; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.bhm .mrc-h.an-mrct .grow { min-width: 0; }
+.bhm .mrc-h.an-mrct .chev { flex: none; opacity: .6; }
