@@ -285,7 +285,7 @@ export const skAnalytics = {
   "mn.missingAria": "Chýbajúce bločky",
   "mn.missingOne": "Chýba bloček z nákupu",
   "mn.missingN": "Chýbajú bločky z {n} nákupov",
-  "mn.missingS": "Odfoť ho a skutočné ceny sa priradia k nákupu samé.",
+  "mn.missingS": "Odfoť bloček a skutočné ceny sa priradia k nákupu samé.",
   "mn.noReceipt": "Bez bločku – nákup ostane len s odhadom",
   "mn.noReceiptAria": "Bloček nemám: {name}",
   "mn.photoAria": "Odfotiť bloček: {name}",
