@@ -548,6 +548,29 @@ export function Composer({
       v.removeEventListener("scroll", up);
     };
   }, [typing]);
+  // iPhone pri otvorení klávesnice posunie obrazovku nahor (aby bolo vidieť pole) a po zatvorení ju niekedy nevráti –
+  // pevné prvky (pole, bubliny, pozadie) potom ostanú o výšku klávesnice vyššie a horná lišta je mimo obrazovky.
+  // Po zavretí okna sa stránka vráti presne tam, kde bola pred písaním.
+  const pageY = useRef<number | null>(null);
+  useEffect(() => {
+    if (typing) return;
+    const y = pageY.current;
+    pageY.current = null;
+    if (y == null) return;
+    const vv = window.visualViewport;
+    const fix = () => {
+      if (vv && vv.offsetTop > 0.5) window.scrollTo(0, y);
+    };
+    window.scrollTo(0, y);
+    const tms = [60, 250, 600, 1000].map((ms) => setTimeout(fix, ms));
+    vv?.addEventListener("resize", fix);
+    const off = setTimeout(() => vv?.removeEventListener("resize", fix), 1500);
+    return () => {
+      tms.forEach(clearTimeout);
+      clearTimeout(off);
+      vv?.removeEventListener("resize", fix);
+    };
+  }, [typing]);
   // stránka pod oknom sa neposúva
   useEffect(() => {
     if (!typing) return;
@@ -747,7 +770,14 @@ export function Composer({
               stopBursts();
               refill(e.target.value);
             }}
-            onFocus={() => onTyping(true)}
+            onPointerDown={() => {
+              // poloha stránky ešte pred tým, ako ju iPhone kvôli klávesnici posunie
+              if (!typing) pageY.current = window.scrollY;
+            }}
+            onFocus={() => {
+              if (pageY.current == null) pageY.current = window.scrollY;
+              onTyping(true);
+            }}
             onBlur={() =>
               setTimeout(() => {
                 // klávesnicu skryl telefón (alebo ťuk mimo) – hneď späť do zoznamu, nič nečaká

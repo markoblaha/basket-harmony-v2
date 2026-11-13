@@ -148,6 +148,8 @@
 .bhm .sub.warn { color: var(--honey); font-weight: 700; }
 .bhm .mk { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; padding: 2px 8px 2px 7px; border-radius: 99px; background: var(--card2); color: var(--sec); letter-spacing: 0; }
 .bhm .mk::before { content: ""; width: 6px; height: 6px; border-radius: 99px; background: var(--sc, var(--honey)); }
+.bhm .sub .mk { display: inline-block; max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.35; vertical-align: middle; }
+.bhm .sub .mk::before { display: inline-block; margin-right: 5px; vertical-align: 1px; }
 .bhm .mk.ap::before { display: none; }
 .bhm .amt { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 17px; flex: none; }
 .bhm .qty { height: 34px; min-width: 60px; padding: 0 11px; border-radius: 12px; background: var(--card2); font-size: 15px; font-weight: 700; display: grid; place-items: center; font-variant-numeric: tabular-nums; flex: none; }
@@ -341,7 +343,7 @@
 @keyframes mk-spin { to { transform: rotate(360deg); } }
 @keyframes mk-breathe { 50% { transform: scale(1.08); } }
 @keyframes mk-shimmer { from { background-position: -200px 0; } to { background-position: 200px 0; } }
-.bhm .swr { max-height: 120px; }
+.bhm .swr { max-height: 260px; }
 @media (prefers-reduced-motion: reduce) {
 .bhm *, .bhm *::before, .bhm *::after { animation-duration: var(--dur-1) !important; animation-iteration-count: 1 !important; transition-duration: var(--dur-1) !important; }
 }

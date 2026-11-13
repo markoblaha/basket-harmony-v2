@@ -288,6 +288,12 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   nový text ťukanie ukončí). Enter = pridá, vyprázdni pole a vráti časté veci. Mínus počas ťukania (aj kým server ešte
   nepotvrdil nový riadok – úprava počká). Počas cudzieho nákupu jedna žiadosť po dokončení. Rovnako v ukážke (prototyp).
   `testy/pridavanie.cjs` má 10 krokov (aj výmenu častej veci a návrat častých vecí), prešiel na testovacej DB.
+  Opravy po snímkach majiteľa (13. 11., Sklo tmavé): (1) po zatvorení klávesnice ostala obrazovka na iPhone posunutá
+  o výšku klávesnice (pole a bubliny v strede, horná lišta mimo) – iOS nevráti posun vizuálnej plochy; `Composer` si pri
+  ťuknutí do poľa zapamätá polohu stránky a po zavretí okna ju vráti (`window.scrollTo`, opakovane do 1 s, kým
+  `visualViewport.offsetTop` > 0). Na iPhone neoverené. (2) Riadok zoznamu mal `max-height: 120px` + `overflow: hidden`
+  (kvôli animácii zmazania) – dlhý štítok výrobku sa zalomil a štítok obchodu sa schoval pod ďalší riadok. Teraz 260 px
+  a štítky v riadku (`.sub .mk`) sú na jeden riadok so skrátením „…“ (`prototyp/css/base.css` → `mockup.css`).
   Návrh: https://claude.ai/artifact/SAVJcwhe4dE5NGpn4rtexX
   (zdroj `prototyp/pridavanie-navrh.html`: dokument + preklikateľný mockup s nakreslenou klávesnicou, ukážkou a prepínačmi
   variantov; obrázky a štýly ako pri návrhu Výdavkov – `mk/mockup.css`, `mk/em/*` sa priložia pri publikovaní). Podnet:
