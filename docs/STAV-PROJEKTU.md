@@ -27,6 +27,9 @@ Starší účet `claude-test-recepty@example.com` (heslo neznáme) ostal nepouž
 v telefónovej veľkosti v 4 vzhľadoch (Teplá a Sklo, svetlý aj tmavý) a hľadá chyby JS, neúspešné volania
 servera, chybové hlásenia, pretekanie, text mimo obrazovky a prekrytia. Fotky + `report.json` do `testy/vysledky/` (mimo gitu).
 `E2E_EMAIL=… E2E_PASSWORD=… node testy/preklikanie.cjs [adresa]` – bez adresy ide na nasadenú testovaciu appku; `ONLY=nakupy,parovanie` preklikne len vybrané obrazovky.
+**Test pridávania:** `testy/pridavanie.cjs` (rovnaké premenné) – nový zoznam → okno pridávania → 3 rýchle ťuky na bublinu
+= 1 riadok s 3 ks (kontrola aj v DB) → mínus → „rozky 2“ + Enter → posúvanie nechá klávesnicu → ťuk do zoznamu okno zavrie;
+testovací zoznam na konci archivuje.
 **Test toku nákupu:** `testy/nakup.cjs` (rovnaké premenné) – nový zoznam → 3 položky písaním → Nakupovať → všetko do košíka →
 Dokončiť nákup → Teraz nie → zoznam je v Histórii. Zapisuje do testovacej DB (zoznam „Tok nákupu …“); rozbehnutý nákup
 z prerušeného behu na začiatku ukončí (`end_shopping`).
@@ -267,11 +270,17 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   tvary slova (`itemKey`: banán = banány, rožok = rožky, cukor = cukru; Mlieko ≠ Mlieko polotučné) – platí aj pre hlas.
   Ikony: 10 nových 3D ikon ovocia (mango, kiwi, hrozno, ananás, hruška, melón ×2, čerešne, mandarínky, čučoriedky; Fluent
   MIT) v `prototyp/gen/assets.css` → `do-appky.py`, slová v `EXTRA` v `src/mockup/kit.tsx`. Zmazané: odpočítavanie, „Pridané
-  teraz“, názorná ukážka s prstom (+ nepoužívané texty `li.*`). Overené: `npm run check`, Playwright na lokálnej appke
-  s napodobeným serverom (skutočná appka, podstrčené odpovede Supabase – heslo testovacieho účtu nebolo dostupné, Supabase
-  MCP v relácii nefungoval): 3 ťuky = 1 add + 1 úprava, pomalý server 1,3 s, chyba servera, žiadosti, 4 vzhľady pri výške
-  422 px. `testy/preklikanie.cjs` a `testy/nakup.cjs` na testovacej DB nebežali. Ukážka v appke (prototyp) má stále staré
-  pridávanie. Neurobené z návrhu: chyba pridania ako riadok so „Skúsiť znova“ (ostáva hláška a text sa vráti do poľa).
+  teraz“, názorná ukážka s prstom (+ nepoužívané texty `li.*`).
+  Druhý krok (13. 11., pokyn „Implementuj to“ = zvyšok návrhu): neúspešné okamžité pridanie ostane navrchu zoznamu ako
+  riadok „Nepodarilo sa pridať · Skúsiť znova“ s krížikom (`FailedAdd` z `useSmartAdd.onFailed`, stav v `ShoppingPage`,
+  aj s kusmi naťukanými počas čakania; tlačidlá majú `data-keep`, okno nezatvoria). Ukážka v appke (prototyp
+  `lists.jsx` Composer) má rovnaký rad bublín, ťuk = hneď, preklep ako bublina „Zemiaky?“ (sprievodca upravený). Štýly
+  bublín sú vo vzorovom prototype (`prototyp/css/base.css`, `g.css`) → `do-appky.py` → `mockup.css`; `pick.css` má len okno.
+  Overené: `npm run check`; Playwright s napodobeným serverom (3 ťuky = 1 add + 1 úprava, pomalý server 1,3 s, chyba
+  servera → riadok so „Skúsiť znova“, žiadosti, 4 vzhľady pri výške 422 px); na nasadenej testovacej appke so skutočnou
+  testovacou DB: nový `testy/pridavanie.cjs` (9 krokov, zoznam „Pridávanie …“ sa na konci archivuje), `testy/nakup.cjs`
+  (8 krokov), preklikanie Nákupy + zoznam 4 vzhľady 0 nálezov; testy prototypu `pridavanie.cjs` a `sprievodca.cjs FLOW=all`
+  bez chýb. Neoverené: skutočný iPhone (klávesnica, kurzor pri ťuku na bublinu, posúvanie s otvorenou klávesnicou).
   Návrh: https://claude.ai/artifact/SAVJcwhe4dE5NGpn4rtexX
   (zdroj `prototyp/pridavanie-navrh.html`: dokument + preklikateľný mockup s nakreslenou klávesnicou, ukážkou a prepínačmi
   variantov; obrázky a štýly ako pri návrhu Výdavkov – `mk/mockup.css`, `mk/em/*` sa priložia pri publikovaní). Podnet:
