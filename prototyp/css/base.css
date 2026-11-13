@@ -882,7 +882,7 @@ input[type="range"] { width: 100%; accent-color: var(--acc); height: 30px; }
 .bb-lab.wide { flex: 1; width: auto; text-align: center; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 600; color: var(--sec); line-height: 1.35; text-wrap: balance; }
 
 /* bublina: [−] ikona · názov / cena · počet v zozname */
-.bb { flex: none; position: relative; height: 48px; max-width: 232px; display: inline-flex; align-items: center; border-radius: 18px;
+.bb { flex: none; position: relative; height: 48px; max-width: 268px; display: inline-flex; align-items: center; border-radius: 18px;
   background: var(--card); box-shadow: var(--sh); transition: transform 300ms var(--ease-spring), box-shadow var(--dur-2), background-color var(--dur-2);
   user-select: none; -webkit-user-select: none; }
 .bb:active { transform: scale(.94); transition-duration: 80ms; }
@@ -908,3 +908,16 @@ input[type="range"] { width: 100%; accent-color: var(--acc); height: 30px; }
 .bb.typed { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line2, var(--line)); }
 @keyframes bb-pop { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.22); opacity: 1; } 100% { transform: none; } }
 @keyframes bb-min { from { opacity: 0; transform: scale(.4); } }
+/* ťukanie: počet v bubline, pásik do konca, potom ✓ a bublina odíde (na jej miesto príde ďalšia) */
+.bb { animation: bb-in 320ms var(--ease-spring) backwards; }
+.bb.act .em { animation: bb-jump 420ms var(--ease-spring); }
+.bb-bar { position: absolute; left: 16px; right: 16px; bottom: 4px; height: 3px; border-radius: 99px; background: var(--acc); opacity: .8; transform-origin: left; pointer-events: none; animation: bb-bar 1500ms linear forwards; }
+.bb.ok { background: color-mix(in srgb, var(--ok) 16%, var(--card)); box-shadow: inset 0 0 0 2px var(--ok), var(--sh); }
+.bb.ok .bb-n { background: var(--ok); color: var(--card); }
+.bb.ok .bb-t small { color: var(--ok); font-weight: 650; }
+.bb-n .ico { width: 14px; height: 14px; }
+.bb.out { animation: bb-out 420ms ease-in forwards; pointer-events: none; }
+@keyframes bb-in { from { opacity: 0; transform: translateY(10px) scale(.9); } }
+@keyframes bb-jump { 0% { transform: none; } 35% { transform: scale(1.25) rotate(-8deg); } 70% { transform: scale(.95) rotate(3deg); } 100% { transform: none; } }
+@keyframes bb-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes bb-out { 0% { transform: none; } 30% { transform: scale(1.06); } 100% { opacity: 0; transform: translateY(8px) scale(.6); } }

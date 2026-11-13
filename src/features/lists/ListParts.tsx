@@ -189,6 +189,11 @@ type Chip = {
   tag?: string;
 };
 
+/** Ako dlho po poslednom ťuknutí sa bublina ešte dá ťukať (potom ✓ a odíde). */
+const BURST_MS = 1500;
+/** Odchod bubliny (✓ a zmiznutie) pred nahradením ďalšou. */
+const OUT_MS = 420;
+
 const prefersCalm = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /**
@@ -239,10 +244,8 @@ export function Composer({
   list: ReactNode;
 }) {
   const [txt, setTxt] = useState("");
-  /** Text, pre ktorý sú vypočítané bubliny – po ťuknutí na bublinu ostáva (bubliny sa nepohnú). */
-  const [stripFor, setStripFor] = useState("");
-  const [active, setActive] = useState<string | null>(null);
-  const tapped = useRef(new Set<string>());
+  const txtRef = useRef(txt);
+  txtRef.current = txt;
   const inp = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
@@ -287,17 +290,12 @@ export function Composer({
     return { name: fixed, categoryId: r?.category ?? null };
   };
 
-  // Bubliny sa počítajú len pri zmene textu (alebo otvorení okna) – nie pri zmene zoznamu. Inak by sa po ťuknutí
-  // bublina, ktorá je už v zozname, pohla alebo zmizla spod prsta.
-  const chips = useMemo<Chip[]>(() => {
-    const t0 = stripFor.trim();
-    const inList = (n: string) => openRef.current.some((i) => sameProduct(i.name, n));
-    if (t0.length < 2) {
-      return poolRef.current
-        .filter((p) => !inList(p.name))
-        .slice(0, 8)
-        .map((p) => ({ k: `s:${itemKey(p.name)}`, kind: "prod", name: p.name, cat: p.cat, q0: null, u: null, rec: true }));
-    }
+  // Bubliny: prázdne pole = časté veci (čo ešte nie je v zozname), pri písaní návrhy k textu.
+  const inList = (n: string) => openRef.current.some((i) => sameProduct(i.name, n));
+  const freqChip = (p: { name: string; cat: string }): Chip => ({ k: `s:${itemKey(p.name)}`, kind: "prod", name: p.name, cat: p.cat, q0: null, u: null, rec: true });
+  const computeChips = (text: string): Chip[] => {
+    const t0 = text.trim();
+    if (t0.length < 2) return poolRef.current.filter((p) => !inList(p.name)).slice(0, 8).map(freqChip);
     const parts = chunks(t0);
     if (parts.length > 1) {
       return [{ k: "multi", kind: "multi", name: parts.map((x) => spellFix(cat, x.name).text).join(", "), cat: null, q0: parts.length, u: null, rec: true }];
@@ -350,31 +348,88 @@ export function Composer({
     // nepoznaný text ide na koniec („+ ban“) – Enter ho pridá presne tak
     if (!head) push(typed);
     return out.slice(0, 7);
-    // (prepočíta sa aj keď sa zoznam načíta – časté veci, ktoré v ňom už sú, sa neukážu)
-  }, [stripFor, typing, poolReady, !!cat, open.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // nové bubliny = nový začiatok radu
-  useEffect(() => {
-    if (stripRef.current) stripRef.current.scrollLeft = 0;
-  }, [chips]);
-
-  // Počas cudzieho nákupu ide pridanie ako žiadosť – ťuky na tú istú bublinu sa spoja do jednej žiadosti.
-  const [req, setReq] = useState<Record<string, number>>({});
-  const reqN = useRef<Record<string, { c: Chip; n: number; u: string | null }>>({});
-  const reqTm = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const sendReq = (k: string) => {
-    const r = reqN.current[k];
-    clearTimeout(reqTm.current[k]);
-    delete reqN.current[k];
-    setReq((x) => {
-      const y = { ...x };
-      delete y[k];
-      return y;
-    });
-    if (r) void onAdd({ name: r.c.name, quantity: r.n, unit: r.u, categoryId: r.c.cat });
   };
-  const flushReq = () => Object.keys(reqN.current).forEach(sendReq);
-  useEffect(() => () => flushReq(), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bubliny sa prepočítajú len pri zmene textu, otvorení/zavretí okna a načítaní častých vecí či zoznamu –
+  // nie pri pridaní (bublina sa nesmie pohnúť spod prsta). Počas ťukania sa nemenia vôbec.
+  const [chips, setChips] = useState<Chip[]>([]);
+  const [mode, setMode] = useState<"freq" | "type">("freq");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const refill = (text: string) => {
+    const m = text.trim().length >= 2 ? "type" : "freq";
+    setMode(m);
+    modeRef.current = m;
+    setChips(computeChips(text));
+    requestAnimationFrame(() => {
+      if (stripRef.current) stripRef.current.scrollLeft = 0;
+    });
+  };
+
+  // Ťukanie na bublinu: každý ťuk pridá kus hneď (počet v bubline). Keď sa chvíľu neťuká (pásik v bubline), bublina
+  // sa označí ✓ a zmizne – časté veci nahradí ďalšia najčastejšie kupovaná vec, návrhy pri písaní sa vymenia za časté
+  // veci (text je už preč, dá sa písať ďalší produkt). Počas cudzieho nákupu sa ťuky spoja do jednej žiadosti.
+  type Burst = { n: number; u: string | null; t: number; st: "on" | "done" | "out" };
+  const [bursts, setBursts] = useState<Record<string, Burst>>({});
+  const bRef = useRef<Record<string, Burst>>({});
+  const bTm = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const putBurst = (k: string, b: Burst | null) => {
+    if (b) bRef.current[k] = b;
+    else delete bRef.current[k];
+    setBursts({ ...bRef.current });
+  };
+  const anyOn = () => Object.values(bRef.current).some((b) => b.st === "on");
+  const sendReq = (k: string, c: Chip) => {
+    const b = bRef.current[k];
+    if (requestMode && b && b.n > 0) void onAdd({ name: c.name, quantity: b.n, unit: b.u, categoryId: c.cat });
+  };
+  /** Ukončí všetky ťukania hneď (nový text, Enter, zavretie okna) – žiadosti sa odošlú, bubliny sa neanimujú. */
+  const stopBursts = () => {
+    for (const k of Object.keys(bRef.current)) {
+      clearTimeout(bTm.current[k]);
+      const c = chipsRef.current.find((x) => x.k === k);
+      if (c && bRef.current[k]?.st === "on") sendReq(k, c);
+    }
+    bRef.current = {};
+    setBursts({});
+  };
+  const chipsRef = useRef(chips);
+  chipsRef.current = chips;
+  const finish = (k: string) => {
+    const c = chipsRef.current.find((x) => x.k === k);
+    const b = bRef.current[k];
+    if (!c || !b) return;
+    sendReq(k, c);
+    if (modeRef.current === "freq") {
+      // časté veci: bublina odíde a na jej miesto príde ďalšia (ostatné sa nepohnú)
+      putBurst(k, { ...b, st: "out" });
+      bTm.current[k] = setTimeout(() => {
+        putBurst(k, null);
+        setChips((cs) => {
+          const shown = new Set(cs.map((x) => itemKey(x.name)));
+          const next = poolRef.current.find((p) => !shown.has(itemKey(p.name)) && !inList(p.name));
+          return next ? cs.map((x) => (x.k === k ? freqChip(next) : x)) : cs.filter((x) => x.k !== k);
+        });
+      }, OUT_MS);
+      return;
+    }
+    // návrhy pri písaní: kým sa ťuká aj na inú bublinu, táto ostane s ✓; potom sa všetky vymenia za časté veci
+    putBurst(k, { ...b, st: "done" });
+    if (anyOn()) return;
+    for (const x of Object.keys(bRef.current)) putBurst(x, { ...bRef.current[x]!, st: "out" });
+    bTm.current[k] = setTimeout(() => {
+      bRef.current = {};
+      setBursts({});
+      if (!txtRef.current.trim()) refill("");
+    }, OUT_MS);
+  };
+  const arm = (k: string) => {
+    clearTimeout(bTm.current[k]);
+    bTm.current[k] = setTimeout(() => finish(k), BURST_MS);
+  };
+  useEffect(() => () => {
+    Object.values(bTm.current).forEach(clearTimeout);
+  }, []);
 
   /** Ikona preletí z bubliny do riadku v zozname. */
   const fly = (from: HTMLElement, c: Chip) => {
@@ -417,73 +472,64 @@ export function Composer({
       submit();
       return;
     }
+    const b = bRef.current[c.k];
+    if (b && b.st !== "on") return; // už pridané, bublina odchádza
     haptic(8);
-    const first = !tapped.current.has(c.k);
-    tapped.current.add(c.k);
-    const preset = !!c.q0 && (first || !isCountable(c.u));
-    const q = preset ? c.q0 : 1;
+    const preset = !!c.q0 && (!b || !isCountable(c.u));
+    const q = preset ? c.q0! : 1;
     const u = preset ? c.u : null;
-    setActive(c.k);
-    // pole sa vyprázdni hneď – dá sa písať ďalšia vec; bubliny ostávajú (stripFor sa nemení)
-    if (txt) setTxt("");
-    if (requestMode) {
-      const r = reqN.current[c.k] ?? { c, n: 0, u };
-      r.n += q ?? 1;
-      reqN.current[c.k] = r;
-      setReq((x) => ({ ...x, [c.k]: r.n }));
-      clearTimeout(reqTm.current[c.k]);
-      reqTm.current[c.k] = setTimeout(() => sendReq(c.k), 1200);
-      return;
-    }
+    putBurst(c.k, { n: (b?.n ?? 0) + q, u: b?.u ?? u, t: Date.now(), st: "on" });
+    arm(c.k);
+    // pole sa vyprázdni hneď – dá sa písať ďalší produkt; bubliny ostávajú, kým sa ťuká
+    if (txtRef.current) setTxt("");
+    if (requestMode) return;
     void onAdd({ name: c.name, quantity: q, unit: u, categoryId: c.cat, quiet: true, instant: true });
     fly(el, c);
   };
+  // Mínus počas ťukania: o kus menej (v zozname aj v počte bubliny).
   const less = (c: Chip) => {
-    if (requestMode) {
-      const r = reqN.current[c.k];
-      if (!r) return;
-      haptic(6);
-      r.n -= 1;
-      if (r.n <= 0) {
-        clearTimeout(reqTm.current[c.k]);
-        delete reqN.current[c.k];
-        setActive(null);
-        tapped.current.delete(c.k);
-      }
-      setReq((x) => {
-        const y = { ...x };
-        if (r.n > 0) y[c.k] = r.n;
-        else delete y[c.k];
-        return y;
-      });
+    const b = bRef.current[c.k];
+    if (!b || b.st !== "on") return;
+    if (!requestMode) {
+      // kým server nepotvrdí nový riadok, nemá ešte ID – úprava počká (najviac 3 s), počet v bubline sa zmení hneď
+      const apply = (tries: number) => {
+        const it = openRef.current.find((i) => sameProduct(i.name, c.name));
+        if (!it) return;
+        if (it.id.startsWith("tmp-")) {
+          if (tries < 30) setTimeout(() => apply(tries + 1), 100);
+          return;
+        }
+        const u = unitOf(it.unit);
+        const q = qtyOf(it);
+        if (q <= minQty(u)) onRemove(it);
+        else onQty(it, bump(q, u, -1));
+      };
+      apply(0);
+    }
+    haptic(6);
+    if (b.n <= 1) {
+      clearTimeout(bTm.current[c.k]);
+      putBurst(c.k, null);
       return;
     }
-    const it = itemOf(c.name);
-    // kým server nepotvrdí nový riadok, nemá ešte ID – mínus počká
-    if (!it || it.id.startsWith("tmp-")) return;
-    haptic(6);
-    const u = unitOf(it.unit);
-    const q = qtyOf(it);
-    if (q <= minQty(u)) {
-      onRemove(it);
-      setActive(null);
-      tapped.current.delete(c.k);
-    } else onQty(it, bump(q, u, -1));
+    putBurst(c.k, { ...b, n: b.n - 1, t: Date.now() });
+    arm(c.k);
   };
 
   const closeWin = () => {
     inp.current?.blur();
     onTyping(false);
   };
-  // zavretie okna: rozpísaný text a bubliny sa vynulujú, žiadosti sa odošlú
+  // otvorenie/zavretie okna: rozpísaný text preč, žiadosti sa odošlú, časté veci nanovo
   useEffect(() => {
-    if (typing) return;
-    flushReq();
-    setTxt("");
-    setStripFor("");
-    setActive(null);
-    tapped.current.clear();
+    stopBursts();
+    if (!typing) setTxt("");
+    refill(typing ? txtRef.current : "");
   }, [typing]); // eslint-disable-line react-hooks/exhaustive-deps
+  // časté veci a katalóg sa načítajú neskôr; zoznam tiež – kým sa neťuká, bubliny sa doplnia
+  useEffect(() => {
+    if (!Object.keys(bRef.current).length) refill(txtRef.current);
+  }, [poolReady, !!cat, open.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Okno pridávania sa drží presne vo viditeľnej časti obrazovky nad klávesnicou (nič neposkakuje).
   const [vv, setVv] = useState<{ top: number; h: number } | null>(null);
@@ -533,16 +579,10 @@ export function Composer({
       );
     }
     haptic([8, 40, 14]);
-    // bublina toho, čo Enter pridal, je aktívna – dá sa ťukať ďalej (+1)
-    if (parts.length === 1) {
-      const name = label(parts[0]!.name).name;
-      const c = chips.find((x) => x.kind !== "multi" && sameProduct(x.name, name));
-      if (c) {
-        setActive(c.k);
-        tapped.current.add(c.k);
-      }
-    }
+    // pridané – text aj návrhy preč, späť časté veci (dá sa písať ďalší produkt)
     setTxt("");
+    stopBursts();
+    refill("");
   };
 
   // Potiahnutie doku (bubliny, pole) nadol = skryť klávesnicu.
@@ -583,7 +623,6 @@ export function Composer({
   const keep = (e: React.SyntheticEvent) => e.preventDefault();
 
   const chipEl = (c: Chip) => {
-    const act = active === c.k;
     if (c.kind === "multi") {
       return (
         <span className="bb rec" key={c.k}>
@@ -599,23 +638,25 @@ export function Composer({
         </span>
       );
     }
+    const b = bursts[c.k];
+    const on = b?.st === "on";
     const it = requestMode ? null : itemOf(c.name);
-    const n = requestMode ? (req[c.k] ?? 0) : it ? qtyOf(it) : 0;
-    const q0 = c.q0 && !tapped.current.has(c.k) ? c.q0 : null;
+    const q0 = c.q0 && !b ? c.q0 : null;
     const e = c.rec ? estimator.est({ name: c.name, quantity: q0, unit: q0 ? c.u : null }, listStore) : null;
     const sub: string[] = [];
-    if (c.kind === "typed" && !c.rec) sub.push(q0 ? fmtQty(q0, c.u) : "", t("li.asTyped"));
+    if (b) sub.push(t(requestMode ? "li.asked" : "li.addedQty", { q: fmtQty(b.n, b.u) }));
+    else if (c.kind === "typed" && !c.rec) sub.push(q0 ? fmtQty(q0, c.u) : "", t("li.asTyped"));
     else {
-      if (it && !act) sub.push(t("li.inList"));
+      if (it) sub.push(t("li.inList"));
       if (q0) sub.push(`${it ? "+" : ""}${fmtQty(q0, c.u)}`);
       if (c.tag) sub.push(c.tag);
       sub.push(e ? `~${eur(e.v)}` : t("li.noPrice"));
     }
     const showIcon = c.kind !== "typed" || c.rec;
-    const nu = it ? unitOf(it.unit) : "ks";
+    const bu = b?.u ? unitOf(b.u) : "ks";
     return (
-      <span className={`bb${act && n ? " act" : ""}${c.kind === "typed" && !c.rec ? " typed" : ""}`} key={c.k}>
-        {act && n > 0 && (
+      <span className={`bb${on ? " act" : ""}${b && !on ? ` ok ${b.st}` : ""}${c.kind === "typed" && !c.rec ? " typed" : ""}`} key={c.k}>
+        {on && (
           <button type="button" className="bb-min" onPointerDown={keep} onMouseDown={keep} onClick={() => less(c)} aria-label={t("li.lessAria", { name: c.name })}>
             <I n="minus" w="bold" />
           </button>
@@ -629,7 +670,7 @@ export function Composer({
           aria-label={t("li.pickAria", { name: c.name })}
         >
           {showIcon ? (
-            <E k={estimator.emoji(c.name, c.cat)} s={30} />
+            <E k={estimator.emoji(c.name, c.cat)} s={30} key={b ? `e${b.t}` : "e"} />
           ) : (
             <span className="bb-pl">
               <I n="plus" w="bold" />
@@ -639,20 +680,22 @@ export function Composer({
             <b>{c.kind === "typed" && !c.rec ? `„${c.name}“` : c.name}</b>
             <small>{sub.filter(Boolean).join(" · ")}</small>
           </span>
-          {n > 0 && (
-            <span className="bb-n" key={`${c.k}${n}`} aria-live="polite">
-              {nu === "ks" ? formatNumber(n) : fmtQty(n, nu)}
+          {b && (
+            <span className="bb-n" key={on ? `n${b.n}` : "ok"} aria-live="polite">
+              {on ? (bu === "ks" ? formatNumber(b.n) : fmtQty(b.n, bu)) : <I n="check" w="bold" />}
             </span>
           )}
         </button>
+        {/* pásik: o chvíľu sa ťukanie skončí a bublina odíde */}
+        {on && <i className="bb-bar" key={`b${b.t}`} aria-hidden="true" />}
       </span>
     );
   };
 
   const strip =
     chips.length > 0 ? (
-      <div className="bb-row" ref={stripRef} aria-label={stripFor.trim().length >= 2 ? t("li.suggestions") : t("li.staples")}>
-        {stripFor.trim().length < 2 && <span className="bb-lab">{t("li.staples")}</span>}
+      <div className="bb-row" ref={stripRef} aria-label={mode === "type" ? t("li.suggestions") : t("li.staples")}>
+        {mode === "freq" && <span className="bb-lab">{t("li.staples")}</span>}
         {chips.map(chipEl)}
       </div>
     ) : typing ? (
@@ -699,10 +742,10 @@ export function Composer({
             ref={inp}
             value={txt}
             onChange={(e) => {
+              // nový text = nové bubliny; rozťukané bubliny sú už pridané, len sa ukončia
               setTxt(e.target.value);
-              setStripFor(e.target.value);
-              setActive(null);
-              tapped.current.clear();
+              stopBursts();
+              refill(e.target.value);
             }}
             onFocus={() => onTyping(true)}
             onBlur={() =>

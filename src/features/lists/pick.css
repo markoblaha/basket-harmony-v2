@@ -72,7 +72,9 @@ body.kb-typing .addpill { top: calc(env(safe-area-inset-top, 0px) + 62px) !impor
 
 @media (prefers-reduced-motion: reduce) {
   :root .bhm.bhm-dock .dock.addwin { animation: none; transition: none; }
-  .bhm .bb-n, .bhm .bb-min { animation: none !important; }
+  /* pásik (.bb-bar) beží aj tak – ukazuje, kedy sa ťukanie skončí */
+  .bhm .bb, .bhm .bb .em, .bhm .bb-n, .bhm .bb-min { animation: none !important; }
+  .bhm .bb.out { opacity: 0; transition: opacity 200ms; }
 }
 
 /* ---------- pridanie, ktoré sa nepodarilo: riadok navrchu so „Skúsiť znova“ ---------- */

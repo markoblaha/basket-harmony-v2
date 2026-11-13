@@ -280,3 +280,6 @@
 .g .bb { background: var(--glass2); -webkit-backdrop-filter: blur(30px) saturate(1.9); backdrop-filter: blur(30px) saturate(1.9); }
 .g .bb.act { background: color-mix(in srgb, var(--acc) 22%, var(--glass2)); }
 .g .bb.typed { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.g .bb.ok { background: color-mix(in srgb, var(--ok) 20%, var(--glass2)); }
+.g .bb.ok .bb-n { color: #fff; }
+.g.t-d .bb.ok .bb-n { color: #08130c; }

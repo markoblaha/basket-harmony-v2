@@ -1,6 +1,7 @@
 /**
  * Pridávanie do zoznamu ťukaním na bubliny (návrh prototyp/pridavanie-navrh.html): nový zoznam → okno pridávania →
- * „ban“ → 3 rýchle ťuky na prvú známu bublinu = jeden riadok s 3 ks (aj v databáze) → mínus = 2 ks →
+ * „ban“ → 3 rýchle ťuky na prvú známu bublinu = jeden riadok s 3 ks, pole sa vyprázdni → mínus = 2 ks →
+ * po dokončení ťukania sa návrhy vymenia za časté veci (v databáze 2 ks) → ťuk na častú vec: odíde a nahradí ju ďalšia →
  * „rozky 2“ + Enter → posúvanie zoznamu nechá klávesnicu (pole ostane aktívne) → ťuk do zoznamu okno zavrie.
  * Zapisuje do testovacej databázy (zoznam „Pridávanie …“ v testovacej domácnosti, na konci sa archivuje).
  *
@@ -87,7 +88,7 @@ const API = env.VITE_SUPABASE_URL, KEY = env.VITE_SUPABASE_PUBLISHABLE_KEY;
     expect(await focused(), "pole nie je aktívne");
   });
   let chipName = "";
-  await step("„ban“ + 3 rýchle ťuky na bublinu = 1 riadok s 3 ks", async () => {
+  await step("„ban“ + 3 rýchle ťuky na bublinu = 1 riadok s 3 ks, pole prázdne", async () => {
     await box().type("ban", { delay: 60 });
     await page.waitForTimeout(500);
     const chips = await page.locator(".bb-row .bb").evaluateAll((els) => els.map((e) => e.innerText.replace(/\n/g, " | ")));
@@ -102,17 +103,30 @@ const API = env.VITE_SUPABASE_URL, KEY = env.VITE_SUPABASE_PUBLISHABLE_KEY;
     await page.waitForTimeout(200);
     const ui = await page.locator(".aw-body .row").first().innerText();
     expect(/3\s*ks/.test(ui), `riadok hneď po ťuknutiach: ${ui.replace(/\n/g, " | ")}`);
+    expect((await page.locator(".bb-row .bb.act .bb-n").innerText()).trim() === "3", "bublina neukazuje 3");
+    expect((await box().inputValue()) === "", "pole sa po ťuknutí nevyprázdnilo");
     expect(await focused(), "ťuk na bublinu zobral poľu kurzor");
-    await page.waitForTimeout(2500);
-    const rows = (await dbItems(listId)).filter((r) => r.status === "OPEN");
-    expect(rows.length === 1 && Number(rows[0].quantity) === 3, `v databáze: ${JSON.stringify(rows)}`);
     return `${chipName}, bubliny: ${chips.join(" / ")}`;
   });
-  await step("mínus v bubline = 2 ks", async () => {
+  await step("mínus počas ťukania = 2 ks, potom sa návrhy vymenia za časté veci", async () => {
     await page.locator(".bb-row .bb.act .bb-min").tap();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(150);
+    expect((await page.locator(".bb-row .bb.act .bb-n").innerText()).trim() === "2", "bublina po mínuse neukazuje 2");
+    await page.waitForTimeout(2600);
+    expect(await page.locator(".bb-row .bb-lab", { hasText: "Často kupuješ" }).count(), "po dokončení sa nevrátili časté veci");
     const rows = (await dbItems(listId)).filter((r) => r.status === "OPEN");
     expect(rows.length === 1 && Number(rows[0].quantity) === 2, `v databáze: ${JSON.stringify(rows)}`);
+  });
+  await step("ťuk na častú vec: pridá sa, bublina odíde a nahradí ju ďalšia", async () => {
+    const f = page.locator(".bb-row .bb .bb-m").first();
+    const before = (await f.locator(".bb-t b").innerText()).trim();
+    await f.tap();
+    await page.waitForTimeout(2400);
+    const after = (await page.locator(".bb-row .bb .bb-m").first().locator(".bb-t b").innerText()).trim();
+    expect(after !== before, `bublina ${before} neodišla`);
+    const rows = (await dbItems(listId)).filter((r) => r.status === "OPEN");
+    expect(rows.length === 2, `v databáze: ${JSON.stringify(rows)}`);
+    return `${before} → ${after}`;
   });
   await step("„rozky 2“ + Enter", async () => {
     await box().type("rozky 2", { delay: 40 });
@@ -121,7 +135,8 @@ const API = env.VITE_SUPABASE_URL, KEY = env.VITE_SUPABASE_PUBLISHABLE_KEY;
     expect((await box().inputValue()) === "", "pole sa nevyprázdnilo");
     const rows = (await dbItems(listId)).filter((r) => r.status === "OPEN");
     const r = rows.find((x) => /^ro[zž]k/i.test(x.name));
-    expect(rows.length === 2 && r && Number(r.quantity) === 2, `v databáze: ${JSON.stringify(rows)}`);
+    expect(r && Number(r.quantity) >= 2, `v databáze: ${JSON.stringify(rows)}`);
+    expect(await page.locator(".bb-row .bb-lab", { hasText: "Často kupuješ" }).count(), "po Enter sa nevrátili časté veci");
     return rows.map((x) => `${x.name} ${x.quantity}`).join(", ");
   });
   await step("posúvanie zoznamu v okne nechá klávesnicu", async () => {

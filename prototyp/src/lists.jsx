@@ -89,25 +89,24 @@ function searchProducts(q, exclude) {
 }
 
 // Pridávanie (návrh prototyp/pridavanie-navrh.html, 13. 11.): dole rad bublín + pole, rovnaký s klávesnicou aj bez nej.
-// Ťuk na bublinu pridá hneď (bez odpočítavania), číslo v bubline = počet v zozname, mínus na poslednej ťuknutej.
-// Po ťuknutí sa pole vyprázdni, ale bubliny ostanú na mieste, kým sa nezačne písať ďalšia vec.
+// Ťuk na bublinu pridá kus hneď (počet v bubline). Keď sa chvíľu neťuká (pásik), bublina sa označí ✓ a odíde –
+// časté veci nahradí ďalšia najčastejšie kupovaná vec, návrhy pri písaní sa vymenia za časté veci. Text v poli
+// zmizne hneď po ťuknutí, dá sa písať ďalší produkt.
+const BURST_MS = 1500, OUT_MS = 420;
 function Composer({ list, onAdded, focus0 }) {
   const { act, voice, theme, S } = useApp();
   const g = theme === 'g';
   const [txt, setTxt] = useState('');
-  const [stripFor, setStripFor] = useState('');
-  const [active, setActive] = useState(null);
-  const tapped = useRef(new Set());
   const inp = useRef(null);
   const open = list.items.filter((i) => !i.done);
   const itemOf = (c) => open.find((i) => (c.pid ? i.pid === c.pid && !i.grp : !i.pid && norm(i.n || '') === norm(c.n)));
   const openRef = useRef(open); openRef.current = open;
   const pname = (pid) => PRODUCTS[pid].n.replace(/ ·.*$/, '');
-  // bubliny sa počítajú len pri zmene textu – po ťuknutí sa nepohnú
-  const chips = useMemo(() => {
-    const t0 = stripFor.trim();
-    const inList = new Set(openRef.current.map((i) => i.pid));
-    if (t0.length < 2) return STAPLES.filter((p) => !inList.has(p)).slice(0, 8).map((pid) => ({ k: 's:' + pid, pid }));
+  const inList = (pid) => openRef.current.some((i) => i.pid === pid && !i.grp);
+  const freq = (pid) => ({ k: 's:' + pid, pid });
+  const compute = (text) => {
+    const t0 = text.trim();
+    if (t0.length < 2) return STAPLES.filter((p) => !inList(p)).slice(0, 8).map(freq);
     const enter = splitChunks(t0).map(parseChunk).filter(Boolean);
     if (enter.length > 1) return [{ k: 'multi', multi: enter }];
     const x = enter[0];
@@ -119,7 +118,7 @@ function Composer({ list, onAdded, focus0 }) {
     if (head) push({ k: 'p:' + head.id, pid: head.id, q0 });
     else { const f = typoFix(x.n); if (f) push({ k: 'p:' + f.p.id, pid: f.p.id, q0, typo: true }); } // preklep: appka ho sama neprepíše, len ponúkne
     if (head && head.grp) refinements(head, 6).forEach((p) => push({ k: 'p:' + p.id, pid: p.id, q0 }));
-    const found = searchProducts(t0, inList);
+    const found = searchProducts(t0, new Set(openRef.current.map((i) => i.pid)));
     if (!head && found.length) { // rozpísané slovo („smot“): najprv všeobecná položka „Smotana“
       const lw = norm(t0).split(' ').pop();
       const w = found[0].n.replace(/ ·.*$/, '').split(/\s+/).find((y) => norm(y).startsWith(lw));
@@ -128,22 +127,49 @@ function Composer({ list, onAdded, focus0 }) {
     found.forEach((p) => push({ k: 'p:' + p.id, pid: p.id, q0 }));
     if (!head) push({ k: 'n:' + norm(x.n), n: x.n, q0, typed: true }); // nepoznaný text na koniec – Enter ho pridá presne tak
     return out.slice(0, 7);
-  }, [stripFor]); // eslint-disable-line
+  };
+  const [chips, setChips] = useState(() => compute(''));
+  const [mode, setMode] = useState('freq');
+  const modeRef = useRef(mode); modeRef.current = mode;
+  const refill = (text) => { const m = text.trim().length >= 2 ? 'type' : 'freq'; setMode(m); modeRef.current = m; setChips(compute(text)); };
+  const [bursts, setBursts] = useState({});
+  const bRef = useRef({}); const bTm = useRef({});
+  const put = (k, b) => { if (b) bRef.current[k] = b; else delete bRef.current[k]; setBursts({ ...bRef.current }); };
+  const stop = () => { Object.values(bTm.current).forEach(clearTimeout); bRef.current = {}; setBursts({}); };
+  useEffect(() => () => Object.values(bTm.current).forEach(clearTimeout), []);
+  const finish = (k) => {
+    const b = bRef.current[k]; if (!b) return;
+    if (modeRef.current === 'freq') {
+      put(k, { ...b, st: 'out' });
+      bTm.current[k] = setTimeout(() => {
+        put(k, null);
+        setChips((cs) => { const shown = new Set(cs.map((x) => x.pid)); const next = STAPLES.find((p) => !shown.has(p) && !inList(p)); return next ? cs.map((x) => (x.k === k ? freq(next) : x)) : cs.filter((x) => x.k !== k); });
+      }, OUT_MS);
+      return;
+    }
+    put(k, { ...b, st: 'done' });
+    if (Object.values(bRef.current).some((x) => x.st === 'on')) return;
+    for (const x of Object.keys(bRef.current)) put(x, { ...bRef.current[x], st: 'out' });
+    bTm.current[k] = setTimeout(() => { bRef.current = {}; setBursts({}); if (!(inp.current && inp.current.value.trim())) refill(''); }, OUT_MS);
+  };
+  const arm = (k) => { clearTimeout(bTm.current[k]); bTm.current[k] = setTimeout(() => finish(k), BURST_MS); };
   const tap = (c) => {
     if (c.multi) { submit(); return; }
-    const first = !tapped.current.has(c.k);
-    tapped.current.add(c.k);
-    const pre = first && c.q0;
-    act('addItems', list.id, [c.pid ? { pid: c.pid, q: pre ? c.q0.q : 1, u: pre ? c.q0.u : 'ks' } : { n: c.n, q: pre ? c.q0.q : 1, u: pre ? c.q0.u : 'ks' }]);
-    setActive(c.k);
+    const b = bRef.current[c.k]; if (b && b.st !== 'on') return;
+    const pre = !b && c.q0;
+    const q = pre ? c.q0.q : 1; const u = pre ? c.q0.u : 'ks';
+    act('addItems', list.id, [c.pid ? { pid: c.pid, q, u } : { n: c.n, q, u }]);
+    put(c.k, { n: (b ? b.n : 0) + q, u: b ? b.u : u, t: Date.now(), st: 'on' });
+    arm(c.k);
     if (txt) setTxt('');
     onAdded && onAdded();
   };
   const less = (c) => {
-    const it = itemOf(c); if (!it) return;
-    const u = unitOf(it);
-    if (it.q <= minQty(u)) { act('removeItem', list.id, it.id); setActive(null); tapped.current.delete(c.k); }
-    else act('setQty', list.id, it.id, bump(it.q, u, -1));
+    const b = bRef.current[c.k]; if (!b || b.st !== 'on') return;
+    const it = itemOf(c);
+    if (it) { const u = unitOf(it); if (it.q <= minQty(u)) act('removeItem', list.id, it.id); else act('setQty', list.id, it.id, bump(it.q, u, -1)); }
+    if (b.n <= 1) { clearTimeout(bTm.current[c.k]); put(c.k, null); return; }
+    put(c.k, { ...b, n: b.n - 1, t: Date.now() }); arm(c.k);
   };
   const submit = (e) => {
     e && e.preventDefault();
@@ -151,38 +177,37 @@ function Composer({ list, onAdded, focus0 }) {
     const enter = splitChunks(v).map(parseChunk).filter(Boolean);
     const items = enter.map((x) => (x.pid ? { pid: x.pid, q: x.q, u: x.u } : { n: x.n, q: x.q, u: x.u }));
     if (items.length) act('addItems', list.id, items);
-    if (enter.length === 1) { const x = enter[0]; const c = chips.find((y) => (x.pid ? y.pid === x.pid : y.typed && norm(y.n) === norm(x.n))); if (c) { setActive(c.k); tapped.current.add(c.k); } }
-    setTxt(''); onAdded && onAdded();
+    setTxt(''); stop(); refill(''); onAdded && onAdded();
   };
   useEffect(() => { if (focus0) setTimeout(() => inp.current && inp.current.focus(), 350); }, []);
   const keep = (e) => e.preventDefault();
-  const typingText = stripFor.trim().length >= 2;
   return (
     <div className="dock">
-      <div className="bb-row" aria-label={typingText ? 'Návrhy' : 'Často kupuješ'}>
-        {!typingText && chips.length > 0 && <span className="bb-lab">Často kupuješ</span>}
+      <div className="bb-row" aria-label={mode === 'type' ? 'Návrhy' : 'Často kupuješ'}>
+        {mode === 'freq' && chips.length > 0 && <span className="bb-lab">Často kupuješ</span>}
         {chips.map((c) => {
           if (c.multi) return (
             <span className="bb" key={c.k}><button type="button" className="bb-m" onPointerDown={keep} onMouseDown={keep} onClick={() => tap(c)}><span className="bb-pl"><I n="plus" w="bold" /></span><span className="bb-t"><b>{c.multi.length} položky</b><small>{c.multi.map((x) => (x.pid ? pname(x.pid) : x.n)).join(', ')}</small></span></button></span>
           );
-          const it = itemOf(c); const n = it ? it.q : 0; const act1 = active === c.k && n > 0;
-          const q0 = c.q0 && !tapped.current.has(c.k) ? c.q0 : null;
+          const b = bursts[c.k]; const on = b && b.st === 'on'; const it = itemOf(c);
+          const q0 = c.q0 && !b ? c.q0 : null;
           const e = c.pid && estimate({ pid: c.pid, q: q0 ? q0.q : 1, u: q0 ? q0.u : 'ks' }, S, list.store);
-          const sub = c.typed ? [q0 && fmtQty(q0.q, q0.u), 'pridať ako píšeš'] : [c.typo && 'preklep?', it && !act1 && 'v zozname', q0 && (it ? '+' : '') + fmtQty(q0.q, q0.u), e ? '~' + eur(e.v) : 'bez ceny'];
+          const sub = b ? ['pridané · ' + fmtQty(b.n, b.u)] : c.typed ? [q0 && fmtQty(q0.q, q0.u), 'pridať ako píšeš'] : [c.typo && 'preklep?', it && 'v zozname', q0 && (it ? '+' : '') + fmtQty(q0.q, q0.u), e ? '~' + eur(e.v) : 'bez ceny'];
           return (
-            <span key={c.k} className={'bb' + (act1 ? ' act' : '') + (c.typed ? ' typed' : '') + (c.typo ? ' typo' : '')}>
-              {act1 && <button type="button" className="bb-min" onPointerDown={keep} onMouseDown={keep} onClick={() => less(c)} aria-label={'Uber: ' + (c.pid ? pname(c.pid) : c.n)}><I n="minus" w="bold" /></button>}
+            <span key={c.k} className={'bb' + (on ? ' act' : '') + (b && !on ? ' ok ' + b.st : '') + (c.typed ? ' typed' : '') + (c.typo ? ' typo' : '')}>
+              {on && <button type="button" className="bb-min" onPointerDown={keep} onMouseDown={keep} onClick={() => less(c)} aria-label={'Uber: ' + (c.pid ? pname(c.pid) : c.n)}><I n="minus" w="bold" /></button>}
               <button type="button" className="bb-m" onPointerDown={keep} onMouseDown={keep} onClick={() => tap(c)} aria-label={(c.pid ? pname(c.pid) : c.n) + ' – ťukaním pridáš kusy'}>
-                {c.pid ? <E k={PRODUCTS[c.pid].e} s={30} /> : <span className="bb-pl"><I n="plus" w="bold" /></span>}
+                {c.pid ? <E k={PRODUCTS[c.pid].e} s={30} key={b ? 'e' + b.t : 'e'} /> : <span className="bb-pl"><I n="plus" w="bold" /></span>}
                 <span className="bb-t"><b>{c.pid ? pname(c.pid) + (c.typo ? '?' : '') : '„' + c.n + '“'}</b><small>{sub.filter(Boolean).join(' · ')}</small></span>
-                {n > 0 && <span className="bb-n" key={c.k + n}>{unitOf(it) === 'ks' ? n : fmtQty(n, unitOf(it))}</span>}
+                {b && <span className="bb-n" key={on ? 'n' + b.n : 'ok'}>{on ? (b.u === 'ks' ? b.n : fmtQty(b.n, b.u)) : <I n="check" w="bold" />}</span>}
               </button>
+              {on && <i className="bb-bar" key={'b' + b.t} aria-hidden="true" />}
             </span>
           );
         })}
       </div>
       <form className={'field' + (g ? ' glass2' : '')} onSubmit={submit}>
-        <input ref={inp} id={'add-' + list.id} value={txt} onChange={(e) => { setTxt(e.target.value); setStripFor(e.target.value); setActive(null); tapped.current.clear(); }} onBlur={() => setTimeout(() => { if (document.activeElement !== inp.current) { setTxt(''); setStripFor(''); setActive(null); tapped.current.clear(); } }, 150)} placeholder="Napíš alebo nadiktuj položku" autoComplete="off" enterKeyHint="done" aria-label="Pridať položku" />
+        <input ref={inp} id={'add-' + list.id} value={txt} onChange={(e) => { setTxt(e.target.value); stop(); refill(e.target.value); }} onBlur={() => setTimeout(() => { if (document.activeElement !== inp.current && !Object.keys(bRef.current).length) { setTxt(''); refill(''); } }, 150)} placeholder="Napíš alebo nadiktuj položku" autoComplete="off" enterKeyHint="done" aria-label="Pridať položku" />
         {txt ? <button type="submit" className="m" aria-label="Pridať" onPointerDown={keep} onMouseDown={keep}><I n="arrow-up" w="bold" /></button> : <button type="button" className="m" onClick={() => voice({ listId: list.id })} aria-label="Pridať hlasom"><I n="microphone" /></button>}
       </form>
     </div>

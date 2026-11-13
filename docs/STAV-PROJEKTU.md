@@ -28,8 +28,8 @@ v telefónovej veľkosti v 4 vzhľadoch (Teplá a Sklo, svetlý aj tmavý) a hľ
 servera, chybové hlásenia, pretekanie, text mimo obrazovky a prekrytia. Fotky + `report.json` do `testy/vysledky/` (mimo gitu).
 `E2E_EMAIL=… E2E_PASSWORD=… node testy/preklikanie.cjs [adresa]` – bez adresy ide na nasadenú testovaciu appku; `ONLY=nakupy,parovanie` preklikne len vybrané obrazovky.
 **Test pridávania:** `testy/pridavanie.cjs` (rovnaké premenné) – nový zoznam → okno pridávania → 3 rýchle ťuky na bublinu
-= 1 riadok s 3 ks (kontrola aj v DB) → mínus → „rozky 2“ + Enter → posúvanie nechá klávesnicu → ťuk do zoznamu okno zavrie;
-testovací zoznam na konci archivuje.
+= 1 riadok s 3 ks (kontrola aj v DB), pole prázdne → mínus → po dokončení časté veci → ťuk na častú vec ju nahradí ďalšou →
+„rozky 2“ + Enter → posúvanie nechá klávesnicu → ťuk do zoznamu okno zavrie; testovací zoznam na konci archivuje.
 **Test toku nákupu:** `testy/nakup.cjs` (rovnaké premenné) – nový zoznam → 3 položky písaním → Nakupovať → všetko do košíka →
 Dokončiť nákup → Teraz nie → zoznam je v Histórii. Zapisuje do testovacej DB (zoznam „Tok nákupu …“); rozbehnutý nákup
 z prerušeného behu na začiatku ukončí (`end_shopping`).
@@ -281,6 +281,13 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   testovacou DB: nový `testy/pridavanie.cjs` (9 krokov, zoznam „Pridávanie …“ sa na konci archivuje), `testy/nakup.cjs`
   (8 krokov), preklikanie Nákupy + zoznam 4 vzhľady 0 nálezov; testy prototypu `pridavanie.cjs` a `sprievodca.cjs FLOW=all`
   bez chýb. Neoverené: skutočný iPhone (klávesnica, kurzor pri ťuku na bublinu, posúvanie s otvorenou klávesnicou).
+  Tretí krok (13. 11., po skúške majiteľa na iPhone – bubliny ostávali „visieť“): **ťukanie s dokončením.** Každý ťuk
+  pridá kus hneď, bublina ukazuje počet ťuknutí, „pridané · N ks“ a pásik (1,5 s, `BURST_MS`); keď sa neťuká, bublina
+  dostane ✓ a odíde (`OUT_MS` 420 ms) – časté veci nahradí na tom istom mieste ďalšia najčastejšie kupovaná vec, návrhy
+  pri písaní sa po dokončení vymenia za časté veci. Text v poli zmizne hneď po prvom ťuknutí (dá sa písať ďalší produkt;
+  nový text ťukanie ukončí). Enter = pridá, vyprázdni pole a vráti časté veci. Mínus počas ťukania (aj kým server ešte
+  nepotvrdil nový riadok – úprava počká). Počas cudzieho nákupu jedna žiadosť po dokončení. Rovnako v ukážke (prototyp).
+  `testy/pridavanie.cjs` má 10 krokov (aj výmenu častej veci a návrat častých vecí), prešiel na testovacej DB.
   Návrh: https://claude.ai/artifact/SAVJcwhe4dE5NGpn4rtexX
   (zdroj `prototyp/pridavanie-navrh.html`: dokument + preklikateľný mockup s nakreslenou klávesnicou, ukážkou a prepínačmi
   variantov; obrázky a štýly ako pri návrhu Výdavkov – `mk/mockup.css`, `mk/em/*` sa priložia pri publikovaní). Podnet:
