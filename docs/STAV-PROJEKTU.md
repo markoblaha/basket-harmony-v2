@@ -254,6 +254,20 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
+- **Pridávanie do zoznamu – návrh (13. 11. 2026, čaká na rozhodnutie majiteľa):** https://claude.ai/artifact/SAVJcwhe4dE5NGpn4rtexX
+  (zdroj `prototyp/pridavanie-navrh.html`: dokument + preklikateľný mockup s nakreslenou klávesnicou, ukážkou a prepínačmi
+  variantov; obrázky a štýly ako pri návrhu Výdavkov – `mk/mockup.css`, `mk/em/*` sa priložia pri publikovaní). Podnet:
+  snímka okna pridávania (okno a „Pridané teraz“ zakrývajú zoznam). Návrh: žiadne samostatné okno – pri písaní ostáva
+  zoznam, hlavička na jeden riadok (názov, počet · suma, Hotovo), karta Odhad sa zbalí; nad klávesnicou vodorovný rad
+  bublín + pole (ten istý prvok aj bez klávesnice); ťuk na bublinu pridá hneď (bez odpočítavania 1,8 s), číslo v bubline =
+  počet v zozname, mínus uberie; po ťuknutí sa pole vyprázdni, ale rad bublín sa nepohne, kým sa nepíše ďalej; klávesnica
+  pri posúvaní zoznamu ostáva, zavrie ju Hotovo, ✓ nad klávesnicou, ťuk do zoznamu, potiahnutie doku nadol alebo skrytie
+  telefónom (nič nečaká); potvrdenie priamo v zozname (nová položka navrchu, ikona priletí, riadok sa rozsvieti), bez hlášok.
+  „banan“ → jedna bublina Banány (iný tvar toho istého slova); Banán/Banány, rožok/rožky sa spoja do jedného riadku.
+  Opravy: ikona najprv podľa názvu (Mango mal fľašu pre bábätká, Kiwi košík; doplniť ikony ovocia), chyba pridania ostane
+  v riadku so „Skúsiť znova“, zápisy pri rýchlom ťukaní spojiť. Mení rozhodnutie z 2. 11. „návrhy ako zoznam riadkov“.
+  Databáza bez zmeny, v appke zatiaľ nič. Po „OK“: najprv `prototyp/src/lists.jsx`, potom `Composer` v `ListParts.tsx`.
+
 - **Výdavky 2.0 – IMPLEMENTOVANÉ v testovacej appke (13. 11. 2026, čaká na „OK“ majiteľa):** pokyn „implementuj to celé
   aj s mockupom“. Rozhodnutia prijaté podľa odporúčaní návrhu (majiteľ môže zmeniť): kalendárne týždne po–ne, ceny
   vždy za posledné 3 mesiace k dnešku, v zozname ostáva napísaný názov položky a konkrétny výrobok je štítok pod ním.
