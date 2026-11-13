@@ -136,6 +136,7 @@ td.mono { font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
 .add b { font-size: 15.5px; }
 .add span { font-size: 14px; color: var(--muted); line-height: 1.45; }
 .add .eff { align-self: flex-start; margin-top: 4px; }
+.dlk { background: none; border: 0; padding: 8px 0; min-height: 40px; font: inherit; font-size: 14px; font-weight: 650; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 @media (max-width: 640px) { .adds { grid-template-columns: minmax(0, 1fr); } }
 
 .steps { counter-reset: st; list-style: none; padding: 0 !important; margin: 14px 0; display: flex; flex-direction: column; gap: 10px; }
@@ -312,6 +313,16 @@ td.mono { font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
 .bhm .an-toast.on { opacity: 1; transform: translate(-50%, 0); }
 .bhm .an-toast .ico { width: 16px; height: 16px; margin-top: 1px; }
 .bhm .an-fix { gap: 10px; }
+.bhm .an-miss2 { padding: 0; gap: 0; overflow: hidden; }
+.bhm .an-mh { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 12px 14px; text-align: left; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.bhm .an-mh .grow, .bhm .an-mr .grow { min-width: 0; }
+.bhm .an-mh .tile { width: 40px; height: 40px; flex: none; }
+.bhm .an-mh b, .bhm .an-mr b { display: block; font-size: 15px; font-weight: 650; }
+.bhm .an-mh small, .bhm .an-mr small { display: block; font-size: 13px; color: var(--sec); }
+.bhm .an-mr { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; border-top: 1px solid color-mix(in srgb, var(--fg) 10%, transparent); }
+.bhm .an-mr .ib { width: 44px; height: 44px; box-shadow: none; background: var(--card2); flex: none; }
+.bhm .an-mr .ib.an-cam { background: var(--pri); color: #fff; }
+.bhm .an-ptag { display: inline-block; max-width: 100%; margin-top: 3px; padding: 2px 9px; border-radius: 9px; font-size: 13px; font-weight: 600; background: color-mix(in srgb, var(--fg) 9%, transparent); line-height: 1.35; }
 .bhm .an-fix b { font-size: 17px; font-weight: 650; } .bhm .an-fix small { font-size: 13px; color: var(--sec); display: block; margin-top: 2px; }
 .bhm .tapc, .bhm .row.tap, .bhm .cat, .bhm .mod { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) { .bhm .an-fade, .bhm .an-tl.go .an-bw i, .bhm .an-svg.go .ln, .bhm .an-svg.go .sl, .bhm .an-dn svg.go .an-sw, .bhm .an-end { animation: none !important; stroke-dasharray: none !important; } }
@@ -332,7 +343,7 @@ td.mono { font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
 
 <div class="pgwrap">
 <article class="doc" id="doc">
-  <div class="eyebrow">Návrh · verzia 3 · 12. 11. 2026</div>
+  <div class="eyebrow">Návrh · verzia 4 · 13. 11. 2026</div>
   <h1>Výdavky 2.0</h1>
   <p class="lead">Karta Výdavky má odpovedať na tri otázky, presne v tomto poradí. Dnes na ne odpovedá len čiastočne a niektoré čísla sú zlé. Návrh opravuje výpočty, zjednocuje ovládanie a pridáva cestu od kategórie až po cenu jedného výrobku v jednom obchode.</p>
   <div class="qs">
@@ -347,6 +358,7 @@ td.mono { font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
     <li><a href="#obrazovky">Obrazovky</a></li>
     <li><a href="#vzhlad">Vzhľad a pohyb</a></li>
     <li><a href="#ceny">Ceny a jednotky</a></li>
+    <li><a href="#v4">Verzia 4</a></li>
     <li><a href="#pridat">Čo pridať</a></li>
     <li><a href="#technika">Technické riešenie</a></li>
     <li><a href="#postup">Postup</a></li>
@@ -527,7 +539,18 @@ správne    zálohy 0,90 € (zaplatené), pivo sa neráta</div>
     <li><b>Formát:</b> „8,96 €/kg“, „0,5 l“, „250 g“ cez <code>formatEuro</code> / <code>formatNumber</code>; tvary slov cez <code>tn()</code>.</li>
   </ul>
 
-  <h2 id="pridat"><span class="sec-n">7</span>Čo navrhujem pridať</h2>
+  <h2 id="v4"><span class="sec-n">7</span>Verzia 4 – vylepšenia po implementácii</h2>
+  <p>Výdavky 2.0 už bežia v testovacej appke. Pri prezeraní obrazoviek s reálnymi dátami som našiel toto. Každý bod sa dá otvoriť v mockupe vpravo.</p>
+  <div class="adds">
+    <div class="add"><b>1. Bez opakovaných čísel</b><span>Výrobok kúpený raz má jednu kartu „Kúpené raz“, nie tri karty s rovnakou sumou. Ak platíš stále rovnako, ostane len Cena teraz. Druh z jedného obchodu nemá druhú kartu „Najlacnejšie“ s tým istým číslom.</span><span class="tag ok eff">malé</span><span><button type="button" class="dlk" data-show="product:kerrygold">Kerrygold (raz)</button> · <button type="button" class="dlk" data-show="product:pilos-tvaroh">Tvaroh (stále rovnako)</button> · <button type="button" class="dlk" data-show="kind:tvaroh">druh Tvaroh</button></span></div>
+    <div class="add"><b>2. Chýbajúce bločky v jednom riadku</b><span>„Chýbajú bločky z 3 nákupov“ – zoznam nákupov sa rozbalí až po ťuknutí, takže neodtlačí prehľad dole. Čas nákupu len raz.</span><span class="tag ok eff">malé</span><span><button type="button" class="dlk" data-show="miss">Otvoriť</button></span></div>
+    <div class="add"><b>3. Kde by tento zoznam vyšiel lacnejšie</b><span>V zozname: „V obchode Lidl by to vyšlo asi o 3 € lacnejšie“. Porovnávajú sa len položky s cenou z posledných 6 týždňov v oboch obchodoch, bez akcií. Ťuknutím sa zoznam prepočíta. V mockupe karta Nákupy dole.</span><span class="tag ux eff">stredné</span><span><button type="button" class="dlk" data-show="list">Otvoriť zoznam</button></span></div>
+    <div class="add"><b>4. Veľkosť balenia sama</b><span>Keď Lidl na bločku píše len „KOZEL 10 PLECH“, ale Tesco „KOZEL SVETLY PLECH 0,5L“, appka veľkosť prevezme sama. Pýta sa len pri výrobkoch, ktorých veľkosť nie je na žiadnom bločku.</span><span class="tag ux eff">stredné</span><span><button type="button" class="dlk" data-show="fix">Otvoriť</button></span></div>
+    <div class="add"><b>5. Zdraženie</b><span>V „Oplatí sa vedieť“: „Maslo Pilos zdraželo o 9 %, Lidl: z 2,19 € na 2,39 €“ – rovnaký výrobok v rovnakom obchode. Neskôr aj ako push upozornenie.</span><span class="tag ok eff">malé</span><span><button type="button" class="dlk" data-show="overview">Otvoriť</button></span></div>
+    <div class="add"><b>6. Grafy pre čítačku</b><span>Grafy majú textový popis (VoiceOver prečíta napr. „Lidl naposledy 2,39 €, najmenej 2,19 €, najviac 2,39 €“). Ťah prstom ostáva len doplnok.</span><span class="tag ok eff">malé</span></div>
+  </div>
+
+  <h2 id="pridat"><span class="sec-n">7b</span>Čo navrhujem pridať</h2>
   <p>Veci, ktoré si nespomenul a podľa mňa robia rozdiel medzi „vidím čísla“ a „viem, čo s nimi“.</p>
   <div class="adds">
     <div class="add"><b>Hľadanie</b><span>Napíšeš „maslo“ a hneď vidíš bežnú cenu a kde je najlacnejšie.</span><span class="tag ok eff">malé</span></div>
@@ -586,7 +609,7 @@ správne    zálohy 0,90 € (zaplatené), pivo sa neráta</div>
 </article>
 
 <aside class="mockcol" id="mock" aria-label="Náhľad karty Výdavky">
-  <div class="phone"><div id="thm" class="g t-d"><div class="bhm" id="app"><nav class="tabbar" aria-label="Hlavná navigácia"><button type="button" data-a="toast:V náhľade je len karta Výdavky."><span class="tic"><span class="ico " aria-hidden="true"><svg viewBox="0 0 256 256"><path d="M224,120v96a8,8,0,0,1-8,8H160a8,8,0,0,1-8-8V164a4,4,0,0,0-4-4H108a4,4,0,0,0-4,4v52a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V120a16,16,0,0,1,4.69-11.31l80-80a16,16,0,0,1,22.62,0l80,80A16,16,0,0,1,224,120Z"></path></svg></span></span>Domov</button><button type="button" data-a="toast:V náhľade je len karta Výdavky."><span class="tic"><span class="ico " aria-hidden="true"><svg viewBox="0 0 256 256"><path d="M238,82.73A8,8,0,0,0,232,80H187.63L134,18.73a8,8,0,0,0-12,0L68.37,80H24a8,8,0,0,0-7.93,9.06L31.14,202.12A16.06,16.06,0,0,0,47,216H209a16.06,16.06,0,0,0,15.86-13.88L239.93,89.06A8,8,0,0,0,238,82.73ZM81.6,184a7.32,7.32,0,0,1-.81,0,8,8,0,0,1-8-7.2l-5.6-56a8,8,0,0,1,15.92-1.6l5.6,56A8,8,0,0,1,81.6,184Zm54.4-8a8,8,0,0,1-16,0V120a8,8,0,0,1,16,0ZM89.63,80,128,36.15,166.37,80Zm99.13,40.8-5.6,56a8,8,0,0,1-7.95,7.2,7.32,7.32,0,0,1-.81,0,8,8,0,0,1-7.16-8.76l5.6-56a8,8,0,0,1,15.92,1.6Z"></path></svg></span></span>Nákupy</button><button type="button" class="tmic" aria-label="Hlasový asistent" data-a="toast:Hlas ostáva bez zmeny."><span class="tmb"><span class="ico " aria-hidden="true"><svg viewBox="0 0 256 256"><path d="M80,128V64a48,48,0,0,1,96,0v64a48,48,0,0,1-96,0Zm128,0a8,8,0,0,0-16,0,64,64,0,0,1-128,0,8,8,0,0,0-16,0,80.11,80.11,0,0,0,72,79.6V240a8,8,0,0,0,16,0V207.6A80.11,80.11,0,0,0,208,128Z"></path></svg></span></span></button><button type="button" data-a="toast:V náhľade je len karta Výdavky."><span class="tic"><span class="ico " aria-hidden="true"><svg viewBox="0 0 256 256"><path d="M88,48V16a8,8,0,0,1,16,0V48a8,8,0,0,1-16,0Zm40,8a8,8,0,0,0,8-8V16a8,8,0,0,0-16,0V48A8,8,0,0,0,128,56Zm32,0a8,8,0,0,0,8-8V16a8,8,0,0,0-16,0V48A8,8,0,0,0,160,56Zm94.4,35.2a8,8,0,0,0-11.2-1.6L224,104V80a8,8,0,0,0-8-8H40a8,8,0,0,0-8,8v24L12.8,89.6a8,8,0,0,0-9.6,12.8L32,124v60a32,32,0,0,0,32,32H192a32,32,0,0,0,32-32V124l28.8-21.6A8,8,0,0,0,254.4,91.2Z"></path></svg></span></span>Recepty</button><button type="button" class="on" aria-current="page" data-a="home"><span class="tic"><span class="ico " aria-hidden="true"><svg viewBox="0 0 256 256"><path d="M216,64H56a8,8,0,0,1,0-16H192a8,8,0,0,0,0-16H56A24,24,0,0,0,32,56V184a24,24,0,0,0,24,24H216a16,16,0,0,0,16-16V80A16,16,0,0,0,216,64Zm-36,80a12,12,0,1,1,12-12A12,12,0,0,1,180,144Z"></path></svg></span><span class="tbadge">1</span></span>Výdavky</button></nav><div class="an-toast" role="status" aria-live="polite"></div></div></div></div>
+  <div class="phone"><div id="thm" class="g t-d"><div class="bhm" id="app"><nav class="tabbar" aria-label="Hlavná navigácia"><button type="button" data-a="toast:V náhľade je len karta Výdavky."><span class="tic"><span class="ico " aria-hidden="true"><svg viewBox="0 0 256 256"><path d="M224,120v96a8,8,0,0,1-8,8H160a8,8,0,0,1-8-8V164a4,4,0,0,0-4-4H108a4,4,0,0,0-4,4v52a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V120a16,16,0,0,1,4.69-11.31l80-80a16,16,0,0,1,22.62,0l80,80A16,16,0,0,1,224,120Z"></path></svg></span></span>Domov</button><button type="button" data-a="tab:list"><span class="tic"><span class="ico " aria-hidden="true"><svg viewBox="0 0 256 256"><path d="M238,82.73A8,8,0,0,0,232,80H187.63L134,18.73a8,8,0,0,0-12,0L68.37,80H24a8,8,0,0,0-7.93,9.06L31.14,202.12A16.06,16.06,0,0,0,47,216H209a16.06,16.06,0,0,0,15.86-13.88L239.93,89.06A8,8,0,0,0,238,82.73ZM81.6,184a7.32,7.32,0,0,1-.81,0,8,8,0,0,1-8-7.2l-5.6-56a8,8,0,0,1,15.92-1.6l5.6,56A8,8,0,0,1,81.6,184Zm54.4-8a8,8,0,0,1-16,0V120a8,8,0,0,1,16,0ZM89.63,80,128,36.15,166.37,80Zm99.13,40.8-5.6,56a8,8,0,0,1-7.95,7.2,7.32,7.32,0,0,1-.81,0,8,8,0,0,1-7.16-8.76l5.6-56a8,8,0,0,1,15.92,1.6Z"></path></svg></span></span>Nákupy</button><button type="button" class="tmic" aria-label="Hlasový asistent" data-a="toast:Hlas ostáva bez zmeny."><span class="tmb"><span class="ico " aria-hidden="true"><svg viewBox="0 0 256 256"><path d="M80,128V64a48,48,0,0,1,96,0v64a48,48,0,0,1-96,0Zm128,0a8,8,0,0,0-16,0,64,64,0,0,1-128,0,8,8,0,0,0-16,0,80.11,80.11,0,0,0,72,79.6V240a8,8,0,0,0,16,0V207.6A80.11,80.11,0,0,0,208,128Z"></path></svg></span></span></button><button type="button" data-a="toast:V náhľade je len karta Výdavky."><span class="tic"><span class="ico " aria-hidden="true"><svg viewBox="0 0 256 256"><path d="M88,48V16a8,8,0,0,1,16,0V48a8,8,0,0,1-16,0Zm40,8a8,8,0,0,0,8-8V16a8,8,0,0,0-16,0V48A8,8,0,0,0,128,56Zm32,0a8,8,0,0,0,8-8V16a8,8,0,0,0-16,0V48A8,8,0,0,0,160,56Zm94.4,35.2a8,8,0,0,0-11.2-1.6L224,104V80a8,8,0,0,0-8-8H40a8,8,0,0,0-8,8v24L12.8,89.6a8,8,0,0,0-9.6,12.8L32,124v60a32,32,0,0,0,32,32H192a32,32,0,0,0,32-32V124l28.8-21.6A8,8,0,0,0,254.4,91.2Z"></path></svg></span></span>Recepty</button><button type="button" class="on" aria-current="page" data-a="tab:overview"><span class="tic"><span class="ico " aria-hidden="true"><svg viewBox="0 0 256 256"><path d="M216,64H56a8,8,0,0,1,0-16H192a8,8,0,0,0,0-16H56A24,24,0,0,0,32,56V184a24,24,0,0,0,24,24H216a16,16,0,0,0,16-16V80A16,16,0,0,0,216,64Zm-36,80a12,12,0,1,1,12-12A12,12,0,0,1,180,144Z"></path></svg></span><span class="tbadge">1</span></span>Výdavky</button></nav><div class="an-toast" role="status" aria-live="polite"></div></div></div></div>
   <div class="tgl" role="group" aria-label="Vzhľad náhľadu">
     <button type="button" data-theme-set="d" aria-pressed="true">Tmavý</button>
     <button type="button" data-theme-set="l" aria-pressed="false">Svetlý</button>
@@ -817,12 +840,36 @@ for (let d = DATA_START; d <= TODAY; d = addDays(d, 1)) {
 RCP.sort((a, b) => (a.date + a.time < b.date + b.time ? 1 : -1));
 const RCPI = Object.fromEntries(RCP.map((r) => [r.id, r]));
 PUR.sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1));
+/* v4: doplnené ukážky – výrobok kúpený raz (Kerrygold) a druh z jedného obchodu za rovnakú cenu (Tvaroh) */
+function addBuy(P, K, store, nth, packs) {
+  const r = RCP.filter((x) => x.store === store)[nth];
+  const p = { id: 'i' + ++nid, rid: r.id, date: r.date, time: r.time, store, kind: K.k, pid: P.id, packs, weight: null, price: P.p[store], total: r2(P.p[store] * packs), promo: false };
+  PUR.push(p); r.lines.push({ t: 'item', p }); r.total = r2(r.total + p.total);
+}
+{
+  const KM2 = KIND.maslo, KG = { id: 'kerrygold', b: 'Kerrygold', n: 'Írske maslo', s: 0.25, p: { tesco: 3.49 }, r: 'KERRYGOLD MASLO 250G', kind: 'maslo' };
+  KM2.P.push(KG); PROD[KG.id] = KG; addBuy(KG, KM2, 'tesco', 1, 1);
+  const KT = { k: 'tvaroh', n: 'Tvaroh', c: 'dairy_eggs', e: 'bowl', u: 'kg', w: 0, q: [1, 1], P: [] };
+  const TV = { id: 'pilos-tvaroh', b: 'Pilos', n: 'Tvaroh jemný', s: 0.25, p: { lidl: 1.09 }, r: 'PILOS TVAROH JEMNY 250G', kind: 'tvaroh' };
+  KT.P.push(TV); KINDS.push(KT); KIND.tvaroh = KT; PROD[TV.id] = TV;
+  [2, 9, 17].forEach((n) => addBuy(TV, KT, 'lidl', n, 1));
+  PUR.sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1));
+}
+/* veľkosť, ktorú appka prevzala sama z bločku iného obchodu (rovnaký výrobok) */
+const AUTO = [
+  { pid: 'kozel', raw: 'KOZEL 10 PLECH', store: 'lidl', from: 'tesco', fromRaw: 'KOZEL SVETLY PLECH 0,5L' },
+  { pid: 'radegast', raw: 'RADEGAST RAZNA', store: 'kraj', from: 'kaufland', fromRaw: 'RADEGAST RAZNA 10 0,5L' },
+];
+/* nákupy bez bločku (z ukončených zoznamov) */
+const MISS = [{ s: 'kaufland', d: '2026-11-10', n: 9 }, { s: 'lidl', d: '2026-11-08', n: 6 }, { s: 'kraj', d: '2026-11-05', n: 3 }];
+/* nákupný zoznam: [názov, druh, množstvo (balenia alebo kg pri váženom)] */
+const LIST = { items: [['Mlieko', 'mlieko', 2], ['Maslo', 'maslo', 1], ['Rožky', 'rozky', 8], ['Banány', 'banany', 1.2], ['Šunka', 'sunka', 1], ['Jogurt', 'jogurt', 4], ['Pivo', 'pivo', 6], ['Toaletný papier', 'toalet', 1], ['Káva', 'kava', 1]] };
 
 /* ikony Phosphor z appky (src/mockup/icons.ts) */
 const ICONS = {"camera:bold": "<path d=\"M208,52H182.42L170,33.34A12,12,0,0,0,160,28H96a12,12,0,0,0-10,5.34L73.57,52H48A28,28,0,0,0,20,80V192a28,28,0,0,0,28,28H208a28,28,0,0,0,28-28V80A28,28,0,0,0,208,52Zm4,140a4,4,0,0,1-4,4H48a4,4,0,0,1-4-4V80a4,4,0,0,1,4-4H80a12,12,0,0,0,10-5.34L102.42,52h51.15L166,70.66A12,12,0,0,0,176,76h32a4,4,0,0,1,4,4ZM128,84a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,84Zm0,72a24,24,0,1,1,24-24A24,24,0,0,1,128,156Z\"/>", "question:bold": "<path d=\"M144,180a16,16,0,1,1-16-16A16,16,0,0,1,144,180Zm92-52A108,108,0,1,1,128,20,108.12,108.12,0,0,1,236,128Zm-24,0a84,84,0,1,0-84,84A84.09,84.09,0,0,0,212,128ZM128,64c-24.26,0-44,17.94-44,40v4a12,12,0,0,0,24,0v-4c0-8.82,9-16,20-16s20,7.18,20,16-9,16-20,16a12,12,0,0,0-12,12v8a12,12,0,0,0,23.73,2.56C158.31,137.88,172,122.37,172,104,172,81.94,152.26,64,128,64Z\"/>", "magnifying-glass:bold": "<path d=\"M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z\"/>", "caret-left:bold": "<path d=\"M168.49,199.51a12,12,0,0,1-17,17l-80-80a12,12,0,0,1,0-17l80-80a12,12,0,0,1,17,17L97,128Z\"/>", "caret-right:bold": "<path d=\"M184.49,136.49l-80,80a12,12,0,0,1-17-17L159,128,87.51,56.49a12,12,0,1,1,17-17l80,80A12,12,0,0,1,184.49,136.49Z\"/>", "receipt": "<path d=\"M216,40H40A16,16,0,0,0,24,56V208a8,8,0,0,0,11.58,7.15L64,200.94l28.42,14.21a8,8,0,0,0,7.16,0L128,200.94l28.42,14.21a8,8,0,0,0,7.16,0L192,200.94l28.42,14.21A8,8,0,0,0,232,208V56A16,16,0,0,0,216,40ZM176,144H80a8,8,0,0,1,0-16h96a8,8,0,0,1,0,16Zm0-32H80a8,8,0,0,1,0-16h96a8,8,0,0,1,0,16Z\"/>", "storefront": "<path d=\"M231.69,93.81,217.35,43.6A16.07,16.07,0,0,0,202,32H54A16.07,16.07,0,0,0,38.65,43.6L24.31,93.81A7.94,7.94,0,0,0,24,96v16a40,40,0,0,0,16,32v72a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V144a40,40,0,0,0,16-32V96A7.94,7.94,0,0,0,231.69,93.81ZM88,112a24,24,0,0,1-35.12,21.26,7.88,7.88,0,0,0-1.82-1.06A24,24,0,0,1,40,112v-8H88Zm64,0a24,24,0,0,1-48,0v-8h48Zm64,0a24,24,0,0,1-11.07,20.2,8.08,8.08,0,0,0-1.8,1.05A24,24,0,0,1,168,112v-8h48Z\"/>", "calendar-blank": "<path d=\"M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32Zm0,48H48V48H72v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24Z\"/>", "target": "<path d=\"M221.87,83.16A104.1,104.1,0,1,1,195.67,49l22.67-22.68a8,8,0,0,1,11.32,11.32L167.6,99.71h0l-37.71,37.71-23.95,23.95a40,40,0,0,0,62-35.67,8,8,0,1,1,16-.9,56,56,0,0,1-95.5,42.79h0a56,56,0,0,1,73.13-84.43L184.3,60.39a87.88,87.88,0,1,0,23.13,29.67,8,8,0,0,1,14.44-6.9Z\"/>", "trend-up:bold": "<path d=\"M244,56v64a12,12,0,0,1-24,0V85l-75.51,75.52a12,12,0,0,1-17,0L96,129,32.49,192.49a12,12,0,0,1-17-17l72-72a12,12,0,0,1,17,0L136,135l67-67H168a12,12,0,0,1,0-24h64A12,12,0,0,1,244,56Z\"/>", "trend-down:bold": "<path d=\"M244,128v64a12,12,0,0,1-12,12H168a12,12,0,0,1,0-24h35l-67-67-31.51,31.52a12,12,0,0,1-17,0l-72-72a12,12,0,0,1,17-17L96,119l31.51-31.52a12,12,0,0,1,17,0L220,163V128a12,12,0,0,1,24,0Z\"/>", "plus:bold": "<path d=\"M228,128a12,12,0,0,1-12,12H140v76a12,12,0,0,1-24,0V140H40a12,12,0,0,1,0-24h76V40a12,12,0,0,1,24,0v76h76A12,12,0,0,1,228,128Z\"/>", "dots-three:bold": "<path d=\"M144,128a16,16,0,1,1-16-16A16,16,0,0,1,144,128ZM60,112a16,16,0,1,0,16,16A16,16,0,0,0,60,112Zm136,0a16,16,0,1,0,16,16A16,16,0,0,0,196,112Z\"/>", "x:bold": "<path d=\"M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z\"/>", "info": "<path d=\"M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm-4,48a12,12,0,1,1-12,12A12,12,0,0,1,124,72Zm12,112a16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40a8,8,0,0,1,0,16Z\"/>", "pencil-simple": "<path d=\"M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM192,108.68,147.31,64l24-24L216,84.68Z\"/>", "check:bold": "<path d=\"M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z\"/>", "sun": "<path d=\"M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm8,24a64,64,0,1,0,64,64A64.07,64.07,0,0,0,128,64ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z\"/>", "clock": "<path d=\"M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm56,112H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48a8,8,0,0,1,0,16Z\"/>", "lightning": "<path d=\"M213.85,125.46l-112,120a8,8,0,0,1-13.69-7l14.66-73.33L45.19,143.49a8,8,0,0,1-3-13l112-120a8,8,0,0,1,13.69,7L153.18,90.9l57.63,21.61a8,8,0,0,1,3,12.95Z\"/>", "caret-up:bold": "<path d=\"M216.49,168.49a12,12,0,0,1-17,0L128,97,56.49,168.49a12,12,0,0,1-17-17l80-80a12,12,0,0,1,17,0l80,80A12,12,0,0,1,216.49,168.49Z\"/>", "caret-down:bold": "<path d=\"M216.49,104.49l-80,80a12,12,0,0,1-17,0l-80-80a12,12,0,0,1,17-17L128,159l71.51-71.52a12,12,0,0,1,17,17Z\"/>", "list": "<path d=\"M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM192,184H64a8,8,0,0,1,0-16H192a8,8,0,0,1,0,16Zm0-48H64a8,8,0,0,1,0-16H192a8,8,0,0,1,0,16Zm0-48H64a8,8,0,0,1,0-16H192a8,8,0,0,1,0,16Z\"/>", "shopping-cart": "<path d=\"M230.14,58.87A8,8,0,0,0,224,56H62.68L56.6,22.57A8,8,0,0,0,48.73,16H24a8,8,0,0,0,0,16h18L67.56,172.29a24,24,0,0,0,5.33,11.27,28,28,0,1,0,44.4,8.44h45.42A27.75,27.75,0,0,0,160,204a28,28,0,1,0,28-28H91.17a8,8,0,0,1-7.87-6.57L80.13,152h116a24,24,0,0,0,23.61-19.71l12.16-66.86A8,8,0,0,0,230.14,58.87ZM104,204a12,12,0,1,1-12-12A12,12,0,0,1,104,204Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,200,204Z\"/>", "sparkle": "<path d=\"M208,144a15.78,15.78,0,0,1-10.42,14.94L146,178l-19,51.62a15.92,15.92,0,0,1-29.88,0L78,178l-51.62-19a15.92,15.92,0,0,1,0-29.88L78,110l19-51.62a15.92,15.92,0,0,1,29.88,0L146,110l51.62,19A15.78,15.78,0,0,1,208,144ZM152,48h16V64a8,8,0,0,0,16,0V48h16a8,8,0,0,0,0-16H184V16a8,8,0,0,0-16,0V32H152a8,8,0,0,0,0,16Zm88,32h-8V72a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16h8v8a8,8,0,0,0,16,0V96h8a8,8,0,0,0,0-16Z\"/>", "warning": "<path d=\"M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z\"/>"};
 
 /* ================================================================ stav a pravidlá výpočtu */
-const S = { per: 'month', off: 0, lens: 'cat', slens: 'kinds', sizes: {}, q: '', allCats: false, noMiss: false, dsel: null };
+const S = { per: 'month', off: 0, lens: 'cat', slens: 'kinds', sizes: {}, q: '', allCats: false, missOpen: false, missGone: [], dsel: null, lstore: 'kaufland' };
 const BUDGET = 650;
 const TY = +TODAY.slice(0, 4), TM = +TODAY.slice(5, 7);
 let ANIM = true;
@@ -1025,7 +1072,7 @@ function paceCard(P, total) {
   const X = (i) => L + (i / (Math.max(days, pdays) - 1)) * (W - L - R), Y = (v) => T + (1 - v / max) * (H - T - B);
   const np = now.map((v, i) => [X(i), Y(v)]), pp = prev.map((v, i) => [X(i), Y(v)]);
   const line = mono(np), u = uid();
-  const svg = `<svg class="an-svg${ANIM ? ' go' : ''}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Priebeh míňania v mesiaci">${defs(u)}
+  const svg = `<svg class="an-svg${ANIM ? ' go' : ''}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Priebeh míňania: k dnešku ${eur0(el ? now[el - 1] : 0)}${prev.length && el ? `, ${MN[+P.prevFrom.slice(5, 7) - 1]} k rovnakému dňu ${eur0(prev[Math.min(el, prev.length) - 1])}` : ''}${proj ? `, odhad na koniec mesiaca ${eur0(proj)}` : ''}, rozpočet ${eur0(BUDGET)}">${defs(u)}
     <line class="grid" x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}"/>
     <line class="bud" x1="${L}" x2="${W - R}" y1="${Y(BUDGET)}" y2="${Y(BUDGET)}"/><text x="${W - R}" y="${Y(BUDGET) - 6}" text-anchor="end">rozpočet ${eur0(BUDGET)}</text>
     <text x="${L}" y="${H - 5}">1.</text><text x="${X(14)}" y="${H - 5}" text-anchor="middle">15.</text><text x="${W - R}" y="${H - 5}" text-anchor="end">${days}.</text>
@@ -1073,7 +1120,7 @@ function priceChart(series, P, o) {
     return `${d ? `<path class="sl" d="${d}" stroke="${c}" pathLength="1"/>` : ''}${s.pts.map((q) => `<circle class="pt" cx="${X(q.d).toFixed(1)}" cy="${Y(q.v).toFixed(1)}" r="${q.promo ? 3 : 4}" fill="${q.promo ? '#3ddc84' : c}"/>`).join('')}`;
   }).join('');
   const avg = o.avg != null ? `<line class="avg" x1="${L}" x2="${W - R}" y1="${Y(o.avg)}" y2="${Y(o.avg)}"/>` : '';
-  const svg = `<svg class="an-svg${ANIM ? ' go' : ''}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Vývoj ceny">${grid}${avg}${lines}<text x="${L}" y="${H - 5}">${dm(all.reduce((a, q) => (q.d < a ? q.d : a), all[0].d))}</text><text x="${W - R}" y="${H - 5}" text-anchor="end">dnes</text><g class="an-cur"><line y1="${T - 6}" y2="${H - B}"/><circle r="5.5"/></g></svg>`;
+  const svg = `<svg class="an-svg${ANIM ? ' go' : ''}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Vývoj ceny: ${series.map((x) => { const l = x.pts[x.pts.length - 1]; return `${STORES[x.s].n} naposledy ${o.fmt(l.v)} (${dm(l.d)})`; }).join(', ')}; najmenej ${o.fmt(lo)}, najviac ${o.fmt(hi)}">${grid}${avg}${lines}<text x="${L}" y="${H - 5}">${dm(all.reduce((a, q) => (q.d < a ? q.d : a), all[0].d))}</text><text x="${W - R}" y="${H - 5}" text-anchor="end">dnes</text><g class="an-cur"><line y1="${T - 6}" y2="${H - B}"/><circle r="5.5"/></g></svg>`;
   const pts = all.sort((a, b) => (a.d < b.d ? -1 : 1)).map((q) => [+X(q.d).toFixed(1), +Y(q.v).toFixed(1), `${STORES[q.s].n} · ${dm(q.d)} · <b>${o.fmt(q.v)}</b>${q.promo ? ' · akcia' : ''}`]);
   return `${plot(svg, pts, W, H)}<div class="an-lg">${series.map((s) => `<span><i class="o" style="--c:${STORES[s.s].c1}"></i>${STORES[s.s].n}</span>`).join('')}${o.avg != null ? '<span><i class="d"></i>tvoj priemer</span>' : ''}${all.some((q) => q.promo) ? '<span><i class="o" style="--c:#3ddc84"></i>akcia</span>' : ''}</div>`;
 }
@@ -1122,7 +1169,7 @@ function insights() {
 const mainHead = (t) => `<button type="button" class="mebtn" data-a="toast:Tu sa otvorí Viac – profil a upozornenia." aria-label="Profil a upozornenia">M<i class="mdot" aria-hidden="true"></i></button><span class="nbt">${t}</span><div class="nbr"><button type="button" class="ib" data-a="go:search" aria-label="Hľadať">${I('magnifying-glass:bold')}</button><button type="button" class="ib" data-a="toast:Tu sa otvorí fotoaparát na bloček." aria-label="Odfotiť bloček">${I('camera:bold')}</button><button type="button" class="ib helpb" data-a="toast:Nápovedy obrazovky – ako dnes." aria-label="Pomoc">${I('question:bold')}</button></div>`;
 const backHead = (label, title, right = '') => `<button type="button" class="back" data-a="back" aria-label="Späť: ${esc(label)}">${I('caret-left:bold')}<span>${esc(label)}</span></button><span class="nbt">${esc(title)}</span><span class="ibs">${right}</span>`;
 const prevLabel = () => { const x = STACK[STACK.length - 2]; return x ? LABEL[x._x.s](x._x) : 'Výdavky'; };
-const LABEL = { overview: () => 'Výdavky', cat: (x) => CATS[x.id].n, kind: (x) => KIND[x.id].n, product: (x) => PROD[x.id].b || PROD[x.id].n, store: (x) => STORES[x.id.split('|')[0]].n, compare: () => 'Porovnanie', search: () => 'Hľadať', fix: () => 'Doplniť', receipt: () => 'Bloček', receipts: () => 'Bločky' };
+const LABEL = { overview: () => 'Výdavky', cat: (x) => CATS[x.id].n, kind: (x) => KIND[x.id].n, product: (x) => PROD[x.id].b || PROD[x.id].n, store: (x) => STORES[x.id.split('|')[0]].n, compare: () => 'Porovnanie', search: () => 'Hľadať', fix: () => 'Doplniť', receipt: () => 'Bloček', receipts: () => 'Bločky', list: () => `Nákup ${STORES[S.lstore].n}` };
 
 const SCR = {};
 SCR.overview = () => {
@@ -1131,7 +1178,8 @@ SCR.overview = () => {
   const hero = `<div class="wx an-hero" data-swipe="1"><div class="an-per"><button type="button" data-a="off:-1" aria-label="Predchádzajúce obdobie" ${P.from > DATA_START ? '' : 'disabled'}>${I('caret-left:bold')}</button><span class="place">${ptitle(P)}</span><button type="button" data-a="off:1" aria-label="Novšie obdobie" ${S.off < 0 ? '' : 'disabled'}>${I('caret-right:bold')}</button></div>
     <span class="temp">${cnt(cur.total, 'hero')}<small>€</small></span>${cmpCond(compare(cur.total, prv.total, P))}
     ${P.per === 'month' ? `<button type="button" class="cond bud" data-a="toast:Tu sa otvorí nastavenie rozpočtu (posuvník ako dnes).">Rozpočet ${eur0(BUDGET)} · ${left >= 0 ? `${partial(P) ? 'zostáva' : 'ostalo'} ${eur0(left)}` : `prekročený o ${eur0(-left)}`}</button>` : ''}</div>`;
-  const miss = S.off === 0 && S.per !== 'year' && !S.noMiss ? `<div class="card glass2 an-miss">${stile('kaufland', 40)}<div class="grow"><b>Chýba bloček</b><small>Kaufland · utorok ${dm('2026-11-10')}</small></div><button type="button" class="ib an-cam" data-a="toast:Tu sa otvorí fotoaparát pre tento nákup." aria-label="Odfotiť bloček">${I('camera:bold')}</button><button type="button" class="ib" data-a="nomiss" aria-label="Bloček nemám">${I('x:bold')}</button></div>` : '';
+  const ml = MISS.map((m, i) => ({ ...m, i })).filter((m) => !S.missGone.includes(m.i));
+  const miss = S.off === 0 && S.per !== 'year' && ml.length ? `<div class="card glass2 an-miss2"><button type="button" class="an-mh" data-a="missopen" aria-expanded="${S.missOpen}"><span class="tile">${E('receipt')}</span><span class="grow"><b>${ml.length === 1 ? 'Chýba bloček z nákupu' : `Chýbajú bločky z ${ml.length} nákupov`}</b><small>${ml.map((m) => STORES[m.s].n).join(', ')} · odfoť a ceny sa doplnia</small></span>${I(S.missOpen ? 'caret-up:bold' : 'caret-down:bold', 'chev')}</button>${S.missOpen ? ml.map((m) => `<div class="an-mr">${stile(m.s, 36)}<div class="grow"><b>${STORES[m.s].n}</b><small>${['pondelok', 'utorok', 'streda', 'štvrtok', 'piatok', 'sobota', 'nedeľa'][dow(m.d)]} ${dm(m.d)} · ${m.n}${NB}${plural(m.n, 'položka', 'položky', 'položiek')}</small></div><button type="button" class="ib an-cam" data-a="toast:Tu sa otvorí fotoaparát pre tento nákup." aria-label="Odfotiť bloček: ${STORES[m.s].n}">${I('camera:bold')}</button><button type="button" class="ib" data-a="nomiss:${m.i}" aria-label="Bloček nemám: ${STORES[m.s].n}">${I('x:bold')}</button></div>`).join('') : ''}</div>` : '';
   const pace = P.per === 'month' ? paceCard(P, cur.total) : P.per === 'week' ? daysCard(P) : '';
   const tot = cur.total || 1;
   let lens;
@@ -1185,8 +1233,9 @@ SCR.kind = (x) => {
   if (K.u && m.avg != null) {
     const tr = m.trend == null ? '' : Math.abs(m.trend) >= 0.03 ? `<span class="an-tag ${m.trend > 0 ? 'up' : 'good'}">${m.trend > 0 ? 'zdražuje' : 'zlacňuje'} ${m.trend > 0 ? '▲' : '▼'} ${Math.round(Math.abs(m.trend) * 100)}${NB}%</span>` : '<span class="an-tag mu">cena sa nemení</span>';
     const off = (o) => { const Pp = PROD[o.pid]; return `${STORES[o.store].n} · ${Pp.b || Pp.n}${Pp.wq ? '' : ` ${sizeFmt(Pp) || ''} za ${eur(o.price)}`} · ${o.promo ? 'akcia ' : ''}${when(o.date)}`; };
-    cards = `<div class="an-pcs"><div class="mod glass2 an-w"><span class="kk">${I('receipt')}Priemerne platíš</span><div class="an-wr"><span class="v">${vU(m.avg, K)}</span>${tr}</div><span class="d">posledné 3 mesiace · ${nakupov(m.kn.length)} · ${qtyFmt(m.qty, K.u)} za ${eur(m.paid)}</span></div>
-      ${m.cheapest ? `<button type="button" class="mod glass2 good" ${go('store', m.cheapest.s + '|' + k)}><span class="kk">${I('trend-down:bold')}Najlacnejšie teraz</span><span class="v">${vU(m.cheapest.best.unit, K)}</span><span class="d">${off(m.cheapest.best)}</span></button>` : ''}
+    const sameC = m.cheapest && !m.priciest && Math.abs(m.cheapest.best.unit / m.avg - 1) < 0.01;
+    cards = `<div class="an-pcs"><div class="mod glass2 an-w"><span class="kk">${I('receipt')}Priemerne platíš</span><div class="an-wr"><span class="v">${vU(m.avg, K)}</span>${tr}</div><span class="d">posledné 3 mesiace · ${nakupov(m.kn.length)} · ${qtyFmt(m.qty, K.u)} za ${eur(m.paid)}${sameC ? ` · kupuješ len v obchode ${STORES[m.cheapest.s].n}` : ''}</span></div>
+      ${m.cheapest && !sameC ? `<button type="button" class="mod glass2 good" ${go('store', m.cheapest.s + '|' + k)}><span class="kk">${I('trend-down:bold')}Najlacnejšie teraz</span><span class="v">${vU(m.cheapest.best.unit, K)}</span><span class="d">${off(m.cheapest.best)}</span></button>` : ''}
       ${m.priciest ? `<button type="button" class="mod glass2" ${go('store', m.priciest.s + '|' + k)}><span class="kk">${I('trend-up:bold')}Najdrahšie teraz</span><span class="v">${vU(m.priciest.best.unit, K)}</span><span class="d">${off(m.priciest.best)}</span></button>` : ''}</div>
       ${m.save >= 0.5 ? `<div class="card insight glass2"><span class="tile">${E('moneybag')}</span><div class="grow"><div class="ib-t">V obchode ${STORES[m.saveAt.s].n} ušetríš asi ${eur(m.save)} mesačne</div><div class="meta">Oproti tomu, čo platíš priemerne, pri tvojom bežnom množstve ${qtyFmt(m.qty / 3, K.u)} za mesiac.</div></div></div>` : ''}
       ${m.unknown.length ? `<button type="button" class="card insight tapc glass2" ${go('fix')}><span class="tile">${E('tag')}</span><div class="grow"><div class="ib-t">${cap(nakupov(m.unknown.length))} bez veľkosti balenia</div><div class="meta">Sú v sume, ale nie v cene ${perLabel(K.u, K.sm)}. Doplň veľkosť.</div></div>${chev}</button>` : ''}`;
@@ -1194,7 +1243,8 @@ SCR.kind = (x) => {
     cards = `<div class="an-pcs"><div class="mod glass2 an-w"><span class="kk">${I('receipt')}Minuté za 3 mesiace</span><span class="v">${vE(sum(m.ps, (p) => p.total))}</span><span class="d">${nakupov(m.ps.length)} · ${K.u ? 'cenu za jednotku ukážeme po doplnení veľkosti balenia' : 'pri tomto druhu sa cena za jednotku neporovnáva'}</span></div></div>`;
   }
   const series = m.stores.map((st) => [st.s, m.kn.filter((p) => p.store === st.s && p.pid === st.best.pid)]).filter(([, xs]) => xs.length).map(([s, xs]) => ({ s, pts: xs.map((p) => ({ d: p.date, v: K.sm && K.u !== 'ks' ? (p.total / units(p)) / 10 : p.total / units(p), promo: p.promo })) }));
-  const chart = K.u && m.kn.length > 2 ? `<div class="card glass2"><div class="an-ch"><div class="k">Vývoj ceny ${perLabel(K.u, K.sm)}</div><div class="an-lg"><span>najlacnejší výrobok v obchode</span></div></div>${priceChart(series, P, { avg: K.sm && K.u !== 'ks' ? m.avg / 10 : m.avg, fmt: (v) => `${nf(v, 2, 2)}${NB}€` })}</div>${scrubHint('Potiahni prstom po grafe a uvidíš cenu každého nákupu.')}` : '';
+  const flat = new Set(m.kn.map((p) => (p.total / units(p)).toFixed(3))).size < 2;
+  const chart = K.u && m.kn.length > 2 && !flat ? `<div class="card glass2"><div class="an-ch"><div class="k">Vývoj ceny ${perLabel(K.u, K.sm)}</div><div class="an-lg"><span>najlacnejší výrobok v obchode</span></div></div>${priceChart(series, P, { avg: K.sm && K.u !== 'ks' ? m.avg / 10 : m.avg, fmt: (v) => `${nf(v, 2, 2)}${NB}€` })}</div>${scrubHint('Potiahni prstom po grafe a uvidíš cenu každého nákupu.')}` : '';
   const maxU = Math.max(1e-9, ...m.stores.map((s) => s.best.unit));
   const stores = K.u && m.stores.length ? `${h2('Obchody a ceny', true)}<div class="lst glass2">${m.stores.map((s, i) => {
     const Pp = PROD[s.best.pid], diff = i ? Math.max(1, Math.round((s.best.unit / m.stores[0].best.unit - 1) * 100)) : 0;
@@ -1228,15 +1278,19 @@ SCR.product = (x) => {
   const same = reg.filter((p) => p.store === now.store);
   if (same.length > 2) { const base = median(same.slice(0, -1).map((p) => p.price)), c = now.price / base - 1; if (Math.abs(c) >= 0.03) { const since = same.find((p) => p.price === now.price); chg = `<span class="an-tag ${c > 0 ? 'up' : 'good'}">${c > 0 ? '▲' : '▼'} ${Math.round(Math.abs(c) * 100)}${NB}% od ${dm(since.date)}</span>`; } }
   const val = (v) => (Pp.wq ? vU(v, K) : vE(v));
+  const once = ps.length === 1;
+  const showAvg = !once && avgPack != null && Math.abs(avgPack - now.price) >= 0.005, showMin = !once && minP.price < now.price - 0.005;
+  const same1 = !once && !showAvg && !showMin, lone = showAvg !== showMin ? ' an-w' : '';
   const unitLine = !K.u ? 'cena za kus' : Pp.wq ? 'cena podľa váhy' : s1 ? `${sz ? `${sz} · ` : ''}${upv(now.price / s1, K)}` : 'bez veľkosti balenia';
   const series = [...groupBy(ps, (p) => p.store)].map(([s, xs]) => ({ s, pts: xs.map((p) => ({ d: p.date, v: p.price, promo: p.promo })) }));
   return { head: backHead(prevLabel(), Pp.b || Pp.n, `<button type="button" class="ib" data-a="toast:Tu sa upraví názov, značka, balenie a druh (ako dnes pod ⋯)." aria-label="Upraviť výrobok">${I('dots-three:bold')}</button>`), dyn: [], zones: [
     ['head', `<div class="lhead">${ktile(K, true)}<div class="grow"><h1 class="lt">${esc(pname(Pp))}</h1>${crumbs([['Výdavky', 'home'], [C.n, `nav:cat:${K.c}`], [K.n, `nav:kind:${K.k}`]])}</div></div>`],
-    ['cards', `<div class="an-pcs"><div class="mod glass2 an-w"><span class="kk">${I('receipt')}Cena teraz</span><div class="an-wr"><span class="v">${val(now.price)}</span>${chg}</div><span class="d">${unitLine} · ${STORES[now.store].n} ${dm(now.date)}</span></div>
-      <div class="mod glass2"><span class="kk">${I('clock')}Priemerne platíš</span><span class="v">${avgPack != null ? val(avgPack) : '–'}</span><span class="d">${Pp.wq ? '' : 'za balenie · '}3 mesiace · ${nakupov(w90.length)}</span></div>
-      <div class="mod glass2 good"><span class="kk">${I('trend-down:bold')}Najnižšia cena</span><span class="v">${val(minP.price)}</span><span class="d">${STORES[minP.store].n} ${dm(minP.date)}${minP.promo ? ' · akcia' : ''}</span></div></div>`],
-    ['chart', ps.length > 2 ? `<div class="card glass2"><div class="an-ch"><div class="k">Vývoj ceny${Pp.wq ? ` za 1${NB}${K.u}` : ' balenia'}</div></div>${priceChart(series, P, { avg: avgPack, fmt: (v) => `${nf(v, 2, 2)}${NB}€` })}</div>` : ''],
-    ['stores', `${h2('Obchody a ceny', true)}<div class="lst glass2">${offers.map((o, i) => `<button type="button" class="row tap" ${go('store', o.s + '|' + K.k)}>${stile(o.s, 40)}<div class="tx"><b>${STORES[o.s].n}</b><span class="sub">${when(o.date)}${o.min < o.price - 0.005 ? ` · najnižšie ${eur(o.min)}` : ` · ${nakupov(o.n)}`}</span></div><div class="an-r"><b class="amt">${Pp.wq ? upv(o.price, K) : eur(o.price)}</b>${offers.length > 1 ? (i ? `<span class="an-tag up">+${Math.max(1, Math.round((o.price / offers[0].price - 1) * 100))}${NB}%</span>` : '<span class="an-tag good">najlacnejšie</span>') : ''}</div>${chev}</button>`).join('')}</div>
+    ['cards', `<div class="an-pcs"><div class="mod glass2 an-w"><span class="kk">${I('receipt')}${once ? 'Kúpené raz' : 'Cena teraz'}</span><div class="an-wr"><span class="v">${val(now.price)}</span>${chg}</div><span class="d">${unitLine} · ${STORES[now.store].n} ${dm(now.date)}${same1 ? ` · ${nakupov(ps.length)}, vždy rovnaká cena` : ''}</span></div>
+      ${showAvg ? `<div class="mod glass2${lone}"><span class="kk">${I('clock')}Priemerne platíš</span><span class="v">${val(avgPack)}</span><span class="d">${Pp.wq ? '' : 'za balenie · '}3 mesiace · ${nakupov(w90.length)}</span></div>` : ''}
+      ${showMin ? `<div class="mod glass2 good${lone}"><span class="kk">${I('trend-down:bold')}Najnižšia cena</span><span class="v">${val(minP.price)}</span><span class="d">${STORES[minP.store].n} ${dm(minP.date)}${minP.promo ? ' · akcia' : ''}</span></div>` : ''}</div>
+      ${once ? `<p class="vnote">${I('info')}Priemer a najnižšiu cenu ukážeme po ďalšom nákupe.</p>` : ''}`],
+    ['chart', ps.length > 2 && !same1 ? `<div class="card glass2"><div class="an-ch"><div class="k">Vývoj ceny${Pp.wq ? ` za 1${NB}${K.u}` : ' balenia'}</div></div>${priceChart(series, P, { avg: avgPack, fmt: (v) => `${nf(v, 2, 2)}${NB}€` })}</div>` : ''],
+    ['stores', `${once ? '' : `${h2('Obchody a ceny', true)}<div class="lst glass2">${offers.map((o, i) => `<button type="button" class="row tap" ${go('store', o.s + '|' + K.k)}>${stile(o.s, 40)}<div class="tx"><b>${STORES[o.s].n}</b><span class="sub">${when(o.date)}${o.min < o.price - 0.005 ? ` · najnižšie ${eur(o.min)}` : ` · ${nakupov(o.n)}`}</span></div><div class="an-r"><b class="amt">${Pp.wq ? upv(o.price, K) : eur(o.price)}</b>${offers.length > 1 ? (i ? `<span class="an-tag up">+${Math.max(1, Math.round((o.price / offers[0].price - 1) * 100))}${NB}%</span>` : '<span class="an-tag good">najlacnejšie</span>') : ''}</div>${chev}</button>`).join('')}</div>`}
       <button type="button" class="lnk c" data-a="nav:kind:${K.k}">Porovnať s inými značkami: ${K.n}</button>`],
     ['add', `<button type="button" class="btn pri a" data-a="toast:Pridané do zoznamu Nákup Lidl.">${I('plus:bold')}Pridať do zoznamu</button>`],
     ['buys', `${h2('Nákupy', true)}<div class="lst glass2">${[...ps].reverse().slice(0, 8).map((p) => `<button type="button" class="row tap" ${go('receipt', p.rid + '|' + p.id)}>${stile(p.store, 34)}<div class="tx"><b>${dm(p.date)} · ${STORES[p.store].n}</b><span class="sub">${Pp.wq ? `${qtyFmt(p.weight, K.u)} × ${upv(p.price, K)}` : `${p.packs} × ${eur(p.price)}`}${p.promo ? ' · akcia' : ''}</span></div><b class="amt">${eur(p.total)}</b>${chev}</button>`).join('')}</div>`],
@@ -1311,7 +1365,41 @@ SCR.fix = () => {
   return { head: backHead(prevLabel(), 'Doplniť veľkosť'), dyn: [], zones: [
     ['head', `<div class="lhead"><span class="tile lg">${E('tag', 40)}</span><div class="grow"><h1 class="lt">Doplniť veľkosť</h1><div class="meta">Bez veľkosti balenia nevieme cenu za kg. Stačí raz.</div></div></div>`],
     ['todo', todo.map((x) => { const K = KIND[x.kind], ps = PUR.filter((p) => p.pid === x.id), opts = x.opts || [0.1, 0.25, 0.5, 1]; return `<div class="card glass2 an-fix"><div style="display:flex;gap:12px;align-items:center">${th(K.e)}<div class="grow"><b>${esc(pname(x))}</b><small>${[...new Set(ps.map((p) => STORES[p.store].n))].join(', ')} · ${ps.length ? eur(ps[ps.length - 1].price) : '–'} · ${nakupov(ps.length)}</small></div></div><div class="chips wrap">${opts.map((v) => `<button type="button" class="chip" data-a="fix:${x.id}:${v}">${qtyFmt(v, K.u)}</button>`).join('')}<button type="button" class="chip" data-a="toast:Tu napíšeš vlastnú veľkosť, napr. 180 g.">Iná…</button></div></div>`; }).join('') || `<div class="card insight glass2"><span class="tile">${E('sparkle')}</span><div class="grow"><div class="ib-t">Všetko je doplnené</div><div class="meta">Ceny za jednotku sú zo všetkých nákupov.</div></div></div>`],
+    ['auto', `${h2(`Appka doplnila sama (${AUTO.length})`, true)}<div class="lst glass2">${AUTO.map((a) => { const x = PROD[a.pid], K = KIND[x.kind]; return `<div class="row">${th(K.e)}<div class="tx"><b>${esc(pname(x))}</b><span class="sub w2">${qtyFmt(sizeOf(x), K.u)} · ${STORES[a.store].n} píše len „${a.raw}“, veľkosť je z bločku ${STORES[a.from].n} „${a.fromRaw}“</span></div><button type="button" class="chip" data-a="toast:Tu veľkosť zmeníš, ak nesedí.">Zmeniť</button></div>`; }).join('')}</div><div class="an-hint" style="margin-top:0">Rovnaký výrobok spozná podľa značky a názvu. Pýta sa len vtedy, keď veľkosť nie je na žiadnom bločku.</div>`],
     ['done', done.length ? `${h2('Doplnené', true)}<div class="lst glass2">${done.map((x) => { const K = KIND[x.kind], ps = PUR.filter((p) => p.pid === x.id); return `<button type="button" class="row tap" ${go('kind', K.k)}>${th(K.e)}<div class="tx"><b>${esc(pname(x))}</b><span class="sub">${qtyFmt(S.sizes[x.id], K.u)}</span></div><b class="amt">${upv(ps[ps.length - 1].price / S.sizes[x.id], K)}</b>${chev}</button>`; }).join('')}</div>` : ''],
+  ] };
+};
+
+/* odhad položky v obchode: výrobok, ktorý tam kupuješ najčastejšie (120 dní), a jeho posledná cena bez akcie */
+function est(k, st, q) {
+  const xs = PUR.filter((p) => p.kind === k && p.store === st && p.date >= addDays(TODAY, -119));
+  if (!xs.length) return null;
+  const c = {}; xs.forEach((p) => (c[p.pid] = (c[p.pid] || 0) + 1));
+  const pid = Object.keys(c).sort((a, b) => c[b] - c[a])[0], mine = xs.filter((p) => p.pid === pid), reg = mine.filter((p) => !p.promo), l = (reg.length ? reg : mine)[(reg.length ? reg : mine).length - 1];
+  return { pid, price: l.price, total: r2(l.price * q), date: l.date, fresh: diffDays(l.date, TODAY) <= 42 && !l.promo };
+}
+function listCompare(st) {
+  const out = [];
+  for (const o of ['lidl', 'kaufland', 'tesco', 'kraj'].filter((x) => x !== st)) {
+    let a = 0, b = 0, n = 0;
+    for (const [, k, q] of LIST.items) { const h = est(k, st, q), t = est(k, o, q); if (h && t && h.fresh && t.fresh) { a += h.total; b += t.total; n++; } }
+    if (n >= Math.ceil(LIST.items.length / 2)) out.push({ s: o, d: r2(a - b), n });
+  }
+  return out.sort((x, y) => y.d - x.d);
+}
+SCR.list = () => {
+  const st = S.lstore, rows = LIST.items.map(([name, k, q]) => ({ name, k, q, e: est(k, st, q) }));
+  const known = rows.filter((r) => r.e), tot = sum(known, (r) => r.e.total), cmp = listCompare(st), best = cmp[0];
+  const tip = best && best.d >= 0.5
+    ? `<button type="button" class="card insight tapc glass2" data-a="lstore:${best.s}"><span class="tile">${E('moneybag')}</span><div class="grow"><div class="ib-t">V obchode ${STORES[best.s].n} by to vyšlo asi o ${eur(best.d)} lacnejšie</div><div class="meta">${best.n} z ${rows.length} položiek s cenou z posledných 6 týždňov v oboch obchodoch, bez akcií. Ťukni a zoznam sa prepočíta.</div></div>${chev}</button>`
+    : `<div class="card insight glass2"><span class="tile">${E('coin')}</span><div class="grow"><div class="ib-t">${STORES[st].n} je pre tento zoznam najvýhodnejší</div><div class="meta">${cmp.length ? cmp.map((c) => `${STORES[c.s].n} ${c.d < -0.005 ? `o ${eur(-c.d)} drahší` : 'rovnako'} (${c.n} z ${rows.length} položiek)`).join(' · ') : 'Na porovnanie zatiaľ nie je dosť nákupov v iných obchodoch.'}</div></div></div>`;
+  const items = `<div class="lst glass2">${rows.map((r) => { const K = KIND[r.k], P = r.e && PROD[r.e.pid]; return `<button type="button" class="row tap" ${go('kind', r.k)}>${th(K.e)}<div class="tx"><b>${r.name}</b><span class="sub">${r.e ? `<span class="an-ptag">${esc(pname(P))}${P.wq || /\d/.test(P.n) ? '' : `${NB}${sizeFmt(P) || ''}`}</span>` : 'zatiaľ tu nekúpené'}</span></div><div class="an-r"><b class="amt">${r.e ? `~${eur(r.e.total)}` : '–'}</b><span class="sub">${r.e ? (P.wq ? `${qtyFmt(r.q, K.u)} × ${upv(r.e.price, K)}` : r.q > 1 ? `${r.q} × ${eur(r.e.price)}` : r.e.fresh ? '' : `cena z ${dm(r.e.date)}`) : ''}</span></div>${chev}</button>`; }).join('')}</div>`;
+  return { head: `<span class="ibs"></span><span class="nbt">Nákup ${STORES[st].n}</span><span class="ibs"></span>`, dyn: [], zones: [
+    ['head', `<div class="lhead">${stile(st, 60)}<div class="grow"><h1 class="lt">Nákup ${STORES[st].n}</h1><div class="meta">${rows.length}${NB}položiek · ukážka zoznamu</div></div></div>`],
+    ['sum', `<div class="card glass2 an-sum"><div><div class="k">Odhad nákupu</div><div class="an-big">~${nf(tot, 2, 2)}<small>€</small></div></div><div class="an-sumr"><span>podľa tvojich nákupov v obchode ${STORES[st].n}</span><span>${known.length} z ${rows.length} položiek s cenou</span>${st !== 'kaufland' ? '<button type="button" class="lnk" data-a="lstore:kaufland">späť na Kaufland</button>' : ''}</div></div>`],
+    ['tip', tip],
+    ['items', items],
+    ['note', `<p class="vnote">${I('info')}Pri položke je výrobok, ktorý v tomto obchode kupuješ najčastejšie, a jeho posledná cena bez akcie. Napísaný názov ostáva tvoj.</p>`],
   ] };
 };
 
@@ -1429,7 +1517,16 @@ function act(a, src) {
     case 'go': { const [s, ...id] = v.split(':'); push(s, id.join(':')); break; }
     case 'nav': { const [s, ...id] = v.split(':'); nav(s, id.join(':')); break; }
     case 'back': popTo(STACK.length - 2); break;
-    case 'home': popTo(0); break;
+    case 'home': if (STACK[0]._x.s !== 'overview') act('tab:overview'); else popTo(0); break;
+    case 'tab': {
+      if (STACK[0]._x.s === v) { popTo(0); break; }
+      STACK.splice(0).forEach((g) => g.remove());
+      const n = mk({ s: v }); n.classList.add('top', 'in-tab');
+      tabbar.querySelectorAll('button[data-a^="tab:"]').forEach((b) => { const on = b.dataset.a === `tab:${v}`; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+      break;
+    }
+    case 'lstore': S.lstore = v; paint(el, null, true); el.querySelector('.sc').scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' }); toast(`Zoznam prepočítaný na ${STORES[v].n}.`); break;
+    case 'missopen': S.missOpen = !S.missOpen; paint(el, ['miss'], true); break;
     case 'per': S.per = v; S.off = 0; S.dsel = null; paint(el, null, true); break;
     case 'off': setOff(S.off + Number(v)); break;
     case 'poff': setOff(Number(v)); break;
@@ -1437,7 +1534,7 @@ function act(a, src) {
     case 'lens': S.lens = v; S.dsel = null; paint(el, ['lens'], true); break;
     case 'slens': S.slens = v; paint(el, ['list'], true); break;
     case 'allcats': S.allCats = !S.allCats; paint(el, ['lens'], false); break;
-    case 'nomiss': S.noMiss = true; paint(el, ['miss'], false); tabbar.querySelector('.tbadge')?.remove(); toast('Označené: nákup bez bločku.'); break;
+    case 'nomiss': { S.missGone.push(Number(v)); paint(el, ['miss'], false); const left = MISS.length - S.missGone.length, b = tabbar.querySelector('.tbadge'); if (b) { if (left) b.textContent = left; else b.remove(); } toast('Označené: nákup bez bločku.'); break; }
     case 'dsel': {
       S.dsel = S.dsel === v ? null : v;
       const dn = el.querySelector('.an-dn'), P = curP(), cur = agg(P.from, P.to);
@@ -1521,16 +1618,18 @@ setView(location.hash === '#navrh' ? 'doc' : 'mock', true);
 /* odkazy z dokumentu do mockupu */
 document.querySelectorAll('[data-show]').forEach((b) => b.addEventListener('click', () => {
   const [s, ...arg] = b.dataset.show.split(':');
-  popTo(0);
+  act(s === 'list' ? 'tab:list' : 'home');
   if (s === 'lens') { S.lens = arg[0]; paint(topEl(), ['lens'], true); }
   else if (s === 'receipt') { const p = PUR.filter((x) => x.pid === 'pilos-maslo').pop(); push('receipt', p.rid + '|' + p.id); }
-  else if (s !== 'overview') push(s, arg.join(':'));
+  else if (s === 'miss') { S.missOpen = true; paint(topEl(), ['miss'], true); }
+  else if (s !== 'overview' && s !== 'list') push(s, arg.join(':'));
   if (window.matchMedia('(max-width: 1099px)').matches) { setView('mock'); window.scrollTo(0, 0); }
 }));
 
 const thb = document.getElementById('thb');
 if (thb) thb.addEventListener('click', () => document.querySelector(thm.classList.contains('t-d') ? '[data-theme-set="l"]' : '[data-theme-set="d"]').click());
 mk({ s: 'overview' }).classList.add('top');
+{ const b = tabbar.querySelector('.tbadge'); if (b) b.textContent = MISS.length; }
 try { if (localStorage.getItem('vyd.tema') === 'l') document.querySelector('[data-theme-set="l"]').click(); } catch (e) { /* bez pamäte */ }
 })();
 </script>

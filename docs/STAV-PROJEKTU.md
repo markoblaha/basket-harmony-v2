@@ -278,6 +278,12 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   preklikanie 4 vzhľady × 12 obrazoviek na testovacom builde s testovacím účtom – 0 nálezov, fotky prezreté.
   Na reálnych dátach: pivo priemerne 2,35 €/l, najlacnejšie Tesco 2,10 €/l; 7 pív z Lidla bez veľkosti → fronta veľkostí.
   Neoverené: skutočný iPhone. Do ostrej DB nič (migrácie v zozname „Pred zlúčením“).
+  **Mockup verzia 4 (13. 11., na otázku „vylepšil by si ešte niečo?“):** v tom istom artefakte, kapitola 7. Návrhy:
+  1) bez opakovaných čísel (výrobok kúpený raz = karta „Kúpené raz“; stále rovnaká cena = len Cena teraz; druh z jedného
+  obchodu bez druhej karty), 2) chýbajúce bločky zbalené do jedného riadku, 3) v zozname „V obchode X by to vyšlo asi o … €
+  lacnejšie“ (len položky s cenou do 6 týždňov v oboch obchodoch, bez akcií; ťuk prepočíta zoznam; v mockupe karta Nákupy),
+  4) veľkosť balenia prevzatá z bločku iného obchodu pri rovnakom výrobku, 5) zdraženie v „Oplatí sa vedieť“ (už v mockupe),
+  6) textový popis grafov pre VoiceOver. Čaká na výber majiteľa; v appke nič z verzie 4 nie je.
 
 - **Výdavky 2.0 – návrh prestavby karty (11. 11. 2026):** https://claude.ai/artifact/TRAxKhERGN3ZcRiLSiMDQw
   (zdroj `prototyp/vydavky-navrh.html`: dokument + preklikateľný mockup s vymyslenými dátami). Zistenia z testovacej DB:
