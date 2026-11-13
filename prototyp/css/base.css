@@ -873,3 +873,38 @@ input[type="range"] { width: 100%; accent-color: var(--acc); height: 30px; }
 .bm-tr { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: var(--card2); }
 .bm-tr i { display: block; height: 100%; }
 .bm-row em { white-space: nowrap; font-style: normal; text-align: right; font-variant-numeric: tabular-nums; color: var(--sec); font-size: 13px; }
+
+/* ---------- pridávanie: rad bublín nad poľom (návrh prototyp/pridavanie-navrh.html, 13. 11.) */
+.bb-row { display: flex; align-items: center; gap: 8px; min-height: 54px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  margin: 0 -16px; padding: 2px 16px 4px; scroll-padding: 0 16px; touch-action: pan-x; }
+.bb-row::-webkit-scrollbar { display: none; }
+.bb-lab { flex: none; width: 58px; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--ter); line-height: 1.25; white-space: normal; }
+.bb-lab.wide { flex: 1; width: auto; text-align: center; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 600; color: var(--sec); line-height: 1.35; text-wrap: balance; }
+
+/* bublina: [−] ikona · názov / cena · počet v zozname */
+.bb { flex: none; position: relative; height: 48px; max-width: 232px; display: inline-flex; align-items: center; border-radius: 18px;
+  background: var(--card); box-shadow: var(--sh); transition: transform 300ms var(--ease-spring), box-shadow var(--dur-2), background-color var(--dur-2);
+  user-select: none; -webkit-user-select: none; }
+.bb:active { transform: scale(.94); transition-duration: 80ms; }
+.bb-m { height: 100%; min-width: 0; display: inline-flex; align-items: center; gap: 9px; padding: 0 14px 0 9px; border-radius: inherit; text-align: left; color: inherit;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.bb .em { width: 30px; height: 30px; }
+.bb-t { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.bb-t b { font-size: 15px; font-weight: 650; letter-spacing: -.2px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bb-t small { font-size: 12px; color: var(--sec); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.bb-pl { width: 30px; height: 30px; border-radius: 99px; display: grid; place-items: center; background: var(--accs); color: var(--acc); flex: none; }
+.bb-pl .ico { width: 15px; height: 15px; }
+/* napísaný text, ktorý nepoznáme („+ „ban““) */
+.bb-n { min-width: 26px; height: 26px; padding: 0 7px; margin-left: 2px; border-radius: 99px; display: grid; place-items: center; flex: none;
+  background: var(--card2); color: var(--sec); font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; animation: bb-pop 420ms var(--ease-spring); }
+/* posledná ťuknutá bublina: zelený okraj, mínus, číslo v plnej farbe */
+.bb.act { background: color-mix(in srgb, var(--acc) 15%, var(--card)); box-shadow: inset 0 0 0 2px var(--acc), var(--sh); }
+.bb.act .bb-m { padding-left: 2px; }
+.bb.act .bb-n { background: var(--f-pri, var(--pri)); color: var(--onpri); }
+.bb-min { flex: none; width: 38px; height: 42px; margin-left: 3px; border-radius: 14px; display: grid; place-items: center; color: var(--acc);
+  animation: bb-min 300ms var(--ease-spring); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.bb-min:active { background: color-mix(in srgb, var(--acc) 18%, transparent); }
+.bb-min .ico { width: 16px; height: 16px; }
+.bb.typed { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line2, var(--line)); }
+@keyframes bb-pop { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.22); opacity: 1; } 100% { transform: none; } }
+@keyframes bb-min { from { opacity: 0; transform: scale(.4); } }

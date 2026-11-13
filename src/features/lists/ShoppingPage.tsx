@@ -11,7 +11,7 @@ import { t } from "@/i18n";
 import { useRecipePlans } from "@/features/recipes/api";
 import { storeKeyOf } from "@/mockup/kit";
 import { useActiveSession, useHubSessions, useItems, useLists, useRequests, useStartShopping, type ShoppingList } from "./api";
-import type { FeedEntry } from "./useSmartAdd";
+import type { FailedAdd, FeedEntry } from "./useSmartAdd";
 import { ListView } from "./ListView";
 import { dayLabel } from "./dates";
 import { MyRequests } from "./Requests";
@@ -68,7 +68,15 @@ export function ShoppingPage() {
   // Posledné pridanie: zoznam k riadku dôjde a zasvieti ho (n = aj opakované pridanie toho istého).
   const [landed, setLanded] = useState<{ id: string; n: number } | null>(null);
   const onLanded = useCallback((id: string) => setLanded((l) => ({ id, n: (l?.n ?? 0) + 1 })), []);
-  const smartAdd = useSmartAdd({ listId: listId ?? "none", items: all, someoneElseShopping: someoneElse, onFeed: feedPush, onLanded });
+  // Neúspešné pridania (napr. výpadok servera) ostanú v zozname ako riadok so „Skúsiť znova“.
+  const [failed, setFailed] = useState<FailedAdd[]>([]);
+  const onFailed = useCallback((f: FailedAdd) => setFailed((x) => [f, ...x]), []);
+  const smartAdd = useSmartAdd({ listId: listId ?? "none", items: all, someoneElseShopping: someoneElse, onFeed: feedPush, onLanded, onFailed });
+  const dropFailed = (f: FailedAdd) => setFailed((x) => x.filter((y) => y.key !== f.key));
+  const retryFailed = (f: FailedAdd) => {
+    dropFailed(f);
+    void smartAdd({ name: f.name, quantity: f.quantity, unit: f.unit, note: f.note, categoryId: f.categoryId, quiet: true, instant: true });
+  };
 
   async function startShopping() {
     if (iAmShopping) return;
@@ -176,6 +184,9 @@ export function ShoppingPage() {
       smartAdd={smartAdd}
       landed={landed}
       otherLists={others}
+      failed={failed.filter((f) => f.listId === list.id)}
+      onRetry={retryFailed}
+      onDiscard={dropFailed}
     />
   );
 }

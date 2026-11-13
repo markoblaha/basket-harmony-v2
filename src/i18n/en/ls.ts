@@ -305,6 +305,8 @@ export const enLs: Record<keyof typeof skLs, string> = {
   "li.inList": "on the list",
   "li.lessAria": "{name}: one less",
   "li.typeHint": "Type and tap the bubbles – each tap adds one piece.",
+  "li.addFailed": "Couldn’t add",
+  "li.discardAria": "{name}: discard",
   "li.pickAria": "{name} – tap to add pieces",
   "li.brand": "brand",
   "li.suggestions": "Suggestions",

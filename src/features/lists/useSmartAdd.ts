@@ -11,6 +11,18 @@ export type FeedEntry = { id: number; name: string; qty?: string; tail: string; 
 
 export type AddOutcome = "ITEM" | "MERGED" | "REQUEST" | "FAILED";
 
+/** Pridanie, ktoré sa nepodarilo – ostane v zozname ako riadok so „Skúsiť znova“. */
+export type FailedAdd = {
+  key: string;
+  listId: string;
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+  note: string | null;
+  categoryId: string | null;
+  message: string;
+};
+
 /**
  * Pridanie položky z akéhokoľvek miesta (pole, dlaždica, schválená žiadosť).
  *
@@ -28,6 +40,7 @@ export function useSmartAdd({
   someoneElseShopping,
   onFeed,
   onLanded,
+  onFailed,
 }: {
   listId: string;
   items: Item[];
@@ -35,6 +48,8 @@ export function useSmartAdd({
   onFeed: (entry: Omit<FeedEntry, "id" | "out">) => void;
   /** Riadok, do ktorého pridanie dopadlo (nový alebo navýšený) – zoznam k nemu dôjde a zasvieti ho. */
   onLanded?: (itemId: string) => void;
+  /** Okamžité pridanie (bublina, Enter v okne) sa nepodarilo – zoznam ukáže riadok so „Skúsiť znova“. */
+  onFailed?: (f: FailedAdd) => void;
 }) {
   const add = useAddItem();
   const update = useUpdateItem(listId);
@@ -139,11 +154,24 @@ export function useSmartAdd({
           });
         return result.kind;
       } catch (err) {
+        const extra = queued.current.get(opId) ?? 0;
         queued.current.delete(opId);
-        toast.show(errorMessage(err), "error");
+        if (input.instant && onFailed) {
+          // ťuky počas čakania sa nestratia – riadok so „Skúsiť znova“ má celý počet
+          onFailed({
+            key: opId,
+            listId,
+            name,
+            quantity: extra ? countOf(input.quantity) + extra : (input.quantity ?? null),
+            unit,
+            note: input.note ?? null,
+            categoryId: input.categoryId ?? null,
+            message: errorMessage(err),
+          });
+        } else toast.show(errorMessage(err), "error");
         return "FAILED";
       }
     },
-    [add, update, remove, items, listId, someoneElseShopping, onFeed, onLanded, toast, qc],
+    [add, update, remove, items, listId, someoneElseShopping, onFeed, onLanded, onFailed, toast, qc],
   );
 }

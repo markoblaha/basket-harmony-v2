@@ -4,7 +4,7 @@
  * (potiahnutie +1/−1, ťuk na množstvo = − / +, ťuk na riadok = detail), skupiny receptov, „V košíku“
  * a dole pole na pridávanie. Nákup, žiadosti a sledovanie rieši ShoppingPage.
  */
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
 import { useNavigate } from "react-router";
 import { useToast } from "@/components/toast";
 import { errorMessage } from "@/lib/errors";
@@ -22,7 +22,8 @@ import { listTotals, useEstimator } from "./estimate";
 import { StoreCompareTip } from "./StoreCompare";
 import { Composer, ItemRow, ItemSheet, PriceLine, useRestoreItem } from "./ListParts";
 import { ListMenuSheet } from "./ListMenuSheet";
-import type { AddOutcome } from "./useSmartAdd";
+import { qtyLabel } from "./qty";
+import type { AddOutcome, FailedAdd } from "./useSmartAdd";
 
 type SmartAdd = (input: {
   name: string;
@@ -57,6 +58,9 @@ export function ListView({
   smartAdd,
   landed,
   otherLists,
+  failed,
+  onRetry,
+  onDiscard,
 }: {
   list: ShoppingList;
   items: Item[];
@@ -80,6 +84,9 @@ export function ListView({
   smartAdd: SmartAdd;
   landed: { id: string; n: number } | null;
   otherLists: ShoppingList[];
+  failed: FailedAdd[];
+  onRetry: (f: FailedAdd) => void;
+  onDiscard: (f: FailedAdd) => void;
 }) {
   const navigate = useNavigate();
   const toast = useToast();
@@ -213,9 +220,37 @@ export function ListView({
     />
   );
 
+  // Pridanie, ktoré sa nepodarilo: riadok navrchu so „Skúsiť znova“ a zahodením. V okne pridávania tlačidlá
+  // nezatvárajú klávesnicu (data-keep, kurzor ostáva v poli).
+  const keepFocus = (e: SyntheticEvent) => e.preventDefault();
+  const failRow = (f: FailedAdd) => (
+    <div className="row fail" key={f.key} data-keep>
+      <span className="th">
+        <E k={estimator.emoji(f.name, f.categoryId)} />
+      </span>
+      <div className="tx">
+        <b>
+          {f.name}
+          {f.quantity && f.quantity !== 1 ? ` · ${qtyLabel(f.quantity, f.unit)}` : ""}
+        </b>
+        <span className="sub">
+          <span className="err">{t("li.addFailed")}</span>
+        </span>
+      </div>
+      <button type="button" className="qty retry" onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => onRetry(f)}>
+        {t("common.retry")}
+      </button>
+      <button type="button" className="fx" onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => onDiscard(f)} aria-label={t("li.discardAria", { name: f.name })}>
+        <I n="x" w="bold" />
+      </button>
+    </div>
+  );
+  const failLst = failed.length > 0 && <div className={`lst fail-lst${gl}`}>{failed.map(failRow)}</div>;
+
   // Zoznam v okne pridávania: rovnaké riadky (najnovšie hore) a skupiny receptov, bez „V košíku“.
   const winList = (
     <>
+      {failLst}
       {loose.length > 0 && <div className={`lst${gl}`}>{loose.map((it) => row(it, it.note, true))}</div>}
       {[...groups.entries()].map(([label, { items: gi }]) => (
         <Fragment key={label}>
@@ -225,7 +260,7 @@ export function ListView({
           <div className={`lst${gl}`}>{gi.map((it) => row(it, groupOf.get(it.id)?.note ?? null, true))}</div>
         </Fragment>
       ))}
-      {!open.length && <p className="aw-empty">{t("li.empty")}</p>}
+      {!open.length && !failed.length && <p className="aw-empty">{t("li.empty")}</p>}
     </>
   );
   const summary = tn("li.items", open.length) + (showEstimate && tot.priced ? ` · ~${eur0(tot.v)}` : "");
@@ -298,13 +333,14 @@ export function ListView({
             itemsError
           ) : (
             <>
-              {!open.length && !done.length && (
+              {!open.length && !done.length && !failed.length && (
                 <div className="empty">
                   <E k="basket" s={64} />
                   <b>{t("li.empty")}</b>
                   <p>{t("li.emptyText")}</p>
                 </div>
               )}
+              {failLst}
               {loose.length > 0 && <div className={`lst${gl}`}>{loose.map((it) => row(it, it.note))}</div>}
               {[...groups.entries()].map(([label, { plan, items: gi }]) => {
                 const art = recipeArtOf({ id: plan.recipe_key, name: plan.recipe_name });

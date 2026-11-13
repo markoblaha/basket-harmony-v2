@@ -32,10 +32,10 @@ export const CHAPTERS = [
       base: (S) => sig(listOf(S, 'l1') && listOf(S, 'l1').items.map((i) => i.id + i.q)), done: (S, w, b) => sig(listOf(S, 'l1') && listOf(S, 'l1').items.map((i) => i.id + i.q)) !== b,
       ok: 'Maslo je v zozname. Appka spoznala produkt a doplnila odhad ceny z bločkov.',
       auto: async (h) => { const inp = h.el('.scr.top .dock input'); await h.tapEl(inp); await h.type(inp, 'maslo'); await sleep(500); await h.tapEl(h.el('.scr.top .dock .field button[type="submit"], .scr.top .dock .field .send') || inp, () => h.submit(inp)); } },
-    { kind: 'task', at: 'list', sel: '.scr.top .dock', pos: 'top', t: 'Preklep? Nevadí', x: 'Napíš „zemaky“. Appka slovo sama neprepíše – nad poľom ponúkne „Zemiaky?“. Ťukni na ponuku.',
+    { kind: 'task', at: 'list', sel: '.scr.top .dock', pos: 'top', t: 'Preklep? Nevadí', x: 'Napíš „zemaky“. Appka slovo sama neprepíše – nad poľom ponúkne bublinu „Zemiaky?“. Ťukni na ňu.',
       base: (S) => sig(listOf(S, 'l1') && listOf(S, 'l1').items.map((i) => i.id + i.q)), done: (S, w, b) => !!(listOf(S, 'l1') && listOf(S, 'l1').items.some((i) => i.pid === 'zemiaky')),
       ok: 'Zemiaky sú v zozname. Keď appka slovo nespozná, nič nemení sama – len ponúkne opravu.',
-      auto: async (h) => { const inp = h.el('.scr.top .dock input'); await h.tapEl(inp); await h.type(inp, 'zemaky'); await sleep(700); await h.tapEl(h.el('.scr.top .dock .sgr.typo')); } },
+      auto: async (h) => { const inp = h.el('.scr.top .dock input'); await h.tapEl(inp); await h.type(inp, 'zemaky'); await sleep(700); await h.tapEl(h.el('.scr.top .dock .bb.typo .bb-m')); } },
   ] },
   { n: 'Pridať hlasom', short: 'Hlas', ic: 'microphone', time: '30 s', learn: ['Povedať viac vecí naraz', 'Appka pochopí množstvo aj obchod', 'Opraviť hlasom: „radšej kilo“, „zmaž pivo“'], steps: [
     { kind: 'task', go: (c) => { c.closeModal(); c.jump('home'); }, at: 'home', sel: '.tabbar .tmic', hand: [.5, .5], t: 'Ťukni na mikrofón', x: 'Mikrofón je v strede spodnej lišty. Funguje z každej obrazovky.',

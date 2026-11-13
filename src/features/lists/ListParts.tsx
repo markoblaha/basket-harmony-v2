@@ -527,8 +527,9 @@ export function Composer({
     const before = now;
     for (const x of parts) {
       const l = label(x.name);
+      // neúspech: mimo žiadostí ostane v zozname riadok so „Skúsiť znova“, pri žiadosti sa text vráti do poľa
       void onAdd({ name: l.name, quantity: x.quantity, unit: x.unit, categoryId: l.categoryId, quiet: !requestMode, instant: !requestMode }).then(
-        (o) => o === "FAILED" && setTxt(before),
+        (o) => o === "FAILED" && requestMode && setTxt(before),
       );
     }
     haptic([8, 40, 14]);
@@ -571,6 +572,8 @@ export function Composer({
     const s = tapAt.current;
     // po potiahnutí riadku (+1 / −1) prehliadač pošle aj „click“ – ten okno nezatvára
     if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) return;
+    // „Skúsiť znova“ pri neúspešnom pridaní funguje aj s otvorenou klávesnicou
+    if ((e.target as Element).closest("[data-keep]")) return;
     e.stopPropagation();
     e.preventDefault();
     closeWin();

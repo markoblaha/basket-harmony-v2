@@ -303,6 +303,8 @@ export const skLs = {
   "li.inList": "v zozname",
   "li.lessAria": "{name}: o kus menej",
   "li.typeHint": "Píš a ťukaj na bubliny – koľkokrát ťukneš, toľko kusov pridám.",
+  "li.addFailed": "Nepodarilo sa pridať",
+  "li.discardAria": "{name}: zahodiť",
   "li.pickAria": "{name} – ťukaním pridáš kusy",
   "li.brand": "značka",
   "li.suggestions": "Návrhy",

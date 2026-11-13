@@ -88,88 +88,102 @@ function searchProducts(q, exclude) {
   return res.sort((a, b) => b[0] - a[0]).slice(0, 6).map((x) => x[1]);
 }
 
+// Pridávanie (návrh prototyp/pridavanie-navrh.html, 13. 11.): dole rad bublín + pole, rovnaký s klávesnicou aj bez nej.
+// Ťuk na bublinu pridá hneď (bez odpočítavania), číslo v bubline = počet v zozname, mínus na poslednej ťuknutej.
+// Po ťuknutí sa pole vyprázdni, ale bubliny ostanú na mieste, kým sa nezačne písať ďalšia vec.
 function Composer({ list, onAdded, focus0 }) {
-  const { S, act, voice, theme } = useApp();
+  const { act, voice, theme, S } = useApp();
   const g = theme === 'g';
   const [txt, setTxt] = useState('');
-  const [focus, setFocus] = useState(false);
+  const [stripFor, setStripFor] = useState('');
+  const [active, setActive] = useState(null);
+  const tapped = useRef(new Set());
   const inp = useRef(null);
-  const inList = useMemo(() => new Set(list.items.filter((i) => !i.done).map((i) => i.pid)), [list.items]);
-  // Čo pridá Enter – rovnaký výsledok, aký ukazuje náhľad nad poľom
-  const enter = useMemo(() => (txt.trim().length >= 2 ? splitChunks(txt.trim()).map(parseChunk).filter(Boolean) : []), [txt]);
-  const enterPid = enter.length === 1 && enter[0].pid;
-  // možný preklep („smotna“ → Smotana): Enter pridá text tak, ako je, oprava je len ponuka na ťuknutie
-  const typo = useMemo(() => { if (enter.length !== 1 || enterPid) return null; const f = typoFix(enter[0].n); return f ? f.p : null; }, [enter, enterPid]);
-  // Návrhy: 1. čo pridá Enter, 2. oprava preklepu, 3. konkrétne druhy a značky, 4. ďalšie zhody podľa začiatku slova
-  const sugg = useMemo(() => {
-    if (enter.length !== 1) return [];
-    const head = enterPid ? PRODUCTS[enterPid] : null;
-    const out = []; const seen = new Set(head ? [head.id] : []);
-    const push = (p) => { if (p && !seen.has(p.id)) { seen.add(p.id); out.push(p); } };
-    if (typo) push(typo);
-    if (head && head.grp) refinements(head, 6).forEach(push);
-    const found = searchProducts(txt, inList);
-    if (!head && found.length) { // rozpísané slovo („smot“): ponúkni najprv všeobecnú položku „Smotana“
-      const lw = norm(txt).split(' ').pop();
-      const t = found[0].n.replace(/ ·.*$/, '').split(/\s+/).find((w) => norm(w).startsWith(lw));
-      const g = t && resolveName(t); if (g && g.grp) push(g);
+  const open = list.items.filter((i) => !i.done);
+  const itemOf = (c) => open.find((i) => (c.pid ? i.pid === c.pid && !i.grp : !i.pid && norm(i.n || '') === norm(c.n)));
+  const openRef = useRef(open); openRef.current = open;
+  const pname = (pid) => PRODUCTS[pid].n.replace(/ ·.*$/, '');
+  // bubliny sa počítajú len pri zmene textu – po ťuknutí sa nepohnú
+  const chips = useMemo(() => {
+    const t0 = stripFor.trim();
+    const inList = new Set(openRef.current.map((i) => i.pid));
+    if (t0.length < 2) return STAPLES.filter((p) => !inList.has(p)).slice(0, 8).map((pid) => ({ k: 's:' + pid, pid }));
+    const enter = splitChunks(t0).map(parseChunk).filter(Boolean);
+    if (enter.length > 1) return [{ k: 'multi', multi: enter }];
+    const x = enter[0];
+    if (!x) return [];
+    const q0 = x.q !== 1 || x.u !== 'ks' ? { q: x.q, u: x.u } : null;
+    const out = []; const seen = new Set();
+    const push = (c) => { const key = c.pid || 'n:' + norm(c.n); if (seen.has(key)) return; seen.add(key); out.push(c); };
+    const head = x.pid ? PRODUCTS[x.pid] : null;
+    if (head) push({ k: 'p:' + head.id, pid: head.id, q0 });
+    else { const f = typoFix(x.n); if (f) push({ k: 'p:' + f.p.id, pid: f.p.id, q0, typo: true }); } // preklep: appka ho sama neprepíše, len ponúkne
+    if (head && head.grp) refinements(head, 6).forEach((p) => push({ k: 'p:' + p.id, pid: p.id, q0 }));
+    const found = searchProducts(t0, inList);
+    if (!head && found.length) { // rozpísané slovo („smot“): najprv všeobecná položka „Smotana“
+      const lw = norm(t0).split(' ').pop();
+      const w = found[0].n.replace(/ ·.*$/, '').split(/\s+/).find((y) => norm(y).startsWith(lw));
+      const gp = w && resolveName(w); if (gp && gp.grp) push({ k: 'p:' + gp.id, pid: gp.id, q0 });
     }
-    found.forEach(push);
-    return out.slice(0, head ? 4 : 5);
-  }, [txt, inList, enterPid, typo, enter]);
-  // dlaždice „istý nákup“ – ťuk = +1, po 2 s sa pridá a nahradí ďalšou
-  const [pend, setPend] = useState({});
-  const cnt = useRef({}); const tm = useRef({});
-  useEffect(() => () => Object.values(tm.current).forEach(clearTimeout), []);
-  const staples = STAPLES.filter((p) => !inList.has(p) || pend[p]).slice(0, 8);
-  const tapStaple = (pid) => {
-    cnt.current[pid] = (cnt.current[pid] || 0) + 1;
-    setPend((p) => ({ ...p, [pid]: { n: cnt.current[pid], k: Math.random() } }));
-    clearTimeout(tm.current[pid]);
-    tm.current[pid] = setTimeout(() => {
-      const n = cnt.current[pid]; delete cnt.current[pid];
-      act('addItems', list.id, [{ pid, q: n, u: 'ks' }]);
-      setPend((x) => { const y = { ...x }; delete y[pid]; return y; });
-      onAdded && onAdded();
-    }, 2000);
+    found.forEach((p) => push({ k: 'p:' + p.id, pid: p.id, q0 }));
+    if (!head) push({ k: 'n:' + norm(x.n), n: x.n, q0, typed: true }); // nepoznaný text na koniec – Enter ho pridá presne tak
+    return out.slice(0, 7);
+  }, [stripFor]); // eslint-disable-line
+  const tap = (c) => {
+    if (c.multi) { submit(); return; }
+    const first = !tapped.current.has(c.k);
+    tapped.current.add(c.k);
+    const pre = first && c.q0;
+    act('addItems', list.id, [c.pid ? { pid: c.pid, q: pre ? c.q0.q : 1, u: pre ? c.q0.u : 'ks' } : { n: c.n, q: pre ? c.q0.q : 1, u: pre ? c.q0.u : 'ks' }]);
+    setActive(c.k);
+    if (txt) setTxt('');
+    onAdded && onAdded();
   };
-  const add = (p, q, u) => { act('addItems', list.id, [{ pid: p.id, q: q || 1, u: u || 'ks' }]); setTxt(''); onAdded && onAdded(); inp.current && inp.current.focus(); };
+  const less = (c) => {
+    const it = itemOf(c); if (!it) return;
+    const u = unitOf(it);
+    if (it.q <= minQty(u)) { act('removeItem', list.id, it.id); setActive(null); tapped.current.delete(c.k); }
+    else act('setQty', list.id, it.id, bump(it.q, u, -1));
+  };
   const submit = (e) => {
     e && e.preventDefault();
-    const v = txt.trim(); if (!v) return;
+    const v = (inp.current ? inp.current.value : txt).trim(); if (!v) { inp.current && inp.current.blur(); return; }
+    const enter = splitChunks(v).map(parseChunk).filter(Boolean);
     const items = enter.map((x) => (x.pid ? { pid: x.pid, q: x.q, u: x.u } : { n: x.n, q: x.q, u: x.u }));
     if (items.length) act('addItems', list.id, items);
+    if (enter.length === 1) { const x = enter[0]; const c = chips.find((y) => (x.pid ? y.pid === x.pid : y.typed && norm(y.n) === norm(x.n))); if (c) { setActive(c.k); tapped.current.add(c.k); } }
     setTxt(''); onAdded && onAdded();
   };
   useEffect(() => { if (focus0) setTimeout(() => inp.current && inp.current.focus(), 350); }, []);
-  const typing = focus && txt.trim().length >= 2;
+  const keep = (e) => e.preventDefault();
+  const typingText = stripFor.trim().length >= 2;
   return (
     <div className="dock">
-      {typing ? (
-        <div className={'sgl' + (g ? ' glass2' : '')} role="listbox" aria-label="Návrhy">
-          {enter.length > 1 && <button type="button" className="sgr ent" onPointerDown={(e) => e.preventDefault()} onClick={submit}><span className="sgi nwi"><I n="plus" w="bold" /></span><span className="sgt"><b>{enter.length} položky</b><small>{enter.map((x) => (x.pid ? PRODUCTS[x.pid].n.replace(/ ·.*$/, '') : x.n)).join(', ')}</small></span><kbd aria-label="Enter">↵</kbd></button>}
-          {enter.length === 1 && (() => { const x = enter[0]; const p = x.pid && PRODUCTS[x.pid]; const e = p && estimate({ pid: p.id, q: x.q, u: x.u }, S, list.store);
-            const what = !p ? (typo ? 'pridá sa presne takto' : 'nová položka') : p.grp ? (p.grp.length > 1 ? `všetky druhy (${p.grp.length})` : 'všeobecne') : p.virt === 'brand' ? `značka · ${PRODUCTS[p.kindPid].n.replace(/ ·.*$/, '')}` : 'presne tento druh';
-            return <button type="button" className="sgr ent" onPointerDown={(ev) => ev.preventDefault()} onClick={submit}>{p ? <span className="sgi"><E k={p.e} s={30} /></span> : <span className="sgi nwi"><I n="plus" w="bold" /></span>}<span className="sgt"><b>{p ? p.n.replace(/ ·.*$/, '') : x.n}</b><small>{fmtQty(x.q, x.u)} · {what}</small></span>{e && <span className="sgp">~{eur(e.v)}</span>}<kbd aria-label="Enter">↵</kbd></button>; })()}
-          {sugg.map((p) => { const q = enter.length === 1 ? enter[0].q : 1; const qu = enter.length === 1 ? enter[0].u : 'ks'; const e = estimate({ pid: p.id, q, u: qu }, S, list.store); const isT = typo && p.id === typo.id;
-            const what = isT ? 'preklep? ťukni pre opravu' : p.grp ? (p.grp.length > 1 ? `všetky druhy (${p.grp.length})` : 'všeobecne') : p.virt === 'brand' ? 'značka' : 'druh';
-            return (
-            <button type="button" key={p.id} className={'sgr' + (isT ? ' typo' : '')} onPointerDown={(ev) => ev.preventDefault()} onClick={() => add(p, q, qu)}><span className="sgi"><E k={p.e} s={30} /></span><span className="sgt"><b>{isT ? p.n.replace(/ ·.*$/, '') + '?' : p.n.replace(/ ·.*$/, '')}</b><small>{what}</small></span>{e && <span className="sgp">~{eur(e.v)}</span>}</button>
-          ); })}
-        </div>
-      ) : (
-        <div className="chips staples" aria-label="Často kupuješ">
-          {staples.map((pid) => { const p = PRODUCTS[pid]; const pd = pend[pid]; return (
-            <button type="button" key={pid} className={'chip' + (pd ? ' pend' : '') + (g ? ' glass2' : '')} onClick={() => tapStaple(pid)}>
-              <E k={p.e} />{p.n.replace(/ ·.*$/, '').replace(/ polotučné| šalátová/, '')}
-              {pd ? <span className="cnt" key={pd.k}>+{pd.n}</span> : <span className="pl"><I n="plus" w="bold" /></span>}
-            </button>
-          ); })}
-        </div>
-      )}
+      <div className="bb-row" aria-label={typingText ? 'Návrhy' : 'Často kupuješ'}>
+        {!typingText && chips.length > 0 && <span className="bb-lab">Často kupuješ</span>}
+        {chips.map((c) => {
+          if (c.multi) return (
+            <span className="bb" key={c.k}><button type="button" className="bb-m" onPointerDown={keep} onMouseDown={keep} onClick={() => tap(c)}><span className="bb-pl"><I n="plus" w="bold" /></span><span className="bb-t"><b>{c.multi.length} položky</b><small>{c.multi.map((x) => (x.pid ? pname(x.pid) : x.n)).join(', ')}</small></span></button></span>
+          );
+          const it = itemOf(c); const n = it ? it.q : 0; const act1 = active === c.k && n > 0;
+          const q0 = c.q0 && !tapped.current.has(c.k) ? c.q0 : null;
+          const e = c.pid && estimate({ pid: c.pid, q: q0 ? q0.q : 1, u: q0 ? q0.u : 'ks' }, S, list.store);
+          const sub = c.typed ? [q0 && fmtQty(q0.q, q0.u), 'pridať ako píšeš'] : [c.typo && 'preklep?', it && !act1 && 'v zozname', q0 && (it ? '+' : '') + fmtQty(q0.q, q0.u), e ? '~' + eur(e.v) : 'bez ceny'];
+          return (
+            <span key={c.k} className={'bb' + (act1 ? ' act' : '') + (c.typed ? ' typed' : '') + (c.typo ? ' typo' : '')}>
+              {act1 && <button type="button" className="bb-min" onPointerDown={keep} onMouseDown={keep} onClick={() => less(c)} aria-label={'Uber: ' + (c.pid ? pname(c.pid) : c.n)}><I n="minus" w="bold" /></button>}
+              <button type="button" className="bb-m" onPointerDown={keep} onMouseDown={keep} onClick={() => tap(c)} aria-label={(c.pid ? pname(c.pid) : c.n) + ' – ťukaním pridáš kusy'}>
+                {c.pid ? <E k={PRODUCTS[c.pid].e} s={30} /> : <span className="bb-pl"><I n="plus" w="bold" /></span>}
+                <span className="bb-t"><b>{c.pid ? pname(c.pid) + (c.typo ? '?' : '') : '„' + c.n + '“'}</b><small>{sub.filter(Boolean).join(' · ')}</small></span>
+                {n > 0 && <span className="bb-n" key={c.k + n}>{unitOf(it) === 'ks' ? n : fmtQty(n, unitOf(it))}</span>}
+              </button>
+            </span>
+          );
+        })}
+      </div>
       <form className={'field' + (g ? ' glass2' : '')} onSubmit={submit}>
-        <input ref={inp} id={'add-' + list.id} value={txt} onChange={(e) => setTxt(e.target.value)} onFocus={() => setFocus(true)} onBlur={() => setTimeout(() => setFocus(false), 150)} placeholder="Napíš alebo nadiktuj položku" autoComplete="off" enterKeyHint="done" aria-label="Pridať položku" />
-        {txt ? <button type="submit" className="m" aria-label="Pridať"><I n="arrow-up" w="bold" /></button> : <button type="button" className="m" onClick={() => voice({ listId: list.id })} aria-label="Pridať hlasom"><I n="microphone" /></button>}
+        <input ref={inp} id={'add-' + list.id} value={txt} onChange={(e) => { setTxt(e.target.value); setStripFor(e.target.value); setActive(null); tapped.current.clear(); }} onBlur={() => setTimeout(() => { if (document.activeElement !== inp.current) { setTxt(''); setStripFor(''); setActive(null); tapped.current.clear(); } }, 150)} placeholder="Napíš alebo nadiktuj položku" autoComplete="off" enterKeyHint="done" aria-label="Pridať položku" />
+        {txt ? <button type="submit" className="m" aria-label="Pridať" onPointerDown={keep} onMouseDown={keep}><I n="arrow-up" w="bold" /></button> : <button type="button" className="m" onClick={() => voice({ listId: list.id })} aria-label="Pridať hlasom"><I n="microphone" /></button>}
       </form>
     </div>
   );
