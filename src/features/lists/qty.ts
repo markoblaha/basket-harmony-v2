@@ -25,6 +25,24 @@ export function qtyLabel(quantity: number | null | undefined, unit: string | nul
   return formatQuantity(quantity ?? null, unit ?? null) ?? "";
 }
 
+/**
+ * Slovo bez koncovky a bez vkladnej samohlásky – rôzne tvary toho istého slova dajú rovnaký kľúč:
+ * „banány“ = „banán“, „rožky“ = „rožok“, „cukru“ = „cukor“, „mlieka“ = „mlieko“.
+ */
+function stemWord(w: string): string {
+  const s = w.length > 3 ? w.replace(/(ami|ach|ov|om|ia|ie|y|a|e|i|o|u)$/, "") : w;
+  return s.replace(/([^aeiouy])[oe]([^aeiouy])$/, "$1$2");
+}
+
+/** Kľúč položky v zozname: bez diakritiky, veľkých písmen a koncoviek. */
+export function itemKey(name: string): string {
+  return normalizeName(name)
+    .split(" ")
+    .map(stemWord)
+    .join(" ");
+}
+
+/** Tá istá vec v zozname aj v inom tvare („Banán“ a „Banány“) – pripočíta sa k jednému riadku. „Mlieko“ a „Mlieko polotučné“ sú dve veci. */
 export function sameProduct(a: string, b: string): boolean {
-  return normalizeName(a) === normalizeName(b);
+  return itemKey(a) === itemKey(b);
 }

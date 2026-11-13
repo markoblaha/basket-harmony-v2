@@ -254,7 +254,25 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
-- **Pridávanie do zoznamu – návrh (13. 11. 2026, čaká na rozhodnutie majiteľa):** https://claude.ai/artifact/SAVJcwhe4dE5NGpn4rtexX
+- **Pridávanie do zoznamu – IMPLEMENTOVANÉ v testovacej appke (13. 11. 2026, pokyn „implementuj to do testovacej aplikácie“,
+  čaká na skúšku na iPhone):** podľa odporúčaní návrhu (klávesnica pri posúvaní ostáva, potvrdenie v zozname bez hlášok,
+  vodorovné bubliny, pridanie hneď). `Composer` v `ListParts.tsx`: okno nad klávesnicou má hlavičku (‹ · názov · „N položiek
+  · ~X €“ · Hotovo), v tele zoznam (tie isté `ItemRow` z `ListView` – prop `list`; zasvieti/dorolujú sa len riadky v okne),
+  dole rad bublín (`.bb-*` v `pick.css`) a pole. Bubliny sa prepočítajú len pri zmene textu, otvorení okna, načítaní častých
+  vecí/zoznamu – po ťuknutí sa nepohnú. Ťuk = `smartAdd(instant, quiet)`; počas cudzieho nákupu sa ťuky na jednu bublinu
+  spoja do jednej žiadosti (1,2 s). Mínus len na poslednej ťuknutej bubline (pri 1 ks zmaže s „Vrátiť“). Ťuk do zoznamu
+  v okne zavrie klávesnicu (po potiahnutí riadku nie), potiahnutie doku nadol zavrie, `blur` = koniec bez čakania.
+  Dátová vrstva: `useAddItem` s `optimistic` ukáže dočasný riadok hneď; `useSmartAdd` číta položky z cache a ťuky počas
+  letu pridania pripočíta k dočasnému riadku a dopíše jednou úpravou po ID (žiadne dvojité riadky). `sameProduct` spája
+  tvary slova (`itemKey`: banán = banány, rožok = rožky, cukor = cukru; Mlieko ≠ Mlieko polotučné) – platí aj pre hlas.
+  Ikony: 10 nových 3D ikon ovocia (mango, kiwi, hrozno, ananás, hruška, melón ×2, čerešne, mandarínky, čučoriedky; Fluent
+  MIT) v `prototyp/gen/assets.css` → `do-appky.py`, slová v `EXTRA` v `src/mockup/kit.tsx`. Zmazané: odpočítavanie, „Pridané
+  teraz“, názorná ukážka s prstom (+ nepoužívané texty `li.*`). Overené: `npm run check`, Playwright na lokálnej appke
+  s napodobeným serverom (skutočná appka, podstrčené odpovede Supabase – heslo testovacieho účtu nebolo dostupné, Supabase
+  MCP v relácii nefungoval): 3 ťuky = 1 add + 1 úprava, pomalý server 1,3 s, chyba servera, žiadosti, 4 vzhľady pri výške
+  422 px. `testy/preklikanie.cjs` a `testy/nakup.cjs` na testovacej DB nebežali. Ukážka v appke (prototyp) má stále staré
+  pridávanie. Neurobené z návrhu: chyba pridania ako riadok so „Skúsiť znova“ (ostáva hláška a text sa vráti do poľa).
+  Návrh: https://claude.ai/artifact/SAVJcwhe4dE5NGpn4rtexX
   (zdroj `prototyp/pridavanie-navrh.html`: dokument + preklikateľný mockup s nakreslenou klávesnicou, ukážkou a prepínačmi
   variantov; obrázky a štýly ako pri návrhu Výdavkov – `mk/mockup.css`, `mk/em/*` sa priložia pri publikovaní). Podnet:
   snímka okna pridávania (okno a „Pridané teraz“ zakrývajú zoznam). Návrh: žiadne samostatné okno – pri písaní ostáva

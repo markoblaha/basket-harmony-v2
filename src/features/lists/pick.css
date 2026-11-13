@@ -1,18 +1,18 @@
 /*
- * Okno pridávania (ListParts.tsx → Composer): pri písaní sa pole zmení na okno cez celú viditeľnú plochu nad
- * klávesnicou – hlavička (kam pridávaš, Hotovo), v strede návrhy / Pridané teraz / ukážka / často kupované,
- * dole pole. Okno má pevnú výšku (visualViewport), takže pri pridávaní nič neposkakuje a klávesnica ostáva.
- * Bubliny: ťuk = +1, krúžok okolo čísla odpočíta 1,8 s, potom „✓ pridané“ a položka je v „Pridané teraz“.
+ * Pridávanie do zoznamu (ListParts.tsx → Composer, návrh prototyp/pridavanie-navrh.html).
+ * Dole rad bublín + pole – rovnaký prvok s klávesnicou aj bez nej. Pri písaní sa dok zmení na okno cez viditeľnú
+ * plochu nad klávesnicou (výška z visualViewport): hlavička (názov, počet a suma, Hotovo), v strede samotný zoznam
+ * (posúva sa, klávesnica ostáva), dole bubliny a pole. Ťuk na bublinu pridá hneď; číslo = počet v zozname.
  */
 
 /* ---------- okno ---------- */
 :root .bhm.bhm-dock .dock.addwin {
   position: fixed; left: 0; right: 0; bottom: auto; transform: none; z-index: 80;
   max-width: 40rem; margin: 0 auto;
-  display: flex; flex-direction: column; gap: 10px;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 8px;
-  background: linear-gradient(180deg, var(--tint, var(--bg)) 0, var(--bg) 220px) !important;
-  animation: aw-in 260ms var(--ease-out);
+  display: flex; flex-direction: column; gap: 6px;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 0 6px;
+  background: linear-gradient(180deg, var(--tint, var(--bg)) 0, var(--bg) 140px) !important;
+  animation: aw-in 240ms var(--ease-out);
   transition: height 220ms var(--ease-out);
 }
 :root .g .bhm.bhm-dock .dock.addwin {
@@ -20,157 +20,91 @@
   -webkit-backdrop-filter: blur(34px) saturate(1.6); backdrop-filter: blur(34px) saturate(1.6);
 }
 .bhm .dock.addwin::before { display: none; }
-
-.bhm .aw-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 2px 0; }
-.bhm .aw-ti { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.bhm .aw-ti small { font-size: 12.5px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--sec); }
-.bhm .aw-ti b { font-size: 21px; font-weight: 750; letter-spacing: -.4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.w .bhm .aw-ti b { font-family: var(--serif); font-weight: 540; font-variation-settings: "opsz" 36; }
-.bhm .aw-done { flex: none; display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 99px;
-  background: var(--f-pri, var(--pri)); color: var(--onpri); font-size: 16px; font-weight: 750; box-shadow: var(--f-pri-sh, var(--prish));
-  transition: transform 460ms var(--ease-spring); }
-.bhm .aw-done:active { transform: scale(.94); transition-duration: 90ms; }
-.bhm .aw-cnt { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; display: grid; place-items: center; background: rgb(255 255 255 / .92);
-  color: var(--acc); font-size: 13px; font-weight: 850; animation: pk-num 460ms var(--ease-spring); }
-.w.t-d .bhm .aw-cnt { background: rgb(15 26 19 / .85); color: #fff; }
-
-/* obsah: posúva sa sám, prilepený ku spodku (pri palci a poli) */
-.bhm .aw-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
-  display: flex; flex-direction: column; margin: 0 -14px; padding: 0 14px;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16px); mask-image: linear-gradient(180deg, transparent 0, #000 16px); }
-.bhm .aw-in { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 14px 0 2px; }
-.bhm .addwin .sgl { max-height: none; overflow: visible; flex: none; }
-.bhm .aw-h { font-size: 12.5px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--sec); padding: 6px 4px 0; }
-
-/* ---------- bublina s naklikaním ---------- */
-.bhm .sgr.pk { position: relative; gap: 6px; padding: 0 10px 0 0; overflow: hidden; cursor: default; transition: background-color 260ms, box-shadow 260ms; }
-.bhm .sgr.pk:active { background: none; }
-.bhm .sgr.pk.ent { background: color-mix(in srgb, var(--acc) 9%, transparent); }
-.bhm .sgm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 4px 8px 10px; text-align: left; color: inherit;
-  transition: background-color 160ms; }
-.bhm .sgm:active { background: color-mix(in srgb, var(--fg) 5%, transparent); }
-.bhm .sgr.pk .sgi { color: var(--acc); }
-.bhm .sgr.pk.on { background: color-mix(in srgb, var(--acc) 13%, transparent); box-shadow: inset 3px 0 0 var(--acc); }
-.bhm .sgr.pk.on .sgt small { color: var(--acc); font-weight: 650; }
-.bhm .sgr.pk.on .sgi { animation: pk-jump 520ms var(--ease-spring); }
-
-/* krúžok vpravo: + → číslo s odpočítavaním → ✓ */
-.bhm .pk-c { position: relative; flex: none; width: 46px; height: 46px; border-radius: 99px; display: grid; place-items: center;
-  background: var(--accs); color: var(--acc); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 18%, transparent), inset 0 1px 0 rgb(255 255 255 / .45);
-  transition: transform 460ms var(--ease-spring), background-color 200ms, color 200ms; }
-.bhm .pk-c .ico { width: 18px; height: 18px; }
-.bhm .pk-c:active { transform: scale(.84); transition-duration: 80ms; }
-.bhm .sgr.pk.on .pk-c { background: var(--card); box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--acc) 16%, transparent), 0 6px 14px -8px rgb(0 0 0 / .35); }
-.g .bhm .sgr.pk.on .pk-c { background: var(--solid); }
-.bhm .pk-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
-.bhm .pk-ring circle { fill: none; stroke: var(--acc); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 119.4; stroke-dashoffset: 0;
-  animation: pk-ring 1800ms linear forwards; }
-.bhm .pk-n { font-size: 18px; font-weight: 850; letter-spacing: -.3px; font-variant-numeric: tabular-nums; white-space: nowrap; animation: pk-num 440ms var(--ease-spring); }
-.bhm .pk-minus { position: relative; flex: none; width: 36px; height: 36px; border-radius: 99px; display: grid; place-items: center; color: var(--sec);
-  background: color-mix(in srgb, var(--fg) 7%, transparent); animation: pk-in 360ms var(--ease-spring); transition: transform 320ms var(--ease-spring); }
-.bhm .pk-minus::after { content: ""; position: absolute; inset: -4px; }
-.bhm .pk-minus:active { transform: scale(.82); }
-.bhm .pk-minus .ico { width: 15px; height: 15px; }
-.bhm .pk-fly { position: absolute; right: 16px; top: 50%; z-index: 2; font-size: 17px; font-weight: 850; color: var(--acc); pointer-events: none;
-  text-shadow: 0 1px 0 var(--card); animation: pk-fly 760ms var(--ease-out) forwards; }
-
-/* pridané */
-.bhm .sgr.pk.done { background: color-mix(in srgb, var(--ok) 15%, transparent); box-shadow: inset 3px 0 0 var(--ok); }
-.bhm .sgr.pk.done .sgi { animation: pk-away 600ms var(--ease-in) forwards; }
-.bhm .sgr.pk.done .sgt b, .bhm .sgr.pk.done .sgt small { color: var(--ok); }
-.bhm .sgr.pk.done .pk-c { background: var(--ok); color: #fff; box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--ok) 80%, transparent); animation: pk-in 420ms var(--ease-spring); }
-
-/* ---------- Pridané teraz ---------- */
-.bhm .aw-tray { display: flex; flex-direction: column; padding: 10px 14px 8px; border-radius: 22px; background: var(--card); box-shadow: var(--sh); }
-.bhm .aw-th { display: flex; align-items: center; gap: 7px; padding: 0 0 6px; color: var(--ok); font-size: 12.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
-.bhm .aw-th .ico { width: 18px; height: 18px; }
-.bhm .aw-th span { margin-left: auto; color: var(--sec); font-size: 13px; font-weight: 650; letter-spacing: 0; text-transform: none; }
-.bhm .aw-it { display: flex; align-items: center; gap: 10px; min-height: 42px; animation: aw-drop 520ms var(--ease-spring); }
-.bhm .aw-it + .aw-it { box-shadow: inset 0 1px 0 var(--line); }
-.bhm .aw-it b { flex: 1; min-width: 0; font-size: 16px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bhm .aw-it span { flex: none; font-size: 15px; font-weight: 800; color: var(--acc); font-variant-numeric: tabular-nums; }
-.bhm .aw-it:first-of-type { background: linear-gradient(90deg, color-mix(in srgb, var(--ok) 14%, transparent), transparent 70%); margin: 0 -14px; padding: 0 14px; }
-
-/* ---------- názorná ukážka (prázdne okno) ---------- */
-.bhm .aw-demo { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }
-.bhm .aw-demo p { margin: 0; padding: 0 6px; font-size: 14.5px; line-height: 1.42; color: var(--sec); text-align: center; text-wrap: pretty; }
-.bhm .awd-row { position: relative; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 12px 8px 10px; border-radius: 20px;
-  background: var(--card); box-shadow: var(--sh); animation: awd-row 6s ease-in-out infinite; }
-.bhm .awd-row .sgi { width: 40px; height: 40px; }
-.bhm .awd-t { flex: 1; min-width: 0; display: grid; }
-.bhm .awd-t b { font-size: 16px; font-weight: 700; }
-.bhm .awd-t small { grid-area: 2 / 1; font-size: 13px; color: var(--sec); }
-.bhm .awd-s1 { animation: awd-s1 6s infinite; }
-.bhm .awd-s2 { color: var(--ok) !important; font-weight: 700; animation: awd-s2 6s infinite; }
-.bhm .awd-c { position: relative; width: 46px; height: 46px; flex: none; border-radius: 99px; background: var(--accs); color: var(--acc); animation: awd-c 6s infinite; }
-.bhm .awd-ring { position: absolute; inset: 0; transform: rotate(-90deg); }
-.bhm .awd-ring circle { fill: none; stroke: var(--acc); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 119.4; animation: awd-ring 6s linear infinite; }
-.bhm .awd-n { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; font-size: 18px; font-weight: 850; opacity: 0; }
-.bhm .awd-n .ico { width: 18px; height: 18px; }
-.bhm .awd-p { animation: awd-p 6s infinite; }
-.bhm .awd-1 { animation: awd-1 6s infinite; }
-.bhm .awd-2 { animation: awd-2 6s infinite; }
-.bhm .awd-3 { animation: awd-3 6s infinite; }
-.bhm .awd-ok { color: #fff; animation: awd-ok 6s infinite; }
-.bhm .awd-f { position: absolute; right: 2px; bottom: -22px; width: 34px; height: 34px; color: var(--fg); pointer-events: none;
-  filter: drop-shadow(0 4px 6px rgb(0 0 0 / .25)); animation: awd-f 6s var(--ease-out) infinite; }
-.bhm .awd-f .ico { width: 34px; height: 34px; }
-
-/* ---------- animácie ---------- */
-@keyframes aw-in { from { opacity: 0; transform: translateY(14px); } }
-@keyframes aw-drop { 0% { opacity: 0; transform: translateY(-10px) scale(.96); } 100% { opacity: 1; transform: none; } }
-@keyframes pk-ring { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 119.4; } }
-@keyframes pk-num { 0% { transform: translateY(8px) scale(.5); opacity: 0; } 60% { transform: scale(1.22); opacity: 1; } 100% { transform: none; } }
-@keyframes pk-jump { 0% { transform: none; } 30% { transform: scale(1.24) rotate(-9deg); } 62% { transform: scale(.94) rotate(4deg); } 100% { transform: none; } }
-@keyframes pk-fly { 0% { opacity: 0; transform: translateY(-50%) scale(.6); } 25% { opacity: 1; transform: translateY(-120%) scale(1.15); } 100% { opacity: 0; transform: translateY(-260%) scale(.9); } }
-@keyframes pk-in { from { opacity: 0; transform: scale(.6); } }
-@keyframes pk-away { 0% { transform: none; } 30% { transform: scale(1.18); } 100% { transform: translateY(-36px) scale(.45); opacity: 0; } }
-
-/* ukážka: 3 ťuky (15 %, 30 %, 45 %), krúžok odpočíta (45 – 80 %), pridané (80 – 96 %) */
-@keyframes awd-f {
-  0%, 8% { opacity: 0; transform: translate(14px, 18px); }
-  12% { opacity: 1; transform: translate(0, 0); }
-  14%, 29%, 44% { transform: translate(0, 0) scale(1); }
-  15.5%, 30.5%, 45.5% { transform: translate(-1px, -2px) scale(.82); }
-  17%, 32%, 47% { transform: translate(0, 0) scale(1); }
-  56% { opacity: 1; transform: translate(0, 0); }
-  64%, 100% { opacity: 0; transform: translate(14px, 18px); }
-}
-@keyframes awd-p { 0%, 15% { opacity: 1; transform: none; } 15.5%, 96% { opacity: 0; transform: scale(.6); } 100% { opacity: 1; transform: none; } }
-@keyframes awd-1 { 0%, 15% { opacity: 0; transform: scale(.5); } 17% { opacity: 1; transform: scale(1.25); } 19%, 30% { opacity: 1; transform: none; } 30.5%, 100% { opacity: 0; } }
-@keyframes awd-2 { 0%, 30% { opacity: 0; transform: scale(.5); } 32% { opacity: 1; transform: scale(1.25); } 34%, 45% { opacity: 1; transform: none; } 45.5%, 100% { opacity: 0; } }
-@keyframes awd-3 { 0%, 45% { opacity: 0; transform: scale(.5); } 47% { opacity: 1; transform: scale(1.25); } 49%, 80% { opacity: 1; transform: none; } 80.5%, 100% { opacity: 0; } }
-@keyframes awd-ok { 0%, 80% { opacity: 0; transform: scale(.5); } 83% { opacity: 1; transform: scale(1.2); } 85%, 95% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
-@keyframes awd-ring { 0%, 15% { opacity: 0; stroke-dashoffset: 0; } 15.5% { opacity: 1; stroke-dashoffset: 0; } 45% { stroke-dashoffset: 0; } 80% { opacity: 1; stroke-dashoffset: 119.4; } 80.5%, 100% { opacity: 0; stroke-dashoffset: 119.4; } }
-@keyframes awd-c { 0%, 80% { background: var(--accs); } 81%, 95% { background: var(--ok); } 98%, 100% { background: var(--accs); } }
-@keyframes awd-row { 0%, 14% { box-shadow: var(--sh); background-color: var(--card); } 16%, 79% { background-color: color-mix(in srgb, var(--acc) 12%, var(--card)); } 81%, 95% { background-color: color-mix(in srgb, var(--ok) 15%, var(--card)); } 98%, 100% { background-color: var(--card); } }
-@keyframes awd-s1 { 0%, 80% { opacity: 1; } 81%, 96% { opacity: 0; } 98%, 100% { opacity: 1; } }
-@keyframes awd-s2 { 0%, 80% { opacity: 0; } 81%, 96% { opacity: 1; } 98%, 100% { opacity: 0; } }
-
-@media (prefers-reduced-motion: reduce) {
-  :root .bhm.bhm-dock .dock.addwin { animation: none; transition: none; }
-  .bhm .sgr.pk .sgi, .bhm .pk-n, .bhm .pk-fly, .bhm .pk-minus, .bhm .aw-it, .bhm .aw-cnt { animation: none !important; }
-  .bhm .pk-fly { display: none; }
-  /* krúžok ukazuje čas do pridania – beží rovnako dlho ako časovač */
-  .bhm .pk-ring circle { animation-duration: 1800ms !important; }
-  /* ukážka bez pohybu: rovno stav „3 ks“ */
-  .bhm .awd-row *, .bhm .awd-row { animation: none !important; }
-  .bhm .awd-3 { opacity: 1; }
-  .bhm .awd-f { display: none; }
-  .bhm .awd-ring { display: none; }
-}
-
-/* Hláška „+3 ks · Vrátiť“ počas okna pridávania pod hlavičkou okna – neprekryje „Hotovo“. */
-body.kb-typing .addpill { top: calc(env(safe-area-inset-top, 0px) + 66px) !important; }
-
 /* Pod oknom (pri pásiku ˄ ˅ ✓ a klávesnici iPhonu) neprešvitá zoznam: pozadie okna siaha pod jeho spodok. */
 .bhm .dock.addwin::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 160px; background: var(--bg); pointer-events: none; }
 .g .bhm .dock.addwin::after { background: color-mix(in srgb, var(--bg) 80%, transparent); -webkit-backdrop-filter: blur(34px) saturate(1.6); backdrop-filter: blur(34px) saturate(1.6); }
 
-/* Späť v hlavičke okna (zavrie okno, ostaneš v zozname) */
-.bhm .aw-back { flex: none; width: 42px; height: 42px; margin-right: -4px; border-radius: 99px; display: grid; place-items: center; color: var(--fg);
+/* hlavička: ‹ · názov a „8 položiek · ~24 €“ · Hotovo */
+.bhm .aw-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 0 14px 4px; }
+.bhm .aw-back { flex: none; width: 40px; height: 40px; border-radius: 99px; display: grid; place-items: center; color: var(--fg);
   background: color-mix(in srgb, var(--fg) 7%, transparent); transition: transform 460ms var(--ease-spring); }
-.bhm .aw-back .ico { width: 20px; height: 20px; }
+.bhm .aw-back .ico { width: 19px; height: 19px; }
 .bhm .aw-back:active { transform: scale(.88); transition-duration: 90ms; }
-.bhm .aw-head .aw-ti { flex: 1; }
-.bhm .aw-th b { text-align: left; }
+.bhm .aw-ti { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.bhm .aw-ti b { font-size: 19px; font-weight: 750; letter-spacing: -.3px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w .bhm .aw-ti b { font-family: var(--serif); font-weight: 560; font-variation-settings: "opsz" 36; }
+.bhm .aw-ti small { font-size: 13px; font-weight: 600; color: var(--sec); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bhm .aw-done { flex: none; display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border-radius: 99px;
+  background: var(--f-pri, var(--pri)); color: var(--onpri); font-size: 16px; font-weight: 750; box-shadow: var(--f-pri-sh, var(--prish));
+  transition: transform 460ms var(--ease-spring); }
+.bhm .aw-done:active { transform: scale(.94); transition-duration: 90ms; }
+
+/* zoznam v okne: posúva sa sám, klávesnica pri tom ostáva */
+.bhm .aw-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; gap: 12px; padding: 6px 14px 14px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 12px), transparent);
+  mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 12px), transparent); }
+.bhm .aw-body > * { flex-shrink: 0; }
+.bhm .aw-body .row { min-height: 58px; padding-top: 6px; padding-bottom: 6px; }
+.bhm .aw-body .th { width: 40px; height: 40px; border-radius: 14px; }
+.bhm .aw-body .th .em { width: 28px; height: 28px; }
+.bhm .aw-body .tx > b { font-size: 16px; }
+.bhm .aw-body .lst > .swr + .swr::before { left: 66px; }
+.bhm .aw-body .group { padding-top: 2px; padding-bottom: 0; }
+.bhm .aw-empty { margin: auto 0; padding: 12px 0; text-align: center; color: var(--sec); font-size: 15px; }
+
+/* ---------- dok: rad bublín + pole ---------- */
+.bhm .bb-dock { display: flex; flex-direction: column; gap: 10px; }
+.bhm .addwin .bb-dock { flex: none; gap: 6px; }
+.bhm .addwin .field { margin: 0 14px; }
+.bhm .bb-row { display: flex; align-items: center; gap: 8px; min-height: 54px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  margin: 0 -16px; padding: 2px 16px 4px; scroll-padding: 0 16px; touch-action: pan-x; }
+.bhm .bb-row::-webkit-scrollbar { display: none; }
+.bhm .addwin .bb-row { margin: 0; padding: 2px 14px 4px; }
+.bhm .bb-lab { flex: none; width: 58px; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--ter); line-height: 1.25; white-space: normal; }
+.bhm .bb-lab.wide { flex: 1; width: auto; text-align: center; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 600; color: var(--sec); line-height: 1.35; text-wrap: balance; }
+
+/* bublina: [−] ikona · názov / cena · počet v zozname */
+.bhm .bb { flex: none; position: relative; height: 48px; max-width: 232px; display: inline-flex; align-items: center; border-radius: 18px;
+  background: var(--card); box-shadow: var(--sh); transition: transform 300ms var(--ease-spring), box-shadow var(--dur-2), background-color var(--dur-2);
+  user-select: none; -webkit-user-select: none; }
+.bhm .bb:active { transform: scale(.94); transition-duration: 80ms; }
+.g .bhm .bb { background: var(--glass2); -webkit-backdrop-filter: blur(30px) saturate(1.9); backdrop-filter: blur(30px) saturate(1.9); }
+.bhm .bb-m { height: 100%; min-width: 0; display: inline-flex; align-items: center; gap: 9px; padding: 0 14px 0 9px; border-radius: inherit; text-align: left; color: inherit;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.bhm .bb .em { width: 30px; height: 30px; }
+.bhm .bb-t { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.bhm .bb-t b { font-size: 15px; font-weight: 650; letter-spacing: -.2px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bhm .bb-t small { font-size: 12px; color: var(--sec); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.bhm .bb-pl { width: 30px; height: 30px; border-radius: 99px; display: grid; place-items: center; background: var(--accs); color: var(--acc); flex: none; }
+.bhm .bb-pl .ico { width: 15px; height: 15px; }
+/* napísaný text, ktorý nepoznáme („+ „ban““) */
+.bhm .bb.typed, .g .bhm .bb.typed { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line2, var(--line)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.bhm .bb-n { min-width: 26px; height: 26px; padding: 0 7px; margin-left: 2px; border-radius: 99px; display: grid; place-items: center; flex: none;
+  background: var(--card2); color: var(--sec); font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; animation: bb-pop 420ms var(--ease-spring); }
+/* posledná ťuknutá bublina: zelený okraj, mínus, číslo v plnej farbe */
+.bhm .bb.act { background: color-mix(in srgb, var(--acc) 15%, var(--card)); box-shadow: inset 0 0 0 2px var(--acc), var(--sh); }
+.g .bhm .bb.act { background: color-mix(in srgb, var(--acc) 22%, var(--glass2)); }
+.bhm .bb.act .bb-m { padding-left: 2px; }
+.bhm .bb.act .bb-n { background: var(--f-pri, var(--pri)); color: var(--onpri); }
+.bhm .bb-min { flex: none; width: 38px; height: 42px; margin-left: 3px; border-radius: 14px; display: grid; place-items: center; color: var(--acc);
+  animation: bb-min 300ms var(--ease-spring); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.bhm .bb-min:active { background: color-mix(in srgb, var(--acc) 18%, transparent); }
+.bhm .bb-min .ico { width: 16px; height: 16px; }
+
+/* ikona letí z bubliny do riadku v zozname */
+.bhm .bb-fly { position: fixed; z-index: 140; width: 30px; height: 30px; pointer-events: none; filter: drop-shadow(0 6px 10px rgb(0 0 0 / .3)); }
+.bhm .bb-fly .em { display: block; width: 30px; height: 30px; }
+
+/* Hláška (napr. chyba) počas okna pridávania pod hlavičkou okna – neprekryje „Hotovo“. */
+body.kb-typing .addpill { top: calc(env(safe-area-inset-top, 0px) + 62px) !important; }
+
+/* ---------- animácie ---------- */
+@keyframes aw-in { from { opacity: 0; transform: translateY(14px); } }
+@keyframes bb-pop { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.22); opacity: 1; } 100% { transform: none; } }
+@keyframes bb-min { from { opacity: 0; transform: scale(.4); } }
+
+@media (prefers-reduced-motion: reduce) {
+  :root .bhm.bhm-dock .dock.addwin { animation: none; transition: none; }
+  .bhm .bb-n, .bhm .bb-min { animation: none !important; }
+}

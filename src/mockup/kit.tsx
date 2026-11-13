@@ -24,7 +24,23 @@ export const norm = (s: string) =>
     .trim();
 
 type Entry = { words: string[]; e: string };
-const INDEX: Entry[] = PRODUCTS.map((p) => ({ words: [...new Set(norm(`${p.n} ${p.syn}`).split(" ").filter((w) => w.length >= 3))], e: p.e }));
+/** Ovocie, ktoré katalóg mockupu nemá (ikony doplnené 13. 11.) – inak by Mango dostalo ikonu kategórie (napr. fľašu pre bábätká). */
+const EXTRA: Entry[] = [
+  { words: ["mango", "manga", "mangove"], e: "mango" },
+  { words: ["kiwi"], e: "kiwi" },
+  { words: ["hrozno", "hrozna", "hroznove"], e: "grapes" },
+  { words: ["ananas", "ananasy", "ananasu"], e: "pineapple" },
+  { words: ["hruska", "hrusky", "hrusiek"], e: "pear" },
+  { words: ["melon", "melony", "melona", "vodovy"], e: "watermelon" },
+  { words: ["cukrovy", "galia"], e: "melon" },
+  { words: ["ceresne", "ceresna", "visne", "visna"], e: "cherries" },
+  { words: ["mandarinky", "mandarinka", "pomarance", "pomaranc", "klementinky"], e: "tangerine" },
+  { words: ["cucoriedky", "cucoriedka", "brusnice"], e: "blueberries" },
+];
+const INDEX: Entry[] = [
+  ...PRODUCTS.map((p) => ({ words: [...new Set(norm(`${p.n} ${p.syn}`).split(" ").filter((w) => w.length >= 3))], e: p.e })),
+  ...EXTRA,
+];
 const cache = new Map<string, string>();
 
 /**

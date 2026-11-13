@@ -8,7 +8,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type React
 import { useNavigate } from "react-router";
 import { useToast } from "@/components/toast";
 import { errorMessage } from "@/lib/errors";
-import { t } from "@/i18n";
+import { t, tn } from "@/i18n";
 import { useSetting } from "@/lib/settings";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, Back, useScrolled } from "@/mockup/ui";
@@ -24,7 +24,15 @@ import { Composer, ItemRow, ItemSheet, PriceLine, useRestoreItem } from "./ListP
 import { ListMenuSheet } from "./ListMenuSheet";
 import type { AddOutcome } from "./useSmartAdd";
 
-type SmartAdd = (input: { name: string; quantity?: number | null; unit?: string | null; note?: string | null; categoryId?: string | null }) => Promise<AddOutcome>;
+type SmartAdd = (input: {
+  name: string;
+  quantity?: number | null;
+  unit?: string | null;
+  note?: string | null;
+  categoryId?: string | null;
+  quiet?: boolean;
+  instant?: boolean;
+}) => Promise<AddOutcome>;
 
 export function ListView({
   list,
@@ -184,7 +192,8 @@ export function ListView({
     });
   };
 
-  const row = (it: Item, note: string | null) => (
+  // win = kópia riadku v okne pridávania (pri písaní); zasvieti a dôjde sa k nej len tam, kde ju práve vidno
+  const row = (it: Item, note: string | null, win = false) => (
     <ItemRow
       key={it.id}
       it={it}
@@ -197,12 +206,29 @@ export function ListView({
       by={byOf(it)}
       sel={sel === it.id}
       setSel={setSel}
-      flash={flash === it.id}
+      flash={flash === it.id && win === typing}
       onQty={(q) => setQty(it, q)}
       onDelete={() => del(it)}
       onOpen={() => setSheet({ id: it.id, open: true })}
     />
   );
+
+  // Zoznam v okne pridávania: rovnaké riadky (najnovšie hore) a skupiny receptov, bez „V košíku“.
+  const winList = (
+    <>
+      {loose.length > 0 && <div className={`lst${gl}`}>{loose.map((it) => row(it, it.note, true))}</div>}
+      {[...groups.entries()].map(([label, { items: gi }]) => (
+        <Fragment key={label}>
+          <div className="group plain">
+            <span className="gl">{label}</span>
+          </div>
+          <div className={`lst${gl}`}>{gi.map((it) => row(it, groupOf.get(it.id)?.note ?? null, true))}</div>
+        </Fragment>
+      ))}
+      {!open.length && <p className="aw-empty">{t("li.empty")}</p>}
+    </>
+  );
+  const summary = tn("li.items", open.length) + (showEstimate && tot.priced ? ` · ~${eur0(tot.v)}` : "");
 
   const day = list.planned_for ? relDay(list.planned_for) : t("trip.noDay");
   const sn = storeName(storeKey);
@@ -353,10 +379,12 @@ export function ListView({
           typing={typing}
           onTyping={setTyping}
           onAdd={(x) => smartAdd(x)}
-          // počas písania je otvorené okno pridávania – zoznam pod ním sa neposúva (nič neposkočí)
-          onAdded={() => !typing && window.scrollTo({ top: 0, behavior: "smooth" })}
+          onQty={setQty}
+          onRemove={del}
           onVoice={() => openVoice(list.id)}
           title={list.name}
+          summary={summary}
+          list={winList}
         />
       </div>
 

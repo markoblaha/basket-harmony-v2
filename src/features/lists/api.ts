@@ -115,6 +115,8 @@ export type AddItemInput = {
   categoryId?: string | null;
   /** Vyplní sa samo pri prvom pokuse; pri opakovaní ostane rovnaké. */
   opId?: string;
+  /** Položka sa v zozname ukáže hneď (dočasne), ešte pred odpoveďou servera – pridávanie ťukaním na bublinu. */
+  optimistic?: boolean;
 };
 export type AddItemResult = { kind: "ITEM" | "REQUEST"; id: string; shopper_id?: string };
 
@@ -136,9 +138,10 @@ export function useAddItem() {
       if (error) throw error;
       return data as AddItemResult;
     },
-    // Bez signálu sa položka ukáže hneď (dočasne) a odošle sa po pripojení; potom ju nahradí tá zo servera.
+    // Bez signálu (alebo na požiadanie) sa položka ukáže hneď (dočasne) a odošle sa po pripojení; potom ju nahradí tá zo servera.
     onMutate: (input) => {
-      if (typeof navigator === "undefined" || navigator.onLine) return;
+      const offline = typeof navigator !== "undefined" && !navigator.onLine;
+      if (!offline && !input.optimistic) return;
       input.opId ??= crypto.randomUUID();
       const key = listKeys.items(input.listId);
       const items = qc.getQueryData<Item[]>(key);

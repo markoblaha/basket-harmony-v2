@@ -1,9 +1,9 @@
 /**
  * Časti obrazovky zoznamu prenesené z mockupu 1:1 (prototyp/src/lists.jsx): riadok ceny, riadok položky
- * s potiahnutím, pole na pridávanie s návrhmi a dlaždicami „Často kupujete“, detail položky.
+ * s potiahnutím, pridávanie (rad bublín a pole, pri písaní okno so zoznamom nad klávesnicou), detail položky.
  * Rozpoznanie položky a ceny sú v itemCatalog.ts (pravidlo: appka nič nedomýšľa).
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useToast } from "@/components/toast";
 import { category, normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
@@ -16,7 +16,7 @@ import { haptic } from "@/components/kit";
 import { useAddItem, useDeleteItem, useFrequentItems, useMoveItem, useStapleItems, useUpdateItem, type Item, type ShoppingList } from "./api";
 import type { Estimator } from "./estimate";
 import { productTag, refinements, resolveName, searchNames, spellFix, type Estimate, type Resolved } from "./itemCatalog";
-import { sameProduct } from "./qty";
+import { isCountable, itemKey, sameProduct } from "./qty";
 import type { AddOutcome } from "./useSmartAdd";
 
 /* ------------------------------------------------------------------ množstvo (mockup logic.js) */
@@ -154,7 +154,16 @@ export function ItemRow({
 }
 
 /* ------------------------------------------------------------------ pole na pridávanie */
-export type ComposerAdd = (input: { name: string; quantity: number | null; unit: string | null; categoryId?: string | null }) => Promise<AddOutcome>;
+export type ComposerAdd = (input: {
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+  categoryId?: string | null;
+  /** Bez hlášky – potvrdením je riadok v zozname. */
+  quiet?: boolean;
+  /** Nová položka sa v zozname ukáže hneď. */
+  instant?: boolean;
+}) => Promise<AddOutcome>;
 
 /** Text na položky: „mlieko, 2 rožky a maslo“ → tri položky. */
 function chunks(text: string) {
@@ -166,14 +175,32 @@ function chunks(text: string) {
     .filter((p) => p.name.length >= 2);
 }
 
-/** Čo napísaný názov znamená v zozname (malé písmeno na začiatku → veľké). */
-function whatOf(r: Resolved | null) {
-  if (!r) return null;
-  if (r.level === "general") return r.kinds > 1 ? t("li.allKinds", { n: r.kinds }) : t("li.general");
-  if (r.level === "brand") return t("li.brandOf", { kind: r.members[0]?.kind || r.members[0]?.name || "" });
-  return t("li.exactKind");
-}
+/** Bublina nad klávesnicou: známa vec, napísaný text alebo viac vecí naraz. */
+type Chip = {
+  k: string;
+  kind: "prod" | "typed" | "multi";
+  name: string;
+  cat: string | null;
+  /** Počet z textu („banány 3“) – pridá sa prvým ťuknutím. */
+  q0: number | null;
+  u: string | null;
+  /** Napísaný text, ktorý poznáme (má cenu a ikonu). */
+  rec: boolean;
+  tag?: string;
+};
 
+const prefersCalm = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * Pridávanie do zoznamu (návrh prototyp/pridavanie-navrh.html, 13. 11.).
+ *
+ * Dole je rad bublín a pole – rovnaký prvok aj bez klávesnice. Ťuk do poľa zmení dok na okno cez viditeľnú
+ * plochu nad klávesnicou (výška z visualViewport, to isté pole = klávesnica sa nezavrie): hlavička (názov,
+ * počet a suma, Hotovo), v strede samotný zoznam (posúva sa, klávesnica ostáva), dole bubliny a pole.
+ * Ťuk na bublinu pridá hneď (bez odpočítavania); číslo v bubline = počet v zozname, mínus uberie.
+ * Po ťuknutí sa pole vyprázdni, ale bubliny ostanú na mieste, kým sa nezačne písať ďalšia vec.
+ * Klávesnicu zavrie Hotovo, šípka, ťuk do zoznamu, potiahnutie doku nadol alebo jej skrytie telefónom.
+ */
 export function Composer({
   householdId,
   items,
@@ -184,9 +211,12 @@ export function Composer({
   typing,
   onTyping,
   onAdd,
-  onAdded,
+  onQty,
+  onRemove,
   onVoice,
   title,
+  summary,
+  list,
 }: {
   householdId: string;
   items: Item[];
@@ -197,16 +227,28 @@ export function Composer({
   typing: boolean;
   onTyping: (on: boolean) => void;
   onAdd: ComposerAdd;
-  onAdded?: () => void;
+  /** Mínus v bubline: nové množstvo / odobratie položky zo zoznamu. */
+  onQty: (it: Item, quantity: number) => void;
+  onRemove: (it: Item) => void;
   onVoice: () => void;
   /** Názov zoznamu v hlavičke okna pridávania. */
   title: string;
+  /** „8 položiek · ~24 €“ pod názvom v okne. */
+  summary: string;
+  /** Zoznam v okne pridávania (rovnaké riadky ako na obrazovke). */
+  list: ReactNode;
 }) {
   const [txt, setTxt] = useState("");
+  /** Text, pre ktorý sú vypočítané bubliny – po ťuknutí na bublinu ostáva (bubliny sa nepohnú). */
+  const [stripFor, setStripFor] = useState("");
+  const [active, setActive] = useState<string | null>(null);
+  const tapped = useRef(new Set<string>());
   const inp = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
   const cat = estimator.catalog;
-  // Ťuk mimo poľa (do zoznamu) zavrie klávesnicu – iPhone to sám neurobí.
+
+  // Ťuk mimo okna zavrie klávesnicu – iPhone to sám neurobí.
   useEffect(() => {
     if (!typing) return;
     const away = (e: PointerEvent) => {
@@ -215,89 +257,29 @@ export function Composer({
     document.addEventListener("pointerdown", away, true);
     return () => document.removeEventListener("pointerdown", away, true);
   }, [typing]);
+
   const open = useMemo(() => items.filter((i) => i.status === "OPEN"), [items]);
-  const inList = (name: string) => open.some((i) => sameProduct(i.name, name));
+  const itemOf = (name: string) => open.find((i) => sameProduct(i.name, name)) ?? null;
+  const openRef = useRef(open);
+  openRef.current = open;
 
-  const enter = useMemo(() => (txt.trim().length >= 2 ? chunks(txt.trim()) : []), [txt]);
-  const one = enter.length === 1 ? enter[0]! : null;
-  // Enter pridá to, čo je napísané – len s opraveným pravopisom (pravidlo majiteľa 11. 11.), nikdy produkt z návrhov.
-  // Rozpoznanie (cena, kategória) sa ráta z opraveného textu.
-  const oneFix = useMemo(() => (one ? spellFix(cat, one.name) : null), [one?.name, cat]); // eslint-disable-line react-hooks/exhaustive-deps
-  const head = oneFix && cat ? resolveName(cat, oneFix.text) : null;
-  // Návrhy: 1. čo pridá Enter, 2. konkrétne druhy a značky, 3. ďalšie zhody podľa začiatku slova
-  const sugg = useMemo(() => {
-    if (!one || !cat) return [];
-    const out: Resolved[] = [];
-    const seen = new Set<string>(head ? [normalizeName(head.label)] : []);
-    const push = (r: Resolved | null) => {
-      if (r && !seen.has(normalizeName(r.label))) {
-        seen.add(normalizeName(r.label));
-        out.push(r);
-      }
-    };
-    refinements(cat, head, 6).forEach(push);
-    const found = searchNames(cat, one.name, 6).sort((a, b) => Number(inList(a.label)) - Number(inList(b.label)));
-    if (!head && found.length) {
-      // rozpísané slovo („smot“): najprv všeobecná položka „Smotana“
-      // (prídavné mená „smotanová“ sa preskočia – hľadá sa vec, nie jej vlastnosť)
-      const lw = normalizeName(one.name).split(" ").pop() ?? "";
-      const w = found
-        .flatMap((f) => f.label.split(/\s+/))
-        .find((x) => normalizeName(x).startsWith(lw) && !/(ova|ovy|ove|sky|ska|ske|cna|cne|cny)$/.test(normalizeName(x)));
-      if (w) {
-        const g = resolveName(cat, w);
-        if (g?.level === "general") push(g);
-      }
-    }
-    found.forEach(push);
-    return out.slice(0, head ? 4 : 5);
-  }, [one?.name, cat, head]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  type Pick = { name: string; cat: string | null; q: number; u: string | null; k: number; done?: boolean };
-  type Added = { k: number; name: string; cat: string | null; q: number | null; u: string | null };
-  const [picks, setPicks] = useState<Record<string, Pick>>({});
-  const [added, setAdded] = useState<Added[]>([]);
-  // dlaždice „Často kupujete“ – ťuk = +1, po 2 s sa pridá a nahradí ďalšou
+  // časté veci (istý nákup + často kupované)
   const staplesQ = useStapleItems(householdId);
   const frequentQ = useFrequentItems(householdId);
-  const staples = staplesQ.data;
-  const frequent = frequentQ.data;
-  // Kým sa návrhy načítavajú, riadok má vyhradené miesto – pole dole potom neposkočí.
-  const chipsLoading = staplesQ.isPending || frequentQ.isPending;
-  const [pend, setPend] = useState<Record<string, { n: number; k: number }>>({});
-  const cnt = useRef<Record<string, number>>({});
-  const tm = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  useEffect(() => () => Object.values(tm.current).forEach(clearTimeout), []);
+  const poolReady = !staplesQ.isPending && !frequentQ.isPending;
   const pool = useMemo(() => {
     const seen = new Set<string>();
     const out: { name: string; cat: string }[] = [];
-    for (const x of [...(staples ?? []), ...(frequent ?? [])]) {
-      const k = normalizeName(x.name);
+    for (const x of [...(staplesQ.data ?? []), ...(frequentQ.data ?? [])]) {
+      const k = itemKey(x.name);
       if (seen.has(k)) continue;
       seen.add(k);
       out.push({ name: x.name, cat: x.category_id });
     }
     return out;
-  }, [staples, frequent]);
-  // V okne pridávania ostanú aj práve pridané (dá sa ťuknúť znova a zoznam neposkakuje).
-  const chips = pool.filter((p) => !inList(p.name) || pend[p.name] || picks[`s:${p.name}`] || added.some((a) => sameProduct(a.name, p.name))).slice(0, 8);
-  const tapStaple = (p: { name: string; cat: string }) => {
-    cnt.current[p.name] = (cnt.current[p.name] ?? 0) + 1;
-    setPend((x) => ({ ...x, [p.name]: { n: cnt.current[p.name]!, k: Math.random() } }));
-    clearTimeout(tm.current[p.name]);
-    tm.current[p.name] = setTimeout(() => {
-      const n = cnt.current[p.name] ?? 1;
-      delete cnt.current[p.name];
-      void onAdd({ name: p.name, quantity: n, unit: null, categoryId: p.cat }).finally(() =>
-        setPend((x) => {
-          const y = { ...x };
-          delete y[p.name];
-          return y;
-        }),
-      );
-      onAdded?.();
-    }, 2000);
-  };
+  }, [staplesQ.data, frequentQ.data]);
+  const poolRef = useRef(pool);
+  poolRef.current = pool;
 
   const label = (name: string) => {
     const fixed = spellFix(cat, name).text;
@@ -305,86 +287,203 @@ export function Composer({
     return { name: fixed, categoryId: r?.category ?? null };
   };
 
-  // Naklikanie kusov priamo v bubline: ťuk = +1 (prvý ťuk = napísané množstvo alebo 1 ks), − uberie.
-  // Krúžok okolo čísla odpočítava 1,8 s; keď dobehne bez ďalšieho ťuknutia, položka sa pridá do zoznamu
-  // a objaví sa v „Pridané teraz“. Pri ďalšom písaní alebo zavretí okna sa naklikané pridá hneď.
-  const pk = useRef<Record<string, Pick>>({});
-  const ptm = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const setPk = (key: string, v: Pick | null) => {
-    if (v) pk.current[key] = v;
-    else delete pk.current[key];
-    setPicks({ ...pk.current });
+  // Bubliny sa počítajú len pri zmene textu (alebo otvorení okna) – nie pri zmene zoznamu. Inak by sa po ťuknutí
+  // bublina, ktorá je už v zozname, pohla alebo zmizla spod prsta.
+  const chips = useMemo<Chip[]>(() => {
+    const t0 = stripFor.trim();
+    const inList = (n: string) => openRef.current.some((i) => sameProduct(i.name, n));
+    if (t0.length < 2) {
+      return poolRef.current
+        .filter((p) => !inList(p.name))
+        .slice(0, 8)
+        .map((p) => ({ k: `s:${itemKey(p.name)}`, kind: "prod", name: p.name, cat: p.cat, q0: null, u: null, rec: true }));
+    }
+    const parts = chunks(t0);
+    if (parts.length > 1) {
+      return [{ k: "multi", kind: "multi", name: parts.map((x) => spellFix(cat, x.name).text).join(", "), cat: null, q0: parts.length, u: null, rec: true }];
+    }
+    const one = parts[0];
+    if (!one) return [];
+    const fix = spellFix(cat, one.name).text;
+    const head = cat ? resolveName(cat, fix) : null;
+    const out: Chip[] = [];
+    const seen = new Set<string>();
+    const push = (c: Chip) => {
+      const key = itemKey(c.name);
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(c);
+    };
+    const prod = (r: Resolved): Chip => ({
+      k: `${r.level}:${itemKey(r.label)}`,
+      kind: "prod",
+      name: r.label,
+      cat: r.category,
+      q0: one.quantity,
+      u: one.unit,
+      rec: true,
+      tag: r.level === "brand" ? t("li.brand") : undefined,
+    });
+    const typed: Chip = { k: `t:${itemKey(fix)}`, kind: "typed", name: fix, cat: head?.category ?? null, q0: one.quantity, u: one.unit, rec: !!head };
+    // iný tvar toho istého slova („banan“ → Banány) = jedna bublina s bežným názvom
+    if (head && sameProduct(head.label, fix)) push(prod(head));
+    else if (head) {
+      push(typed);
+      push(prod(head));
+    }
+    if (cat) {
+      refinements(cat, head, 6).forEach((r) => push(prod(r)));
+      const found = searchNames(cat, one.name, 6).sort((a, b) => Number(inList(a.label)) - Number(inList(b.label)));
+      if (!head && found.length) {
+        // rozpísané slovo („smot“): najprv všeobecná položka „Smotana“ (prídavné mená „smotanová“ sa preskočia)
+        const lw = normalizeName(one.name).split(" ").pop() ?? "";
+        const w = found
+          .flatMap((f) => f.label.split(/\s+/))
+          .find((x) => normalizeName(x).startsWith(lw) && !/(ova|ovy|ove|sky|ska|ske|cna|cne|cny)$/.test(normalizeName(x)));
+        if (w) {
+          const g = resolveName(cat, w);
+          if (g?.level === "general") push(prod(g));
+        }
+      }
+      found.forEach((r) => push(prod(r)));
+    }
+    // nepoznaný text ide na koniec („+ ban“) – Enter ho pridá presne tak
+    if (!head) push(typed);
+    return out.slice(0, 7);
+    // (prepočíta sa aj keď sa zoznam načíta – časté veci, ktoré v ňom už sú, sa neukážu)
+  }, [stripFor, typing, poolReady, !!cat, open.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // nové bubliny = nový začiatok radu
+  useEffect(() => {
+    if (stripRef.current) stripRef.current.scrollLeft = 0;
+  }, [chips]);
+
+  // Počas cudzieho nákupu ide pridanie ako žiadosť – ťuky na tú istú bublinu sa spoja do jednej žiadosti.
+  const [req, setReq] = useState<Record<string, number>>({});
+  const reqN = useRef<Record<string, { c: Chip; n: number; u: string | null }>>({});
+  const reqTm = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const sendReq = (k: string) => {
+    const r = reqN.current[k];
+    clearTimeout(reqTm.current[k]);
+    delete reqN.current[k];
+    setReq((x) => {
+      const y = { ...x };
+      delete y[k];
+      return y;
+    });
+    if (r) void onAdd({ name: r.c.name, quantity: r.n, unit: r.u, categoryId: r.c.cat });
   };
-  const logAdded = (a: Omit<Added, "k">) => setAdded((x) => [{ ...a, k: Date.now() + Math.random() }, ...x].slice(0, 30));
-  const commit = (key: string) => {
-    const p = pk.current[key];
-    // už pridaná bublina: nechať dobehnúť jej dokončenie (inak by ostala „rozklikaná“ a okno by sa nedalo zavrieť)
-    if (!p || p.done) return;
-    clearTimeout(ptm.current[key]);
-    setPk(key, { ...p, done: true });
-    haptic([8, 40, 14]);
-    // pole sa vymaže hneď po pridaní – dá sa písať ďalší produkt (bublina z „Často kupuješ“ text nemení)
-    if (!key.startsWith("s:")) setTxt("");
-    void onAdd({ name: p.name, quantity: p.q, unit: p.u, categoryId: p.cat });
-    logAdded({ name: p.name, cat: p.cat, q: p.q, u: p.u });
-    onAdded?.();
-    ptm.current[key] = setTimeout(() => {
-      setPk(key, null);
-      // Klávesnica je otvorená → okno ostáva na ďalšiu položku. Keď počas odpočítavania zmizla (iPhone ju bez
-      // ťuknutia znova neotvorí), okno sa zavrie – človek je späť v zozname (Nakupovať, Späť na Nákupy).
-      if (!Object.keys(pk.current).length && document.activeElement !== inp.current) closeWin();
-    }, 700);
+  const flushReq = () => Object.keys(reqN.current).forEach(sendReq);
+  useEffect(() => () => flushReq(), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Ikona preletí z bubliny do riadku v zozname. */
+  const fly = (from: HTMLElement, c: Chip) => {
+    if (prefersCalm()) return;
+    const src = (from.querySelector(".em") as HTMLElement | null) ?? from;
+    const a = src.getBoundingClientRect();
+    setTimeout(() => {
+      const scope = typing ? root.current?.querySelector(".aw-body") : document.querySelector(".bhm-list");
+      if (!scope) return;
+      const rows = [...scope.querySelectorAll<HTMLElement>(".row")];
+      const row = rows.find((r) => sameProduct(r.querySelector(".tx > b")?.textContent ?? "", c.name)) ?? rows[0];
+      const th = row?.querySelector<HTMLElement>(".th");
+      if (!th) return;
+      const b = th.getBoundingClientRect();
+      if (b.bottom < 0 || b.top > window.innerHeight) return;
+      const n = document.createElement("span");
+      n.className = "bb-fly";
+      n.innerHTML = `<span class="em em-${estimator.emoji(c.name, c.cat)}"></span>`;
+      n.style.left = `${a.left + a.width / 2 - 15}px`;
+      n.style.top = `${a.top + a.height / 2 - 15}px`;
+      (root.current?.parentElement ?? document.body).appendChild(n);
+      const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+      const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+      const anim = n.animate(
+        [
+          { transform: "translate(0,0) scale(1)", opacity: 1 },
+          { transform: `translate(${dx * 0.45}px, ${dy * 0.5 - 34}px) scale(1.3)`, opacity: 1, offset: 0.45 },
+          { transform: `translate(${dx}px, ${dy}px) scale(.85)`, opacity: 0.15 },
+        ],
+        { duration: 540, easing: "cubic-bezier(.3,.6,.3,1)" },
+      );
+      anim.onfinish = () => n.remove();
+      anim.oncancel = () => n.remove();
+    }, 70);
   };
+
+  // Ťuk na bublinu: hneď do zoznamu. Prvý ťuk = počet z textu (alebo 1 ks), každý ďalší +1.
+  const tap = (c: Chip, el: HTMLElement) => {
+    if (c.kind === "multi") {
+      submit();
+      return;
+    }
+    haptic(8);
+    const first = !tapped.current.has(c.k);
+    tapped.current.add(c.k);
+    const preset = !!c.q0 && (first || !isCountable(c.u));
+    const q = preset ? c.q0 : 1;
+    const u = preset ? c.u : null;
+    setActive(c.k);
+    // pole sa vyprázdni hneď – dá sa písať ďalšia vec; bubliny ostávajú (stripFor sa nemení)
+    if (txt) setTxt("");
+    if (requestMode) {
+      const r = reqN.current[c.k] ?? { c, n: 0, u };
+      r.n += q ?? 1;
+      reqN.current[c.k] = r;
+      setReq((x) => ({ ...x, [c.k]: r.n }));
+      clearTimeout(reqTm.current[c.k]);
+      reqTm.current[c.k] = setTimeout(() => sendReq(c.k), 1200);
+      return;
+    }
+    void onAdd({ name: c.name, quantity: q, unit: u, categoryId: c.cat, quiet: true, instant: true });
+    fly(el, c);
+  };
+  const less = (c: Chip) => {
+    if (requestMode) {
+      const r = reqN.current[c.k];
+      if (!r) return;
+      haptic(6);
+      r.n -= 1;
+      if (r.n <= 0) {
+        clearTimeout(reqTm.current[c.k]);
+        delete reqN.current[c.k];
+        setActive(null);
+        tapped.current.delete(c.k);
+      }
+      setReq((x) => {
+        const y = { ...x };
+        if (r.n > 0) y[c.k] = r.n;
+        else delete y[c.k];
+        return y;
+      });
+      return;
+    }
+    const it = itemOf(c.name);
+    // kým server nepotvrdí nový riadok, nemá ešte ID – mínus počká
+    if (!it || it.id.startsWith("tmp-")) return;
+    haptic(6);
+    const u = unitOf(it.unit);
+    const q = qtyOf(it);
+    if (q <= minQty(u)) {
+      onRemove(it);
+      setActive(null);
+      tapped.current.delete(c.k);
+    } else onQty(it, bump(q, u, -1));
+  };
+
   const closeWin = () => {
     inp.current?.blur();
     onTyping(false);
   };
-  const arm = (key: string) => {
-    clearTimeout(ptm.current[key]);
-    ptm.current[key] = setTimeout(() => commit(key), PICK_MS);
-  };
-  const tap = (key: string, name: string, catId: string | null, start?: { q: number | null; u: string | null }) => {
-    const p = pk.current[key];
-    if (p?.done) return;
-    haptic(8);
-    if (!p) setPk(key, { name, cat: catId, q: start?.q ?? 1, u: start?.q ? (start.u ?? null) : null, k: Date.now() });
-    else setPk(key, { ...p, q: bump(p.q, unitOf(p.u), 1), k: Date.now() });
-    arm(key);
-  };
-  const less = (key: string) => {
-    const p = pk.current[key];
-    if (!p || p.done) return;
-    haptic(6);
-    if (p.q <= minQty(unitOf(p.u))) {
-      clearTimeout(ptm.current[key]);
-      setPk(key, null);
-      return;
-    }
-    setPk(key, { ...p, q: bump(p.q, unitOf(p.u), -1), k: Date.now() });
-    arm(key);
-  };
-  const flush = () => {
-    for (const key of Object.keys(pk.current)) commit(key);
-  };
-  // ďalšie písanie: rozklikané bubliny návrhov sa pridajú hneď (inak by zmizli spolu s návrhmi)
-  useEffect(() => {
-    for (const key of Object.keys(pk.current)) if (!key.startsWith("s:")) commit(key);
-  }, [one?.name]); // eslint-disable-line react-hooks/exhaustive-deps
-  // zavretie okna: nič naklikané sa nestratí; „Pridané teraz“ sa po zavretí vynuluje
+  // zavretie okna: rozpísaný text a bubliny sa vynulujú, žiadosti sa odošlú
   useEffect(() => {
     if (typing) return;
-    flush();
-    const id = setTimeout(() => setAdded([]), 400);
-    return () => clearTimeout(id);
+    flushReq();
+    setTxt("");
+    setStripFor("");
+    setActive(null);
+    tapped.current.clear();
   }, [typing]); // eslint-disable-line react-hooks/exhaustive-deps
-  // odchod z obrazovky
-  useEffect(
-    () => () => {
-      Object.values(ptm.current).forEach(clearTimeout);
-      for (const p of Object.values(pk.current)) if (!p.done) void onAdd({ name: p.name, quantity: p.q, unit: p.u, categoryId: p.cat });
-    },
-    [], // eslint-disable-line react-hooks/exhaustive-deps
-  );
 
   // Okno pridávania sa drží presne vo viditeľnej časti obrazovky nad klávesnicou (nič neposkakuje).
   const [vv, setVv] = useState<{ top: number; h: number } | null>(null);
@@ -419,155 +518,150 @@ export function Composer({
     // Text priamo z poľa: klávesnica (napr. Gboard) môže mať posledné písmeno ešte len „rozpísané“
     // a stav by bol o písmeno pozadu („masl“ namiesto „maslo“).
     const now = inp.current?.value ?? txt;
-    const items = now.trim().length >= 2 ? chunks(now.trim()) : [];
+    const parts = now.trim().length >= 2 ? chunks(now.trim()) : [];
     // „Hotovo“ na klávesnici pri prázdnom poli zavrie okno
-    if (!items.length) {
-      if (typing && !now.trim()) inp.current?.blur();
+    if (!parts.length) {
+      if (typing && !now.trim()) closeWin();
       return;
     }
     const before = now;
-    for (const x of items) {
+    for (const x of parts) {
       const l = label(x.name);
-      void onAdd({ name: l.name, quantity: x.quantity, unit: x.unit, categoryId: l.categoryId }).then((o) => o === "FAILED" && setTxt(before));
-      logAdded({ name: l.name, cat: l.categoryId, q: x.quantity, u: x.unit });
+      void onAdd({ name: l.name, quantity: x.quantity, unit: x.unit, categoryId: l.categoryId, quiet: !requestMode, instant: !requestMode }).then(
+        (o) => o === "FAILED" && setTxt(before),
+      );
     }
     haptic([8, 40, 14]);
+    // bublina toho, čo Enter pridal, je aktívna – dá sa ťukať ďalej (+1)
+    if (parts.length === 1) {
+      const name = label(parts[0]!.name).name;
+      const c = chips.find((x) => x.kind !== "multi" && sameProduct(x.name, name));
+      if (c) {
+        setActive(c.k);
+        tapped.current.add(c.k);
+      }
+    }
     setTxt("");
-    onAdded?.();
+  };
+
+  // Potiahnutie doku (bubliny, pole) nadol = skryť klávesnicu.
+  const drag = useRef<{ x: number; y: number; id: number } | null>(null);
+  const dragDown = (e: React.PointerEvent) => {
+    drag.current = typing ? { x: e.clientX, y: e.clientY, id: e.pointerId } : null;
+  };
+  const dragMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.id) return;
+    const dy = e.clientY - d.y;
+    if (dy > 36 && dy > Math.abs(e.clientX - d.x) * 1.4) {
+      drag.current = null;
+      closeWin();
+    }
+  };
+  const dragEnd = () => {
+    drag.current = null;
+  };
+
+  // Ťuk do zoznamu v okne = skryť klávesnicu (posúvanie nie). Ďalší ťuk na riadok otvorí detail ako inde.
+  const tapAt = useRef<{ x: number; y: number } | null>(null);
+  const listDown = (e: React.PointerEvent) => {
+    tapAt.current = { x: e.clientX, y: e.clientY };
+  };
+  const listClick = (e: React.MouseEvent) => {
+    const s = tapAt.current;
+    // po potiahnutí riadku (+1 / −1) prehliadač pošle aj „click“ – ten okno nezatvára
+    if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) return;
+    e.stopPropagation();
+    e.preventDefault();
+    closeWin();
   };
 
   // Ťuk na bublinu nesmie zobrať poľu fokus (inak iPhone zavrie klávesnicu): zabrániť pointerdown aj mousedown.
   const keep = (e: React.SyntheticEvent) => e.preventDefault();
-  const estOf = (name: string, p?: Pick, start?: { q: number | null; u: string | null }) =>
-    estimator.est({ name, quantity: p ? p.q : (start?.q ?? null), unit: p ? p.u : (start?.u ?? null) }, listStore);
-  const showSugg = typing && txt.trim().length >= 2;
 
-  /** Bublina s naklikaním kusov: ťuk kamkoľvek = +1, krúžok vpravo odpočítava pridanie. */
-  const pickRow = (o: { key: string; name: string; cat: string | null; icon: React.ReactNode; sub: React.ReactNode; priced: boolean; ent?: boolean; start?: { q: number | null; u: string | null } }) => {
-    const p = picks[o.key];
-    const e = o.priced ? estOf(o.name, p, o.start) : null;
-    const go = () => tap(o.key, o.name, o.cat, o.start);
+  const chipEl = (c: Chip) => {
+    const act = active === c.k;
+    if (c.kind === "multi") {
+      return (
+        <span className="bb rec" key={c.k}>
+          <button type="button" className="bb-m" onPointerDown={keep} onMouseDown={keep} onClick={() => submit()}>
+            <span className="bb-pl">
+              <I n="plus" w="bold" />
+            </span>
+            <span className="bb-t">
+              <b>{tn("li.items", c.q0 ?? 0)}</b>
+              <small>{c.name}</small>
+            </span>
+          </button>
+        </span>
+      );
+    }
+    const it = requestMode ? null : itemOf(c.name);
+    const n = requestMode ? (req[c.k] ?? 0) : it ? qtyOf(it) : 0;
+    const q0 = c.q0 && !tapped.current.has(c.k) ? c.q0 : null;
+    const e = c.rec ? estimator.est({ name: c.name, quantity: q0, unit: q0 ? c.u : null }, listStore) : null;
+    const sub: string[] = [];
+    if (c.kind === "typed" && !c.rec) sub.push(q0 ? fmtQty(q0, c.u) : "", t("li.asTyped"));
+    else {
+      if (it && !act) sub.push(t("li.inList"));
+      if (q0) sub.push(`${it ? "+" : ""}${fmtQty(q0, c.u)}`);
+      if (c.tag) sub.push(c.tag);
+      sub.push(e ? `~${eur(e.v)}` : t("li.noPrice"));
+    }
+    const showIcon = c.kind !== "typed" || c.rec;
+    const nu = it ? unitOf(it.unit) : "ks";
     return (
-      <div key={o.key} className={`sgr pk${o.ent ? " ent" : ""}${p ? " on" : ""}${p?.done ? " done" : ""}`}>
-        <button type="button" className="sgm" onPointerDown={keep} onMouseDown={keep} onClick={go} aria-label={t("li.pickAria", { name: o.name })}>
-          <span className="sgi" key={p?.k ?? 0}>
-            {o.icon}
-          </span>
-          <span className="sgt">
-            <b>{o.name}</b>
-            <small>{p?.done ? t("li.pickedQty", { q: fmtQty(p.q, p.u) }) : p ? t("li.pickMore") : o.sub}</small>
-          </span>
-          {e && !p?.done && <span className="sgp">~{eur(e.v)}</span>}
-        </button>
-        {p && !p.done && (
-          <button type="button" className="pk-minus" onPointerDown={keep} onMouseDown={keep} onClick={() => less(o.key)} aria-label={t("li.less")}>
-            <I n={p.q <= minQty(unitOf(p.u)) ? "x" : "minus"} w="bold" />
+      <span className={`bb${act && n ? " act" : ""}${c.kind === "typed" && !c.rec ? " typed" : ""}`} key={c.k}>
+        {act && n > 0 && (
+          <button type="button" className="bb-min" onPointerDown={keep} onMouseDown={keep} onClick={() => less(c)} aria-label={t("li.lessAria", { name: c.name })}>
+            <I n="minus" w="bold" />
           </button>
         )}
-        <button type="button" className="pk-c" onPointerDown={keep} onMouseDown={keep} onClick={go} aria-label={p ? t("li.more") : t("li.pickAria", { name: o.name })}>
-          {p && !p.done && (
-            <svg viewBox="0 0 44 44" className="pk-ring" key={`r${p.k}`} aria-hidden="true">
-              <circle cx="22" cy="22" r="19" />
-            </svg>
-          )}
-          {p?.done ? (
-            <I n="check" w="bold" />
-          ) : p ? (
-            <b className="pk-n" key={p.k} aria-live="polite">
-              {unitOf(p.u) === "ks" ? formatNumber(p.q) : fmtQty(p.q, p.u)}
-            </b>
+        <button
+          type="button"
+          className="bb-m"
+          onPointerDown={keep}
+          onMouseDown={keep}
+          onClick={(ev) => tap(c, ev.currentTarget)}
+          aria-label={t("li.pickAria", { name: c.name })}
+        >
+          {showIcon ? (
+            <E k={estimator.emoji(c.name, c.cat)} s={30} />
           ) : (
-            <I n="plus" w="bold" />
+            <span className="bb-pl">
+              <I n="plus" w="bold" />
+            </span>
+          )}
+          <span className="bb-t">
+            <b>{c.kind === "typed" && !c.rec ? `„${c.name}“` : c.name}</b>
+            <small>{sub.filter(Boolean).join(" · ")}</small>
+          </span>
+          {n > 0 && (
+            <span className="bb-n" key={`${c.k}${n}`} aria-live="polite">
+              {nu === "ks" ? formatNumber(n) : fmtQty(n, nu)}
+            </span>
           )}
         </button>
-        {p && !p.done && unitOf(p.u) === "ks" && (
-          <span className="pk-fly" key={`f${p.k}`} aria-hidden="true">
-            +1
-          </span>
-        )}
-      </div>
+      </span>
     );
   };
 
-  const suggestions = (
-    <div className={`sgl${glass ? " glass2" : ""}`} role="listbox" aria-label={t("li.suggestions")}>
-      {enter.length > 1 && (
-        <button type="button" className="sgr ent" onPointerDown={keep} onMouseDown={keep} onClick={() => submit()}>
-          <span className="sgi nwi">
-            <I n="plus" w="bold" />
-          </span>
-          <span className="sgt">
-            <b>{tn("li.items", enter.length)}</b>
-            <small>{enter.map((x) => label(x.name).name).join(", ")}</small>
-          </span>
-          <kbd aria-label="Enter">↵</kbd>
-        </button>
-      )}
-      {one &&
-        oneFix &&
-        pickRow({
-          key: "ent",
-          name: oneFix.text,
-          cat: head?.category ?? null,
-          icon: head ? <E k={estimator.emoji(oneFix.text, head.category)} s={30} /> : <I n="plus" w="bold" />,
-          sub: (
-            <>
-              {fmtQty(one.quantity, one.unit)} · {whatOf(head) ?? t("li.newItem")}
-            </>
-          ),
-          priced: !!head,
-          ent: true,
-          start: { q: one.quantity, u: one.unit },
-        })}
-      {sugg.map((r) =>
-        pickRow({
-          key: `${r.level}:${r.label}`,
-          name: r.label,
-          cat: r.category,
-          icon: <E k={estimator.emoji(r.label, r.category)} s={30} />,
-          sub: r.level === "general" ? whatOf(r) : r.level === "brand" ? t("li.brand") : t("li.kind"),
-          priced: true,
-          start: { q: one?.quantity ?? null, u: one?.unit ?? null },
-        }),
-      )}
-    </div>
-  );
-
-  // Okno pridávania (pri písaní): hlavička · obsah (návrhy / pridané teraz + ukážka + často kupované) · pole.
-  const winBody = showSugg ? (
-    suggestions
-  ) : (
-    <>
-      {added.length > 0 ? (
-        <div className={`aw-tray${glass ? " glass2" : ""}`} aria-live="polite">
-          <div className="aw-th">
-            <I n="check-circle" w="fill" />
-            <b>{t("li.addedNow")}</b>
-            <span>{tn("li.items", added.length)}</span>
-          </div>
-          {added.map((a) => (
-            <div className="aw-it" key={a.k}>
-              <E k={estimator.emoji(a.name, a.cat)} s={24} />
-              <b>{a.name}</b>
-              <span>{fmtQty(a.q, a.u)}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <PickDemo glass={glass} />
-      )}
-      {chips.length > 0 && (
-        <>
-          <div className="aw-h">{t("li.staples")}</div>
-          <div className={`sgl${glass ? " glass2" : ""}`}>
-            {chips.slice(0, 6).map((c) =>
-              pickRow({ key: `s:${c.name}`, name: c.name, cat: c.cat, icon: <E k={estimator.emoji(c.name, c.cat)} s={30} />, sub: t("li.tapToAdd"), priced: true }),
-            )}
-          </div>
-        </>
-      )}
-    </>
-  );
+  const strip =
+    chips.length > 0 ? (
+      <div className="bb-row" ref={stripRef} aria-label={stripFor.trim().length >= 2 ? t("li.suggestions") : t("li.staples")}>
+        {stripFor.trim().length < 2 && <span className="bb-lab">{t("li.staples")}</span>}
+        {chips.map(chipEl)}
+      </div>
+    ) : typing ? (
+      <div className="bb-row" ref={stripRef}>
+        <span className="bb-lab wide">{t("li.typeHint")}</span>
+      </div>
+    ) : !poolReady ? (
+      // kým sa časté veci načítavajú, rad má vyhradené miesto – pole dole potom neposkočí
+      <div className="bb-row" aria-hidden="true" style={{ visibility: "hidden" }} ref={stripRef}>
+        <span className="bb">&nbsp;</span>
+      </div>
+    ) : null;
 
   return (
     <div
@@ -582,118 +676,56 @@ export function Composer({
             <I n="caret-left" w="bold" />
           </button>
           <div className="aw-ti">
-            <small>{requestMode ? t("li.addAsk") : t("li.addTo")}</small>
             <b>{/[\p{L}\d]/u.test(title) ? title : t("li.thisList")}</b>
+            <small>{requestMode ? t("li.addAsk") : summary}</small>
           </div>
           <button type="button" className="aw-done" onClick={closeWin}>
-            {added.length > 0 && (
-              <span className="aw-cnt" key={added.length}>
-                {added.length}
-              </span>
-            )}
             {t("li.done")}
           </button>
         </div>
       )}
-      {typing ? (
-        <div className="aw-body">
-          <div className="aw-in">{winBody}</div>
+      {typing && (
+        <div className="aw-body" onPointerDownCapture={listDown} onClickCapture={listClick}>
+          {list}
         </div>
-      ) : chipsLoading ? (
-        <div className="chips staples" aria-hidden="true" style={{ visibility: "hidden" }}>
-          <span className="chip">&nbsp;</span>
-        </div>
-      ) : (
-        chips.length > 0 && (
-          <div className="chips staples" aria-label={t("li.staples")}>
-            {chips.map((p) => {
-              const pd = pend[p.name];
-              return (
-                <button type="button" key={p.name} className={`chip${pd ? " pend" : ""}${glass ? " glass2" : ""}`} onClick={() => tapStaple(p)}>
-                  <E k={estimator.emoji(p.name, p.cat)} />
-                  {p.name}
-                  {pd ? (
-                    <span className="cnt" key={pd.k}>
-                      +{pd.n}
-                    </span>
-                  ) : (
-                    <span className="pl">
-                      <I n="plus" w="bold" />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )
       )}
-      <form className={`field${glass ? " glass2" : ""}`} onSubmit={submit}>
-        <input
-          ref={inp}
-          value={txt}
-          onChange={(e) => setTxt(e.target.value)}
-          onFocus={() => onTyping(true)}
-          onBlur={() =>
-            setTimeout(() => {
-              // kým bublina odpočítava, okno ostáva otvorené – zavrie sa samo po pridaní
-              if (document.activeElement !== inp.current && !Object.keys(pk.current).length) onTyping(false);
-            }, 150)
-          }
-          placeholder={requestMode ? t("ls.placeholderRequest") : t("li.placeholder")}
-          autoComplete="off"
-          autoCorrect="off"
-          enterKeyHint="done"
-          maxLength={160}
-          aria-label={t("li.addAria")}
-        />
-        {txt ? (
-          <button type="submit" className="m" aria-label={t("li.add")} onPointerDown={keep} onMouseDown={keep}>
-            <I n="arrow-up" w="bold" />
-          </button>
-        ) : (
-          <button type="button" className="m" onPointerDown={typing ? keep : undefined} onMouseDown={typing ? keep : undefined} onClick={onVoice} aria-label={t("li.voice")}>
-            <I n="microphone" />
-          </button>
-        )}
-      </form>
-    </div>
-  );
-}
-
-const PICK_MS = 1800;
-
-/** Názorná ukážka v prázdnom okne: prst trikrát ťukne na bublinu, krúžok odpočíta a „Pridané 3 ks“ (len CSS, opakuje sa). */
-function PickDemo({ glass }: { glass?: boolean }) {
-  return (
-    <div className="aw-demo">
-      <div className={`awd-row${glass ? " glass2" : ""}`} aria-hidden="true">
-        <span className="sgi">
-          <E k="beer" s={30} />
-        </span>
-        <span className="awd-t">
-          <b>{t("li.demoItem")}</b>
-          <small className="awd-s1">{t("li.tapToAdd")}</small>
-          <small className="awd-s2">{t("li.pickedQty", { q: fmtQty(3, null) })}</small>
-        </span>
-        <span className="awd-c">
-          <svg viewBox="0 0 44 44" className="awd-ring">
-            <circle cx="22" cy="22" r="19" />
-          </svg>
-          <i className="awd-n awd-p">
-            <I n="plus" w="bold" />
-          </i>
-          <i className="awd-n awd-1">1</i>
-          <i className="awd-n awd-2">2</i>
-          <i className="awd-n awd-3">3</i>
-          <i className="awd-n awd-ok">
-            <I n="check" w="bold" />
-          </i>
-        </span>
-        <span className="awd-f">
-          <I n="hand-tap" w="fill" />
-        </span>
+      <div className="bb-dock" onPointerDown={dragDown} onPointerMove={dragMove} onPointerUp={dragEnd} onPointerCancel={dragEnd}>
+        {strip}
+        <form className={`field${glass ? " glass2" : ""}`} onSubmit={submit}>
+          <input
+            ref={inp}
+            value={txt}
+            onChange={(e) => {
+              setTxt(e.target.value);
+              setStripFor(e.target.value);
+              setActive(null);
+              tapped.current.clear();
+            }}
+            onFocus={() => onTyping(true)}
+            onBlur={() =>
+              setTimeout(() => {
+                // klávesnicu skryl telefón (alebo ťuk mimo) – hneď späť do zoznamu, nič nečaká
+                if (document.activeElement !== inp.current) onTyping(false);
+              }, 150)
+            }
+            placeholder={requestMode ? t("ls.placeholderRequest") : t("li.placeholder")}
+            autoComplete="off"
+            autoCorrect="off"
+            enterKeyHint="done"
+            maxLength={160}
+            aria-label={t("li.addAria")}
+          />
+          {txt ? (
+            <button type="submit" className="m" aria-label={t("li.add")} onPointerDown={keep} onMouseDown={keep}>
+              <I n="arrow-up" w="bold" />
+            </button>
+          ) : (
+            <button type="button" className="m" onPointerDown={typing ? keep : undefined} onMouseDown={typing ? keep : undefined} onClick={onVoice} aria-label={t("li.voice")}>
+              <I n="microphone" />
+            </button>
+          )}
+        </form>
       </div>
-      <p>{t("li.demoText")}</p>
     </div>
   );
 }
