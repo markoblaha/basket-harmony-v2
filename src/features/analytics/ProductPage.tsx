@@ -63,7 +63,7 @@ export function ProductPage() {
   const basis: Basis = pr?.basis ?? "ks";
   const val = (v: number) => (weighed ? perUnit(v, basis) : eur(v)) ?? eur(v);
   const target = (lists.data ?? []).filter((l) => !l.completed_at).sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999"))[0];
-  const short = (x: string) => formatDateTime(new Date(`${x}T12:00:00`), { day: "numeric", month: "numeric" });
+  const short = (x: string) => formatDateTime(new Date(`${x}T12:00:00`), { day: "numeric", month: "numeric" }).replace(/ /g, "\u00a0");
   const now = pr?.now ?? null;
   const unitLine = !now ? "" : weighed ? t("mn.byWeight") : now.unit != null && basis !== "ks" ? `${size ? `${size} · ` : ""}${perUnit(now.unit, basis)}` : (size ?? "");
   const series: Series[] = [];

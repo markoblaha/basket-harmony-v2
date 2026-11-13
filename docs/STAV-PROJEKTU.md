@@ -45,6 +45,10 @@ z prerušeného behu na začiatku ukončí (`end_shopping`).
    (katalóg položiek pre rozpoznanie a odhad ceny v zozname) a `20261102000032_finish_keep_unavailable` (koniec nákupu:
    „nemali“ pokračuje v zozname, pokračujúci zoznam si nechá pôvodný deň), `…033_recipe_week_plan` (deň v pláne
    týždňa, plánovanie bez zoznamu) a `…034_recipe_likes` (Ochutnávač – „Chcem“ za každého člena).
+   Výdavky 2.0 a model cien (13. 11.): `20261112000038_price_model` (v testovacej DB ako 2 kroky), `…039_analytics_daily`,
+   `20261113000040_price_store_count`, `…041_price_comparable` (v testovacej DB ako 3 kroky: price_comparable,
+   price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
+   (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
    Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v5,
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
@@ -250,6 +254,31 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
+- **Výdavky 2.0 – IMPLEMENTOVANÉ v testovacej appke (13. 11. 2026, čaká na „OK“ majiteľa):** pokyn „implementuj to celé
+  aj s mockupom“. Rozhodnutia prijaté podľa odporúčaní návrhu (majiteľ môže zmeniť): kalendárne týždne po–ne, ceny
+  vždy za posledné 3 mesiace k dnešku, v zozname ostáva napísaný názov položky a konkrétny výrobok je štítok pod ním.
+  *Model cien (DB, migrácie 038–041):* fakt = riadok bločku (`_price_facts`); zálohy nie sú tovar (kategória záloha
+  alebo 0,15 €/ks pri alkohole a nápojoch); množstvo = balenia × veľkosť balenia, vážené podľa bločku, „6x“ sa nenásobí
+  dvakrát; jeden kľúč obchodu (`_store_key` + spúšťač `receipts_store_key_norm`, Lidl = LIDL); jednotka porovnania
+  podľa druhu (`_kind_basis`); porovnávajú sa len potraviny, drogéria a pod. (`_comparable` – oblečenie, služby, palivo…
+  nie). „Priemerne platíš“ = peniaze ÷ množstvo za 90 dní; „Cena teraz“ = posledný nákup výrobku v obchode bez akcie
+  (akcia = zľava ≥ 15 %), čerstvá do 45 dní; úspora len z čerstvých cien bez akcie. Funkcie pre appku:
+  `analytics_price_kind`, `analytics_price_product`, `analytics_price_store`, `analytics_daily`, `analytics_missing_sizes`,
+  `set_product_size`; `item_catalog` vracia pri nákupoch aj výrobok, balenie a akciu.
+  *Odhad v zozname (`itemCatalog.ts`):* najčastejší výrobok položky v obchode zoznamu za 120 dní a jeho posledná cena
+  bez akcie; rozpätie = najlacnejší/najdrahší výrobok; vážené podľa hmotnosti s veľkosťou balenia. V detaile položky
+  „podľa výrobku …“, „zatiaľ tu nekúpené“.
+  *Obrazovky:* Výdavky (súhrn s ‹ obdobie › aj potiahnutím, porovnanie k rovnakému dňu, bez porovnania pred prvým
+  bločkom, časová os, Priebeh/Dni v týždni, prstenec kategórií / obchody, Oplatí sa vedieť, bločky), Druh (karty cien,
+  úspora, výrobky bez veľkosti, graf, obchody a ceny, značky a balenia, posledné nákupy), Výrobok (Cena teraz,
+  Priemerne platíš, Najnižšia cena, graf, obchody, porovnanie, pridať do zoznamu), Obchod (Produkty – „najlacnejší pri
+  X z Y produktov, ktoré kupuješ aj inde“, Kategórie, Bločky), Kategória, nová obrazovka Doplniť veľkosť balenia
+  (`/analytics/sizes`). Štýly `src/styles/analytics-v2.css` (triedy `an-*`), texty `mn.*` v sk aj en.
+  *Overené:* `supabase/tests/price_model_test.sql` v testovacej DB ok=16 fails=0; `npm run check` (196 testov);
+  preklikanie 4 vzhľady × 12 obrazoviek na testovacom builde s testovacím účtom – 0 nálezov, fotky prezreté.
+  Na reálnych dátach: pivo priemerne 2,35 €/l, najlacnejšie Tesco 2,10 €/l; 7 pív z Lidla bez veľkosti → fronta veľkostí.
+  Neoverené: skutočný iPhone. Do ostrej DB nič (migrácie v zozname „Pred zlúčením“).
+
 - **Výdavky 2.0 – návrh prestavby karty (11. 11. 2026):** https://claude.ai/artifact/TRAxKhERGN3ZcRiLSiMDQw
   (zdroj `prototyp/vydavky-navrh.html`: dokument + preklikateľný mockup s vymyslenými dátami). Zistenia z testovacej DB:
   „o 1775 % viac ako august“ (v auguste 1 bloček), „Obchod 681 € · Woolworth“ (v testovacej DB 0 zo 67 bločkov má
@@ -283,7 +312,7 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   úspora len z ceny do 6 týždňov a nie z akcie, obchod s cenou len z akcie nie je „najlacnejší“, v grafe druhu je za
   obchod čiara jeho najlacnejšieho výrobku, odhad na časovej osi má vlastné číslo. Pri implementácii: grafy sú čisté SVG
   bez knižnice; ťah po grafe a výseky prstenca potrebujú textovú alternatívu pre čítačky; id v SVG musia byť jedinečné.
-  Čaká na vyjadrenie majiteľa; v appke nič nie je implementované.
+  (Implementované 13. 11. – pozri položku vyššie.)
 
 - **Revízia pred ostrým spustením (3. 11. 2026):** https://claude.ai/artifact/X8aprnTLiiWL5bgiDQwNAT – preklikané
   4 vzhľady × 19 obrazoviek (0 chýb JS/servera), kód, DB, AI. Blokery P0: zmazanie účtu len predstiera (dialóg + hláška

@@ -423,7 +423,7 @@ export const enAnalytics: Record<keyof typeof skAnalytics, string> = {
   "mn.compareWith": "Compare with other brands: {kind}",
   "mn.storeProducts": "Products",
   "mn.storeNoPrices": "No priced purchases here in the last 3 months.",
-  "mn.storeWins": "Cheapest for {n} of {total} products",
+  "mn.storeWins": "Cheapest for {n} of {total} products you also buy elsewhere",
   "mn.storeWinsD": "For the others it says where it's cheaper.",
   "mn.cheaperAt": "{store} −{pct} %",
   "mn.storePricesNote": "On the right: the unit price in this store (last non-promo purchase, 3 months).",
@@ -436,4 +436,6 @@ export const enAnalytics: Record<keyof typeof skAnalytics, string> = {
   "mn.sizeOther": "Other…",
   "mn.sizePh": "e.g. 180 ({unit})",
   "mn.sizeSaved": "Saved {size}. {n} now count in the unit price.",
+  "mn.storeOnlyHere": "You buy these products only here",
+  "mn.storeOnlyHereD": "A comparison appears once you buy them elsewhere too.",
 };

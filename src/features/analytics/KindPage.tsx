@@ -16,7 +16,7 @@ import { perUnit, sizeLabel } from "./bits";
 import { cat } from "./money";
 import { PriceChart, type Series } from "./charts";
 
-const short = (d: string) => formatDateTime(new Date(`${d}T12:00:00`), { day: "numeric", month: "numeric" });
+const short = (d: string) => formatDateTime(new Date(`${d}T12:00:00`), { day: "numeric", month: "numeric" }).replace(/ /g, "\u00a0");
 const ago = (d: string) => Math.round((Date.now() - new Date(`${d}T12:00:00`).getTime()) / 864e5);
 /** Dátum ceny; staršia ako 6 týždňov je označená. */
 export function When({ d }: { d: string }) {
@@ -118,7 +118,7 @@ function Body({ d, gl }: { d: PriceKind; gl: string }) {
             <span className="d">{t("mn.avgPaysD", { n: tn("mn.trips", d.sized_count ?? 0), qty: qty(d.qty ?? 0, B), paid: eur(d.paid ?? 0) })}</span>
           </div>
           {cheapest && (
-            <button type="button" className={`mod good${gl}`} onClick={() => navigate(`/analytics/product/${cheapest.product_id}`)}>
+            <button type="button" className={`mod good${priciest ? "" : " an-w"}${gl}`} onClick={() => navigate(`/analytics/product/${cheapest.product_id}`)}>
               <span className="kk">
                 <I n="trend-down" w="bold" />
                 {t("mn.cheapestNow")}

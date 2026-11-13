@@ -422,7 +422,7 @@ export const skAnalytics = {
   "mn.compareWith": "Porovnať s inými značkami: {kind}",
   "mn.storeProducts": "Produkty",
   "mn.storeNoPrices": "Za posledné 3 mesiace tu nie je žiadny nákup s cenou.",
-  "mn.storeWins": "Najlacnejší pri {n} z {total} produktov",
+  "mn.storeWins": "Najlacnejší pri {n} z {total} produktov, ktoré kupuješ aj inde",
   "mn.storeWinsD": "Pri ostatných je napísané, kde je to lacnejšie.",
   "mn.cheaperAt": "{store} −{pct} %",
   "mn.storePricesNote": "Vpravo je cena za jednotku v tomto obchode (posledný nákup bez akcie, 3 mesiace).",
@@ -435,4 +435,6 @@ export const skAnalytics = {
   "mn.sizeOther": "Iná…",
   "mn.sizePh": "napr. 180 ({unit})",
   "mn.sizeSaved": "Uložené {size}. {n} je už v cene za jednotku.",
+  "mn.storeOnlyHere": "Tieto produkty kupuješ len tu",
+  "mn.storeOnlyHereD": "Porovnanie s inými obchodmi bude, keď ich kúpiš aj inde.",
 } as const;

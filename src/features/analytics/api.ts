@@ -579,6 +579,8 @@ export type PriceStoreRow = {
   best_key: string | null;
   best_store: string | null;
   best_unit: number | null;
+  /** V koľkých obchodoch sa druh kupoval (3 mesiace). */
+  stores: number;
 };
 export type MissingSize = {
   product_id: string;

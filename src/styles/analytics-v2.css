@@ -121,7 +121,7 @@
 .bhm .an-big small { font-size: 20px; font-weight: 500; letter-spacing: 0; color: var(--sec); margin-left: 2px; }
 .bhm .an-sumr { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; font-size: 13px; color: var(--sec); }
 .bhm .an-cr { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; }
-.bhm .an-cr button { color: var(--acc); font-weight: 650; font-size: inherit; padding: 12px 3px; margin: -12px -3px; min-width: 44px; text-align: left; }
+.bhm .an-cr button { color: var(--acc); font-weight: 650; font-size: inherit; min-width: 44px; text-align: left; }
 .bhm .an-cr .ico { width: 11px; height: 11px; color: var(--ter); }
 .bhm .an-sr { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; margin: 0 -18px; padding: 2px 18px 6px; }
 .bhm .an-sr::-webkit-scrollbar { display: none; }
@@ -148,3 +148,18 @@
 .bhm .an-fix b { font-size: 17px; font-weight: 650; } .bhm .an-fix small { font-size: 13px; color: var(--sec); display: block; margin-top: 2px; }
 .bhm .tapc, .bhm .row.tap, .bhm .cat, .bhm .mod { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) { .bhm .an-fade, .bhm .an-tl.go .an-bw i, .bhm .an-svg.go .ln, .bhm .an-svg.go .sl, .bhm .an-dn svg.go .an-sw, .bhm .an-end { animation: none !important; stroke-dasharray: none !important; } }
+
+/* karty cien aj v téme Teplá kuchyňa (štýly .mod má appka len pre sklo) */
+.bhm .an-pcs .mod { border-radius: 22px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; min-height: 120px; text-align: left; transition: transform var(--dur-1); }
+.w .bhm .an-pcs .mod { background: var(--card); box-shadow: var(--sh); }
+.bhm .an-pcs .mod:active { transform: scale(.97); }
+.bhm .an-pcs .mod .kk { font-size: 12.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--sec); }
+.bhm .an-pcs .mod .kk .ico { width: 16px; height: 16px; flex: none; }
+.bhm .an-pcs .mod .v { font-size: 28px; font-weight: 650; letter-spacing: -0.8px; line-height: 1.05; }
+.bhm .an-pcs .mod .d { font-size: 13px; color: var(--sec); margin-top: auto; line-height: 1.3; }
+.w .bhm .an-sum { background: var(--card); box-shadow: var(--sh); }
+/* cesta v hlavičke detailu: ťukacia plocha bez prekrytia nadpisu */
+.bhm .an-cr { min-height: 32px; }
+.bhm .an-cr button { padding: 6px 3px; margin: 0 -3px; }
+/* čísla nad stĺpcami týždňov sa neprekrývajú */
+.bhm .an-tls .an-bw em { left: -2px; right: -2px; }

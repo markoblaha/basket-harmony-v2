@@ -17,7 +17,7 @@ import { perUnit } from "./bits";
 import { Timeline } from "./charts";
 import { useTimeline } from "./timeline";
 import { Seg } from "@/mockup/ui";
-import { emojiFor } from "@/mockup/kit";
+import { emojiFor, storeName } from "@/mockup/kit";
 
 export function StorePage() {
   const { key = "_none" } = useParams();
@@ -35,9 +35,12 @@ export function StorePage() {
   const tl = useTimeline(household.id, per, off, show, { store: storeKey });
   const gl = g ? " glass2" : "";
   const rows = prices.data ?? [];
-  const win = rows.filter((r) => !r.best_key || r.best_key === storeKey).length;
+  // porovnávajú sa len produkty, ktoré kupuješ aj v inom obchode
+  const cmp = rows.filter((r) => r.stores > 1);
+  const win = cmp.filter((r) => r.best_key === storeKey).length;
   const d = q.data;
-  const name = d?.name || storeKey;
+  // pekný názov siete („LIDL“ → „Lidl“), inak tak, ako je na bločku
+  const name = storeName(storeKeyOf(d?.name ?? storeKey)) ?? d?.name ?? storeKey;
   const cats = (d?.categories ?? []).filter((c) => c.amount > 0 && !c.id.startsWith("_")).sort((a, b) => b.amount - a.amount);
   const max = Math.max(1, ...cats.map((c) => c.amount));
   return (
@@ -100,11 +103,11 @@ export function StorePage() {
                     <>
                       <div className={`card insight${gl}`}>
                         <span className="tile">
-                          <E k={win * 2 >= rows.length ? "moneybag" : "coin"} />
+                          <E k={win * 2 >= cmp.length ? "moneybag" : "coin"} />
                         </span>
                         <div className="grow">
-                          <div className="ib-t">{t("mn.storeWins", { n: win, total: rows.length })}</div>
-                          <div className="meta">{t("mn.storeWinsD")}</div>
+                          <div className="ib-t">{cmp.length ? t("mn.storeWins", { n: win, total: cmp.length }) : t("mn.storeOnlyHere")}</div>
+                          <div className="meta">{cmp.length ? t("mn.storeWinsD") : t("mn.storeOnlyHereD")}</div>
                         </div>
                       </div>
                       <div className={`lst${gl}`}>
