@@ -102,7 +102,8 @@ parse-voice v testovacej DB (~8 volaní AI). Nič neukladá.
   čo pozná katalóg alebo kategórie. Nepridaná veta sa ukáže s „Nepridané – neznie to ako nákup · Pridať aj tak“ (ťuk ju
   spracuje ako napísanú). Po 4 vetách rozhovoru za sebou sa mikrofón sám pozastaví (šetrí AI – limit 120 viet/hod. – a nič
   náhodné nepribudne). Napísaný text sa nefiltruje (`source: "typed"`). Overené: sada 40 viet na testovacej DB 40/40
-  (15 nákupov, 25 rozhovorov), druhá sada a `testy/hlas.cjs`. Neoverené: skutočný iPhone so živým rozhovorom.
+  (15 nákupov, 25 rozhovorov), doplnková sada 10/10 (recepty „upečiem bábovku“ áno, „urobím ti čaj“ nie),
+  `testy/hlas.cjs` na adrese vetvy s podvrhnutou aj skutočnou AI (`REAL=1`) 10/10. Neoverené: skutočný iPhone so živým rozhovorom.
 - **Viac:** hlavné prepínače + „Rozšírené“, rozpočet cez list z Analytiky, poradie obchodov ťahaním,
   vibrácie na iPhone cez systémový prepínač (`haptic()` v `components/kit.tsx`).
 - Systémová lišta iPhonu vo farbe témy, plynulejšie animácie (`components/motion.ts`: FLIP, animateOut, collapseOut).
