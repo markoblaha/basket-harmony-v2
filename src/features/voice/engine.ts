@@ -160,3 +160,27 @@ export function diff(before: DraftItem[], after: DraftItem[]) {
     .map((i) => i.id);
   return { added, removed, changed };
 }
+
+/** Slová z rozhovoru (zámená, slovesá, otázky), ktoré v názve tovaru nebývajú – veta s nimi ide vždy cez AI. */
+const STOP = new Set([
+  "ako", "ten", "tie", "ta", "to", "tam", "tu", "som", "si", "sme", "ste", "je", "su", "bol", "bola", "bolo", "boli",
+  "bude", "budem", "mam", "mas", "ma", "mi", "ty", "ja", "on", "ona", "my", "vy", "oni", "kde", "kedy", "preco",
+  "co", "kto", "nie", "ale", "uz", "len", "teraz", "dnes", "zajtra", "vcera", "nemame", "mame", "chces", "mozem",
+]);
+
+/**
+ * Rýchla cesta bez AI: hovorená veta je len výpočet tovaru, ktorý domácnosť pozná z nákupov
+ * („mlieko, dva chleby a maslo“). Vtedy netreba AI – položky idú do zoznamu hneď (rýchlejšie aj lacnejšie).
+ * Čokoľvek iné (oprava, mazanie, recept, neznáme alebo „rozhovorové“ slovo, dlhá veta) rozhodne AI.
+ * @param known – pozná tento názov katalóg domácnosti? (resolveName zhodne pre všetky slová názvu)
+ */
+export function catalogOnly(text: string, ops: VoiceOp[], known: (name: string) => boolean): boolean {
+  const words = (s: string) => normalizeName(s).replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(Boolean);
+  const all = words(text);
+  if (!ops.length || ops.length > 6 || all.length > 12 || all.some((w) => STOP.has(w))) return false;
+  return ops.every((o) => {
+    if (o.op !== "add") return false;
+    const ws = words(o.name);
+    return ws.length >= 1 && ws.length <= 3 && ws.every((w) => w.length >= 3) && known(o.name);
+  });
+}

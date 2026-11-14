@@ -33,7 +33,7 @@ import { cleanStore, isChatter, isVocabEcho, keepSaidWords, matchStore, parseLoc
 
 /** Názvy od AI zúžené na to, čo zaznelo (pravidlo „appka nič nedomýšľa“). */
 const asSaid = (ops: VoiceOp[], text: string): VoiceOp[] => (text ? ops.map((o) => (o.op === "add" ? { ...o, name: keepSaidWords(o.name, text) } : o)) : ops);
-import { applyOps, diff, findItem, reconcile, undo, type Effect } from "./engine";
+import { applyOps, catalogOnly, diff, findItem, reconcile, undo, type Effect } from "./engine";
 import { isRealDish, recipeCommand, splitCook } from "./recipeVoice";
 import { useSpeech } from "./useSpeech";
 import { recorderSupported, useRecorder, type StreamSink } from "./useRecorder";
@@ -111,7 +111,6 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   const [selected, setSelected] = useState<string | null>(null);
   const [modal, setModal] = useState<Modal>(null);
   const [typing, setTyping] = useState(false);
-  const [, setDoneHint] = useState(false);
   // Mikrofón sa po otvorení zapne sám, ak to nastavenie (Viac → Nastavenia) nevypne.
   const [listening, setListening] = useState(() => getSetting("micAutostart"));
   const [said, setSaid] = useState("");
@@ -457,7 +456,26 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         list.filter((o): o is Extract<VoiceOp, { op: "remove" }> => o.op === "remove" && !findItem(items, o.target));
       if (typed) for (const m of notIn(ops, before)) toast.show(t("voice.notInList", { name: m.target }));
       const local = applyOps(before, ops);
-      if (local.done) setDoneHint(true);
+      // Rýchla cesta: hovorená veta je len tovar, ktorý domácnosť pozná z nákupov („mlieko, chlieb a maslo“) –
+      // hneď do zoznamu, bez AI (rýchlejšie a lacnejšie). Všetko ostatné posúdi AI nižšie.
+      // Rovnako oprava množstva vybranej alebo poslednej položky („nie, tri“, „pol kila“) – je jednoznačná.
+      const quickFix =
+        !!target && ops.length === 1 && ops[0]!.op === "change" && ops[0]!.name == null &&
+        (ops[0]!.quantity != null || ops[0]!.delta != null) && rest.trim().split(/\s+/).length <= 4;
+      if (!typed && quickFix) {
+        skipRun.current = 0;
+        present(local.items);
+        haptic(10);
+        if (sel) setSelected(null);
+        return;
+      }
+      if (!typed && !target && !correction && !cook.cook.length && catalogOnly(rest, ops, (nm) => !!estRef.current.resolve(nm))) {
+        skipRun.current = 0;
+        if (sp.store && !targetListId) setStore(sp.store);
+        present(local.items);
+        haptic(10);
+        return;
+      }
       // Napísaný text: miestny rozbor sa ukáže hneď, keď každú novú položku pozná katalóg domácnosti
       // (inak „pol kila mletého mäsa“ → „Mletého“, „Mäsa“ – počká sa na AI).
       // Hovorená veta čaká na AI vždy: až ona povie, či je to vôbec nákup („ale to je“, „ty kokos“ nie sú položky).
@@ -521,13 +539,11 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
             showRemoved(eff);
             if (sel && target) setSelected(null);
           } else if (!typed && !ai.cook.length && !ai.store) skip(text);
-          if (eff.done) setDoneHint(true);
           return;
         }
         if (!ai.ops.length && local.understood) return;
         const r = reconcile(itemsRef.current, local, asSaid(ai.ops, sp.rest));
         present(r.items);
-        if (r.done) setDoneHint(true);
       });
     },
     [stores, targetListId, present, toast, runCommand, cards, showRemoved, productLike, skip],
@@ -558,7 +574,6 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         return;
       }
       const eff = applyOps(itemsRef.current, asSaid(res.ops, res.transcript).filter((o) => o.op !== "add" || !tooLong(o.name)));
-      if (eff.done) setDoneHint(true);
       if (eff.understood) {
         skipRun.current = 0;
         present(eff.items);

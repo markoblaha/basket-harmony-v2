@@ -126,10 +126,10 @@ async function callParse(body: Record<string, unknown>, ms: number): Promise<Int
  * Veta → operácie od AI (rozumie skloňovaniu, delí vety bez čiarok, pozná tovar na váhu).
  * Hovorenú vetu AI najprv posúdi, či je to vôbec nákup (mikrofón počuje aj rozhovor okolo);
  * napísaný text (typed) je zámerný a nefiltruje sa.
- * Vráti null, ak neodpovie do 6 s alebo zlyhá – vtedy ostane okamžitý lokálny rozbor.
+ * Vráti null, ak neodpovie do 8 s (server skúša najviac 7 s) alebo zlyhá – vtedy ostane okamžitý lokálny rozbor.
  */
 export function interpretAI(text: string, items: DraftItem[], target: string | null, vocab: string[] = [], typed = false) {
-  return callParse({ text, target, items: draftItems(items), vocab: vocab.slice(0, 120), source: typed ? "typed" : "speech" }, 6000);
+  return callParse({ text, target, items: draftItems(items), vocab: vocab.slice(0, 120), source: typed ? "typed" : "speech" }, 8000);
 }
 
 /**

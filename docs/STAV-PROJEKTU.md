@@ -37,6 +37,8 @@ z prerušeného behu na začiatku ukončí (`end_shopping`).
 rozhovor → nič a „Nepridané · Pridať aj tak“ (ťuk pridá), nákup → položky, „hm“ → bez volania AI, „bol som v Bille“ → obchod
 sa nezmení, 4 vety rozhovoru za sebou → mikrofón sa sám pozastaví. Rozbor viet je podvrhnutý; `REAL=1` volá skutočnú
 parse-voice v testovacej DB (~8 volaní AI). Nič neukladá.
+**Test viet hlasu:** `node testy/hlas-vety.mjs` (rovnaké premenné) – 58 viet z `testy/hlas-vety.json` cez parse-voice:
+presnosť (nákup / povel / rozhovor), čas odpovede; ~5 centov. Spustiť po každej zmene pokynov pre AI.
 
 ## Pred zlúčením testovacej vetvy do `main` (nedokončené)
 
@@ -57,7 +59,7 @@ parse-voice v testovacej DB (~8 volaní AI). Nič neukladá.
    price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
    (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
-   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v9 a voice-live-token v7 (rozhovor vs. nákup, slovník potravín bez značiek, 14. 11.),
+   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v10 a voice-live-token v8 (rozhovor vs. nákup, slovník 40 položiek domácnosti, 14. 11.),
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
    read-statement v3. Funkciu `proto-images` (vypnutá, 410) možno zmazať.
 4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` testovacích riadkov vo vnútri bloku, ktorý sa celý vráti
@@ -119,16 +121,22 @@ parse-voice v testovacej DB (~8 volaní AI). Nič neukladá.
   a „Na recept: …“). Nový zoznam sa vytvorí vždy nový (už sa nespája s rovnako nazvaným). Po uložení appka prejde na
   Nákupy a zoznam sa na pár sekúnd rozsvieti (`lhl`, rovnako ako pri receptoch); otvorené zo zoznamu → späť do zoznamu.
   `testy/hlas.cjs` to celé prejde (11 krokov, aj kontrola v DB).
-- **Hlas – slovník potravín pre živý prepis (14. 11. 2026, pokyn majiteľa „pridaj všetky produkty z potravín aj koreniny“):**
-  `supabase/functions/_shared/groceries.ts` – 507 bežných výrazov podľa oddelení (ovocie, zelenina, pečivo, mliečne, mäso,
-  údeniny, trvanlivé, **koreniny a bylinky**, mrazené, sladkosti, nápoje, alkohol, drogéria, domácnosť, deti, zvieratá).
-  `voice-live-token` v7 posiela 40 položiek domácnosti + tento slovník (spolu ~520, strop 600) v **náhodnom poradí**;
-  appka (`isVocabEcho` v `parse.ts`, `live.ts` si slovník relácie pamätá) zahodí prepis, v ktorom idú 4+ výrazy v poradí
-  slovníka alebo 12+ výrazov naraz = model vypísal slovník namiesto reči. Overené: Google slovník prijme, šum/ticho/hukot/
-  tlieskanie 10× bez prepisu. Pokus so syntetickým hlasom (espeak) nejednoznačný (robotický hlas sa zle rozpoznáva):
-  raz sa veta rozhovoru prepísala ako „Tekvicové semienka“ – **sledovať na iPhone**, či veľký slovník nevymýšľa tovar
-  z nezrozumiteľnej reči; ak áno, stačí v `voice-live-token` posielať len položky domácnosti. Kategórie (`categories.ts`)
-  doplnené o koreniny (majoránka, škorica, kurkuma, bobkový list…).
+- **Hlas – ladenie podľa merania (14. 11. 2026, pokyn „čo najlepšie, lacno, profesionálne, dôkladne otestované“):**
+  *Diagnostika zo záznamov:* 13. 11. išlo všetkých 65 viet cez živý prepis (spoľahlivý), rozbor AI 0,6–1,0 s; problém
+  bol v appke, nie v prepise. *Slovník:* pokus s 500 bežnými potravinami (aj koreniny) zrušený – AI bežné slová pozná,
+  dlhý slovník zvádza nezrozumiteľnú reč na tovar („ty kokos…“ → „Tekvicové semienka“) a pravdepodobne predražuje reláciu.
+  `voice-live-token` v8 posiela len 40 položiek domácnosti v náhodnom poradí; `isVocabEcho` (parse.ts) zahodí prepis
+  s výrazmi v poradí slovníka (výpis pri šume). Koreniny ostali len v kategóriách (`categories.ts`).
+  *Lacnejšie a rýchlejšie:* rýchla cesta bez AI – hovorená veta len zo známych položiek katalógu („dve mlieka a chlieb“,
+  `catalogOnly` v engine.ts, slová z rozhovoru ako „je“, „kde“ ju vypnú) a oprava množstva („nie, tri“) idú rovno do
+  zoznamu. parse-voice v10: každá veta začína lacným flash-lite (predtým si inštancia po jednom oneskorení zapamätala
+  2× drahší 3.6-flash – 16 z 58 viet), limit 4,5 s, záznam „parse-voice záloha“ s dôvodom; anglické názvy ostanú
+  anglické. Appka čaká na AI 8 s (server najviac 7 s).
+  *Merania (testovacia DB):* `testy/hlas-vety.mjs` + `hlas-vety.json` – 58 viet s očakávaným výsledkom: **58/58**
+  (nákup 21, povel 7, rozhovor 30), medián 1,16 s, 90 % do 1,7 s, 0,076 centa za vetu, všetko flash-lite.
+  Náklady: živý prepis ~0,9 c za otvorenie (odhad), rozbor 0,076 c za vetu (známe položky 0) → bežné diktovanie ~1–1,5 c.
+  `testy/hlas.cjs` 12/12. Neoverené: skutočná reč (prirodzený syntetický hlas Piper sa nepodarilo stiahnuť – prostredie
+  to nepovolilo; espeak je príliš robotický) a iPhone.
 - **Viac:** hlavné prepínače + „Rozšírené“, rozpočet cez list z Analytiky, poradie obchodov ťahaním,
   vibrácie na iPhone cez systémový prepínač (`haptic()` v `components/kit.tsx`).
 - Systémová lišta iPhonu vo farbe témy, plynulejšie animácie (`components/motion.ts`: FLIP, animateOut, collapseOut).

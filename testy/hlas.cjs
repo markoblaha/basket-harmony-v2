@@ -177,12 +177,21 @@ const CANNED = {
     await page.locator(".vx-list .vxi b", { hasText: "Kurkuma" }).waitFor({ timeout: 15000 });
     return (await names()).join(", ");
   });
-  await step("nákup „dve mlieka a chlieb“ → 2 položky", async () => {
+  await step("nákup „dve mlieka a chlieb“ → 2 položky (známe z nákupov → bez AI)", async () => {
+    const before = calls.length;
     await say("dve mlieka a chlieb");
     await page.waitForFunction(() => document.querySelectorAll(".vx-list .vxi b").length >= 3 && !document.querySelector('.vx-list .vxi[role="status"]'), null, { timeout: 15000 });
     const got = await names();
     expect(got.some((x) => /mliek/i.test(x)) && got.some((x) => /chlieb/i.test(x)), `položky: ${got}`);
+    expect(calls.length === before, `volala sa AI: ${calls.slice(before)}`);
     return got.join(", ");
+  });
+  await step("oprava „nie, tri“ → posledná položka 3 ks, bez AI", async () => {
+    const before = calls.length;
+    await say("nie, tri");
+    await page.locator(".vx-list .vxi").first().locator(".q", { hasText: "3" }).waitFor({ timeout: 15000 });
+    expect(calls.length === before, `volala sa AI: ${calls.slice(before)}`);
+    return `${await page.locator(".vx-list .vxi b").first().innerText()} · ${await page.locator(".vx-list .vxi .q").first().innerText()}`;
   });
   await step("„hm“ → nič a bez volania AI", async () => {
     const before = calls.length;

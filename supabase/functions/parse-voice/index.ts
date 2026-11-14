@@ -93,7 +93,7 @@ Delenie: každý produkt je samostatná položka. Množstvo patrí k produktu, p
 "mlieko 3 kusy banány smotana 3 kusy" -> Mlieko 3 ks | Banány | Smotana 3 ks
 "tri banány" = "banány 3 kusy" -> Banány 3 ks
 
-- add: name = názov v 1. páde, prvé písmeno veľké, bez množstva ("tri nugátové šišky" -> "Nugátová šiška" 3 ks; "pol kila múky" -> "Múka" 0.5 kg;
+- add: name = názov v 1. páde v jazyku, v ktorom zaznel (anglicky povedané ostane anglicky: "two milks" -> "Milk" 2 ks), prvé písmeno veľké, bez množstva ("tri nugátové šišky" -> "Nugátová šiška" 3 ks; "pol kila múky" -> "Múka" 0.5 kg;
   "dvadsaťpäť deka šunky" -> "Šunka" 25 dkg; "hovädzie dvesto päťdesiat gramov" -> "Hovädzie mäso" 250 g). Bez množstva: quantity null, unit null.
   Jednotky iba: ${UNITS.join(", ")}.
 - category_id: ${CATEGORIES.join(", ")}.
@@ -154,8 +154,12 @@ const AUDIO_CANDIDATES: Cfg[] = [
   { model: "gemini-3.5-flash-lite", thinking: { thinkingLevel: "minimal" } },
   { model: "gemini-3.8-flash", thinking: { thinkingLevel: "low" } },
 ];
-/** Teplá inštancia si pamätá, ktorý model naposledy odpovedal (ďalšie volanie neskúša nedostupné). */
-const preferredFor: { text: Cfg | null; audio: Cfg | null } = { text: null, audio: null };
+/**
+ * Modely, ktoré na tejto (teplej) inštancii neexistujú alebo sú zakázané (404/400) – ďalšie volania ich preskočia.
+ * Pomalú odpoveď či preťaženie si NEPAMÄTÁME: každá veta začína najlacnejším modelom. (Predtým si inštancia po jednom
+ * oneskorení zapamätala 2× drahší záložný model pre všetky ďalšie vety – 14. 11. 2026 tak išlo 16 z 58 viet.)
+ */
+const unavailable = new Set<string>();
 
 type Part = Record<string, unknown>;
 type Result = { transcript?: string; intent?: unknown; ops: Record<string, unknown>[]; cook?: unknown[]; store?: unknown };
@@ -177,20 +181,20 @@ async function call(cfg: Cfg, parts: Part[], timeoutMs: number, g: Guarded): Pro
 
 async function askGemini(parts: Part[], audio: boolean, g: Guarded): Promise<Result & { model: string }> {
   // Zvuk trvá dlhšie (prepis + rozbor), text má byť do pár sekúnd.
-  const deadline = Date.now() + (audio ? 14_000 : 7_000);
-  const base = audio ? AUDIO_CANDIDATES : CANDIDATES;
-  const preferred = preferredFor[audio ? "audio" : "text"];
-  const list = preferred ? [preferred, ...base.filter((c) => c !== preferred)] : base;
+  const started = Date.now();
+  const deadline = started + (audio ? 14_000 : 7_000);
+  const list = (audio ? AUDIO_CANDIDATES : CANDIDATES).filter((c) => !unavailable.has(c.model));
   let lastError = "GEMINI_UNKNOWN";
   for (const cfg of list) {
     const left = deadline - Date.now();
     if (left < 800) break;
     try {
-      const r = await call(cfg, parts, Math.min(audio ? 9_000 : 3_500, left), g);
-      preferredFor[audio ? "audio" : "text"] = cfg;
+      const r = await call(cfg, parts, Math.min(audio ? 9_000 : 4_500, left), g);
       return { ...r, model: cfg.model + (cfg.thinking ? "+min" : "") };
     } catch (e) {
       lastError = e instanceof Error ? e.message : String(e);
+      if (/^GEMINI_(400|404)/.test(lastError)) unavailable.add(cfg.model);
+      console.warn("parse-voice záloha", cfg.model, Date.now() - started, "ms", lastError.slice(0, 120));
       if (isGlobalError(lastError)) throw new Error(lastError);
     }
   }

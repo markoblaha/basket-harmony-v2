@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cleanStore, isChatter, isVocabEcho, keepSaidWords, matchStore, parseLocal, splitStore, tooLong } from "./parse";
+import { catalogOnly } from "./engine";
 
 const add = (text: string) => parseLocal(text).filter((o) => o.op === "add");
 
@@ -136,5 +137,25 @@ describe("isVocabEcho", () => {
   });
   it("priveľa výrazov naraz je ozvena", () => {
     expect(isVocabEcho("ryža syr maslo kapary mlieko šafran olej cukor múka vajcia rožky banány", vocab)).toBe(true);
+  });
+});
+
+describe("catalogOnly – rýchla cesta bez AI", () => {
+  const catalog = new Set(["mlieko", "mlieka", "chlieb", "maslo", "masla", "kyslu smotanu", "pivo", "piva", "kokos"]);
+  const known = (name: string) => catalog.has(name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+  const fast = (text: string) => catalogOnly(text, parseLocal(text), known);
+  it("výpočet známych položiek ide bez AI", () => {
+    expect(fast("mlieko, chlieb a maslo")).toBe(true);
+    expect(fast("dve mlieka a chlieb")).toBe(true);
+    expect(fast("kyslú smotanu")).toBe(true);
+    expect(fast("šesť pív")).toBe(false); // „pív“ katalóg nepozná → AI
+  });
+  it("rozhovor, neznáme slová, mazanie a dlhé vety idú cez AI", () => {
+    expect(fast("to je pivo")).toBe(false);
+    expect(fast("mlieko je v chladničke")).toBe(false);
+    expect(fast("zmaž mlieko")).toBe(false);
+    expect(fast("mlieko a rajčiny")).toBe(false);
+    expect(fast("kde je maslo")).toBe(false);
+    expect(fast("mlieko chlieb maslo mlieko chlieb maslo mlieko")).toBe(false);
   });
 });
