@@ -155,8 +155,13 @@ const CANNED = {
     await skippedShows("kde máš kľúče od auta");
     expect((await names()).length === 0, `pribudlo: ${await names()}`);
   });
-  await step("AI sa pomýli („kurkuma“ = rozhovor) → „Pridať aj tak“ ju pridá", async () => {
+  await step(REAL ? "„kurkuma“ → pridaná" : "AI sa pomýli („kurkuma“ = rozhovor) → „Pridať aj tak“ ju pridá", async () => {
     await say("kurkuma");
+    if (REAL) {
+      // Skutočná AI kurkumu spozná ako tovar sama.
+      await page.locator(".vx-list .vxi b", { hasText: "Kurkuma" }).waitFor({ timeout: 15000 });
+      return (await names()).join(", ");
+    }
     await skippedShows("kurkuma");
     expect((await names()).length === 0, `pribudlo: ${await names()}`);
     await page.getByRole("button", { name: "Pridať aj tak" }).click();
