@@ -35,8 +35,9 @@ Dokončiť nákup → Teraz nie → zoznam je v Histórii. Zapisuje do testovace
 z prerušeného behu na začiatku ukončí (`end_shopping`).
 **Test hlasu:** `testy/hlas.cjs` (rovnaké premenné) – falošný mikrofón (zvukové úseky) + falošný živý prepis „povie“ vety:
 rozhovor → nič a „Nepridané · Pridať aj tak“ (ťuk pridá), nákup → položky, „hm“ → bez volania AI, „bol som v Bille“ → obchod
-sa nezmení, 4 vety rozhovoru za sebou → mikrofón sa sám pozastaví. Rozbor viet je podvrhnutý; `REAL=1` volá skutočnú
-parse-voice v testovacej DB (~8 volaní AI). Nič neukladá.
+sa nezmení, 4 vety rozhovoru za sebou → mikrofón sa sám pozastaví, známe položky a „nie, tri“ bez AI, nové otvorenie =
+prázdny zoznam + „Obnoviť“, Hotovo → „Kam uložiť“ → Nákupy so zvýraznením (kontrola v DB, zoznam „Hlas test …“ sa na
+konci archivuje). Rozbor viet je podvrhnutý; `REAL=1` volá skutočnú parse-voice v testovacej DB (~8 volaní AI).
 **Test viet hlasu:** `node testy/hlas-vety.mjs` (rovnaké premenné) – 58 viet z `testy/hlas-vety.json` cez parse-voice:
 presnosť (nákup / povel / rozhovor), čas odpovede; ~5 centov. Spustiť po každej zmene pokynov pre AI.
 
