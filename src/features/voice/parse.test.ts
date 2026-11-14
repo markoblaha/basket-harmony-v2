@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanStore, isChatter, keepSaidWords, matchStore, parseLocal, splitStore, tooLong } from "./parse";
+import { cleanStore, isChatter, isVocabEcho, keepSaidWords, matchStore, parseLocal, splitStore, tooLong } from "./parse";
 
 const add = (text: string) => parseLocal(text).filter((o) => o.op === "add");
 
@@ -120,5 +120,21 @@ describe("ozvena slovníka, dlhé názvy, obchod", () => {
     expect(cleanStore("  ")).toBe(null);
     expect(cleanStore("Lidl.")).toBe("Lidl");
     expect(cleanStore("dm")).toBe("dm");
+  });
+});
+
+describe("isVocabEcho", () => {
+  const vocab = ["kapary", "mlieko", "šafran", "rožky", "chlieb", "kurkuma", "maslo", "banány", "olej", "vajcia", "syr", "cukor", "múka", "ryža"];
+  it("výrazy v poradí (zamiešaného) slovníka sú ozvena", () => {
+    expect(isVocabEcho("Kapary, mlieko, šafran, rožky", vocab)).toBe(true);
+    expect(isVocabEcho("mlieko rožky chlieb maslo", vocab)).toBe(true);
+  });
+  it("bežné diktovanie nie je ozvena", () => {
+    expect(isVocabEcho("maslo, mlieko a chlieb", vocab)).toBe(false);
+    expect(isVocabEcho("dve mlieka a chlieb", vocab)).toBe(false);
+    expect(isVocabEcho("ryža, cukor, múka a olej", vocab)).toBe(false);
+  });
+  it("priveľa výrazov naraz je ozvena", () => {
+    expect(isVocabEcho("ryža syr maslo kapary mlieko šafran olej cukor múka vajcia rožky banány", vocab)).toBe(true);
   });
 });

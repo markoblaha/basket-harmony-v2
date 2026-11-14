@@ -57,7 +57,7 @@ parse-voice v testovacej DB (~8 volaní AI). Nič neukladá.
    price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
    (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
-   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v9 a voice-live-token v4 (rozhovor vs. nákup, slovník bez značiek, 14. 11.),
+   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v9 a voice-live-token v7 (rozhovor vs. nákup, slovník potravín bez značiek, 14. 11.),
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
    read-statement v3. Funkciu `proto-images` (vypnutá, 410) možno zmazať.
 4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` testovacích riadkov vo vnútri bloku, ktorý sa celý vráti
@@ -119,6 +119,16 @@ parse-voice v testovacej DB (~8 volaní AI). Nič neukladá.
   a „Na recept: …“). Nový zoznam sa vytvorí vždy nový (už sa nespája s rovnako nazvaným). Po uložení appka prejde na
   Nákupy a zoznam sa na pár sekúnd rozsvieti (`lhl`, rovnako ako pri receptoch); otvorené zo zoznamu → späť do zoznamu.
   `testy/hlas.cjs` to celé prejde (11 krokov, aj kontrola v DB).
+- **Hlas – slovník potravín pre živý prepis (14. 11. 2026, pokyn majiteľa „pridaj všetky produkty z potravín aj koreniny“):**
+  `supabase/functions/_shared/groceries.ts` – 507 bežných výrazov podľa oddelení (ovocie, zelenina, pečivo, mliečne, mäso,
+  údeniny, trvanlivé, **koreniny a bylinky**, mrazené, sladkosti, nápoje, alkohol, drogéria, domácnosť, deti, zvieratá).
+  `voice-live-token` v7 posiela 40 položiek domácnosti + tento slovník (spolu ~520, strop 600) v **náhodnom poradí**;
+  appka (`isVocabEcho` v `parse.ts`, `live.ts` si slovník relácie pamätá) zahodí prepis, v ktorom idú 4+ výrazy v poradí
+  slovníka alebo 12+ výrazov naraz = model vypísal slovník namiesto reči. Overené: Google slovník prijme, šum/ticho/hukot/
+  tlieskanie 10× bez prepisu. Pokus so syntetickým hlasom (espeak) nejednoznačný (robotický hlas sa zle rozpoznáva):
+  raz sa veta rozhovoru prepísala ako „Tekvicové semienka“ – **sledovať na iPhone**, či veľký slovník nevymýšľa tovar
+  z nezrozumiteľnej reči; ak áno, stačí v `voice-live-token` posielať len položky domácnosti. Kategórie (`categories.ts`)
+  doplnené o koreniny (majoránka, škorica, kurkuma, bobkový list…).
 - **Viac:** hlavné prepínače + „Rozšírené“, rozpočet cez list z Analytiky, poradie obchodov ťahaním,
   vibrácie na iPhone cez systémový prepínač (`haptic()` v `components/kit.tsx`).
 - Systémová lišta iPhonu vo farbe témy, plynulejšie animácie (`components/motion.ts`: FLIP, animateOut, collapseOut).

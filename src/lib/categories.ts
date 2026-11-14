@@ -153,6 +153,11 @@ const KEYWORDS: Record<Exclude<CategoryId, "other">, string[]> = {
     "cicer", "kuskus", "bulgur", "quinoa", "korenie", "paprika mlet", "rasc", "oregano", "bujon",
     "polievk", "kypriac", "drozdie", "strouhank", "struhank", "strukovin", "orechy", "mandle",
     "vlassk", "arasid", "rozink", "sezam", "chia", "pretlak", "passat", "olivy", "kukurica sterilizovana",
+    // koreniny, bylinky a dochucovadlá
+    "majoran", "skoric", "kurkum", "bobkov", "klincek", "muskat", "vanilk", "tymian", "rozmarin", "salvi", "badian",
+    "kardamom", "safran", "jalovec", "saturej", "estragon", "koriand", "kmin", "kari$", "garam masala", "vegeta", "maggi",
+    "provensalsk", "bylinky", "cesnak granul", "horcicne seme", "feferon", "kapary", "tatarsk", "sojova omack", "pesto",
+    "tabasco", "worcester", "zelatin", "prasok do peciva", "bikarbon", "pohank", "psen", "krupy", "tarhon", "rezanc", "halusk",
   ],
   breakfast: [
     "kava", "kavu", "caj", "kakao", "musli", "vlock", "cornflakes", "cerealie", "med", "dzem",

@@ -2,7 +2,8 @@
 // (gemini-3.5-transcribe-live), aby sa telefón pripojil priamo a kľúč Gemini ostal na serveri.
 //
 // Tok: appka pošle { household_id, locale }. Funkcia overí člena a limit (ai_allow 'voice-live'),
-// zostaví slovník domácnosti (často kupované položky – lepšie rozpozná „Kaiserka“, „Radegast“),
+// zostaví slovník (často kupované položky domácnosti + bežný sortiment potravín vrátane korenín – lepšie rozpozná
+// „Kaiserka“, „majoránka“, „bobkový list“),
 // a vytvorí token s pevne zamknutým nastavením (model, jazyk, slovník, len text). Token platí
 // 1 minútu na pripojenie a 6 minút celkovo (najviac ~5 centov), použiť sa dá raz.
 // Odpoveď: { token, model, expiresAt } alebo { error: KÓD }.
@@ -11,12 +12,15 @@
 // Do ai_usage sa pri vydaní tokenu zapíše odhad 1 minúty (skutočnú dĺžku server nevidí).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { guardAi } from "../_shared/guard.ts";
+import { GROCERIES_SK } from "../_shared/groceries.ts";
 
 const MODEL = Deno.env.get("GEMINI_LIVE_MODEL") ?? "gemini-3.5-transcribe-live";
 /** VERBATIM = presne, čo zaznelo; SMART = upravený text (čísla ako číslice, interpunkcia). */
 const MODE = Deno.env.get("GEMINI_LIVE_MODE") ?? "SMART";
 const SESSION_MS = 6 * 60_000;
 const CONNECT_MS = 60_000;
+/** Najviac výrazov v slovníku (domácnosť + bežný sortiment). */
+const MAX_VOCAB = 600;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -27,9 +31,9 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
 /**
- * Slovník domácnosti: len často kupované položky (najviac 40 krátkych výrazov).
- * Značky z bločkov sa NEPOSIELAJÚ: pri šume model niekedy vypíše celý slovník ako prepis
- * („Max - Golden Turtle - Finish - …“, 13. 11. 2026) a čím dlhší a čudnejší slovník, tým horšie.
+ * Položky, ktoré domácnosť kupuje najčastejšie (najviac 40 krátkych výrazov).
+ * Značky z bločkov sa NEPOSIELAJÚ: pri šume model niekedy vypíše slovník ako prepis
+ * („Max - Golden Turtle - Finish - …“, 13. 11. 2026) a čudné značky to zhoršujú.
  */
 async function vocabulary(req: Request, householdId: string): Promise<string[]> {
   const url = Deno.env.get("SUPABASE_URL")!;
@@ -51,18 +55,42 @@ async function vocabulary(req: Request, householdId: string): Promise<string[]> 
   return [...out];
 }
 
+const key = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+/**
+ * Celý slovník: položky domácnosti, potom bežný sortiment (bez duplikátov), v NÁHODNOM poradí.
+ * Keď model pri šume vypíše slovník, výrazy prídu v poradí slovníka – appka tak ozvenu spozná
+ * (isVocabEcho), kým pri skutočnom diktovaní sa poradie náhodne zamiešaného slovníka nezopakuje.
+ */
+function fullVocabulary(household: string[], lang: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of [...household, ...(lang === "sk-SK" ? GROCERIES_SK : [])]) {
+    const k = key(v);
+    if (!k || seen.has(k) || out.length >= MAX_VOCAB) continue;
+    seen.add(k);
+    out.push(v);
+  }
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "VALIDATION" }, 405);
   const body = await req.json().catch(() => ({}));
   // Kontrola a slovník súbežne (slovník sa číta s oprávneniami človeka – cudzí nič nedostane).
   const hid = typeof body?.household_id === "string" ? body.household_id : "";
-  const [g, vocab] = await Promise.all([guardAi(req, body?.household_id, "voice-live"), vocabulary(req, hid)]);
+  const [g, mine] = await Promise.all([guardAi(req, body?.household_id, "voice-live"), vocabulary(req, hid)]);
   if ("error" in g) return json({ error: g.error }, g.status);
 
-  const key = Deno.env.get("GEMINI_API_KEY");
-  if (!key) return json({ error: "AI_UNAVAILABLE" }, 500);
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) return json({ error: "AI_UNAVAILABLE" }, 500);
   const lang = body?.locale === "en" ? "en-US" : "sk-SK";
+  const vocab = fullVocabulary(mine, lang);
   const now = Date.now();
   const expiresAt = new Date(now + SESSION_MS).toISOString();
   // Nastavenie relácie je zamknuté v tokene – telefón ho nemôže zmeniť (model, jazyk, slovník, len text).
@@ -81,7 +109,7 @@ Deno.serve(async (req) => {
   for (const v of ["v1beta", "v1alpha"]) {
     res = await fetch(`https://generativelanguage.googleapis.com/${v}/auth_tokens`, {
       method: "POST",
-      headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
+      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
       body: tokenBody,
       signal: AbortSignal.timeout(10_000),
     }).catch((e) => {

@@ -29,7 +29,7 @@ import {
   type SaveResult,
   type VoicePlan,
 } from "./api";
-import { cleanStore, isChatter, keepSaidWords, matchStore, parseLocal, splitStore, tooLong, type VoiceOp } from "./parse";
+import { cleanStore, isChatter, isVocabEcho, keepSaidWords, matchStore, parseLocal, splitStore, tooLong, type VoiceOp } from "./parse";
 
 /** Názvy od AI zúžené na to, čo zaznelo (pravidlo „appka nič nedomýšľa“). */
 const asSaid = (ops: VoiceOp[], text: string): VoiceOp[] => (text ? ops.map((o) => (o.op === "add" ? { ...o, name: keepSaidWords(o.name, text) } : o)) : ops);
@@ -622,6 +622,8 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       onFinal: (x) => {
         setLiveText("");
         waiting.current.shift();
+        // Ozvena slovníka (model pri šume vypísal výrazy zo slovníka) nie je reč – zahodí sa.
+        if (isVocabEcho(x, lt.current?.vocab ?? [])) return;
         finalRef.current(x);
       },
       onDown: () => {

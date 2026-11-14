@@ -50,6 +50,8 @@ export class LiveTranscriber {
   /** Prevzorkovanie na 16 kHz: zvyšok z predošlého kúska a priebežné zosilnenie tichého mikrofónu. */
   private pos = 0;
   private peak = 0.05;
+  /** Slovník relácie (v náhodnom poradí) – podľa neho appka spozná, keď model vypíše slovník namiesto reči. */
+  vocab: string[] = [];
   constructor(private h: LiveHandlers) {}
 
   /** Pripojí sa (alebo obnoví reláciu). Vyhodí chybu, ak sa nedá – appka potom použije pôvodný spôsob. */
@@ -61,6 +63,8 @@ export class LiveTranscriber {
     this.connecting = true;
     this.ready = (async () => {
       const tok = await fetchToken();
+      const v = (tok.setup as { inputAudioTranscription?: { customVocabulary?: unknown } }).inputAudioTranscription?.customVocabulary;
+      this.vocab = Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
       await new Promise<void>((resolve, reject) => {
         const ws = new WebSocket(`${WS}?access_token=${encodeURIComponent(tok.token)}`);
         this.ws = ws;

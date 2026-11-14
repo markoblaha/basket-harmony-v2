@@ -358,3 +358,29 @@ export function cleanStore(s: string | null | undefined): string | null {
   const v = (s ?? "").trim().replace(/[.,!?;:]+$/, "");
   return v.length <= 30 && /\p{L}{2,}/u.test(v) ? v : null;
 }
+
+/**
+ * Ozvena slovníka živého prepisu: pri šume model niekedy namiesto reči vypíše výrazy zo slovníka za sebou.
+ * Slovník sa pri každom spojení náhodne zamieša (voice-live-token), takže výrazy v jeho poradí (4 a viac za sebou)
+ * alebo priveľa výrazov naraz (12+) znamenajú výpis, nie diktovanie.
+ */
+export function isVocabEcho(text: string, vocab: string[]): boolean {
+  if (vocab.length < 8) return false;
+  const clean = (s: string) => normalizeName(s).replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  const t = ` ${clean(text)} `;
+  const hits: { at: number; idx: number }[] = [];
+  vocab.forEach((v, idx) => {
+    const k = clean(v);
+    const at = k.length >= 3 ? t.indexOf(` ${k} `) : -1;
+    if (at >= 0) hits.push({ at, idx });
+  });
+  if (hits.length >= 12) return true;
+  hits.sort((a, b) => a.at - b.at);
+  let run = 1;
+  for (let i = 1; i < hits.length; i++) {
+    const d = hits[i]!.idx - hits[i - 1]!.idx;
+    run = d >= 1 && d <= 3 ? run + 1 : 1;
+    if (run >= 4) return true;
+  }
+  return false;
+}
