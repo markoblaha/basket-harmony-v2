@@ -1687,7 +1687,7 @@
 .bhm .vx-done:disabled { opacity: .35; }
 .bhm .vx-panel { position: absolute; inset: 0; z-index: 5; }
 .bhm .vx-scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .42); animation: mk-fadein var(--dur-3); }
-.bhm .vx-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; overflow-y: auto; border-radius: 28px 28px 0 0; padding: 8px 16px calc(var(--sab) + 14px); display: flex; flex-direction: column; gap: 10px; background: var(--mat-spec), var(--mat-thick); -webkit-backdrop-filter: blur(44px) saturate(1.8); backdrop-filter: blur(44px) saturate(1.8); box-shadow: var(--mat-edge), 0 -10px 40px -10px rgb(0 0 0 / .35); animation: mk-up var(--dur-3) var(--ease-out); }
+.bhm .vx-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; overflow-y: auto; border-radius: 28px 28px 0 0; padding: 8px 16px calc(var(--sab) + 14px + var(--kb)); display: flex; flex-direction: column; gap: 10px; background: var(--mat-spec), var(--mat-thick); -webkit-backdrop-filter: blur(44px) saturate(1.8); backdrop-filter: blur(44px) saturate(1.8); box-shadow: var(--mat-edge), 0 -10px 40px -10px rgb(0 0 0 / .35); animation: mk-up var(--dur-3) var(--ease-out); }
 .bhm .vx-sheet .grab { width: 40px; height: 5px; border-radius: 99px; background: var(--ter); align-self: center; margin-bottom: 4px; cursor: pointer; }
 .bhm .vx-sheet h2 { font-size: 22px; font-weight: 800; letter-spacing: -.4px; }
 .w .bhm .vx-sheet h2 { font-family: var(--serif); font-weight: 520; }
@@ -1705,6 +1705,20 @@
 .bhm .vx-stores button.on, .bhm .vx-days button.on { box-shadow: inset 0 0 0 2px var(--acc); background: color-mix(in srgb, var(--acc) 10%, var(--card)); }
 .bhm .vx-days { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .bhm .vx-days button { min-height: 40px; padding: 0 12px; border-radius: 99px; font-size: 15px; font-weight: 650; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.bhm .vx-seg { flex: none; }
+.bhm .vx-newl { display: flex; flex-direction: column; gap: 8px; }
+.bhm .vx-newl .fl input { height: 48px; }
+.bhm .vx-stores button { padding: 4px 6px; line-height: 1.15; text-align: center; }
+.bhm .vx-stores .vx-any { width: 22px; height: 22px; border-radius: 7px; flex: none; display: grid; place-items: center; color: var(--sec); background: color-mix(in srgb, var(--fg) 10%, transparent); }
+.bhm .vx-stores .vx-any .ico { width: 14px; height: 14px; color: inherit; }
+.bhm .vx-stores .vx-later.on .vx-any { color: #fff; background: var(--acc); }
+.bhm .vx-opt .grow { min-width: 0; }
+/* Riadky sa v rolujúcom okne nesmú stláčať (dvojriadkový názov sa inak prekrýval s ďalším riadkom). */
+.bhm .vx-sheet > *, .bhm .vx-lists > * { flex-shrink: 0; }
+.bhm .vx-opt b { line-height: 1.25; }
+.bhm .vx-opt small { display: block; margin-top: 2px; }
+.bhm .vx-opt .vx-optic { width: 38px; height: 38px; border-radius: 12px; flex: none; display: grid; place-items: center; background: color-mix(in srgb, var(--acc) 14%, transparent); }
+.bhm .vx-opt .vx-rec { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--acc); font-weight: 650; }
 @media (prefers-reduced-motion: reduce) {
 .bhm .vxi, .bhm .vx, .bhm .vx-fix, .bhm .vx-orb.on::after, .bhm .vx-heard .wave i { animation: none !important; }
 }

@@ -2,9 +2,11 @@
  * Hlasový režim – len nákup, nie rozhovor: falošný mikrofón (zvukové úseky v slučke), falošný živý prepis
  * (Gemini Live) „povie“ pripravené vety a test kontroluje, čo sa objaví v rozdiktovanom zozname:
  *  rozhovor → nič, „Nepridané“ + „Pridať aj tak“ (ťuk pridá) · nákup → položky · „hm“ → nič a bez volania AI ·
- *  „bol som v Bille“ → obchod sa nezmení · 4 vety rozhovoru za sebou → mikrofón sa sám pozastaví.
+ *  „bol som v Bille“ → obchod sa nezmení · 4 vety rozhovoru za sebou → mikrofón sa sám pozastaví ·
+ *  zatvorenie a nové otvorenie = prázdny zoznam s ponukou „Obnoviť“ · Hotovo → „Kam uložiť“ (vlastný názov,
+ *  „Zatiaľ neviem“) → Nákupy so zvýrazneným novým zoznamom (položky skontroluje aj v DB).
  * Rozbor viet (parse-voice) je predvolene podvrhnutý pripravenými odpoveďami; REAL=1 použije skutočnú funkciu
- * v testovacej DB (stojí ~8 volaní AI). Nič neukladá (Hotovo sa nestláča; rozdiktovaný zoznam sa na konci zahodí).
+ * v testovacej DB (stojí ~8 volaní AI). Zapisuje do testovacej DB zoznam „Hlas test …“, na konci ho archivuje.
  *
  * Spustenie: E2E_EMAIL=… E2E_PASSWORD=… node testy/hlas.cjs [adresa] [priečinok na fotky]
  * (adresa napr. http://localhost:4173 po `npx vite build --mode staging && npx vite preview`)
@@ -16,6 +18,8 @@ const fs = require("fs");
 const BASE = (process.argv[2] || "https://design-v2-mobile-redesign-basket-harmony-v2.markoblaha.workers.dev").replace(/\/$/, "");
 const OUT = process.argv[3] || path.join(__dirname, "vysledky", "hlas");
 const { E2E_EMAIL: EMAIL, E2E_PASSWORD: PASSWORD, REAL } = process.env;
+const env = Object.fromEntries(fs.readFileSync(path.join(__dirname, "..", ".env.staging"), "utf8").split("\n").filter((l) => /^VITE_/.test(l)).map((l) => l.split(/=(.*)/s).slice(0, 2)));
+const API = env.VITE_SUPABASE_URL, KEY = env.VITE_SUPABASE_PUBLISHABLE_KEY;
 if (!EMAIL || !PASSWORD) {
   console.error("Chýba E2E_EMAIL alebo E2E_PASSWORD (testovací účet z trezoru testovacej DB).");
   process.exit(2);
@@ -52,6 +56,10 @@ const CANNED = {
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
+  const tok = await fetch(`${API}/auth/v1/token?grant_type=password`, { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify({ email: EMAIL, password: PASSWORD }) }).then((r) => r.json());
+  const H = { apikey: KEY, Authorization: `Bearer ${tok.access_token}`, "Content-Type": "application/json" };
+  let listId = null;
+  const archive = () => listId && fetch(`${API}/rest/v1/shopping_lists?id=eq.${listId}`, { method: "PATCH", headers: H, body: JSON.stringify({ is_archived: true }) });
   const wav = path.join(OUT, "mikrofon.wav");
   burstsWav(wav);
   const browser = await chromium.launch({
@@ -114,6 +122,7 @@ const CANNED = {
     console.log(`✗ ${n}. ${msg}`);
     if (errs.length) console.log("  chyby:", errs.join(" | "));
     console.log("  volania parse-voice:", calls.join(" | "));
+    await archive();
     await browser.close();
     process.exit(1);
   };
@@ -202,11 +211,39 @@ const CANNED = {
     await page.locator(".vx-heard.st-listen, .vx-heard.st-hear").waitFor({ timeout: 15000 });
     expect(!(await page.getByText("Pozastavil som", { exact: false }).count()), "hláška ostala");
   });
-  await step("zatvorenie, rozdiktovaný zoznam zahodený", async () => {
-    await page.evaluate(() => {
-      for (const k of Object.keys(localStorage)) if (k.startsWith("bh.voiceDraft.")) localStorage.removeItem(k);
-    });
+  await step("zatvorenie a nové otvorenie → prázdny zoznam, „Obnoviť“ vráti 3 položky", async () => {
+    await page.getByRole("button", { name: "Zavrieť (zoznam ostane rozdiktovaný)" }).click();
+    await page.locator(".vx").waitFor({ state: "detached", timeout: 10000 });
+    await page.locator("nav.tabbar").getByRole("button", { name: "Hlasový nákup" }).click();
+    await page.locator(".vx-rest").waitFor({ timeout: 10000 });
+    expect((await names()).length === 0, `zoznam nie je prázdny: ${await names()}`);
+    expect((await page.locator(".vx-target").innerText()).includes("nový zoznam"), "cieľ nie je nový zoznam");
+    const banner = await page.locator(".vx-rest").innerText();
+    await page.getByRole("button", { name: "Obnoviť" }).click();
+    await page.waitForFunction(() => document.querySelectorAll(".vx-list .vxi b").length === 3, null, { timeout: 5000 });
+    return banner.replace(/\s+/g, " ");
   });
+  const name = `Hlas test ${new Date().toISOString().slice(5, 16).replace("T", " ")}`;
+  await step(`Hotovo → „Kam uložiť“ → „${name}“, Zatiaľ neviem → Nákupy so zvýraznením`, async () => {
+    await page.locator(".vx-orb").click(); // pauza, nech mikrofón nič nepridá
+    await page.locator(".vx-done").click();
+    await page.getByRole("heading", { name: "Kam uložiť 3 položky?" }).waitFor({ timeout: 5000 });
+    expect((await page.locator(".vx-later").getAttribute("aria-pressed")) === "true", "„Zatiaľ neviem“ nie je predvolené");
+    await page.getByPlaceholder("Napr. Víkend alebo Grilovačka").fill(name);
+    await page.screenshot({ path: path.join(OUT, `${String(n).padStart(2, "0")}-okno.png`) });
+    await page.getByRole("button", { name: `Vytvoriť „${name}“ a pridať` }).click();
+    await page.waitForURL((u) => u.pathname === "/lists", { timeout: 15000 });
+    const card = page.locator(".lcard.lhl", { hasText: name });
+    await card.waitFor({ timeout: 15000 });
+    await page.waitForTimeout(1600);
+    const rows = await fetch(`${API}/rest/v1/shopping_lists?select=id,name&name=eq.${encodeURIComponent(name)}`, { headers: H }).then((r) => r.json());
+    listId = rows[0]?.id ?? null;
+    expect(listId, "zoznam nie je v DB");
+    const items = await fetch(`${API}/rest/v1/shopping_list_items?select=name,quantity&list_id=eq.${listId}`, { headers: H }).then((r) => r.json());
+    expect(items.length === 3, `v DB: ${JSON.stringify(items)}`);
+    return items.map((i) => `${i.name} ${i.quantity ?? ""}`.trim()).join(", ");
+  });
+  await archive();
   console.log("volania parse-voice:", calls.join(" | "));
   if (errs.length) console.log("chyby:", errs.join(" | "));
   await browser.close();

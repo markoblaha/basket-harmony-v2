@@ -59,7 +59,10 @@
   /* Kým je otvorený hlasový nákup, hláška ide hore (ako v prototype), aby nezakryla panel s mikrofónom. */
   body:has(.v-root) .toast { top: calc(env(safe-area-inset-top) + 64px) !important; bottom: auto !important; }
 
-  /* Recepty v hlasovom nákupe */
+  /* Recepty v hlasovom nákupe. Vlastné v-row/v-col: v novom dizajne .row je riadok zoznamu a .stack krúžky avatarov
+     (hlavička „Varíš / Jedlo“ bola preto v krúžkoch – 13. 11. 2026). */
+  .v-row { display: flex; align-items: center; }
+  .v-col { display: flex; flex-direction: column; }
   .v-restored { margin: 0 16px 8px; padding: 6px 6px 6px 12px; border-radius: 14px; background: var(--sunken); color: var(--text-2); }
   .v-rc { background: var(--surface); border-radius: 18px; box-shadow: var(--sh-1); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
   .v-rc.active { box-shadow: inset 0 0 0 2px var(--accent), var(--sh-2); }

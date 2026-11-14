@@ -148,8 +148,11 @@ export function AppShell() {
             listId={voice.listId}
             onClose={() => animateChange("down", () => setVoice(false))}
             onSaved={(store, r) => {
+              const fromList = !!voice.listId;
               setVoice(false);
-              navigate(`/lists/${r.listId}`);
+              // Otvorené zo zoznamu → späť doň. Z lišty → Nákupy, kde sa zoznam na pár sekúnd rozsvieti.
+              if (fromList) navigate(`/lists/${r.listId}`);
+              else navigate("/lists", { state: { highlight: r.listId } });
               const n = r.added + r.merged + r.requests;
               // Až po zatvorení hlasového režimu, aby sa hláška ukázala nad lištou (nie hore).
               setTimeout(() =>

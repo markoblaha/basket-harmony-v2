@@ -12,7 +12,7 @@ import { HelpBtn } from "@/features/help/Help";
 import { useKeyboardHeight } from "@/mockup/Sheet";
 import { Btn, StoreTile, eur, storeKeyOf } from "@/mockup/kit";
 import { addDays, dayLabel, isoDay } from "@/features/lists/dates";
-import { usePlanRecipes, useSaveRecipe } from "@/features/recipes/api";
+import { usePlanRecipes, useRecipePlans, useSaveRecipe } from "@/features/recipes/api";
 import { guessCategory, normalizeName } from "@/lib/categories";
 import { t, tn } from "@/i18n";
 import { errorMessage } from "@/lib/errors";
@@ -29,12 +29,12 @@ import {
   type SaveResult,
   type VoicePlan,
 } from "./api";
-import { isChatter, keepSaidWords, matchStore, parseLocal, splitStore, type VoiceOp } from "./parse";
+import { cleanStore, isChatter, keepSaidWords, matchStore, parseLocal, splitStore, tooLong, type VoiceOp } from "./parse";
 
 /** Názvy od AI zúžené na to, čo zaznelo (pravidlo „appka nič nedomýšľa“). */
 const asSaid = (ops: VoiceOp[], text: string): VoiceOp[] => (text ? ops.map((o) => (o.op === "add" ? { ...o, name: keepSaidWords(o.name, text) } : o)) : ops);
 import { applyOps, diff, findItem, reconcile, undo, type Effect } from "./engine";
-import { recipeCommand, splitCook } from "./recipeVoice";
+import { isRealDish, recipeCommand, splitCook } from "./recipeVoice";
 import { useSpeech } from "./useSpeech";
 import { recorderSupported, useRecorder, type StreamSink } from "./useRecorder";
 import { LiveTranscriber } from "./live";
@@ -93,13 +93,18 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   estRef.current = estimator;
   const g = useTheme().style === "glass";
 
-  const [draft] = useState(() => loadDraft(household.id));
-  const [restored, setRestored] = useState(!!draft);
-  const [store, setStore] = useState(draft?.store ?? "");
-  const [date, setDate] = useState(draft?.date || today);
-  const [targetListId, setTargetListId] = useState<string | null>(listId ?? draft?.targetListId ?? null);
-  const [items, setItems] = useState<DraftItem[]>(draft?.items ?? []);
-  const [plans, setPlans] = useState<VoicePlan[]>(draft?.recipes ?? []);
+  // Hlas začína vždy prázdnym novým zoznamom. Neuložený zoznam z minula sa obnoví len ťuknutím na „Obnoviť“.
+  const [prev, setPrev] = useState(() => loadDraft(household.id));
+  /** Obchod nového zoznamu ("" = zatiaľ neviem). */
+  const [store, setStore] = useState("");
+  /** Vlastný názov nového zoznamu ("" = podľa obchodu, inak „Nákup“). */
+  const [listName, setListName] = useState("");
+  const [date, setDate] = useState(today);
+  const [targetListId, setTargetListId] = useState<string | null>(listId ?? null);
+  /** Kam uložiť je už rozhodnuté (otvorené zo zoznamu alebo vybrané cez „Do:“) – Hotovo sa potom nepýta. */
+  const [decided, setDecided] = useState(!!listId);
+  const [items, setItems] = useState<DraftItem[]>([]);
+  const [plans, setPlans] = useState<VoicePlan[]>([]);
   const [flash, setFlash] = useState<Record<string, number>>({});
   /** Viditeľná oprava na 3 s („~~plzeň~~ → Pilsner Urquell“, „~~1 ks~~ → 6 ks“). */
   const [fixes, setFixes] = useState<Record<string, { from: string; to: string; at: number }>>({});
@@ -131,6 +136,13 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   selRef.current = selected;
   const modalRef = useRef(modal);
   modalRef.current = modal;
+  // Pre vety vybavené mimo prekreslenia (povedaný obchod v okne „Kam uložiť“).
+  const listNameRef = useRef(listName);
+  listNameRef.current = listName;
+  const dateRef = useRef(date);
+  dateRef.current = date;
+  const privRef = useRef(priv);
+  privRef.current = priv;
   const seq = useRef(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   // Nové karty „dopadnú“ samé (anim-drop); ostatné sa k novému miestu plynulo dokĺžu.
@@ -138,24 +150,34 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   useFlip(cardsBox, { enter: false });
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const openLists = useMemo(
-    () => lists.filter((l) => !l.completed_at).sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999")),
-    [lists],
-  );
-  // Predvolený cieľ ako v mockupe: najbližší otvorený zoznam (ak nič iné nie je zvolené ani rozdiktované).
-  const defaulted = useRef(!!(listId || draft?.targetListId || draft?.store));
-  useEffect(() => {
-    if (defaulted.current || !openLists.length) return;
-    defaulted.current = true;
-    if (!store) setTargetListId(openLists[0]!.id);
-  }, [openLists, store]);
+  // Otvorené zoznamy pre „Kam uložiť“: dnešné a budúce navrchu (od najbližšieho), staršie pod nimi (od najnovšieho).
+  const openLists = useMemo(() => {
+    const day = (l: ShoppingList) => (l.planned_for ?? "").slice(0, 10);
+    const open = lists.filter((l) => !l.completed_at);
+    const next = open.filter((l) => !day(l) || day(l) >= today).sort((a, b) => (day(a) || "9999").localeCompare(day(b) || "9999"));
+    const past = open.filter((l) => day(l) && day(l) < today).sort((a, b) => day(b).localeCompare(day(a)));
+    return [...next, ...past];
+  }, [lists, today]);
   const target = targetListId ? (lists.find((l) => l.id === targetListId) ?? null) : null;
-  const storeName = target ? target.name : store;
+  /** Recepty čakajúce na uvarenie podľa zoznamu – v okne „Kam uložiť“ sú pri zozname na recept. */
+  const recipePlans = useRecipePlans(household.id).data;
+  const recipesByList = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const p of recipePlans ?? []) if (p.list_id && p.status === "PENDING") m.set(p.list_id, [...(m.get(p.list_id) ?? []), p.recipe_name]);
+    return m;
+  }, [recipePlans]);
 
   // Rozdiktovaný zoznam priebežne ukladáme, aby ho nič nezmazalo (ani obnovenie stránky).
+  // Kým je prázdny, neuložený zoznam z minula ostáva (dá sa obnoviť); prvá nová položka ho nahradí.
   useEffect(() => {
-    saveDraft(household.id, { store, date, targetListId, items, recipes: plans, savedAt: Date.now() });
-  }, [store, date, targetListId, items, plans, household.id]);
+    if (!items.length && !plans.length) {
+      if (!prev) saveDraft(household.id, null);
+      return;
+    }
+    saveDraft(household.id, { store, name: listName, date, targetListId, decided, items, recipes: plans, savedAt: Date.now() });
+    if (prev) setPrev(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store, listName, date, targetListId, decided, items, plans, household.id]);
 
   // ---------------------------------------------------------------- zmeny zoznamu
 
@@ -170,7 +192,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       const o = before.find((x) => x.id === id)!;
       const n = next.find((x) => x.id === id)!;
       if (label(o) !== label(n)) fx[id] = { from: label(o), to: label(n), at: now };
-      else if (o.quantity !== n.quantity || o.unit !== n.unit) fx[id] = { from: fmtQty(o.quantity, o.unit), to: fmtQty(n.quantity, n.unit), at: now };
+      else if (fmtQty(o.quantity, o.unit) !== fmtQty(n.quantity, n.unit)) fx[id] = { from: fmtQty(o.quantity, o.unit), to: fmtQty(n.quantity, n.unit), at: now };
     }
     for (const id of d.added) {
       const n = next.find((x) => x.id === id)!;
@@ -305,11 +327,15 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
 
   // ---------------------------------------------------------------- uloženie
 
-  async function finish(o: { store?: string; listId?: string | null; date?: string; isPrivate?: boolean } = {}) {
+  /** Aktuálna voľba „Kam uložiť“ (existujúci zoznam alebo nový s názvom, obchodom, dňom a viditeľnosťou). */
+  const choice = (): Choice => (target ? { listId: target.id } : { listId: null, name: listName, store, date, isPrivate: priv });
+
+  async function finish(o?: Choice) {
     const all = itemsRef.current;
     if (!all.length || busy) return;
-    const listId = o.listId !== undefined ? o.listId : (target?.id ?? null);
-    const name = listId ? (lists.find((l) => l.id === listId)?.name ?? storeName) : (o.store ?? store) || t("voice.defaultListName");
+    const c = o ?? choice();
+    const listId = c.listId;
+    const name = c.listId !== null ? (lists.find((l) => l.id === c.listId)?.name ?? "") : listTitle(c);
     setModal(null);
     setBusy(true);
     try {
@@ -327,7 +353,13 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         const r = estRef.current.resolve(c.name);
         return r ? { ...c, name: r.label, categoryId: r.category } : c;
       });
-      const r = await save.mutateAsync({ store: name, listId, date: o.date ?? date, items: named, isPrivate: o.isPrivate ?? priv });
+      const r = await save.mutateAsync({
+        name,
+        listId,
+        date: c.listId !== null ? date : c.date,
+        items: named,
+        isPrivate: c.listId !== null ? false : c.isPrivate,
+      });
       const recipes = ps.filter((p) => p.key).map((p) => ({ key: p.key!, name: p.name, portions: p.portions }));
       if (recipes.length) {
         // Položky už sú v zozname; ak by sa nepodarilo zapísať plán receptu, povieme to, ale zoznam ostane.
@@ -349,7 +381,8 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
     const pendingRecipe = cards.cards.some((c) => c.status !== "added" && c.sel != null);
     if (pendingRecipe && !force) return setModal("recipes");
     if (items.some((c) => c.status === "unclear") && force !== "unsure") return setModal("unsure");
-    if (!target && !store) return setModal("where");
+    // Hotovo sa opýta, kam zoznam uložiť – okrem prípadu, keď je to už rozhodnuté.
+    if (!decided || (targetListId && !target)) return setModal("where");
     void finish();
   }
   const createRef = useRef(create);
@@ -377,9 +410,10 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   const apply = useCallback(
     (text: string, typed = false) => {
       const sp = splitStore(text, stores);
+      sp.store = cleanStore(sp.store);
       if (modalRef.current === "where") {
-        const s = sp.store ?? matchStore(text, stores);
-        if (s) void finishRef.current({ store: s });
+        const s = sp.store ?? cleanStore(matchStore(text, stores));
+        if (s) void finishRef.current({ listId: null, name: listNameRef.current, store: s, date: dateRef.current, isPrivate: privRef.current });
         else toast.show(t("voice.storeNotUnderstood"));
         return;
       }
@@ -388,8 +422,8 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         skip(text);
         return;
       }
-      // Obchod z hovorenej vety platí hneď len pri samotnom „idem do Lidla“; inak až keď AI potvrdí nákup
-      // („bol som včera v Bille“ nie je cieľ zoznamu).
+      // Obchod z hovorenej vety (len predvyplní okno „Kam uložiť“) platí hneď len pri samotnom „idem do Lidla“;
+      // inak až keď AI potvrdí nákup („bol som včera v Bille“ nie je cieľ zoznamu).
       if (sp.store && !targetListId && (typed || !sp.rest)) setStore(sp.store);
       if (!sp.rest) {
         if (sp.store) haptic(10);
@@ -424,13 +458,11 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       if (typed) for (const m of notIn(ops, before)) toast.show(t("voice.notInList", { name: m.target }));
       const local = applyOps(before, ops);
       if (local.done) setDoneHint(true);
-      // Miestny rozbor sa ukáže hneď len vtedy, keď každú novú položku pozná katalóg domácnosti.
-      // Inak („pol kila mletého mäsa“ → „Mletého“, „Mäsa“) sa počká na AI (~1 s) – žiadne preblikávanie zlých položiek.
-      // Z hovorenej vety čaká na AI aj mazanie a premenovanie („vyhoď mlieko, je pokazené“ nie je povel do zoznamu).
+      // Napísaný text: miestny rozbor sa ukáže hneď, keď každú novú položku pozná katalóg domácnosti
+      // (inak „pol kila mletého mäsa“ → „Mletého“, „Mäsa“ – počká sa na AI).
+      // Hovorená veta čaká na AI vždy: až ona povie, či je to vôbec nákup („ale to je“, „ty kokos“ nie sú položky).
       const known = (name: string) => !!estRef.current.resolve(name) && name.trim().split(/\s+/).length <= 3;
-      const sure = ops.every((o) =>
-        o.op === "add" ? known(o.name) : o.op === "change" ? typed || o.name == null : o.op === "remove" ? typed : true,
-      );
+      const sure = typed && ops.every((o) => o.op !== "add" || known(o.name));
       const held = local.understood && !sure;
       if (local.understood && !held) {
         skipRun.current = 0;
@@ -439,7 +471,8 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         showRemoved(local);
         if (sel && target) setSelected(null);
       }
-      if (held) setPendingAudio((p) => p + 1);
+      // Karta „Spracúvam vetu…“ len pri napísanom texte; pri reči stačí stav „Rozumiem vete…“ (rozhovor nebliká v zozname).
+      if (held && typed) setPendingAudio((p) => p + 1);
       if (local.done && !local.added.length && !local.merged.length && !local.removed.length) return;
       // Len jedlo bez položiek z napísanej vety – AI netreba, recepty sa už načítavajú.
       if (typed && !rest && cook.cook.length) return;
@@ -449,7 +482,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       // slovo môže zle počuť. Pri texte sa nič zle počuť nedá – inak AI zmenila „chlieb“ na „Rožky“.
       void interpretAI(sp.rest, before, target, [], typed).then((ai) => {
         setRefining((r) => r - 1);
-        if (held) setPendingAudio((p) => p - 1);
+        if (held && typed) setPendingAudio((p) => p - 1);
         if (!ai) {
           // AI neodpovedala (bez internetu, chyba): z hovorenej vety sa pridá len to, čo vyzerá ako tovar.
           if (held) {
@@ -471,12 +504,14 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
           skip(text);
           return;
         }
+        const aiStore = cleanStore(ai.store);
         if (!typed && sp.store && !targetListId) setStore(sp.store);
-        if (ai.store && !targetListId) setStore((s) => s || ai.store!);
-        cards.confirmCook(mine, ai.cook);
+        if (aiStore && !targetListId) setStore((s) => s || aiStore);
+        cards.confirmCook(mine, ai.cook.filter(isRealDish));
         if (held) {
-          // Napísaný text: keď AI nič nevráti, ostane miestny rozbor. Hovorená veta: rozhoduje AI.
-          const aiOps = asSaid(ai.ops.length || !typed ? ai.ops : ops, sp.rest);
+          // Napísaný text: keď AI nič nevráti, ostane miestny rozbor. Hovorená veta: rozhoduje AI
+          // (a celá veta ako názov položky nie je tovar).
+          const aiOps = asSaid(ai.ops.length || !typed ? ai.ops : ops, sp.rest).filter((o) => typed || o.op !== "add" || !tooLong(o.name));
           if (!typed) for (const m of notIn(aiOps, itemsRef.current)) toast.show(t("voice.notInList", { name: m.target }));
           const eff = applyOps(itemsRef.current, aiOps);
           if (eff.understood) {
@@ -502,26 +537,27 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   const applyAudio = useCallback(
     (res: Interpretation, target: string | null) => {
       if (res.transcript) setSaid(res.transcript);
+      const resStore = cleanStore(res.store);
       if (modalRef.current === "where") {
-        const s = res.store ?? matchStore(res.transcript, stores);
-        if (s) void finishRef.current({ store: s });
+        const s = resStore ?? cleanStore(matchStore(res.transcript, stores));
+        if (s) void finishRef.current({ listId: null, name: listNameRef.current, store: s, date: dateRef.current, isPrivate: privRef.current });
         else toast.show(t("voice.storeNotUnderstood"));
         return;
       }
       if (res.transcript && runCommand(splitStore(res.transcript, stores).rest || res.transcript)) return;
-      // Rozhovor, televízor, šum – nič sa nepridá, veta sa len ukáže ako nepridaná.
-      if (res.intent === "other") {
+      // Rozhovor, televízor, šum (aj ozvena slovníka) – nič sa nepridá, veta sa len ukáže ako nepridaná.
+      if (res.intent === "other" || isChatter(res.transcript)) {
         if (res.transcript) skip(res.transcript);
         return;
       }
-      if (res.store && !targetListId) setStore(res.store);
+      if (resStore && !targetListId) setStore(resStore);
       const mine = ++seq.current;
-      for (const dish of res.cook) cards.addQuery(dish, mine);
+      for (const dish of res.cook.filter(isRealDish)) cards.addQuery(dish, mine);
       if (!res.ops.length) {
         if (!res.cook.length && !res.store && res.transcript) skip(res.transcript);
         return;
       }
-      const eff = applyOps(itemsRef.current, asSaid(res.ops, res.transcript));
+      const eff = applyOps(itemsRef.current, asSaid(res.ops, res.transcript).filter((o) => o.op !== "add" || !tooLong(o.name)));
       if (eff.done) setDoneHint(true);
       if (eff.understood) {
         skipRun.current = 0;
@@ -672,17 +708,21 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
     onClose();
   }
 
-  function reset() {
-    present([]);
-    setPlans([]);
-    for (const c of cards.ref.current) cards.remove(c.id);
-    setStore("");
-    setTargetListId(null);
-    setDate(today);
-    setPriv(false);
-    setRestored(false);
-    setDoneHint(false);
-    setSaid("");
+  /** „Obnoviť“: vráti neuložený zoznam z minula (položky, recepty aj kam ho uložiť). */
+  function restore() {
+    const d = prev;
+    if (!d) return;
+    setPrev(null);
+    setStore(cleanStore(d.store) ?? "");
+    setListName(d.name ?? "");
+    setDate(d.date && d.date >= today ? d.date : today);
+    if (!listId && d.targetListId && lists.some((l) => l.id === d.targetListId && !l.completed_at)) {
+      setTargetListId(d.targetListId);
+      setDecided(true);
+    }
+    setPlans(d.recipes ?? []);
+    present(d.items);
+    haptic(10);
   }
 
 
@@ -719,7 +759,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   const kb = useKeyboardHeight(true);
   const shown = (c: DraftItem) => estimator.resolve(c.name)?.label ?? c.name;
   const tStore = storeKeyOf(target ? target.name : store);
-  const tLabel = target ? target.name : store ? `${store} · ${dayLabel(date)}` : null;
+  const tLabel = target ? target.name : decided || listName.trim() || store ? `${listTitle(choice())} · ${dayLabel(date)}` : null;
   const selItem = selected ? items.find((c) => c.id === selected) : undefined;
   const now = Date.now();
   const [txt, setTxt] = useState("");
@@ -735,7 +775,6 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
     setSaid(v);
     setSkipped("");
     setAutoPaused(false);
-    setRestored(false);
     apply(v, true);
   };
   /** „Pridať aj tak“: nepridaná veta sa spracuje ako napísaná (bez posudzovania, či je to nákup). */
@@ -793,12 +832,12 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
           </button>
           <HelpBtn screen="m-voice" cls="vx-ib" />
         </div>
-        {restored && n > 0 && (
+        {prev && n === 0 && !plans.length && (
           <div className="vx-rest">
             <I n="arrow-counter-clockwise" w="bold" />
-            <span className="grow">{t("vx.restored", { n })}</span>
-            <button type="button" onClick={reset}>
-              {t("voice.startOver")}
+            <span className="grow">{tn("vx.prevDraft", prev.items.length)}</span>
+            <button type="button" onClick={restore}>
+              {t("vx.restore")}
             </button>
           </div>
         )}
@@ -1048,33 +1087,33 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
             done={modal === "where"}
             n={n}
             lists={openLists}
+            recipesByList={recipesByList}
             stores={stores}
-            targetListId={targetListId}
-            store={store}
-            date={date}
-            priv={priv}
+            initial={choice()}
             householdName={household.name}
             busy={busy}
             onClose={() => setModal(null)}
             onPick={(c) => {
               setModal(null);
-              if (c.listId !== null) {
-                setTargetListId(c.listId);
-              } else {
+              setDecided(true);
+              if (c.listId !== null) setTargetListId(c.listId);
+              else {
                 setTargetListId(null);
+                setListName(c.name);
                 setStore(c.store);
                 setDate(c.date);
                 setPriv(c.isPrivate);
               }
             }}
             onCommit={(c) => {
-              if (c.listId !== null) void finish({ listId: c.listId });
-              else {
+              if (c.listId === null) {
                 setTargetListId(null);
+                setListName(c.name);
                 setStore(c.store);
                 setDate(c.date);
-                void finish({ store: c.store, listId: null, date: c.date, isPrivate: c.isPrivate });
-              }
+                setPriv(c.isPrivate);
+              } else setTargetListId(c.listId);
+              void finish(c);
             }}
           />
         )}
@@ -1124,18 +1163,24 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   );
 }
 
-type Choice = { listId: string } | { listId: null; store: string; date: string; isPrivate: boolean };
+type Choice = { listId: string } | { listId: null; name: string; store: string; date: string; isPrivate: boolean };
 
-/** „Kam pridať?“ – existujúce zoznamy navrchu, pod nimi nový zoznam (obchod, deň, kto ho uvidí). */
+/** Názov nového zoznamu: vlastný, inak obchod, inak „Nákup“. */
+function listTitle(c: Choice): string {
+  return c.listId !== null ? "" : c.name.trim() || c.store || t("voice.defaultListName");
+}
+
+/**
+ * „Kam uložiť?“ – nový zoznam (vlastný názov, obchod alebo „Zatiaľ neviem“, deň, kto ho uvidí)
+ * alebo existujúci zoznam (pri zozname na recept aj jeho recepty).
+ */
 function WherePanel({
   done,
   n,
   lists,
+  recipesByList,
   stores,
-  targetListId,
-  store,
-  date,
-  priv,
+  initial,
   householdName,
   busy,
   onClose,
@@ -1145,11 +1190,9 @@ function WherePanel({
   done: boolean;
   n: number;
   lists: ShoppingList[];
+  recipesByList: Map<string, string[]>;
   stores: string[];
-  targetListId: string | null;
-  store: string;
-  date: string;
-  priv: boolean;
+  initial: Choice;
   householdName: string;
   busy: boolean;
   onClose: () => void;
@@ -1158,16 +1201,24 @@ function WherePanel({
 }) {
   const stats = useListStats(lists[0]?.household_id ?? "").data;
   const days = [0, 1, 2].map((d) => isoDay(addDays(new Date(), d)));
-  const [c, setC] = useState<Choice>(() =>
-    targetListId ? { listId: targetListId } : store ? { listId: null, store, date, isPrivate: priv } : lists[0] ? { listId: lists[0].id } : { listId: null, store: "", date: days[1]!, isPrivate: false },
-  );
-  const isNew = c.listId === null;
-  const nc = (p: Partial<{ store: string; date: string; isPrivate: boolean }>) =>
-    setC((x) => ({ listId: null, store: x.listId === null ? x.store : "", date: x.listId === null ? x.date : days[1]!, isPrivate: x.listId === null ? x.isPrivate : false, ...p }));
-  const L = !isNew ? lists.find((l) => l.id === c.listId) : undefined;
-  const tiles = (store && !stores.includes(store) ? [store, ...stores] : stores).slice(0, 6);
-  const name = c.listId === null ? c.store || t("voice.defaultListName") : (L?.name ?? "");
-  const label = !done ? t("vx.sheetDone") : isNew ? t("vx.createAdd", { name }) : t("vx.addTo", { name });
+  const init = initial.listId === null ? initial : null;
+  const [tab, setTab] = useState<"new" | "list">(initial.listId ? "list" : "new");
+  const [listId, setListId] = useState<string | null>(initial.listId);
+  const [name, setName] = useState(init?.name ?? "");
+  const [store, setStore] = useState(init?.store ?? "");
+  const [date, setDate] = useState(init && days.includes(init.date) ? init.date : days[0]!);
+  const [isPrivate, setPrivate] = useState(init?.isPrivate ?? false);
+  const isNew = tab === "new" || !lists.length;
+  const L = listId ? lists.find((l) => l.id === listId) : undefined;
+  const c: Choice = isNew ? { listId: null, name, store, date, isPrivate } : { listId: L?.id ?? "" };
+  const tiles = (store && !stores.includes(store) ? [store, ...stores] : stores).slice(0, 5);
+  const label = !done
+    ? t("vx.sheetDone")
+    : isNew
+      ? t("vx.createAdd", { name: listTitle(c) })
+      : L
+        ? t("vx.addTo", { name: L.name })
+        : t("vx.pickList");
   const dayNames = [t("date.today"), t("date.tomorrow"), t("nl.dayAfter")].map((x) => x.charAt(0).toUpperCase() + x.slice(1));
   return (
     <div className="vx-panel" role="dialog" aria-label={t("vx.wherePick")}>
@@ -1176,59 +1227,95 @@ function WherePanel({
         <span className="grab" onClick={onClose} />
         <h2>{done ? tn("vx.whereN", n) : t("vx.wherePick")}</h2>
         {lists.length > 0 && (
-          <>
-            <span className="k">{t("vx.existing")}</span>
-            <div
-              className="vx-lists"
-              ref={(el) => {
-                // vybraný zoznam je hneď vidieť (aj keď je nižšie v zozname)
-                if (el && !el.dataset.shown) {
-                  el.dataset.shown = "1";
-                  el.querySelector(".vx-opt.on")?.scrollIntoView({ block: "nearest" });
-                }
-              }}
-            >
-              {lists.map((l) => (
-                <button type="button" key={l.id} className={`vx-opt${!isNew && c.listId === l.id ? " on" : ""}`} onClick={() => setC({ listId: l.id })}>
+          <div className="seg vx-seg" role="tablist">
+            <button type="button" role="tab" aria-selected={isNew} className={isNew ? "on" : ""} onClick={() => setTab("new")}>
+              {t("vx.tabNew")}
+            </button>
+            <button type="button" role="tab" aria-selected={!isNew} className={!isNew ? "on" : ""} onClick={() => setTab("list")}>
+              {t("vx.tabExisting")}
+            </button>
+          </div>
+        )}
+        {isNew ? (
+          <div className="vx-newl">
+            <label className="fl">
+              <span>{t("vx.listName")}</span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                placeholder={t("vx.listNamePh")}
+                maxLength={60}
+                autoComplete="off"
+                enterKeyHint="done"
+              />
+            </label>
+            <span className="k">{t("nl.store")}</span>
+            <div className="vx-stores">
+              <button type="button" className={`vx-later${!store ? " on" : ""}`} aria-pressed={!store} onClick={() => setStore("")}>
+                <span className="vx-any">
+                  <I n="question" w="bold" />
+                </span>
+                {t("vx.storeLater")}
+              </button>
+              {tiles.map((s) => (
+                <button type="button" key={s} className={store === s ? "on" : ""} aria-pressed={store === s} onClick={() => setStore(store === s ? "" : s)}>
+                  <StoreTile k={storeKeyOf(s)} n={s} s={22} />
+                  {s}
+                </button>
+              ))}
+            </div>
+            <span className="k">{t("nl.when")}</span>
+            <div className="vx-days">
+              {days.map((d, i) => (
+                <button type="button" key={d} className={date === d ? "on" : ""} aria-pressed={date === d} onClick={() => setDate(d)}>
+                  {dayNames[i]}
+                </button>
+              ))}
+            </div>
+            <div className="vx-days">
+              <span className="vx-who">{t("vx.who")}</span>
+              <button type="button" className={!isPrivate ? "on" : ""} aria-pressed={!isPrivate} onClick={() => setPrivate(false)}>
+                {householdName}
+              </button>
+              <button type="button" className={isPrivate ? "on" : ""} aria-pressed={isPrivate} onClick={() => setPrivate(true)}>
+                {t("nl.onlyMe")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="vx-lists"
+            ref={(el) => {
+              // vybraný zoznam je hneď vidieť (aj keď je nižšie v zozname)
+              if (el && !el.dataset.shown) {
+                el.dataset.shown = "1";
+                el.querySelector(".vx-opt.on")?.scrollIntoView({ block: "nearest" });
+              }
+            }}
+          >
+            {lists.map((l) => {
+              const rec = recipesByList.get(l.id) ?? [];
+              return (
+                <button type="button" key={l.id} className={`vx-opt${listId === l.id ? " on" : ""}`} aria-pressed={listId === l.id} onClick={() => setListId(l.id)}>
+                  {rec.length > 0 && (
+                    <span className="vx-optic">
+                      <I n="cooking-pot" />
+                    </span>
+                  )}
                   <span className="grow">
                     <b>{l.name}</b>
                     <small>
                       {l.planned_for ? dayLabel(l.planned_for) : t("trip.noDay")} · {tn("li.items", stats?.get(l.id)?.open ?? 0)}
                     </small>
+                    {rec.length > 0 && <small className="vx-rec">{t("vx.forRecipe", { names: rec.join(", ") })}</small>}
                   </span>
-                  {!isNew && c.listId === l.id && <I n="check-circle" />}
+                  {listId === l.id && <I n="check-circle" />}
                 </button>
-              ))}
-            </div>
-          </>
+              );
+            })}
+          </div>
         )}
-        <span className="k">{t("vx.orNew")}</span>
-        <div className={`vx-new${isNew ? " on" : ""}`}>
-          <div className="vx-stores">
-            {tiles.map((s) => (
-              <button type="button" key={s} className={c.listId === null && c.store === s ? "on" : ""} onClick={() => nc({ store: c.listId === null && c.store === s ? "" : s })}>
-                <StoreTile k={storeKeyOf(s)} n={s} s={22} />
-                {s}
-              </button>
-            ))}
-          </div>
-          <div className="vx-days">
-            {days.map((d, i) => (
-              <button type="button" key={d} className={c.listId === null && c.date === d ? "on" : ""} onClick={() => nc({ date: d })}>
-                {dayNames[i]}
-              </button>
-            ))}
-          </div>
-          <div className="vx-days">
-            <span className="vx-who">{t("vx.who")}</span>
-            <button type="button" className={c.listId === null && !c.isPrivate ? "on" : ""} onClick={() => nc({ isPrivate: false })}>
-              {householdName}
-            </button>
-            <button type="button" className={c.listId === null && c.isPrivate ? "on" : ""} onClick={() => nc({ isPrivate: true })}>
-              {t("nl.onlyMe")}
-            </button>
-          </div>
-        </div>
         <Btn cls="pri full big" disabled={busy || (!isNew && !L)} onClick={() => (done ? onCommit(c) : onPick(c))}>
           {label}
         </Btn>

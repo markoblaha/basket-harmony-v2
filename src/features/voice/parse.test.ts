@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isChatter, keepSaidWords, matchStore, parseLocal, splitStore } from "./parse";
+import { cleanStore, isChatter, keepSaidWords, matchStore, parseLocal, splitStore, tooLong } from "./parse";
 
 const add = (text: string) => parseLocal(text).filter((o) => o.op === "add");
 
@@ -95,11 +95,30 @@ describe("keepSaidWords – AI nedomýšľa", () => {
 
 describe("isChatter", () => {
   it("výplňové slová, pozdravy a výmysly prepisu nie sú nákup", () => {
-    for (const x of ["hm", "Hmm…", "dobre, jasné", "Áno áno.", "ďakujem", "ahoj", "no tak", "OK", "[hudba]", "(smiech)", "Titulky vytvoril JohnyX", "Ďakujem za pozornosť.", "  "])
+    for (const x of ["hm", "Hmm…", "dobre, jasné", "Áno áno.", "ďakujem", "ahoj", "no tak", "OK", "[hudba]", "(smiech)", "Titulky vytvoril JohnyX", "Ďakujem za pozornosť.", "  ", "Ty kokos!", "Ale to je.", "no teda, áno"])
       expect(isChatter(x), x).toBe(true);
   });
   it("veta s tovarom alebo číslom ide ďalej (rozhodne AI)", () => {
     for (const x of ["mlieko", "dve", "nie, tri", "hotovo", "zmaž banány", "ahoj, kúp mlieko", "kde máš kľúče", "jasné, a ešte chlieb"])
       expect(isChatter(x), x).toBe(false);
+  });
+});
+
+describe("ozvena slovníka, dlhé názvy, obchod", () => {
+  it("výrazy oddelené pomlčkami sú ozvena slovníka živého prepisu", () => {
+    expect(isChatter("Max - Golden Turtle - Finish - Gimbap Gim - FeverMates - Nongshim")).toBe(true);
+    expect(isChatter("Olej - Batat -")).toBe(true);
+    expect(isChatter("mlieko, chlieb a maslo")).toBe(false);
+    expect(isChatter("kokos")).toBe(false);
+  });
+  it("celá veta nie je názov položky", () => {
+    expect(tooLong("Ja som nič nevidel a ani nepočul nič")).toBe(true);
+    expect(tooLong("Mlieko polotučné 1,5 %")).toBe(false);
+  });
+  it("obchod musí mať aspoň dve písmená", () => {
+    expect(cleanStore(".")).toBe(null);
+    expect(cleanStore("  ")).toBe(null);
+    expect(cleanStore("Lidl.")).toBe("Lidl");
+    expect(cleanStore("dm")).toBe("dm");
   });
 });

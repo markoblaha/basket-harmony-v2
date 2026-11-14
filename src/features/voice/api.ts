@@ -145,7 +145,7 @@ export type SaveResult = { listId: string; added: number; merged: number; reques
 
 /**
  * Hotovo → zoznam v Nákupe, presne ako keby ho niekto vyklikal:
- * zoznam s názvom predajne (existujúci sa použije, nový sa vytvorí), položky cez
+ * do existujúceho zoznamu (listId), alebo vždy nový zoznam s daným názvom; položky cez
  * add_item (pravidlá – napr. žiadosť, keď práve nakupuje niekto iný – rozhodne databáza).
  * Rovnaký kusový produkt, ktorý už v zozname je, sa iba navýši.
  */
@@ -153,13 +153,14 @@ export function useSaveVoiceList(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      store,
+      name,
       listId: target,
       date,
       items,
       isPrivate = false,
     }: {
-      store: string;
+      /** Názov nového zoznamu (pri existujúcom sa nepoužije). */
+      name: string;
       listId: string | null;
       date: string;
       items: DraftItem[];
@@ -167,22 +168,9 @@ export function useSaveVoiceList(householdId: string) {
       isPrivate?: boolean;
     }): Promise<SaveResult> => {
       let listId = target ?? undefined;
-      if (!listId) {
-        // Rozpracovaný nákup v tej istej predajni na ten istý deň (s rovnakou viditeľnosťou) sa použije, inak vznikne nový zoznam.
-        const lists = await supabase
-          .from("shopping_lists")
-          .select("id, name, planned_for, is_private")
-          .eq("household_id", householdId)
-          .eq("is_archived", false)
-          .is("completed_at", null);
-        if (lists.error) throw lists.error;
-        listId = lists.data.find(
-          (l) => normalizeName(l.name) === normalizeName(store) && (l.planned_for ?? "").slice(0, 10) === date && l.is_private === isPrivate,
-        )?.id;
-      }
       const created = !listId;
       if (!listId) {
-        const ins = await supabase.from("shopping_lists").insert({ household_id: householdId, name: store, planned_for: date, is_private: isPrivate }).select("id").single();
+        const ins = await supabase.from("shopping_lists").insert({ household_id: householdId, name, planned_for: date, is_private: isPrivate }).select("id").single();
         if (ins.error) throw ins.error;
         listId = ins.data.id;
       }
@@ -230,8 +218,20 @@ export function useSaveVoiceList(householdId: string) {
 
 // ------------------------------------------------------------------ rozpracovaný zoznam
 
-/** store "" = bez obchodu; targetListId = pridávanie do existujúceho zoznamu; date = YYYY-MM-DD. */
-export type Draft = { store: string; date: string; targetListId: string | null; items: DraftItem[]; recipes?: VoicePlan[]; savedAt: number };
+/**
+ * store "" = zatiaľ bez obchodu; name = vlastný názov nového zoznamu; targetListId = pridávanie do existujúceho
+ * zoznamu; decided = kam uložiť už bolo vybrané; date = YYYY-MM-DD.
+ */
+export type Draft = {
+  store: string;
+  name?: string;
+  date: string;
+  targetListId: string | null;
+  decided?: boolean;
+  items: DraftItem[];
+  recipes?: VoicePlan[];
+  savedAt: number;
+};
 
 /** Recept vybraný v hlasovom režime: po uložení zoznamu čaká v Receptoch na uvarenie. */
 export type VoicePlan = { card: string; key: string | null; name: string; portions: number; draft: RecipeDraft | null };

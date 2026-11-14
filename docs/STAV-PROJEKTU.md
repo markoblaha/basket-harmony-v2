@@ -57,7 +57,7 @@ parse-voice v testovacej DB (~8 volaní AI). Nič neukladá.
    price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
    (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
-   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v8 (rozhovor vs. nákup, 14. 11.),
+   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v9 a voice-live-token v4 (rozhovor vs. nákup, slovník bez značiek, 14. 11.),
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
    read-statement v3. Funkciu `proto-images` (vypnutá, 410) možno zmazať.
 4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` testovacích riadkov vo vnútri bloku, ktorý sa celý vráti
@@ -104,6 +104,21 @@ parse-voice v testovacej DB (~8 volaní AI). Nič neukladá.
   náhodné nepribudne). Napísaný text sa nefiltruje (`source: "typed"`). Overené: sada 40 viet na testovacej DB 40/40
   (15 nákupov, 25 rozhovorov), doplnková sada 10/10 (recepty „upečiem bábovku“ áno, „urobím ti čaj“ nie),
   `testy/hlas.cjs` na adrese vetvy s podvrhnutou aj skutočnou AI (`REAL=1`) 10/10. Neoverené: skutočný iPhone so živým rozhovorom.
+- **Hlas – oprava podľa fotiek majiteľa + nový tok (14. 11. 2026):** Fotky z 13. 11. 23:08 (stará verzia, 65 viet) ukázali:
+  (1) živý prepis pri šume vypísal celý svoj slovník ako vetu („Max - Golden Turtle - Finish - …“ = značky z bločkov) →
+  `voice-live-token` v4 posiela len 40 často kupovaných položiek, žiadne značky; appka výrazy oddelené pomlčkami zahodí
+  (`isChatter`); (2) „ty kokos“ → Kokos, „Ale to je“, „Ja som nič nevidel“ → citoslovcia v `isChatter`, hovorená veta
+  sa ukáže až po AI (už žiadne okamžité zobrazenie miestneho rozboru), celá veta ako názov sa zahodí (`tooLong`);
+  (3) recept „Jedlo“ → všeobecné jedlo nie je recept (`isRealDish`, prompt); (4) hlavička karty receptu „Varíš / názov“
+  bola v krúžkoch – trieda `.stack` je v novom dizajne skupina avatarov, karta má teraz `v-col`/`v-row`; (5) obchod „.“ →
+  `cleanStore`; (6) riadky v okne zoznamov sa prekrývali (stláčanie v rolujúcom okne). parse-voice v9 (príklady z fotiek).
+  Overené: 19 viet z fotiek a bežných nákupov so skutočnou AI 19/19.
+  **Nový tok:** hlas z lišty otvorí vždy prázdny nový zoznam („Do: nový zoznam“); neuložený zoznam z minula ponúkne
+  „Obnoviť“ (neobnoví sa sám). Hotovo → okno „Kam uložiť N položiek?“: Nový zoznam (vlastný názov, obchod alebo
+  „Zatiaľ neviem“ – predvolené, deň, kto ho uvidí) / Existujúci (dnešné a budúce navrchu, zoznam na recept má ikonu hrnca
+  a „Na recept: …“). Nový zoznam sa vytvorí vždy nový (už sa nespája s rovnako nazvaným). Po uložení appka prejde na
+  Nákupy a zoznam sa na pár sekúnd rozsvieti (`lhl`, rovnako ako pri receptoch); otvorené zo zoznamu → späť do zoznamu.
+  `testy/hlas.cjs` to celé prejde (11 krokov, aj kontrola v DB).
 - **Viac:** hlavné prepínače + „Rozšírené“, rozpočet cez list z Analytiky, poradie obchodov ťahaním,
   vibrácie na iPhone cez systémový prepínač (`haptic()` v `components/kit.tsx`).
 - Systémová lišta iPhonu vo farbe témy, plynulejšie animácie (`components/motion.ts`: FLIP, animateOut, collapseOut).

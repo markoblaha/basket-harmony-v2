@@ -261,11 +261,11 @@ export function RecipeCardView({
 
   return (
     <div className={cx("v-rc anim-pop", active && "active")} data-flip={`rc:${card.id}`} role="group" aria-label={t("voice.rc.aria", { name: card.query })}>
-      <div className="row g-10">
+      <div className="v-row g-10">
         <span className="cat-ic v-rc-ic">
           <ChefHat size={18} />
         </span>
-        <span className="grow stack g-2" style={{ minWidth: 0 }}>
+        <span className="grow v-col g-2" style={{ minWidth: 0 }}>
           <span className="t-xs t-2 fw-6">{t("voice.rc.cooking")}</span>
           <span className="t-h ellipsis">{card.query}</span>
         </span>
@@ -275,7 +275,7 @@ export function RecipeCardView({
       </div>
 
       {card.status === "error" ? (
-        <div className="row g-8">
+        <div className="v-row g-8">
           <span className="grow t-sm t-2">{t("voice.rc.error")}</span>
           <button type="button" className="btn btn-soft btn-sm" onClick={onRetry}>
             <RotateCw size={15} /> {t("voice.rc.retry")}
@@ -297,7 +297,7 @@ export function RecipeCardView({
                   onPick(i);
                 }}
               >
-                <span className="row g-6" style={{ alignItems: "flex-start" }}>
+                <span className="v-row g-6" style={{ alignItems: "flex-start" }}>
                   {o.recipe ? <Cover recipe={o.recipe} size="sm" /> : <span className="rc-cover sm" style={{ "--h": hueOf(o.name) } as React.CSSProperties}><RIcon name={o.icon ?? "CookingPot"} size={26} strokeWidth={1.7} /></span>}
                   <span className="v-rc-num num">{i + 1}</span>
                 </span>
@@ -320,17 +320,17 @@ export function RecipeCardView({
       )}
 
       {sel && (
-        <div className="stack g-10 anim-pop">
+        <div className="v-col g-10 anim-pop">
           {!sel.recipe ? (
             sel.failed ? (
-              <div className="row g-8">
+              <div className="v-row g-8">
                 <span className="grow t-sm t-2">{t("voice.rc.detailError")}</span>
                 <button type="button" className="btn btn-soft btn-sm" onClick={() => onRetryDetail(sel)}>
                   <RotateCw size={15} /> {t("voice.rc.retry")}
                 </button>
               </div>
             ) : (
-              <div className="stack g-6" aria-busy>
+              <div className="v-col g-6" aria-busy>
                 <span className="t-sm t-2">{t("voice.rc.preparing")}</span>
                 {[0, 1, 2].map((i) => (
                   <span key={i} className="skel" style={{ height: 34, borderRadius: 10 }} />
@@ -339,7 +339,7 @@ export function RecipeCardView({
             )
           ) : (
             <>
-              <div className="row g-10">
+              <div className="v-row g-10">
                 <span className="grow t-sm fw-6">{t("voice.rc.portions")}</span>
                 <Stepper value={card.portions} min={1} onChange={onPortions} small />
               </div>
@@ -349,7 +349,7 @@ export function RecipeCardView({
                   return (
                     <button key={r.key} type="button" className={cx("v-rc-ing", !checked && "off")} onClick={() => onToggle(r.key)} aria-pressed={checked}>
                       <span className={cx("v-check", checked && "on")}>{checked && <Check size={14} strokeWidth={3} />}</span>
-                      <span className="grow stack g-1" style={{ minWidth: 0 }}>
+                      <span className="grow v-col g-1" style={{ minWidth: 0 }}>
                         <span className="t-body fw-5 ellipsis">{r.buy.name}</span>
                         {(detailOf(r) || (r.staple && !checked)) && (
                           <span className="t-xs t-2 ellipsis">{!checked && r.staple ? t("voice.rc.usuallyHome") : detailOf(r)}</span>
@@ -377,11 +377,11 @@ const detailOf = (r: IngredientRow) => r.buy.detail.split(" · ").filter((x) => 
 /** Pridaný recept – skrátene, s možnosťou zmeniť výber. */
 export function PlanRow({ plan, count, onEdit, onRemove }: { plan: VoicePlan; count: number; onEdit?: () => void; onRemove: () => void }) {
   return (
-    <div className="v-rc done row g-10" data-flip={`plan:${plan.card}`}>
+    <div className="v-rc done v-row g-10" data-flip={`plan:${plan.card}`}>
       <span className="cat-ic v-rc-ic on">
         <Check size={18} strokeWidth={2.6} />
       </span>
-      <span className="grow stack g-2" style={{ minWidth: 0 }}>
+      <span className="grow v-col g-2" style={{ minWidth: 0 }}>
         <span className="t-body fw-6 ellipsis">{plan.name}</span>
         <span className="t-xs t-2">
           {tn("voice.rc.portionsN", plan.portions)} · {tn("voice.rc.ingCount", count)}

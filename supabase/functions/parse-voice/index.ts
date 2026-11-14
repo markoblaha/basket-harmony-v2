@@ -75,7 +75,9 @@ Do zoznamu patrí LEN to, čo človek chce kúpiť. Najprv urč intent:
 - "other": všetko ostatné – rozhovor, otázky a odpovede, rozprávanie o tom, čo sa stalo, pokyny inému človeku, reklama a správy
   z televízora či rádia, spev, útržky bez zmyslu. Príklady: "kde máš kľúče od auta", "ahoj ako sa máš", "počkaj chvíľu",
   "včera sme mali na obed rezne", "podaj mi tú lyžicu", "zober si bundu je zima", "dobre tak zajtra", "hm", "ďakujem",
-  "obleč sa ideme von", "najlepšie ceny len tento týždeň", "kedy prídeš domov".
+  "obleč sa ideme von", "najlepšie ceny len tento týždeň", "kedy prídeš domov", "ja som nič nevidel", "dnes sme nič nekúpili",
+  citoslovcia a reakcie ("ty kokos" nie je kokos, "ale to je", "no teda", "fakt") a prepis, ktorý je len zoznam výrazov
+  oddelených pomlčkami alebo nedáva zmysel ako veta (ozvena šumu).
   Pri "other": ops [], cook [], store null.
 Ak sa v jednej vete mieša rozhovor s nákupom ("počkaj chvíľu, a ešte kúp mlieko"), intent "list" a ops len z nákupnej časti.
 Vec spomenutá v rozhovore bez toho, aby ju chcel kúpiť ("podaj mi lyžicu", "mlieko je v chladničke"), do ops NEPATRÍ.
@@ -101,8 +103,8 @@ Delenie: každý produkt je samostatná položka. Množstvo patrí k produktu, p
   "nie, tri" -> posledná alebo upravovaná položka). remove: "zmaž/vymaž X" -> target. done: "hotovo", "to je všetko". target presne podľa zoznamu.
 - cook: jedlá, ktoré chce človek uvariť alebo pripraviť ("chcem uvariť hovädzí guláš", "urobím burgre", "na večeru lasagne",
   "upečiem bábovku") -> názov jedla v 1. páde ("Hovädzí guláš", "Hovädzí burger"). Suroviny takého jedla NEPRIDÁVAJ do ops – appka ponúkne recepty.
-  Len jedlo, ktoré chce sám navariť alebo upiecť – nie nápoj ani jedlo, ktoré by len zjedol či objednal
-  ("urobím ti čaj", "zjedol by som pizzu" = intent "other"). Ak nič také nezaznelo, cook [].
+  Len konkrétne jedlo, ktoré chce sám navariť alebo upiecť – nie všeobecné "jedlo", "večera", "niečo", nie nápoj ani jedlo,
+  ktoré by len zjedol či objednal ("urobím ti čaj", "zjedol by som pizzu", "urobím jedlo" = intent "other"). Ak nič také nezaznelo, cook [].
 - store: obchod, do ktorého ide nakupovať, ak ho povedal ("idem do Lidla" -> "Lidl", "v Kauflande" -> "Kaufland"), inak null. Obchod nie je položka.
 ${vocab ? `Produkty, ktoré táto domácnosť často kupuje: ${vocab}\n  Keď vyslovené slovo v nákupe znie podobne ako niektorý z nich, je to on – použi presne tento názov. Iné produkty zapíš normálne.\n  Rozhovor podľa tohto zoznamu na nákup NEMEŇ.\n` : ""}${target ? `Upravuje sa položka "${target}": ak veta hovorí o nej (množstvo, jednotka alebo nový názov), vráť jednu operáciu change s target "${target}". Rozhovor ju nemení.\n` : ""}
 Zoznam (názov | množstvo):

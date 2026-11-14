@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recipeCommand, sameDish, splitCook } from "./recipeVoice";
+import { isRealDish, recipeCommand, sameDish, splitCook } from "./recipeVoice";
 
 describe("splitCook", () => {
   it("oddelí jedlo od položiek", () => {
@@ -41,5 +41,14 @@ describe("recipeCommand", () => {
     expect(recipeCommand("tri banány", opts, ings)).toBeNull();
     expect(recipeCommand("tri", opts, ings)).toBeNull();
     expect(recipeCommand("dvojka", opts, ings)).toEqual({ kind: "pick", index: 1 });
+  });
+});
+
+describe("isRealDish", () => {
+  it("všeobecné „jedlo“ nie je recept", () => {
+    expect(isRealDish("Jedlo")).toBe(false);
+    expect(isRealDish("večeru")).toBe(false);
+    expect(isRealDish("Hovädzí guláš")).toBe(true);
+    expect(splitCook("urobím jedlo")).toEqual({ cook: [], rest: "urobím jedlo" });
   });
 });

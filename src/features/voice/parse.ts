@@ -332,11 +332,29 @@ const CHATTER = new Set([
 ]);
 /** Typické výmysly prepisu pri šume či hudbe („Titulky vytvoril…“, „[hudba]“). */
 const NOISE = /^(titulky|hudba|potlesk|smiech|music|applause|laughter|thanks for watching|dakujem za pozornost|dakujem za pozretie)/;
+/** Citoslovcia a reakcie z rozhovoru („ty kokos“ nie je kokos, „ale to je“ nie je víno). */
+const EXCLAIM = /^(ty kokos|ty vole|ty brdo|do kelu|do pekla|do frasa|boze moj|boze|paneboze|jezis maria|jezismaria|jezis|no teda|no nazdar|no to je|ale to je|to je ale|to snad nie|to je super|to je dobre|to je jedno|fakt|naozaj|vazne)\b/;
 
-/** Hovorená veta, ktorá určite nie je nákup (šum, výplňové slová) – netreba ju ani rozoberať. */
+/**
+ * Hovorená veta, ktorá určite nie je nákup – netreba ju ani rozoberať:
+ * šum a výmysly prepisu, samé výplňové slová, citoslovcia („ty kokos“) a ozvena slovníka živého prepisu
+ * (pri šume model niekedy vypíše výrazy oddelené pomlčkami: „Max - Golden Turtle - Finish - …“).
+ */
 export function isChatter(text: string): boolean {
   if (/^\s*[[(*].*[\])*]\s*$/.test(text)) return true;
+  if ((text.match(/\s[-–—](\s|$)/g) ?? []).length >= 2) return true;
   const k = normalizeName(text).replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
   if (!k || NOISE.test(k)) return true;
-  return k.split(" ").every((w) => CHATTER.has(w));
+  const ex = EXCLAIM.exec(k);
+  const rest = ex ? k.slice(ex[0].length).trim() : k;
+  return !rest || rest.split(" ").every((w) => CHATTER.has(w));
+}
+
+/** Názov položky z hovorenej vety, ktorý je skôr celá veta než tovar (najviac 40 znakov a 6 slov). */
+export const tooLong = (name: string) => name.length > 40 || name.trim().split(/\s+/).length > 6;
+
+/** Obchod, ktorý dáva zmysel (aspoň 2 písmená, nie „.“ ani celá veta). */
+export function cleanStore(s: string | null | undefined): string | null {
+  const v = (s ?? "").trim().replace(/[.,!?;:]+$/, "");
+  return v.length <= 30 && /\p{L}{2,}/u.test(v) ? v : null;
 }

@@ -26,12 +26,17 @@ export function splitCook(text: string): { cook: string[]; rest: string } {
   const words = phrase.split(/\s+/).filter(Boolean);
   if (!words.length) return { cook: [], rest: text };
   const dish = words.slice(0, 4).join(" ").replace(/[„“"']/g, "");
+  if (!isRealDish(dish)) return { cook: [], rest: text };
   const tail = [words.slice(4).join(" "), stop ? after.slice(stop.index + stop[0].length) : ""]
     .filter(Boolean)
     .join(" ");
   const rest = `${text.slice(0, m.index)} ${tail}`.replace(/\s+/g, " ").replace(/^[\s,]+|[\s,]+$/g, "");
   return { cook: [cap(dish)], rest };
 }
+
+/** Všeobecné slová, ktoré nie sú konkrétne jedlo („urobím jedlo“ nemá ponúknuť recept „Jedlo“). */
+const GENERIC = /^(jedlo|jedla|jedlicko|nieco|nieco dobre|nieco rychle|nieco na zub|to|ho|ju|vecera|veceru|obed|ranajky|desiata|desiatu|olovrant|dobrota|dobrotu|food|meal|dinner|lunch|breakfast|something)$/;
+export const isRealDish = (name: string) => !GENERIC.test(normalizeName(name).replace(/[^a-z ]+/g, "").trim());
 
 /** Rovnaké jedlo („hovädzí guláš“ = „Hovädzí guláš“, „guláš“ ⊂ „hovädzí guláš“). */
 export function sameDish(a: string, b: string) {

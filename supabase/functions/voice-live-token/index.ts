@@ -2,7 +2,7 @@
 // (gemini-3.5-transcribe-live), aby sa telefón pripojil priamo a kľúč Gemini ostal na serveri.
 //
 // Tok: appka pošle { household_id, locale }. Funkcia overí člena a limit (ai_allow 'voice-live'),
-// zostaví slovník domácnosti (často kupované položky a značky – lepšie rozpozná „Kaiserka“, „Radegast“),
+// zostaví slovník domácnosti (často kupované položky – lepšie rozpozná „Kaiserka“, „Radegast“),
 // a vytvorí token s pevne zamknutým nastavením (model, jazyk, slovník, len text). Token platí
 // 1 minútu na pripojenie a 6 minút celkovo (najviac ~5 centov), použiť sa dá raz.
 // Odpoveď: { token, model, expiresAt } alebo { error: KÓD }.
@@ -26,7 +26,11 @@ const CORS = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
-/** Slovník domácnosti: často kupované položky + značky z bločkov (najviac 100 krátkych výrazov). */
+/**
+ * Slovník domácnosti: len často kupované položky (najviac 40 krátkych výrazov).
+ * Značky z bločkov sa NEPOSIELAJÚ: pri šume model niekedy vypíše celý slovník ako prepis
+ * („Max - Golden Turtle - Finish - …“, 13. 11. 2026) a čím dlhší a čudnejší slovník, tým horšie.
+ */
 async function vocabulary(req: Request, householdId: string): Promise<string[]> {
   const url = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -36,18 +40,11 @@ async function vocabulary(req: Request, householdId: string): Promise<string[]> 
   const add = (s: unknown) => {
     if (typeof s !== "string") return;
     const v = s.trim().replace(/\s+/g, " ");
-    if (v.length >= 3 && v.length <= 40 && out.size < 100) out.add(v);
+    if (v.length >= 3 && v.length <= 30 && out.size < 40) out.add(v);
   };
   try {
-    // Súbežne: často kupované položky a značky z výrobkov domácnosti (ľahký dopyt, nie celý katalóg).
-    const [freq, prod] = await Promise.all([
-      asUser.rpc("frequent_items", { p_household_id: householdId, p_limit: 60 }),
-      asUser.from("products").select("brand").eq("household_id", householdId).is("merged_into", null).not("brand", "is", null).limit(400),
-    ]);
+    const freq = await asUser.rpc("frequent_items", { p_household_id: householdId, p_limit: 40 });
     for (const r of (freq.data as { name?: string }[] | null) ?? []) add(r.name);
-    const brands = new Map<string, number>();
-    for (const p of (prod.data as { brand: string }[] | null) ?? []) brands.set(p.brand, (brands.get(p.brand) ?? 0) + 1);
-    for (const [b] of [...brands.entries()].sort((a, b) => b[1] - a[1])) add(b);
   } catch (e) {
     console.error("voice-live-token vocab", String(e));
   }
