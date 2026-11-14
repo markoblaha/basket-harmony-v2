@@ -96,8 +96,11 @@ function fromServer(ops: ServerOp[]): VoiceOp[] {
   return out;
 }
 
-/** Výsledok AI: operácie so zoznamom, jedlá, ktoré chce človek uvariť, a obchod, ak ho povedal. */
-export type Interpretation = { transcript: string; ops: VoiceOp[]; cook: string[]; store: string | null };
+/**
+ * Výsledok AI: operácie so zoznamom, jedlá, ktoré chce človek uvariť, a obchod, ak ho povedal.
+ * intent "other" = veta nie je nákup (rozhovor, televízor, šum) – nič sa nepridá.
+ */
+export type Interpretation = { transcript: string; intent: "list" | "other"; ops: VoiceOp[]; cook: string[]; store: string | null };
 
 const draftItems = (items: DraftItem[]) => items.map((i) => ({ name: i.name, qty: i.quantity ? qtyLabel(i.quantity, i.unit) : "-" }));
 
@@ -109,6 +112,7 @@ async function callParse(body: Record<string, unknown>, ms: number): Promise<Int
     if (error || !Array.isArray(data?.ops)) return null;
     return {
       transcript: typeof data.transcript === "string" ? data.transcript.trim() : "",
+      intent: data.intent === "other" ? "other" : "list",
       ops: fromServer(data.ops as ServerOp[]),
       cook: (Array.isArray(data.cook) ? data.cook : []).filter((x: unknown): x is string => typeof x === "string" && !!x.trim()).slice(0, 3),
       store: typeof data.store === "string" && data.store.trim() ? data.store.trim() : null,
@@ -120,10 +124,12 @@ async function callParse(body: Record<string, unknown>, ms: number): Promise<Int
 
 /**
  * Veta → operácie od AI (rozumie skloňovaniu, delí vety bez čiarok, pozná tovar na váhu).
+ * Hovorenú vetu AI najprv posúdi, či je to vôbec nákup (mikrofón počuje aj rozhovor okolo);
+ * napísaný text (typed) je zámerný a nefiltruje sa.
  * Vráti null, ak neodpovie do 6 s alebo zlyhá – vtedy ostane okamžitý lokálny rozbor.
  */
-export function interpretAI(text: string, items: DraftItem[], target: string | null, vocab: string[] = []) {
-  return callParse({ text, target, items: draftItems(items), vocab: vocab.slice(0, 120) }, 6000);
+export function interpretAI(text: string, items: DraftItem[], target: string | null, vocab: string[] = [], typed = false) {
+  return callParse({ text, target, items: draftItems(items), vocab: vocab.slice(0, 120), source: typed ? "typed" : "speech" }, 6000);
 }
 
 /**

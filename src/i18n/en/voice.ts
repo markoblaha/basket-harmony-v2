@@ -119,7 +119,7 @@ export const enVoice: Record<keyof typeof skVoice, string> = {
   "vx.whereAria": "Where to add",
   "vx.restored": "You're continuing a dictated list ({n})",
   "vx.emptyT": "Say what to buy",
-  "vx.emptyS": "Speak naturally, as if dictating a list. Items appear here and you add them with Done.",
+  "vx.emptyS": "Speak naturally, as if dictating a list. Only products get written down — conversation and noise around you are skipped. Send them to the list with Done.",
   "vx.tryLabel": "Try for example",
   "vx.ex1": "Two milks, bread and half a kilo of minced meat to Lidl",
   "vx.ex2": "Bananas and cheese",
@@ -159,5 +159,8 @@ export const enVoice: Record<keyof typeof skVoice, string> = {
   "vx.sheetDone": "Done",
   "vx.close": "Close",
   "vx.unsure": "{name}?",
+  "vx.skipped": "Not added — doesn’t sound like shopping",
+  "vx.addAnyway": "Add anyway",
+  "vx.autoPaused": "Paused — there’s only conversation around. Tap the mic when you want to dictate.",
   "vx.unclearHint": "tap the right option",
 };

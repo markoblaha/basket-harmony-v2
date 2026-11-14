@@ -29,11 +29,11 @@ import {
   type SaveResult,
   type VoicePlan,
 } from "./api";
-import { keepSaidWords, matchStore, parseLocal, splitStore, type VoiceOp } from "./parse";
+import { isChatter, keepSaidWords, matchStore, parseLocal, splitStore, type VoiceOp } from "./parse";
 
 /** Názvy od AI zúžené na to, čo zaznelo (pravidlo „appka nič nedomýšľa“). */
 const asSaid = (ops: VoiceOp[], text: string): VoiceOp[] => (text ? ops.map((o) => (o.op === "add" ? { ...o, name: keepSaidWords(o.name, text) } : o)) : ops);
-import { applyOps, diff, findItem, reconcile, type Effect } from "./engine";
+import { applyOps, diff, findItem, reconcile, undo, type Effect } from "./engine";
 import { recipeCommand, splitCook } from "./recipeVoice";
 import { useSpeech } from "./useSpeech";
 import { recorderSupported, useRecorder, type StreamSink } from "./useRecorder";
@@ -58,6 +58,12 @@ type Engine = "speech" | "rec" | "none";
 const firstEngine = (): Engine => (recorderSupported() ? "rec" : hasSpeech() ? "speech" : "none");
 
 type Modal = "where" | "store" | "unsure" | "recipes" | null;
+
+/**
+ * Po toľkých vetách za sebou, ktoré nie sú nákup (rozhovor okolo), sa počúvanie samo pozastaví:
+ * nič náhodné nepribudne, AI sa zbytočne nevolá (stojí peniaze a má hodinový limit) a mikrofón nepočúva rozhovor.
+ */
+const SKIP_LIMIT = 4;
 
 /**
  * Hlasový nákup. Otvorí sa stredným tlačidlom lišty a hneď počúva:
@@ -104,6 +110,11 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   // Mikrofón sa po otvorení zapne sám, ak to nastavenie (Viac → Nastavenia) nevypne.
   const [listening, setListening] = useState(() => getSetting("micAutostart"));
   const [said, setSaid] = useState("");
+  /** Posledná veta, ktorú appka nepridala (rozhovor, šum) – ukáže sa s „Pridať aj tak“. */
+  const [skipped, setSkipped] = useState("");
+  /** Mikrofón sa sám pozastavil, lebo okolo sa len rozprávalo (SKIP_LIMIT viet za sebou). */
+  const [autoPaused, setAutoPaused] = useState(false);
+  const skipRun = useRef(0);
   const [refining, setRefining] = useState(0);
   /** Nahrávky na serveri, ktoré ešte nemajú výsledok – v zozname ich ukazuje karta „Spracúvam…“. */
   const [pendingAudio, setPendingAudio] = useState(0);
@@ -346,9 +357,25 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
 
   // ---------------------------------------------------------------- vety
 
-  /** Text (prehliadač alebo napísaný): hneď lokálny rozbor, súčasne AI, ktorá výsledok spresní. */
+  /** Veta nebola nákup: ukáže sa ako nepridaná; po SKIP_LIMIT takých vetách za sebou sa počúvanie pozastaví. */
+  const skip = useCallback((text: string) => {
+    setSkipped(text);
+    if (++skipRun.current < SKIP_LIMIT) return;
+    skipRun.current = 0;
+    setListening(false);
+    setAutoPaused(true);
+  }, []);
+
+  /** Bez AI (výpadok): vyzerá slovo ako tovar? Pozná ho katalóg domácnosti alebo zoznam kategórií. */
+  const productLike = useCallback((name: string) => !!estRef.current.resolve(name) || guessCategory(name) !== "other", []);
+
+  /**
+   * Veta (živý prepis alebo napísaný text): hneď lokálny rozbor, súčasne AI, ktorá výsledok spresní.
+   * Mikrofón počúva stále, takže hovorená veta môže byť aj rozhovor okolo – vtedy rozhodne AI, či je to nákup,
+   * a z rozhovoru sa nepridá nič. Napísaný text (typed) je zámerný a nefiltruje sa.
+   */
   const apply = useCallback(
-    (text: string) => {
+    (text: string, typed = false) => {
       const sp = splitStore(text, stores);
       if (modalRef.current === "where") {
         const s = sp.store ?? matchStore(text, stores);
@@ -356,7 +383,14 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         else toast.show(t("voice.storeNotUnderstood"));
         return;
       }
-      if (sp.store && !targetListId) setStore(sp.store);
+      // Šum a samé výplňové slová („hm“, „dobre“, „ďakujem“) – netreba ani AI.
+      if (!typed && isChatter(text)) {
+        skip(text);
+        return;
+      }
+      // Obchod z hovorenej vety platí hneď len pri samotnom „idem do Lidla“; inak až keď AI potvrdí nákup
+      // („bol som včera v Bille“ nie je cieľ zoznamu).
+      if (sp.store && !targetListId && (typed || !sp.rest)) setStore(sp.store);
       if (!sp.rest) {
         if (sp.store) haptic(10);
         return;
@@ -364,7 +398,8 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       if (runCommand(sp.rest)) return;
       const mine = ++seq.current;
       const cook = splitCook(sp.rest);
-      for (const dish of cook.cook) cards.addQuery(dish, mine);
+      // Recept z napísanej vety hneď; z hovorenej až keď AI potvrdí, že chce variť („urobím ti čaj“ nie je recept).
+      if (typed) for (const dish of cook.cook) cards.addQuery(dish, mine);
       let rest = cook.rest;
 
       // „nie, tri“ / „nie 250 g“ = oprava vybranej alebo poslednej (najvyššej) karty.
@@ -376,48 +411,81 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       const more = /^(este|ešte)\s+(jeden|jedno|jednu|jedna|jedny)\s+\S/i.test(rest);
       let target = more ? null : (sel?.name ?? (correction ? (before[0]?.name ?? null) : null));
       let ops: VoiceOp[] = rest ? parseLocal(rest, target) : [];
-      // samotné množstvo („250 g“, „tri“) → oprava poslednej karty
+      // samotné množstvo („250 g“, „tri“) → oprava poslednej karty; iné slová ju nepremenujú („prosím“ nie je názov)
       if (rest && !target && !ops.length && before[0] && !cook.cook.length) {
-        target = before[0].name;
-        ops = parseLocal(rest, target);
+        const fix = parseLocal(rest, before[0].name);
+        if (fix.some((o) => o.op === "change" && (o.quantity != null || o.delta != null))) {
+          target = before[0].name;
+          ops = fix;
+        }
       }
-      const missing = ops.filter((o): o is Extract<VoiceOp, { op: "remove" }> => o.op === "remove" && !findItem(before, o.target));
-      for (const m of missing) toast.show(t("voice.notInList", { name: m.target }));
+      const notIn = (list: VoiceOp[], items: DraftItem[]) =>
+        list.filter((o): o is Extract<VoiceOp, { op: "remove" }> => o.op === "remove" && !findItem(items, o.target));
+      if (typed) for (const m of notIn(ops, before)) toast.show(t("voice.notInList", { name: m.target }));
       const local = applyOps(before, ops);
       if (local.done) setDoneHint(true);
       // Miestny rozbor sa ukáže hneď len vtedy, keď každú novú položku pozná katalóg domácnosti.
       // Inak („pol kila mletého mäsa“ → „Mletého“, „Mäsa“) sa počká na AI (~1 s) – žiadne preblikávanie zlých položiek.
-      const sure = ops.every((o) => o.op !== "add" || (!!estRef.current.resolve(o.name) && o.name.trim().split(/\s+/).length <= 3));
+      // Z hovorenej vety čaká na AI aj mazanie a premenovanie („vyhoď mlieko, je pokazené“ nie je povel do zoznamu).
+      const known = (name: string) => !!estRef.current.resolve(name) && name.trim().split(/\s+/).length <= 3;
+      const sure = ops.every((o) =>
+        o.op === "add" ? known(o.name) : o.op === "change" ? typed || o.name == null : o.op === "remove" ? typed : true,
+      );
       const held = local.understood && !sure;
       if (local.understood && !held) {
+        skipRun.current = 0;
         present(local.items);
         haptic(10);
+        showRemoved(local);
+        if (sel && target) setSelected(null);
       }
       if (held) setPendingAudio((p) => p + 1);
-      showRemoved(local);
-      if (sel && target && local.understood) setSelected(null);
       if (local.done && !local.added.length && !local.merged.length && !local.removed.length) return;
-      // Len jedlo bez položiek – AI netreba, recepty sa už načítavajú.
-      if (!rest && cook.cook.length) return;
+      // Len jedlo bez položiek z napísanej vety – AI netreba, recepty sa už načítavajú.
+      if (typed && !rest && cook.cook.length) return;
 
       setRefining((r) => r + 1);
       // Zoznam „často kupujete“ (pokyn „podobne znejúce slovo = ten produkt“) patrí len k nahrávke, kde sa
       // slovo môže zle počuť. Pri texte sa nič zle počuť nedá – inak AI zmenila „chlieb“ na „Rožky“.
-      void interpretAI(sp.rest, before, target, []).then((ai) => {
+      void interpretAI(sp.rest, before, target, [], typed).then((ai) => {
         setRefining((r) => r - 1);
         if (held) setPendingAudio((p) => p - 1);
         if (!ai) {
-          // AI neodpovedala: zadržaný miestny rozbor sa ukáže aspoň takto.
-          if (held) present(applyOps(itemsRef.current, ops).items);
-          if (!local.understood && !cook.cook.length && seq.current === mine) toast.show(t("voice.notUnderstood"));
+          // AI neodpovedala (bez internetu, chyba): z hovorenej vety sa pridá len to, čo vyzerá ako tovar.
+          if (held) {
+            const safe = typed ? ops : ops.filter((o) => (o.op === "add" ? productLike(o.name) : o.op !== "remove" || o.target.split(/\s+/).length <= 3));
+            const eff = applyOps(itemsRef.current, safe);
+            if (eff.understood) {
+              skipRun.current = 0;
+              present(eff.items);
+              showRemoved(eff);
+            } else if (!typed) skip(text);
+          }
+          if (!typed) for (const dish of cook.cook) cards.addQuery(dish, mine);
+          if (typed && !local.understood && !cook.cook.length && seq.current === mine) toast.show(t("voice.notUnderstood"));
           return;
         }
+        if (!typed && ai.intent === "other") {
+          // Rozhovor, televízor, šum: nič sa nepridá a okamžitý miestny rozbor (ak sa ukázal) sa vráti späť.
+          if (!held && local.understood) present(undo(itemsRef.current, local));
+          skip(text);
+          return;
+        }
+        if (!typed && sp.store && !targetListId) setStore(sp.store);
         if (ai.store && !targetListId) setStore((s) => s || ai.store!);
         cards.confirmCook(mine, ai.cook);
         if (held) {
-          const eff = applyOps(itemsRef.current, asSaid(ai.ops.length ? ai.ops : ops, sp.rest));
-          present(eff.items);
-          haptic(10);
+          // Napísaný text: keď AI nič nevráti, ostane miestny rozbor. Hovorená veta: rozhoduje AI.
+          const aiOps = asSaid(ai.ops.length || !typed ? ai.ops : ops, sp.rest);
+          if (!typed) for (const m of notIn(aiOps, itemsRef.current)) toast.show(t("voice.notInList", { name: m.target }));
+          const eff = applyOps(itemsRef.current, aiOps);
+          if (eff.understood) {
+            skipRun.current = 0;
+            present(eff.items);
+            haptic(10);
+            showRemoved(eff);
+            if (sel && target) setSelected(null);
+          } else if (!typed && !ai.cook.length && !ai.store) skip(text);
           if (eff.done) setDoneHint(true);
           return;
         }
@@ -427,7 +495,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         if (r.done) setDoneHint(true);
       });
     },
-    [stores, targetListId, present, toast, runCommand, cards, showRemoved],
+    [stores, targetListId, present, toast, runCommand, cards, showRemoved, productLike, skip],
   );
 
   /** Nahrávka (iPhone): prepis aj rozbor prišiel naraz z AI. */
@@ -440,24 +508,30 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         else toast.show(t("voice.storeNotUnderstood"));
         return;
       }
-      if (res.store && !targetListId) setStore(res.store);
       if (res.transcript && runCommand(splitStore(res.transcript, stores).rest || res.transcript)) return;
+      // Rozhovor, televízor, šum – nič sa nepridá, veta sa len ukáže ako nepridaná.
+      if (res.intent === "other") {
+        if (res.transcript) skip(res.transcript);
+        return;
+      }
+      if (res.store && !targetListId) setStore(res.store);
       const mine = ++seq.current;
       for (const dish of res.cook) cards.addQuery(dish, mine);
       if (!res.ops.length) {
-        if (!res.cook.length && !res.store && res.transcript) toast.show(t("voice.notUnderstood"));
+        if (!res.cook.length && !res.store && res.transcript) skip(res.transcript);
         return;
       }
       const eff = applyOps(itemsRef.current, asSaid(res.ops, res.transcript));
       if (eff.done) setDoneHint(true);
       if (eff.understood) {
+        skipRun.current = 0;
         present(eff.items);
         haptic(10);
       }
       showRemoved(eff);
       if (target && eff.understood) setSelected(null);
     },
-    [stores, targetListId, runCommand, cards, present, showRemoved, toast],
+    [stores, targetListId, runCommand, cards, present, showRemoved, toast, skip],
   );
 
   // Úseky nahrávky idú na server hneď (súbežne), výsledky sa však použijú v poradí, ako zazneli.
@@ -487,6 +561,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   const onFinal = useCallback(
     (text: string) => {
       setSaid(text);
+      setSkipped("");
       apply(text);
     },
     [apply],
@@ -573,6 +648,12 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   useEffect(() => {
     if (blocked) setTyping(true);
   }, [blocked]);
+  useEffect(() => {
+    if (listening) {
+      setAutoPaused(false);
+      skipRun.current = 0;
+    }
+  }, [listening]);
 
   // Medzi vetami: spojenie sa obnoví (token platí 6 minút, po výpadku signálu sa pripojí znova).
   useEffect(() => {
@@ -652,8 +733,17 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
     if (!v) return;
     setTxt("");
     setSaid(v);
+    setSkipped("");
+    setAutoPaused(false);
     setRestored(false);
-    apply(v);
+    apply(v, true);
+  };
+  /** „Pridať aj tak“: nepridaná veta sa spracuje ako napísaná (bez posudzovania, či je to nákup). */
+  const addSkipped = () => {
+    const v = skipped;
+    setSkipped("");
+    haptic(10);
+    apply(v, true);
   };
   const micOn = listening && !blocked;
   // Prstenec mikrofónu dýcha podľa skutočnej hlasitosti (premenná --lvl priamo na prvku, bez prekresľovania).
@@ -876,6 +966,18 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
                 <i />
                 <i />
                 <i />
+              </span>
+            ) : autoPaused && !micOn ? (
+              <span className="dim">{t("vx.autoPaused")}</span>
+            ) : said && skipped === said ? (
+              <span className="vx-skip">
+                <span className="dim">„{said}“</span>
+                <span className="vx-skip-row">
+                  <em>{t("vx.skipped")}</em>
+                  <button type="button" onClick={addSkipped}>
+                    {t("vx.addAnyway")}
+                  </button>
+                </span>
               </span>
             ) : said ? (
               <span>{said}</span>

@@ -50,7 +50,7 @@ export const enHelp: Record<keyof typeof skHelp, string> = {
   "co.vtarget.t": "Where the items go",
   "co.vtarget.x": "Tap to choose a list. You can also say it, for example “to Lidl”.",
   "co.vorb.t": "Speak",
-  "co.vorb.x": "When the ball pulses, the app is listening. Tap to pause listening.",
+  "co.vorb.x": "When the ball pulses, the app is listening. It writes down only products and skips conversation around you. Tap to pause listening.",
   "co.vdone.t": "Done",
   "co.vdone.x": "When you have everything, tap Done. The items are saved to the list.",
   "co.taste.t": "Don't know what to cook?",

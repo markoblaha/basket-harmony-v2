@@ -48,7 +48,7 @@ export const skHelp = {
   "co.vtarget.t": "Kam sa položky pridajú",
   "co.vtarget.x": "Ťuknutím vyberieš zoznam. Môžeš ho aj povedať, napríklad „do Lidla“.",
   "co.vorb.t": "Hovor",
-  "co.vorb.x": "Keď prstenec okolo mikrofónu dýcha, appka počúva. Ťuknutím počúvanie pozastavíš.",
+  "co.vorb.x": "Keď prstenec okolo mikrofónu dýcha, appka počúva. Zapíše len tovar – rozhovor okolo vynechá. Ťuknutím počúvanie pozastavíš.",
   "co.vdone.t": "Hotovo",
   "co.vdone.x": "Keď máš všetko, ťukni na Hotovo. Položky sa uložia do zoznamu.",
   "co.taste.t": "Nevieš, čo variť?",

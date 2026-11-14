@@ -318,3 +318,25 @@ export function keepSaidWords(name: string, said: string): string {
   const out = keep.join(" ").trim();
   return out ? out.charAt(0).toUpperCase() + out.slice(1) : name;
 }
+
+/**
+ * Slová, ktoré samy osebe nie sú nákup: citoslovcia, súhlas, pozdravy, poďakovanie (aj anglicky).
+ * Hovorená veta len z nich („hm“, „dobre, jasné“, „ďakujem“) sa ani neposiela na server.
+ */
+const CHATTER = new Set([
+  "hm", "hmm", "hmmm", "ehm", "eh", "ee", "eee", "mm", "mmm", "mhm", "aha", "aa", "aaa", "oh", "och", "jaj", "joj", "fuj", "au", "wow",
+  "no", "nuz", "tak", "takze", "teda", "proste", "vlastne", "dobre", "dobra", "jasne", "ok", "okej", "oki", "ano", "hej", "nie", "neviem",
+  "ahoj", "cau", "cauko", "dakujem", "dakujeme", "vdaka", "diky", "prosim", "pockaj", "moment", "super", "fajn", "presne", "halo",
+  "vidis", "vies", "ja", "ty", "to", "ze", "a", "aj", "tu", "tam", "uz", "este", "teraz", "potom",
+  "um", "uh", "yeah", "yes", "okay", "thanks", "hello", "hi", "hey", "so", "well", "the",
+]);
+/** Typické výmysly prepisu pri šume či hudbe („Titulky vytvoril…“, „[hudba]“). */
+const NOISE = /^(titulky|hudba|potlesk|smiech|music|applause|laughter|thanks for watching|dakujem za pozornost|dakujem za pozretie)/;
+
+/** Hovorená veta, ktorá určite nie je nákup (šum, výplňové slová) – netreba ju ani rozoberať. */
+export function isChatter(text: string): boolean {
+  if (/^\s*[[(*].*[\])*]\s*$/.test(text)) return true;
+  const k = normalizeName(text).replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!k || NOISE.test(k)) return true;
+  return k.split(" ").every((w) => CHATTER.has(w));
+}

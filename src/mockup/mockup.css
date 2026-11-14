@@ -2228,6 +2228,11 @@
 .bhm .vx-heard.st-hear small::before { background: var(--danger); animation: mk-pulse 1.2s ease-in-out infinite; }
 .bhm .vx-heard.st-think small::before { background: var(--honey); animation: mk-pulse 1.2s ease-in-out infinite; }
 .bhm .vx-heard.st-edit small::before { background: var(--acc); }
+.bhm .vx-heard .vx-skip { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bhm .vx-heard .vx-skip .dim { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bhm .vx-skip-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; line-height: 1.3; color: var(--sec); }
+.bhm .vx-skip-row em { font-style: normal; min-width: 0; }
+.bhm .vx-skip-row button { flex: none; min-height: 36px; padding: 0 14px; border-radius: 99px; font-size: 13px; font-weight: 700; color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); }
 .bhm .vx-cap { margin: -2px 0 0; text-align: center; font-size: 13px; line-height: 1.35; color: var(--sec); }
 .bhm .vx-exl { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; align-items: center; }
 .bhm .vx-exl small { font-size: 12.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--ter); }

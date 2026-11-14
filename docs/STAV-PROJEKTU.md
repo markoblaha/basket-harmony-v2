@@ -1,6 +1,6 @@
 # Stav projektu (odovzdanie pre ďalšiu reláciu)
 
-Aktualizované 2. 11. 2026 (Fáza 0 prestavby). Pred prácou si prečítaj celé – je to krátke.
+Aktualizované 14. 11. 2026 (hlas – len nákup). Pred prácou si prečítaj celé – je to krátke.
 
 ## Kde čo beží
 
@@ -33,6 +33,10 @@ servera, chybové hlásenia, pretekanie, text mimo obrazovky a prekrytia. Fotky 
 **Test toku nákupu:** `testy/nakup.cjs` (rovnaké premenné) – nový zoznam → 3 položky písaním → Nakupovať → všetko do košíka →
 Dokončiť nákup → Teraz nie → zoznam je v Histórii. Zapisuje do testovacej DB (zoznam „Tok nákupu …“); rozbehnutý nákup
 z prerušeného behu na začiatku ukončí (`end_shopping`).
+**Test hlasu:** `testy/hlas.cjs` (rovnaké premenné) – falošný mikrofón (zvukové úseky) + falošný živý prepis „povie“ vety:
+rozhovor → nič a „Nepridané · Pridať aj tak“ (ťuk pridá), nákup → položky, „hm“ → bez volania AI, „bol som v Bille“ → obchod
+sa nezmení, 4 vety rozhovoru za sebou → mikrofón sa sám pozastaví. Rozbor viet je podvrhnutý; `REAL=1` volá skutočnú
+parse-voice v testovacej DB (~8 volaní AI). Nič neukladá.
 
 ## Pred zlúčením testovacej vetvy do `main` (nedokončené)
 
@@ -53,7 +57,7 @@ z prerušeného behu na začiatku ukončí (`end_shopping`).
    price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
    (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
-   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v5,
+   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v8 (rozhovor vs. nákup, 14. 11.),
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
    read-statement v3. Funkciu `proto-images` (vypnutá, 410) možno zmazať.
 4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` testovacích riadkov vo vnútri bloku, ktorý sa celý vráti
@@ -88,6 +92,17 @@ z prerušeného behu na začiatku ukončí (`end_shopping`).
   mikrofónom bez automatickej hlasitosti aj so stálym hlukom; pri dlhom diktovaní odošle úsek už po krátkej pauze.
   Ak iPhone zvuk appky nepustí (prišlo 0 nahrávok od 926f665), do 1,5 s sa ukáže „Ťukni kamkoľvek“ a ťuk ho rozbehne
   (`stalled`/`wake` v `useRecorder`). Overiť na skutočnom iPhone: v záznamoch parse-voice musia pribúdať „audio“.
+- **Hlas – len nákup, nie rozhovor (14. 11. 2026, pokyn majiteľa „aby nepridával hocijaké slová, len produkty“):**
+  Príčina: keď AI vetu nevyhodnotila ako nákup (prázdny výsledok), appka použila svoj jednoduchý miestny rozbor, ktorý
+  každé slovo považuje za položku; AI navyše nezmyselné slová vracala ako „nejasné“ položky. Teraz: parse-voice (v8) najprv
+  určí `intent` („list“ / „other“ = rozhovor, otázka, televízor, šum) a pri každej položke `is_product`; z rozhovoru nepridá
+  nič (ani recept, ani obchod). Appka rozhodnutie AI rešpektuje (už žiadna náhrada miestnym rozborom), samé výplňové slová
+  a výmysly prepisu („hm“, „ďakujem“, „[hudba]“) ani neposiela (`isChatter` v `parse.ts`), mazanie/premenovanie a recept
+  z hovorenej vety čakajú na AI, obchod z vety („bol som v Bille“) sa nastaví až po potvrdení. Bez AI (výpadok) pridá len to,
+  čo pozná katalóg alebo kategórie. Nepridaná veta sa ukáže s „Nepridané – neznie to ako nákup · Pridať aj tak“ (ťuk ju
+  spracuje ako napísanú). Po 4 vetách rozhovoru za sebou sa mikrofón sám pozastaví (šetrí AI – limit 120 viet/hod. – a nič
+  náhodné nepribudne). Napísaný text sa nefiltruje (`source: "typed"`). Overené: sada 40 viet na testovacej DB 40/40
+  (15 nákupov, 25 rozhovorov), druhá sada a `testy/hlas.cjs`. Neoverené: skutočný iPhone so živým rozhovorom.
 - **Viac:** hlavné prepínače + „Rozšírené“, rozpočet cez list z Analytiky, poradie obchodov ťahaním,
   vibrácie na iPhone cez systémový prepínač (`haptic()` v `components/kit.tsx`).
 - Systémová lišta iPhonu vo farbe témy, plynulejšie animácie (`components/motion.ts`: FLIP, animateOut, collapseOut).

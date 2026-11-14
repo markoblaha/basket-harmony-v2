@@ -118,7 +118,7 @@ export const skVoice = {
   "vx.whereAria": "Kam pridávať",
   "vx.restored": "Pokračuješ v rozdiktovanom zozname ({n})",
   "vx.emptyT": "Hovor, čo kúpiť",
-  "vx.emptyS": "Hovor prirodzene, ako pri diktovaní zoznamu. Položky sa ukážu tu a pridáš ich tlačidlom Hotovo.",
+  "vx.emptyS": "Hovor prirodzene, ako pri diktovaní zoznamu. Zapíšem len tovar – rozhovor a zvuky okolo vynechám. Do zoznamu ho pošleš tlačidlom Hotovo.",
   "vx.tryLabel": "Skús napríklad",
   "vx.ex1": "Dve mlieka, chlieb a pol kila mletého mäsa do Lidla",
   "vx.ex2": "Banány a syr",
@@ -158,5 +158,8 @@ export const skVoice = {
   "vx.sheetDone": "Hotovo",
   "vx.close": "Zavrieť",
   "vx.unsure": "{name}?",
+  "vx.skipped": "Nepridané – neznie to ako nákup",
+  "vx.addAnyway": "Pridať aj tak",
+  "vx.autoPaused": "Pozastavil som – okolo sa len rozpráva. Keď budeš diktovať, ťukni na mikrofón.",
   "vx.unclearHint": "ťukni na správnu možnosť",
 } as const;

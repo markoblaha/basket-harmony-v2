@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keepSaidWords, matchStore, parseLocal, splitStore } from "./parse";
+import { isChatter, keepSaidWords, matchStore, parseLocal, splitStore } from "./parse";
 
 const add = (text: string) => parseLocal(text).filter((o) => o.op === "add");
 
@@ -90,5 +90,16 @@ describe("keepSaidWords – AI nedomýšľa", () => {
   });
   it("preklad značky nechá", () => {
     expect(keepSaidWords("Pilsner Urquell", "šesť plzní")).toBe("Pilsner Urquell");
+  });
+});
+
+describe("isChatter", () => {
+  it("výplňové slová, pozdravy a výmysly prepisu nie sú nákup", () => {
+    for (const x of ["hm", "Hmm…", "dobre, jasné", "Áno áno.", "ďakujem", "ahoj", "no tak", "OK", "[hudba]", "(smiech)", "Titulky vytvoril JohnyX", "Ďakujem za pozornosť.", "  "])
+      expect(isChatter(x), x).toBe(true);
+  });
+  it("veta s tovarom alebo číslom ide ďalej (rozhodne AI)", () => {
+    for (const x of ["mlieko", "dve", "nie, tri", "hotovo", "zmaž banány", "ahoj, kúp mlieko", "kde máš kľúče", "jasné, a ešte chlieb"])
+      expect(isChatter(x), x).toBe(false);
   });
 });
