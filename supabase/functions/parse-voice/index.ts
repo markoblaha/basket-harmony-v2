@@ -171,6 +171,7 @@ async function call(cfg: Cfg, parts: Part[], timeoutMs: number, g: Guarded): Pro
       thinking: cfg.thinking?.thinkingLevel as ThinkingLevel | undefined, timeoutMs,
     });
     g.log(cfg.model, res.usage, true);
+    console.log("parse-voice tokeny", cfg.model, "vstup", res.usage.input, "z cache", res.usage.cached ?? 0, "výstup", res.usage.output);
     if (!Array.isArray(res.json?.ops)) throw new Error("GEMINI_BAD_JSON");
     return res.json as Result;
   } catch (e) {

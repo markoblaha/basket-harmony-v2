@@ -29,7 +29,8 @@ export function priceFor(model: string, at: Date = new Date()): { input: number;
   return later ?? PRICES[model] ?? (day >= "2027-01-01" ? { input: 1.5, output: 7.5 } : { input: 0.75, output: 3.75 });
 }
 
-export type Usage = { input: number; output: number; thinking: number };
+/** cached = časť vstupu, ktorú Google vzal z cache (implicitné ukladanie rovnakého začiatku pokynov) – účtuje sa lacnejšie. */
+export type Usage = { input: number; output: number; thinking: number; cached?: number };
 export type ThinkingLevel = "minimal" | "low" | "medium" | "high";
 
 export type GeminiCall = {
@@ -88,6 +89,7 @@ export async function callGemini(c: GeminiCall): Promise<GeminiResult> {
     input: m.promptTokenCount ?? 0,
     output: m.candidatesTokenCount ?? 0,
     thinking: m.thoughtsTokenCount ?? 0,
+    cached: m.cachedContentTokenCount ?? 0,
   };
   const candidate = data?.candidates?.[0];
   const out = candidate?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("");
