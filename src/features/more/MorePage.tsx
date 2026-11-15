@@ -11,7 +11,7 @@ import { BottomSheet, ConfirmDialog, PersonAvatar, Seg, SheetHeader, hapticsSupp
 import { cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useAuth, useUserId } from "@/features/auth/AuthProvider";
-import { deleteAccount } from "@/features/auth/api";
+import { deleteAccount, sendPasswordLink } from "@/features/auth/api";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useCreateHousehold, useCreateInvitation, useMembers, useMonthlyBudget, useProfiles, useUpdateDisplayName } from "@/features/household/api";
 import { useOverview } from "@/features/analytics/api";
@@ -183,6 +183,8 @@ export function MorePage() {
               <h1 className="lt">{shownName}</h1>
               <div className="meta">{memberCount > 1 ? t("mo.household", { name: household.name, n: tn("more.memberCount", memberCount) }) : t("mo.solo")}</div>
             </div>
+            {/* Ťuk otvorí profil (meno, heslo) – šípka, aby bolo vidno, že sa dá ťuknúť. */}
+            <I n="caret-right" w="bold" cls="chev" />
           </button>
 
           <div className="h2 sm">{t("mo.notifs")}</div>
@@ -326,7 +328,7 @@ export function MorePage() {
       </div>
 
       <BottomSheet open={sheet === "profile"} onClose={close} label={t("more.profile.title")}>
-        <ProfileSheet current={myName} email={email} onClose={close} />
+        <ProfileSheet current={myName} email={email} hasPassword={!!user?.app_metadata?.providers?.includes("email")} onClose={close} />
       </BottomSheet>
       <Sheet open={sheet === "switch"} onClose={close} label={t("more.switchHousehold")}>
         <div className="sh-head">
@@ -412,7 +414,7 @@ export function MorePage() {
 }
 
 /** V1P – úprava mena a priezviska (v databáze je jedno meno, skladá sa z oboch polí). */
-function ProfileSheet({ current, email, onClose }: { current: string; email: string; onClose: () => void }) {
+function ProfileSheet({ current, email, hasPassword, onClose }: { current: string; email: string; /** Účet s heslom (nie len Google). */ hasPassword: boolean; onClose: () => void }) {
   const me = useUserId();
   const toast = useToast();
   const update = useUpdateDisplayName(me);
@@ -420,6 +422,19 @@ function ProfileSheet({ current, email, onClose }: { current: string; email: str
   const [first, setFirst] = useState(parts[0] ?? "");
   const [last, setLast] = useState(parts.slice(1).join(" "));
   const full = `${first.trim()} ${last.trim()}`.trim();
+  const [sending, setSending] = useState(false);
+
+  async function changePassword() {
+    setSending(true);
+    try {
+      await sendPasswordLink(email);
+      toast.show(t("more.profile.passwordSent", { email }), "success");
+    } catch (err) {
+      toast.show(errorMessage(err), "error");
+    } finally {
+      setSending(false);
+    }
+  }
 
   async function save() {
     if (!first.trim()) return;
@@ -461,6 +476,11 @@ function ProfileSheet({ current, email, onClose }: { current: string; email: str
           <span className="field-label">{t("more.profile.email")}</span>
           <input className="input" value={email} readOnly style={{ color: "var(--text-2)" }} />
         </label>
+        {hasPassword && email && (
+          <button type="button" className="btn btn-line btn-block" onClick={() => void changePassword()} disabled={sending}>
+            {t("more.profile.changePassword")}
+          </button>
+        )}
         <button type="submit" className="btn btn-ink btn-block btn-lg" disabled={!first.trim() || update.isPending}>
           {t("common.save")}
         </button>

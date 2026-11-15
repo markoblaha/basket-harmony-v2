@@ -1481,7 +1481,7 @@
 .bhm .target b { font-size: 15px; }
 .bhm .tile.tph, .bhm .th[class*="pic-"] { background-size: 165%; background-position: center 55%; }
 .bhm .qblock .seg { width: min(100%, 240px); align-self: center; }
-.bhm .seg > button { white-space: nowrap; padding-left: 12px; padding-right: 12px; }
+.bhm .seg > button { white-space: nowrap; padding-left: 10px; padding-right: 10px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .bhm .follow .live .t2, .bhm .follow .live .s { text-wrap: balance; }
 .bhm .coach { position: absolute; inset: 0; z-index: 95; animation: mk-fadein var(--dur-3); cursor: pointer; }
 .bhm .co-hole { position: absolute; box-shadow: 0 0 0 9999px rgb(8 8 10 / .58); transition: all var(--dur-3) var(--ease-out); animation: mk-copulse 1.8s ease-in-out .4s infinite; pointer-events: none; }
@@ -1687,7 +1687,7 @@
 .bhm .vx-done:disabled { opacity: .35; }
 .bhm .vx-panel { position: absolute; inset: 0; z-index: 5; }
 .bhm .vx-scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .42); animation: mk-fadein var(--dur-3); }
-.bhm .vx-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; overflow-y: auto; border-radius: 28px 28px 0 0; padding: 8px 16px calc(var(--sab) + 14px + var(--kb)); display: flex; flex-direction: column; gap: 10px; background: var(--mat-spec), var(--mat-thick); -webkit-backdrop-filter: blur(44px) saturate(1.8); backdrop-filter: blur(44px) saturate(1.8); box-shadow: var(--mat-edge), 0 -10px 40px -10px rgb(0 0 0 / .35); animation: mk-up var(--dur-3) var(--ease-out); }
+.bhm .vx-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; overflow-y: auto; border-radius: 28px 28px 0 0; padding: 8px 16px calc(var(--sab) + 14px + var(--kb, 0px)); display: flex; flex-direction: column; gap: 10px; background: var(--mat-spec), var(--mat-thick); -webkit-backdrop-filter: blur(44px) saturate(1.8); backdrop-filter: blur(44px) saturate(1.8); box-shadow: var(--mat-edge), 0 -10px 40px -10px rgb(0 0 0 / .35); animation: mk-up var(--dur-3) var(--ease-out); }
 .bhm .vx-sheet .grab { width: 40px; height: 5px; border-radius: 99px; background: var(--ter); align-self: center; margin-bottom: 4px; cursor: pointer; }
 .bhm .vx-sheet h2 { font-size: 22px; font-weight: 800; letter-spacing: -.4px; }
 .w .bhm .vx-sheet h2 { font-family: var(--serif); font-weight: 520; }
@@ -1705,20 +1705,6 @@
 .bhm .vx-stores button.on, .bhm .vx-days button.on { box-shadow: inset 0 0 0 2px var(--acc); background: color-mix(in srgb, var(--acc) 10%, var(--card)); }
 .bhm .vx-days { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .bhm .vx-days button { min-height: 40px; padding: 0 12px; border-radius: 99px; font-size: 15px; font-weight: 650; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
-.bhm .vx-seg { flex: none; }
-.bhm .vx-newl { display: flex; flex-direction: column; gap: 8px; }
-.bhm .vx-newl .fl input { height: 48px; }
-.bhm .vx-stores button { padding: 4px 6px; line-height: 1.15; text-align: center; }
-.bhm .vx-stores .vx-any { width: 22px; height: 22px; border-radius: 7px; flex: none; display: grid; place-items: center; color: var(--sec); background: color-mix(in srgb, var(--fg) 10%, transparent); }
-.bhm .vx-stores .vx-any .ico { width: 14px; height: 14px; color: inherit; }
-.bhm .vx-stores .vx-later.on .vx-any { color: #fff; background: var(--acc); }
-.bhm .vx-opt .grow { min-width: 0; }
-/* Riadky sa v rolujúcom okne nesmú stláčať (dvojriadkový názov sa inak prekrýval s ďalším riadkom). */
-.bhm .vx-sheet > *, .bhm .vx-lists > * { flex-shrink: 0; }
-.bhm .vx-opt b { line-height: 1.25; }
-.bhm .vx-opt small { display: block; margin-top: 2px; }
-.bhm .vx-opt .vx-optic { width: 38px; height: 38px; border-radius: 12px; flex: none; display: grid; place-items: center; background: color-mix(in srgb, var(--acc) 14%, transparent); }
-.bhm .vx-opt .vx-rec { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--acc); font-weight: 650; }
 @media (prefers-reduced-motion: reduce) {
 .bhm .vxi, .bhm .vx, .bhm .vx-fix, .bhm .vx-orb.on::after, .bhm .vx-heard .wave i { animation: none !important; }
 }
@@ -2233,8 +2219,6 @@
 .bhm .vx-orb .ico { width: 32px; height: 32px; }
 .bhm .vx-orb:not(.on), .w .bhm .vx-orb:not(.on) { filter: none; background: var(--card); color: var(--sec); box-shadow: inset 0 0 0 1.5px var(--line2), var(--sh); }
 .bhm .vx-orb.on::after { inset: -12px; border-color: color-mix(in srgb, var(--acc) 30%, transparent); }
-.bhm .vx-orb:disabled { opacity: .45; cursor: default; }
-.bhm .vx-orb:disabled:active { transform: none; }
 .bhm .vx-orb.hear::after { animation: none; opacity: 0; }
 .bhm .vx-orb.edit, .w .bhm .vx-orb.edit { background: var(--honey); color: #fff; }
 .bhm .vx-heard small { display: inline-flex; align-items: center; gap: 7px; }
@@ -2244,11 +2228,6 @@
 .bhm .vx-heard.st-hear small::before { background: var(--danger); animation: mk-pulse 1.2s ease-in-out infinite; }
 .bhm .vx-heard.st-think small::before { background: var(--honey); animation: mk-pulse 1.2s ease-in-out infinite; }
 .bhm .vx-heard.st-edit small::before { background: var(--acc); }
-.bhm .vx-heard .vx-skip { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.bhm .vx-heard .vx-skip .dim { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bhm .vx-skip-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; line-height: 1.3; color: var(--sec); }
-.bhm .vx-skip-row em { font-style: normal; min-width: 0; }
-.bhm .vx-skip-row button { flex: none; min-height: 36px; padding: 0 14px; border-radius: 99px; font-size: 13px; font-weight: 700; color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); }
 .bhm .vx-cap { margin: -2px 0 0; text-align: center; font-size: 13px; line-height: 1.35; color: var(--sec); }
 .bhm .vx-exl { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; align-items: center; }
 .bhm .vx-exl small { font-size: 12.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--ter); }
@@ -2262,6 +2241,28 @@
 .bhm button.hub-g { min-height: 44px; margin-top: 2px; }
 .bhm .hrow .grow { min-width: 0; }
 .bhm .hrow small .nw { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.bhm .vx-seg { flex: none; }
+.bhm .vx-newl { display: flex; flex-direction: column; gap: 8px; }
+.bhm .vx-newl .fl input { height: 48px; }
+.bhm .vx-stores button { padding: 4px 6px; line-height: 1.15; text-align: center; }
+.bhm .vx-stores .vx-any { width: 22px; height: 22px; border-radius: 7px; flex: none; display: grid; place-items: center; color: var(--sec); background: color-mix(in srgb, var(--fg) 10%, transparent); }
+.bhm .vx-stores .vx-any .ico { width: 14px; height: 14px; color: inherit; }
+.bhm .vx-stores .vx-later.on .vx-any { color: #fff; background: var(--acc); }
+.bhm .vx-opt .grow { min-width: 0; }
+.bhm .vx-sheet > *, .bhm .vx-lists > * { flex-shrink: 0; }
+.bhm .vx-opt b { line-height: 1.25; }
+.bhm .vx-opt small { display: block; margin-top: 2px; }
+.bhm .vx-opt .vx-optic { width: 38px; height: 38px; border-radius: 12px; flex: none; display: grid; place-items: center; background: color-mix(in srgb, var(--acc) 14%, transparent); }
+.bhm .vx-opt .vx-rec { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--acc); font-weight: 650; }
+.bhm .vx-orb:disabled { opacity: .45; cursor: default; }
+.bhm .vx-orb:disabled:active { transform: none; }
+.bhm .vx-heard .vx-skip { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bhm .vx-heard .vx-skip .dim { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bhm .vx-skip-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; line-height: 1.3; color: var(--sec); }
+.bhm .vx-skip-row em { font-style: normal; min-width: 0; }
+.bhm .vx-skip-row button { flex: none; min-height: 36px; padding: 0 14px; border-radius: 99px; font-size: 13px; font-weight: 700; color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); }
+.bhm .tx-full > .tx-foot { padding-bottom: calc(var(--sab, 0px) + 64px); }
+.bhm .pw-a { font-size: clamp(14px, 4.6vw, 19px); }
 .w { --f-ink: 84 62 30;
   --sh: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px rgb(var(--f-ink) / .06), 0 1px 2px rgb(var(--f-ink) / .05), 0 6px 14px -8px rgb(var(--f-ink) / .12), 0 22px 40px -24px rgb(var(--f-ink) / .34);
   --sh-hi: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px rgb(var(--f-ink) / .07), 0 2px 4px rgb(var(--f-ink) / .06), 0 10px 22px -10px rgb(var(--f-ink) / .18), 0 30px 54px -28px rgb(var(--f-ink) / .4);

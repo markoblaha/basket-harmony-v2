@@ -16,3 +16,9 @@ export async function deleteAccount(): Promise<void> {
   if (!data?.ok) throw new Error("DELETE_FAILED");
   await supabase.auth.signOut({ scope: "local" });
 }
+
+/** Odkaz na zmenu hesla na e-mail účtu (rovnaký ako „Zabudnuté heslo?“ – nové heslo sa nastaví na /reset-password). */
+export async function sendPasswordLink(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
+  if (error) throw error;
+}

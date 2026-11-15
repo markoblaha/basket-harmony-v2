@@ -9,10 +9,11 @@ import { formatDateTime, t, tn } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
 import { I, IB, MkHeader, Seg, Back } from "@/mockup/ui";
 import { Sheet } from "@/mockup/Sheet";
-import { StoreTile, eur, relDay, storeKeyOf } from "@/mockup/kit";
+import { StoreTile, eur, relDay, storeKeyOf, storeName } from "@/mockup/kit";
 import { monthName, shiftMonth, thisMonth } from "@/features/analytics/period";
 import { ManualExpenseSheet } from "./AddFlow";
 import { ErrorState } from "@/components/ui";
+import { HelpBtn } from "@/features/help/Help";
 import { errorMessage } from "@/lib/errors";
 import { needsAttention, useReceipts, type Receipt } from "./api";
 
@@ -39,7 +40,8 @@ export function ReceiptsPage() {
   const status = (r: Receipt) =>
     r.status === "PROCESSING" ? t("rl.reading") : r.status === "FAILED" ? t("rl.failed") : r.status === "NEEDS_REVIEW" ? t("rl.check") : "";
   const row = (r: Receipt) => {
-    const name = r.store_name ?? t("row.unknownStore");
+    // Známy obchod jednotne („LIDL Slovenská republika“ aj „Lidl“ = Lidl); presný text z bločku je v detaile.
+    const name = storeName(storeKeyOf(r.store_name)) ?? r.store_name ?? t("row.unknownStore");
     const s = status(r);
     return (
       <button type="button" key={r.id} className="row tap" onClick={() => navigate(`/receipts/${r.id}`)}>
@@ -63,8 +65,9 @@ export function ReceiptsPage() {
         back={<Back label={t("mn.title")} onClick={() => navigate(-1)} />}
         right={
           <>
-            <IB n="camera" label={t("sp.photo")} onClick={() => navigate("/scan")} />
-            <IB n="dots-three" label={t("rl.more")} onClick={() => setMenu(true)} />
+            <IB n="camera" label={t("sp.photo")} onClick={() => navigate("/scan")} cls="rcam" />
+            <IB n="dots-three" label={t("rl.more")} onClick={() => setMenu(true)} cls="rmore" />
+            <HelpBtn screen="receipts" />
           </>
         }
       >

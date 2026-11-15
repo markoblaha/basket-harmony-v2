@@ -182,6 +182,21 @@ presnosť (nákup / povel / rozhovor), čas odpovede; ~5 centov. Spustiť po ka�
   Bez zmeny (zámerné / nízky dopad): upozornenia advisora na SECURITY DEFINER funkcie (pravidlá sú v DB), nezaindexované
   cudzie kľúče a `auth.uid()` v RLS pri receptoch (malé dáta domácnosti). Ochranu pred uniknutými heslami zapína majiteľ
   v Supabase (Authentication → Sign In / Providers → Email; vyžaduje platený plán).
+  *Kontrola rozhrania (15. 11., pokyn „prihlásenie, nápovedy, animácie, notifikácie, responzivita, ovládanie,
+  nastavenia – navrhni a vyrieš, čo chýba“):* Prihlásenie (automatické dopĺňanie hesiel, odkazy na podmienky, chyby)
+  a upozornenia (stavy nepodporované / pridať na plochu / zakázané / zapnúť) sú v poriadku; tlačidlá na hlavných
+  obrazovkách majú ≥ 40 px; toasty majú `aria-live`; animácie rešpektujú „obmedziť pohyb“. Opravené: **20 pravidiel
+  hlasu (okno „Kam uložiť“, „Nepridané“, nedostupný mikrofón) bolo len v generovanom `mockup.css`** – presunuté do
+  `prototyp/css/polish.css` (pravidlo doplnené do CLAUDE.md); prepínač „Svetlý | Tmavý | Podľa systému“ pretekal
+  v Skle (`.seg > button` podľa obsahu); náhľad témy „Dobrý veče“ na 360 px; spodný text uvítania sa kryl s lištou;
+  Viac: horná sekcia „Treba vybaviť“ (predtým druhé „Upozornenia“), „Chýba 14 bločkov · odfoť ich“, riadok „O aplikácii“
+  (predtým druhá „Pomoc“), šípka pri mene (profil), **Zmeniť heslo** v profile (odkaz e-mailom, len účty s heslom);
+  nápoveda „?“ pre Bločky (3 tipy + kapitola ukážky); zoznam bločkov s jednotnými názvami obchodov (LIDL = Lidl);
+  karta Odhad pri prázdnom zozname vysvetlí „všetko je v košíku“ / „pridaj položky dole“. Overené: preklikanie
+  4 vzhľady × 36 obrazoviek pri 393 aj 360 px 0 nálezov, `hlas.cjs` 13/13, nápovedy bločkov (fotky prezreté).
+  Návrhy na rozhodnutie majiteľa (v appke nie sú): chýbajúce bločky staršie ako ~14 dní nepripomínať (dnes 4 miesta:
+  bodka na avatare, Domov, odznak 9+ na Výdavkoch, Viac); pri vydaní v App Store pridať „Prihlásiť cez Apple“ (Apple
+  to vyžaduje, ak appka ponúka Google); na Domove pri 360 px sa skracuje „7 položiek · ~9 €“ (užšie tlačidlo).
   *Odhad:* rodina 4 ľudí ~2–3 nákupy týždenne hlasom ≈ 0,30–0,60 $/mes. (živý prepis ~0,9 c/min reči je väčšina ceny),
   strop 1,20 $ dosiahne len extrémne používanie. `testy/hlas.cjs` 13/13 aj s `REAL=1` (krok 13: vyčerpaný rozpočet).
   Najväčšia ďalšia úspora: natívna appka s rozpoznávaním reči v telefóne (zadarmo) – živý prepis by odpadol.

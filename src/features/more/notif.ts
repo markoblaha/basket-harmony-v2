@@ -10,7 +10,7 @@ import { useProfiles } from "@/features/household/api";
 import { useHubSessions, useListStats, useLists } from "@/features/lists/api";
 import { useOverview } from "@/features/analytics/api";
 import { computePeriod, thisMonth } from "@/features/analytics/period";
-import { t } from "@/i18n";
+import { t, tn } from "@/i18n";
 import { eur } from "@/mockup/kit";
 
 export type Notif = { id: string; av?: { id: string; name: string }; e?: string; title: string; sub: string; to: string };
@@ -52,7 +52,7 @@ export function useNotifications(): Notif[] {
   }
   const now = Date.now();
   const miss = lists.filter((l) => l.completed_at && l.receipt_state === "LATER" && now - new Date(l.completed_at).getTime() <= MONTH_MS).length;
-  if (miss) out.push({ id: `miss:${miss}`, e: "receipt", title: t("nt.miss", { n: miss }), sub: t("nt.missSub"), to: "/analytics" });
+  if (miss) out.push({ id: `miss:${miss}`, e: "receipt", title: tn("home.missingMany", miss), sub: tn("nt.missSub", miss), to: "/analytics" });
   const pc = ov?.price_changes.find((x) => x.kind === "CHANGE");
   if (pc) {
     const pct = Math.round(pc.change * 100);

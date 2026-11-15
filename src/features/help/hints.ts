@@ -42,11 +42,14 @@ export const HINTS: Hint[] = [
   { id: "mnotif", screen: "more", sel: ".notifsec" },
   { id: "mhelp", screen: "more", sel: ".tx-chl.inl" },
   { id: "hrow", screen: "history", sel: ".lst .row" },
+  { id: "rrow", screen: "receipts", sel: ".lst .row" },
+  { id: "rcam", screen: "receipts", sel: ".nb .rcam", hand: true },
+  { id: "rmore", screen: "receipts", sel: ".nb .rmore" },
 ];
 
 /** Kapitola ukážky, ktorú „?“ ponúkne na danej obrazovke (index v CHAPTERS). */
 export const CH_FOR: Record<string, number> = {
-  home: 0, lists: 1, list: 1, history: 3, recipes: 5, recipe: 5, money: 6, more: 7,
+  home: 0, lists: 1, list: 1, history: 3, receipts: 4, recipes: 5, recipe: 5, money: 6, more: 7,
   "m-shop": 3, "m-follow": 0, "m-voice": 2, "m-cook": 5, "m-taste": 5,
 };
 

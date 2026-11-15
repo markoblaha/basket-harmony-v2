@@ -278,6 +278,8 @@ export const enLs: Record<keyof typeof skLs, string> = {
   "li.estimate": "Estimated total",
   "li.range": "range {range}",
   "li.allPriced": "all prices from receipts",
+  "li.allInCart": "everything is in the cart",
+  "li.nothingYet": "add items below",
   "li.priced": "{priced} of {n} items priced",
   "li.shop": "Shop",
   "li.empty": "The list is empty",

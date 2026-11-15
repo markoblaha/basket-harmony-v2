@@ -306,6 +306,8 @@ export function ListView({
               <div className="k">{t("li.estimate")}</div>
               <div className="price nw">{showEstimate && tot.priced ? `~${eur0(tot.v)}` : "–"}</div>
               <div className="estm">
+                {/* Nič na nákup: namiesto samotnej pomlčky povedať prečo (všetko v košíku / prázdny zoznam). */}
+                {!open.length && <span className="nw sm">{done.length ? t("li.allInCart") : t("li.nothingYet")}</span>}
                 {showEstimate && tot.priced ? <span className="nw">{t("li.range", { range: Math.floor(tot.lo) === Math.ceil(tot.hi) ? eur0(tot.v) : `${Math.floor(tot.lo)} – ${Math.ceil(tot.hi)} €` })}</span> : null}
                 {showEstimate && tot.n > 0 && <span className="nw sm">{tot.priced === tot.n ? t("li.allPriced") : t("li.priced", { priced: tot.priced, n: tot.n })}</span>}
               </div>

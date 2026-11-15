@@ -24,6 +24,8 @@ a pri krokoch, ktoré musí urobiť on, píš presne kam kliknúť a prečo.
 - Predvolený jazyk je slovenčina; jazyk a vzhľad (svetlý/tmavý/podľa systému) sa ukladajú
   v zariadení (`bh.locale`, `bh.theme`). Farby používaj len cez role z `styles.css`,
   aby fungovali v oboch vzhľadoch.
+- `src/mockup/mockup.css` je generovaný (`python3 prototyp/do-appky.py` z `prototyp/css/*.css`) – ručné úpravy
+  v ňom ďalšie generovanie zmaže. Štýly obrazoviek mockupu (`.bhm …`) patria do `prototyp/css/polish.css`.
 - Texty z databázy a edge funkcií sú kódy, ktoré sa mapujú na `error.*` kľúče
   (`lib/errors.ts`); do DB nepíš texty určené pre rozhranie.
 - Vyhýbaj sa skloňovaniu mien v šablónach (píš „Nakupuje: Lucia“, nie „Požiadať Lucia“).

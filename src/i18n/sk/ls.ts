@@ -276,6 +276,8 @@ export const skLs = {
   "li.estimate": "Odhad nákupu",
   "li.range": "rozpätie {range}",
   "li.allPriced": "všetky ceny z bločkov",
+  "li.allInCart": "všetko je v košíku",
+  "li.nothingYet": "pridaj položky dole",
   "li.priced": "{priced} z {n} položiek s cenou",
   "li.shop": "Nakupovať",
   "li.empty": "Zoznam je prázdny",
