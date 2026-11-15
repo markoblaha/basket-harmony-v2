@@ -12,6 +12,8 @@ import { Sheet } from "@/mockup/Sheet";
 import { StoreTile, eur, relDay, storeKeyOf } from "@/mockup/kit";
 import { monthName, shiftMonth, thisMonth } from "@/features/analytics/period";
 import { ManualExpenseSheet } from "./AddFlow";
+import { ErrorState } from "@/components/ui";
+import { errorMessage } from "@/lib/errors";
 import { needsAttention, useReceipts, type Receipt } from "./api";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -97,7 +99,9 @@ export function ReceiptsPage() {
                 </Fragment>
               );
             })}
-          {!rs.length && !receipts.isPending && (
+          {/* Bločky sa nenačítali (výpadok, bez signálu a bez uložených údajov): chyba, nie „žiadne bločky“. */}
+          {receipts.isError && !all.length && <ErrorState error={errorMessage(receipts.error)} onRetry={() => void receipts.refetch()} />}
+          {!rs.length && !receipts.isPending && !(receipts.isError && !all.length) && (
             <div className="empty">
               <I n="receipt" />
               <b>{t("rl.empty")}</b>

@@ -488,6 +488,9 @@ export async function readStatement(householdId: string, file: File) {
     }
     if (detail.includes("GEMINI_402")) throw new Error("GEMINI_402");
     if (detail.includes("FILES_TOO_LARGE")) throw new Error("FILE_TOO_LARGE");
+    // Limit domácnosti (ai_allow 'read-statement'): ukáže sa dôvod, nie všeobecná chyba.
+    if (detail.includes("AI_MONTH_LIMIT")) throw new Error("AI_MONTH_LIMIT");
+    if (detail.includes("AI_LIMIT")) throw new Error("AI_LIMIT");
     throw new Error("STATEMENT_READ_FAILED");
   }
   const result = data as { is_statement: boolean; transactions: StatementRow[] };

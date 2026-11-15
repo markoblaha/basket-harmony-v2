@@ -9,6 +9,7 @@
  *  3. druh („svetlé pivo 12°“, „kyslá smotana 16 %“) → len nákupy tohto druhu,
  *  inak sa položka pridá presne tak, ako je napísaná, bez ceny.
  */
+import { formatNumber } from "@/i18n";
 
 /**
  * Nákup z bločku (item_catalog): d deň, s obchod, k kľúč obchodu, t zaplatené za riadok, q množstvo
@@ -360,8 +361,8 @@ export type Price = {
 /** Krátky popis výrobku pri položke: „Pilos 250 g“, „Radegast 0,5 l“. */
 export function productTag(p: CatProduct): string {
   const size = p.size_value && p.size_unit
-    ? p.size_unit === "g" ? (p.size_value >= 1000 ? `${String(p.size_value / 1000).replace(".", ",")} kg` : `${p.size_value} g`)
-      : p.size_unit === "ml" ? (p.size_value >= 1000 ? `${String(p.size_value / 1000).replace(".", ",")} l` : p.size_value % 100 === 0 && p.size_value >= 250 ? `${String(p.size_value / 1000).replace(".", ",")} l` : `${p.size_value} ml`)
+    ? p.size_unit === "g" ? (p.size_value >= 1000 ? `${formatNumber(p.size_value / 1000)} kg` : `${p.size_value} g`)
+      : p.size_unit === "ml" ? (p.size_value >= 1000 ? `${formatNumber(p.size_value / 1000)} l` : p.size_value % 100 === 0 && p.size_value >= 250 ? `${formatNumber(p.size_value / 1000)} l` : `${p.size_value} ml`)
       : `${p.size_value} ks`
     : null;
   return [p.brand || p.name, size].filter(Boolean).join(" ");

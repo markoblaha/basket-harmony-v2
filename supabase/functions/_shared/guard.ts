@@ -1,4 +1,4 @@
-// Poistka pre AI funkcie volané z aplikácie (parse-voice, recipe-ai).
+// Poistka pre AI funkcie volané z aplikácie (parse-voice, recipe-ai, voice-live-token, read-statement).
 // Pravidlo je v databáze (ai_allow): volajúci musí byť členom domácnosti a domácnosť
 // nesmie prekročiť limit volaní. Funkcia sa pýta s oprávneniami prihláseného človeka.
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
@@ -19,7 +19,7 @@ export type Guarded = {
 export async function guardAi(
   req: Request,
   householdId: unknown,
-  fn: "parse-voice" | "recipe-ai" | "voice-live",
+  fn: "parse-voice" | "recipe-ai" | "voice-live" | "read-statement",
 ): Promise<Guarded | { error: string; status: number }> {
   const url = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

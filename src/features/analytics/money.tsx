@@ -9,7 +9,7 @@ import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useListStats, useLists, useSetReceiptLater } from "@/features/lists/api";
 import { errorMessage } from "@/lib/errors";
-import { formatDateTime, t, tn } from "@/i18n";
+import { formatDateTime, formatNumber, t, tn } from "@/i18n";
 import { E, I, IB } from "@/mockup/ui";
 import { Sheet } from "@/mockup/Sheet";
 import { CATS } from "@/mockup/catalog";
@@ -181,7 +181,7 @@ export function MissingReceipts({ compact, g }: { compact?: boolean; g: boolean 
     later.mutate(
       { listId: id, later: false },
       {
-        onSuccess: () => toast.show(t("mn.noReceipt"), "info", { undo: () => later.mutate({ listId: id, later: true }) }),
+        onSuccess: () => toast.show(t("mn.noReceipt"), "info", { undo: () => later.mutate({ listId: id, later: true }, { onError: (e) => toast.show(errorMessage(e), "error") }) }),
         onError: (e) => toast.show(errorMessage(e), "error"),
       },
     );
@@ -273,7 +273,7 @@ export function PriceChart({ h }: { h: { d: string; s: string; p: number }[] }) 
         <g key={i}>
           <line x1={L} x2={W - R} y1={Y(v)} y2={Y(v)} className="grid" />
           <text x={L - 6} y={Y(v) + 4} textAnchor="end" className="axl">
-            {v.toFixed(2).replace(".", ",")}
+            {formatNumber(v, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </text>
         </g>
       ))}

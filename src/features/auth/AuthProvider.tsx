@@ -71,6 +71,7 @@ export function useAuth() {
 
 export function useUserId(): string {
   const { user } = useAuth();
-  if (!user) throw new Error("Používateľ nie je prihlásený");
+  // Kód (nie veta) – errorMessage ho preloží na „Prihlás sa“ v jazyku appky.
+  if (!user) throw new Error("NOT_AUTHENTICATED");
   return user.id;
 }

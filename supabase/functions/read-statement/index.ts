@@ -4,8 +4,8 @@
 // Súkromie: výpis sa NIKDE neukladá. Funkcia ho len pošle Gemini a vráti aplikácii
 // zoznam platieb; čísla účtov ani zostatky sa nevracajú. Do databázy sa uloží iba to,
 // čo človek v aplikácii potvrdí (cez import_bank_payments).
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { callGemini, GeminiError, isGlobalError, logUsage, type ThinkingLevel, type Usage } from "../_shared/gemini.ts";
+import { callGemini, GeminiError, isGlobalError, type ThinkingLevel, type Usage } from "../_shared/gemini.ts";
+import { guardAi } from "../_shared/guard.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -91,7 +91,7 @@ const MODELS: { model: string; thinking: ThinkingLevel }[] = [
 
 async function askGemini(
   parts: unknown[],
-  log: (model: string, usage: Usage | null, ok: boolean) => Promise<void>,
+  log: (model: string, usage: Usage | null, ok: boolean) => void | Promise<void>,
 ): Promise<Record<string, unknown>> {
   let lastError = "GEMINI_UNKNOWN";
   for (const cfg of MODELS) {
@@ -118,27 +118,15 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "METHOD" }, 405);
 
-  const url = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (!token) return json({ error: "NOT_AUTHENTICATED" }, 401);
-  const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
-  const { data: userData, error: userError } = await admin.auth.getUser(token);
-  if (userError || !userData.user) return json({ error: "NOT_AUTHENTICATED" }, 401);
-
   let body: { household_id?: string; file_b64?: string; ext?: string; text?: string } = {};
   try {
     body = await req.json();
   } catch { /* prázdne telo */ }
-  const householdId = body.household_id;
-  if (!householdId || !/^[0-9a-f-]{36}$/i.test(householdId)) return json({ error: "VALIDATION" }, 400);
 
-  const asUser = createClient(url, serviceKey, {
-    auth: { persistSession: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const member = await asUser.from("households").select("id").eq("id", householdId).maybeSingle();
-  if (member.error || !member.data) return json({ error: "NOT_FOUND" }, 404);
+  // Prihlásenie, členstvo a limit v databáze (ai_allow 'read-statement': 10/h, 30/deň, rozpočet AI domácnosti).
+  // Predtým tu limit nebol – celé PDF išlo do AI pri každom volaní.
+  const g = await guardAi(req, body.household_id, "read-statement");
+  if ("error" in g) return json({ error: g.error }, g.status);
 
   try {
     const today = new Date().toISOString().slice(0, 10);
@@ -155,8 +143,7 @@ Deno.serve(async (req) => {
       return json({ error: "VALIDATION" }, 400);
     }
 
-    const result = await askGemini(parts, (model, usage, ok) =>
-      logUsage(admin, { fn: "read-statement", model, usage, household_id: householdId, ok }));
+    const result = await askGemini(parts, (model, usage, ok) => g.log(model, usage, ok));
     const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.abs(Math.round(v * 100) / 100) : null);
     const date = (v: unknown) => {
       if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;

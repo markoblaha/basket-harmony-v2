@@ -54,7 +54,7 @@ export function AddReceiptSheet({ list, onClose }: { list: ShoppingList | null; 
       { listId: id, later: false },
       {
         onSuccess: () =>
-          toast.show(t("ls.noReceiptSaved"), "info", wasLater ? { undo: () => setLater.mutate({ listId: id, later: true }) } : undefined),
+          toast.show(t("ls.noReceiptSaved"), "info", wasLater ? { undo: () => setLater.mutate({ listId: id, later: true }, { onError: (e) => toast.show(errorMessage(e), "error") }) } : undefined),
         onError: (err) => toast.show(errorMessage(err), "error"),
       },
     );

@@ -60,10 +60,11 @@ presnosť (nákup / povel / rozhovor), čas odpovede; ~5 centov. Spustiť po ka�
    price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
    (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
    Rozpočet AI domácnosti (15. 11.): `20261114000043_ai_household_budget` (v testovacej DB ako `ai_household_budget`)
-   a `20261115000044_ai_daily_refill` (ako `ai_daily_refill`).
+   a `20261115000044_ai_daily_refill` (ako `ai_daily_refill`), kontrola backendu `20261115000045_ai_cost_guards`
+   (ako `ai_cost_guards`).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
    Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v13 (krátke pokyny, 15. 11.) a voice-live-token v9 (účtuje 15 s, 15. 11.),
-   recipe-ai v7 (všetky s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND; AI_MONTH_LIMIT), extract-receipt v3, normalize-products v4,
+   recipe-ai v7, read-statement v4 (všetky s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND; AI_MONTH_LIMIT), extract-receipt v3, normalize-products v4,
    read-statement v3. Funkciu `proto-images` (vypnutá, 410) možno zmazať.
 4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` testovacích riadkov vo vnútri bloku, ktorý sa celý vráti
    späť → treba súhlas majiteľa). Nové časti (fronta dokladov, poistka AI, katalóg položiek) overené samostatným blokom:
@@ -165,6 +166,22 @@ presnosť (nákup / povel / rozhovor), čas odpovede; ~5 centov. Spustiť po ka�
   *Ekonomika (4 €/mes.):* po DPH 23 % a poplatku obchodu 15 % ostane ~2,75 €; servery (Supabase Pro ~25 $/mes.) pri 100
   rodinách ~0,23 €/rodinu. AI bežnej rodiny ~0,15–0,40 €, najviac (strop hlasu 1,20 $ + bločky) ~1,20 € → aj najnáročnejšia
   rodina je v zisku (~1,30 €), bežná ~2,1–2,4 €.
+  *Kontrola celého backendu a frontendu (15. 11., pokyn „skontroluj backend a frontend, nájdi chyby a oprav“):*
+  Záznamy oboch DB za 24 h bez chýb; všetkých 61 funkcií volateľných z appky overuje prihlásenie aj členstvo, vnútorné
+  funkcie sú zamknuté, všetky majú `search_path = ''`; RLS na všetkých tabuľkách (súkromný zoznam vidí len autor).
+  Opravené (migrácia 045 + read-statement v4): (1) `queue_receipt` („Prečítať znova“, pridanie strany, spojenie) spúšťala
+  AI bez limitu → mesačný rozpočet + najviac 80 čítaní za 24 h (`RECEIPT_LIMIT`); (2) člen mohol priamo meniť všetky
+  stĺpce bločku (stav → plánovač čítal znova bez limitu; `image_path` → AI by prečítala súbor inej domácnosti) → priamo
+  len `store_name, purchased_on, total, category_id`; (3) import výpisu posielal PDF do AI bez limitu → `guardAi`
+  ('read-statement': 10/h, 30/deň, celkový rozpočet; hlasový ho neblokuje), appka ukáže dôvod (`readStatement`);
+  (4) anon bez práv na tabuľky. Frontend: zoznam bločkov pri chybe načítania ukáže chybu (nie „žiadne bločky“),
+  „Späť“ pri „bez bločku“ ukáže chybu, `useUserId` hádže kód NOT_AUTHENTICATED, os grafu cien a veľkosti balení cez
+  `formatNumber` (v angličtine bodka). Overené: blok s vrátením `fails=0`, preklikanie 4 vzhľady × 36 obrazoviek 0 nálezov,
+  `nakup.cjs` 8/8, `hlas.cjs` 13/13, bloček od nahratia po potvrdenie (testovací bloček „Lidl (E2E test)“ z 15. 1. 2020
+  ostal v testovacej domácnosti), `deno check` všetkých funkcií (push-send má len typové upozornenie novšieho Dena).
+  Bez zmeny (zámerné / nízky dopad): upozornenia advisora na SECURITY DEFINER funkcie (pravidlá sú v DB), nezaindexované
+  cudzie kľúče a `auth.uid()` v RLS pri receptoch (malé dáta domácnosti). Ochranu pred uniknutými heslami zapína majiteľ
+  v Supabase (Authentication → Sign In / Providers → Email; vyžaduje platený plán).
   *Odhad:* rodina 4 ľudí ~2–3 nákupy týždenne hlasom ≈ 0,30–0,60 $/mes. (živý prepis ~0,9 c/min reči je väčšina ceny),
   strop 1,20 $ dosiahne len extrémne používanie. `testy/hlas.cjs` 13/13 aj s `REAL=1` (krok 13: vyčerpaný rozpočet).
   Najväčšia ďalšia úspora: natívna appka s rozpoznávaním reči v telefóne (zadarmo) – živý prepis by odpadol.
