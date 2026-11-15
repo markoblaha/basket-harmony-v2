@@ -55,10 +55,14 @@ function HRow({ lead, title, sub, action, onClick, warn, g, label }: { lead: Rea
         <b>{title}</b>
         {sub && (
           <small>
-            {sub.split(" · ").map((x, i) => (
+            {sub.split(" · ").map((x, i, all) => (
               <Fragment key={i}>
-                {i > 0 && " · "}
-                <span className="nw">{x}</span>
+                {i > 0 && " "}
+                {/* bodka je súčasťou predchádzajúceho úseku – riadok nikdy nezačne „· …“ */}
+                <span className="nw">
+                  {x}
+                  {i < all.length - 1 && "\u00a0·"}
+                </span>
               </Fragment>
             ))}
           </small>

@@ -1,9 +1,9 @@
 /**
  * Časti obrazovky zoznamu prenesené z mockupu 1:1 (prototyp/src/lists.jsx): riadok ceny, riadok položky
- * s potiahnutím, pole na pridávanie s návrhmi a dlaždicami „Často kupujete“, detail položky.
+ * s potiahnutím, pridávanie (rad bublín a pole, pri písaní okno so zoznamom nad klávesnicou), detail položky.
  * Rozpoznanie položky a ceny sú v itemCatalog.ts (pravidlo: appka nič nedomýšľa).
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useToast } from "@/components/toast";
 import { category, normalizeName } from "@/lib/categories";
 import { errorMessage } from "@/lib/errors";
@@ -12,10 +12,11 @@ import { formatDateTime, formatNumber, t, tn } from "@/i18n";
 import { E, I, Seg, Stepper, SwipeRow } from "@/mockup/ui";
 import { Sheet } from "@/mockup/Sheet";
 import { Btn, STORES, StoreTile, eur, memberColor, storeKeyOf, storeName } from "@/mockup/kit";
+import { haptic } from "@/components/kit";
 import { useAddItem, useDeleteItem, useFrequentItems, useMoveItem, useStapleItems, useUpdateItem, type Item, type ShoppingList } from "./api";
 import type { Estimator } from "./estimate";
-import { refinements, resolveName, searchNames, typoFix, type Estimate, type Resolved } from "./itemCatalog";
-import { sameProduct } from "./qty";
+import { productTag, refinements, resolveName, searchNames, spellFix, type Estimate, type Resolved } from "./itemCatalog";
+import { isCountable, itemKey, sameProduct } from "./qty";
 import type { AddOutcome } from "./useSmartAdd";
 
 /* ------------------------------------------------------------------ množstvo (mockup logic.js) */
@@ -67,11 +68,9 @@ export function PriceLine({ e, kinds, listStore, note, by, bare }: { e: Estimate
             ~{eur(e.v)}
             {e.perKg ? <small className="pk"> · {eur(e.price.up)}/kg</small> : null}
           </span>
-          {e.price.avg && kinds > 1 ? (
-            <span className="mk ap">{t("li.avgKinds", { n: kinds })}</span>
-          ) : e.price.store && storeKeyOf(e.price.store) !== listStore ? (
-            <StoreMark store={e.price.store} />
-          ) : null}
+          {/* s akým výrobkom odhad počíta; obchod len keď cena nie je z obchodu zoznamu */}
+          {kinds > 0 || e.price.product.brand ? <span className="mk ap">{productTag(e.price.product)}</span> : null}
+          {e.price.store && !e.price.same && storeKeyOf(e.price.store) !== listStore ? <StoreMark store={e.price.store} /> : null}
         </>
       )}
       {note ? <span className="note">· {note}</span> : null}
@@ -155,7 +154,16 @@ export function ItemRow({
 }
 
 /* ------------------------------------------------------------------ pole na pridávanie */
-export type ComposerAdd = (input: { name: string; quantity: number | null; unit: string | null; categoryId?: string | null }) => Promise<AddOutcome>;
+export type ComposerAdd = (input: {
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+  categoryId?: string | null;
+  /** Bez hlášky – potvrdením je riadok v zozname. */
+  quiet?: boolean;
+  /** Nová položka sa v zozname ukáže hneď. */
+  instant?: boolean;
+}) => Promise<AddOutcome>;
 
 /** Text na položky: „mlieko, 2 rožky a maslo“ → tri položky. */
 function chunks(text: string) {
@@ -167,14 +175,37 @@ function chunks(text: string) {
     .filter((p) => p.name.length >= 2);
 }
 
-/** Čo napísaný názov znamená v zozname (malé písmeno na začiatku → veľké). */
-function whatOf(r: Resolved | null) {
-  if (!r) return null;
-  if (r.level === "general") return r.kinds > 1 ? t("li.allKinds", { n: r.kinds }) : t("li.general");
-  if (r.level === "brand") return t("li.brandOf", { kind: r.members[0]?.kind || r.members[0]?.name || "" });
-  return t("li.exactKind");
-}
+/** Bublina nad klávesnicou: známa vec, napísaný text alebo viac vecí naraz. */
+type Chip = {
+  k: string;
+  kind: "prod" | "typed" | "multi";
+  name: string;
+  cat: string | null;
+  /** Počet z textu („banány 3“) – pridá sa prvým ťuknutím. */
+  q0: number | null;
+  u: string | null;
+  /** Napísaný text, ktorý poznáme (má cenu a ikonu). */
+  rec: boolean;
+  tag?: string;
+};
 
+/** Ako dlho po poslednom ťuknutí sa bublina ešte dá ťukať (potom ✓ a odíde). */
+const BURST_MS = 1500;
+/** Odchod bubliny (✓ a zmiznutie) pred nahradením ďalšou. */
+const OUT_MS = 420;
+
+const prefersCalm = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * Pridávanie do zoznamu (návrh prototyp/pridavanie-navrh.html, 13. 11.).
+ *
+ * Dole je rad bublín a pole – rovnaký prvok aj bez klávesnice. Ťuk do poľa zmení dok na okno cez viditeľnú
+ * plochu nad klávesnicou (výška z visualViewport, to isté pole = klávesnica sa nezavrie): hlavička (názov,
+ * počet a suma, Hotovo), v strede samotný zoznam (posúva sa, klávesnica ostáva), dole bubliny a pole.
+ * Ťuk na bublinu pridá hneď (bez odpočítavania); číslo v bubline = počet v zozname, mínus uberie.
+ * Po ťuknutí sa pole vyprázdni, ale bubliny ostanú na mieste, kým sa nezačne písať ďalšia vec.
+ * Klávesnicu zavrie Hotovo, šípka, ťuk do zoznamu, potiahnutie doku nadol alebo jej skrytie telefónom.
+ */
 export function Composer({
   householdId,
   items,
@@ -185,8 +216,12 @@ export function Composer({
   typing,
   onTyping,
   onAdd,
-  onAdded,
+  onQty,
+  onRemove,
   onVoice,
+  title,
+  summary,
+  list,
 }: {
   householdId: string;
   items: Item[];
@@ -197,14 +232,26 @@ export function Composer({
   typing: boolean;
   onTyping: (on: boolean) => void;
   onAdd: ComposerAdd;
-  onAdded?: () => void;
+  /** Mínus v bubline: nové množstvo / odobratie položky zo zoznamu. */
+  onQty: (it: Item, quantity: number) => void;
+  onRemove: (it: Item) => void;
   onVoice: () => void;
+  /** Názov zoznamu v hlavičke okna pridávania. */
+  title: string;
+  /** „8 položiek · ~24 €“ pod názvom v okne. */
+  summary: string;
+  /** Zoznam v okne pridávania (rovnaké riadky ako na obrazovke). */
+  list: ReactNode;
 }) {
   const [txt, setTxt] = useState("");
+  const txtRef = useRef(txt);
+  txtRef.current = txt;
   const inp = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
   const cat = estimator.catalog;
-  // Ťuk mimo poľa (do zoznamu) zavrie klávesnicu – iPhone to sám neurobí.
+
+  // Ťuk mimo okna zavrie klávesnicu – iPhone to sám neurobí.
   useEffect(() => {
     if (!typing) return;
     const away = (e: PointerEvent) => {
@@ -213,225 +260,548 @@ export function Composer({
     document.addEventListener("pointerdown", away, true);
     return () => document.removeEventListener("pointerdown", away, true);
   }, [typing]);
+
   const open = useMemo(() => items.filter((i) => i.status === "OPEN"), [items]);
-  const inList = (name: string) => open.some((i) => sameProduct(i.name, name));
+  const itemOf = (name: string) => open.find((i) => sameProduct(i.name, name)) ?? null;
+  const openRef = useRef(open);
+  openRef.current = open;
 
-  const enter = useMemo(() => (txt.trim().length >= 2 ? chunks(txt.trim()) : []), [txt]);
-  const one = enter.length === 1 ? enter[0]! : null;
-  const head = one && cat ? resolveName(cat, one.name) : null;
-  const typo = one && !head && cat ? typoFix(cat, one.name) : null;
-  // Návrhy: 1. čo pridá Enter, 2. oprava preklepu, 3. konkrétne druhy a značky, 4. ďalšie zhody podľa začiatku slova
-  const sugg = useMemo(() => {
-    if (!one || !cat) return [];
-    const out: Resolved[] = [];
-    const seen = new Set<string>(head ? [normalizeName(head.label)] : []);
-    const push = (r: Resolved | null) => {
-      if (r && !seen.has(normalizeName(r.label))) {
-        seen.add(normalizeName(r.label));
-        out.push(r);
-      }
-    };
-    push(typo);
-    refinements(cat, head, 6).forEach(push);
-    const found = searchNames(cat, one.name, 6).sort((a, b) => Number(inList(a.label)) - Number(inList(b.label)));
-    if (!head && found.length) {
-      // rozpísané slovo („smot“): najprv všeobecná položka „Smotana“
-      // (prídavné mená „smotanová“ sa preskočia – hľadá sa vec, nie jej vlastnosť)
-      const lw = normalizeName(one.name).split(" ").pop() ?? "";
-      const w = found
-        .flatMap((f) => f.label.split(/\s+/))
-        .find((x) => normalizeName(x).startsWith(lw) && !/(ova|ovy|ove|sky|ska|ske|cna|cne|cny)$/.test(normalizeName(x)));
-      if (w) {
-        const g = resolveName(cat, w);
-        if (g?.level === "general") push(g);
-      }
-    }
-    found.forEach(push);
-    return out.slice(0, head ? 4 : 5);
-  }, [one?.name, cat, head, typo]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // dlaždice „Často kupujete“ – ťuk = +1, po 2 s sa pridá a nahradí ďalšou
+  // časté veci (istý nákup + často kupované)
   const staplesQ = useStapleItems(householdId);
   const frequentQ = useFrequentItems(householdId);
-  const staples = staplesQ.data;
-  const frequent = frequentQ.data;
-  // Kým sa návrhy načítavajú, riadok má vyhradené miesto – pole dole potom neposkočí.
-  const chipsLoading = staplesQ.isPending || frequentQ.isPending;
-  const [pend, setPend] = useState<Record<string, { n: number; k: number }>>({});
-  const cnt = useRef<Record<string, number>>({});
-  const tm = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  useEffect(() => () => Object.values(tm.current).forEach(clearTimeout), []);
+  const poolReady = !staplesQ.isPending && !frequentQ.isPending;
   const pool = useMemo(() => {
     const seen = new Set<string>();
     const out: { name: string; cat: string }[] = [];
-    for (const x of [...(staples ?? []), ...(frequent ?? [])]) {
-      const k = normalizeName(x.name);
+    for (const x of [...(staplesQ.data ?? []), ...(frequentQ.data ?? [])]) {
+      const k = itemKey(x.name);
       if (seen.has(k)) continue;
       seen.add(k);
       out.push({ name: x.name, cat: x.category_id });
     }
     return out;
-  }, [staples, frequent]);
-  const chips = pool.filter((p) => !inList(p.name) || pend[p.name]).slice(0, 8);
-  const tapStaple = (p: { name: string; cat: string }) => {
-    cnt.current[p.name] = (cnt.current[p.name] ?? 0) + 1;
-    setPend((x) => ({ ...x, [p.name]: { n: cnt.current[p.name]!, k: Math.random() } }));
-    clearTimeout(tm.current[p.name]);
-    tm.current[p.name] = setTimeout(() => {
-      const n = cnt.current[p.name] ?? 1;
-      delete cnt.current[p.name];
-      void onAdd({ name: p.name, quantity: n, unit: null, categoryId: p.cat }).finally(() =>
-        setPend((x) => {
-          const y = { ...x };
-          delete y[p.name];
-          return y;
-        }),
-      );
-      onAdded?.();
-    }, 2000);
-  };
+  }, [staplesQ.data, frequentQ.data]);
+  const poolRef = useRef(pool);
+  poolRef.current = pool;
 
   const label = (name: string) => {
-    const r = cat ? resolveName(cat, name) : null;
-    return { name: r ? r.label : cap(name), categoryId: r?.category ?? null };
+    const fixed = spellFix(cat, name).text;
+    const r = cat ? resolveName(cat, fixed) : null;
+    return { name: fixed, categoryId: r?.category ?? null };
   };
-  const add = (r: Resolved) => {
-    void onAdd({ name: r.label, quantity: one?.quantity ?? null, unit: one?.unit ?? null, categoryId: r.category });
-    setTxt("");
-    onAdded?.();
-    inp.current?.focus();
+
+  // Bubliny: prázdne pole = časté veci (čo ešte nie je v zozname), pri písaní návrhy k textu.
+  const inList = (n: string) => openRef.current.some((i) => sameProduct(i.name, n));
+  const freqChip = (p: { name: string; cat: string }): Chip => ({ k: `s:${itemKey(p.name)}`, kind: "prod", name: p.name, cat: p.cat, q0: null, u: null, rec: true });
+  const computeChips = (text: string): Chip[] => {
+    const t0 = text.trim();
+    if (t0.length < 2) return poolRef.current.filter((p) => !inList(p.name)).slice(0, 8).map(freqChip);
+    const parts = chunks(t0);
+    if (parts.length > 1) {
+      return [{ k: "multi", kind: "multi", name: parts.map((x) => spellFix(cat, x.name).text).join(", "), cat: null, q0: parts.length, u: null, rec: true }];
+    }
+    const one = parts[0];
+    if (!one) return [];
+    const fix = spellFix(cat, one.name).text;
+    const head = cat ? resolveName(cat, fix) : null;
+    const out: Chip[] = [];
+    const seen = new Set<string>();
+    const push = (c: Chip) => {
+      const key = itemKey(c.name);
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(c);
+    };
+    const prod = (r: Resolved): Chip => ({
+      k: `${r.level}:${itemKey(r.label)}`,
+      kind: "prod",
+      name: r.label,
+      cat: r.category,
+      q0: one.quantity,
+      u: one.unit,
+      rec: true,
+      tag: r.level === "brand" ? t("li.brand") : undefined,
+    });
+    const typed: Chip = { k: `t:${itemKey(fix)}`, kind: "typed", name: fix, cat: head?.category ?? null, q0: one.quantity, u: one.unit, rec: !!head };
+    // iný tvar toho istého slova („banan“ → Banány) = jedna bublina s bežným názvom
+    if (head && sameProduct(head.label, fix)) push(prod(head));
+    else if (head) {
+      push(typed);
+      push(prod(head));
+    }
+    if (cat) {
+      refinements(cat, head, 6).forEach((r) => push(prod(r)));
+      const found = searchNames(cat, one.name, 6).sort((a, b) => Number(inList(a.label)) - Number(inList(b.label)));
+      if (!head && found.length) {
+        // rozpísané slovo („smot“): najprv všeobecná položka „Smotana“ (prídavné mená „smotanová“ sa preskočia)
+        const lw = normalizeName(one.name).split(" ").pop() ?? "";
+        const w = found
+          .flatMap((f) => f.label.split(/\s+/))
+          .find((x) => normalizeName(x).startsWith(lw) && !/(ova|ovy|ove|sky|ska|ske|cna|cne|cny)$/.test(normalizeName(x)));
+        if (w) {
+          const g = resolveName(cat, w);
+          if (g?.level === "general") push(prod(g));
+        }
+      }
+      found.forEach((r) => push(prod(r)));
+    }
+    // nepoznaný text ide na koniec („+ ban“) – Enter ho pridá presne tak
+    if (!head) push(typed);
+    return out.slice(0, 7);
   };
+
+  // Bubliny sa prepočítajú len pri zmene textu, otvorení/zavretí okna a načítaní častých vecí či zoznamu –
+  // nie pri pridaní (bublina sa nesmie pohnúť spod prsta). Počas ťukania sa nemenia vôbec.
+  const [chips, setChips] = useState<Chip[]>([]);
+  const [mode, setMode] = useState<"freq" | "type">("freq");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const refill = (text: string) => {
+    const m = text.trim().length >= 2 ? "type" : "freq";
+    setMode(m);
+    modeRef.current = m;
+    setChips(computeChips(text));
+    requestAnimationFrame(() => {
+      if (stripRef.current) stripRef.current.scrollLeft = 0;
+    });
+  };
+
+  // Ťukanie na bublinu: každý ťuk pridá kus hneď (počet v bubline). Keď sa chvíľu neťuká (pásik v bubline), bublina
+  // sa označí ✓ a zmizne – časté veci nahradí ďalšia najčastejšie kupovaná vec, návrhy pri písaní sa vymenia za časté
+  // veci (text je už preč, dá sa písať ďalší produkt). Počas cudzieho nákupu sa ťuky spoja do jednej žiadosti.
+  type Burst = { n: number; u: string | null; t: number; st: "on" | "done" | "out" };
+  const [bursts, setBursts] = useState<Record<string, Burst>>({});
+  const bRef = useRef<Record<string, Burst>>({});
+  const bTm = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const putBurst = (k: string, b: Burst | null) => {
+    if (b) bRef.current[k] = b;
+    else delete bRef.current[k];
+    setBursts({ ...bRef.current });
+  };
+  const anyOn = () => Object.values(bRef.current).some((b) => b.st === "on");
+  const sendReq = (k: string, c: Chip) => {
+    const b = bRef.current[k];
+    if (requestMode && b && b.n > 0) void onAdd({ name: c.name, quantity: b.n, unit: b.u, categoryId: c.cat });
+  };
+  /** Ukončí všetky ťukania hneď (nový text, Enter, zavretie okna) – žiadosti sa odošlú, bubliny sa neanimujú. */
+  const stopBursts = () => {
+    for (const k of Object.keys(bRef.current)) {
+      clearTimeout(bTm.current[k]);
+      const c = chipsRef.current.find((x) => x.k === k);
+      if (c && bRef.current[k]?.st === "on") sendReq(k, c);
+    }
+    bRef.current = {};
+    setBursts({});
+  };
+  const chipsRef = useRef(chips);
+  chipsRef.current = chips;
+  const finish = (k: string) => {
+    const c = chipsRef.current.find((x) => x.k === k);
+    const b = bRef.current[k];
+    if (!c || !b) return;
+    sendReq(k, c);
+    if (modeRef.current === "freq") {
+      // časté veci: bublina odíde a na jej miesto príde ďalšia (ostatné sa nepohnú)
+      putBurst(k, { ...b, st: "out" });
+      bTm.current[k] = setTimeout(() => {
+        putBurst(k, null);
+        setChips((cs) => {
+          const shown = new Set(cs.map((x) => itemKey(x.name)));
+          const next = poolRef.current.find((p) => !shown.has(itemKey(p.name)) && !inList(p.name));
+          return next ? cs.map((x) => (x.k === k ? freqChip(next) : x)) : cs.filter((x) => x.k !== k);
+        });
+      }, OUT_MS);
+      return;
+    }
+    // návrhy pri písaní: kým sa ťuká aj na inú bublinu, táto ostane s ✓; potom sa všetky vymenia za časté veci
+    putBurst(k, { ...b, st: "done" });
+    if (anyOn()) return;
+    for (const x of Object.keys(bRef.current)) putBurst(x, { ...bRef.current[x]!, st: "out" });
+    bTm.current[k] = setTimeout(() => {
+      bRef.current = {};
+      setBursts({});
+      if (!txtRef.current.trim()) refill("");
+    }, OUT_MS);
+  };
+  const arm = (k: string) => {
+    clearTimeout(bTm.current[k]);
+    bTm.current[k] = setTimeout(() => finish(k), BURST_MS);
+  };
+  useEffect(() => () => {
+    Object.values(bTm.current).forEach(clearTimeout);
+  }, []);
+
+  /** Ikona preletí z bubliny do riadku v zozname. */
+  const fly = (from: HTMLElement, c: Chip) => {
+    if (prefersCalm()) return;
+    const src = (from.querySelector(".em") as HTMLElement | null) ?? from;
+    const a = src.getBoundingClientRect();
+    setTimeout(() => {
+      const scope = typing ? root.current?.querySelector(".aw-body") : document.querySelector(".bhm-list");
+      if (!scope) return;
+      const rows = [...scope.querySelectorAll<HTMLElement>(".row")];
+      const row = rows.find((r) => sameProduct(r.querySelector(".tx > b")?.textContent ?? "", c.name)) ?? rows[0];
+      const th = row?.querySelector<HTMLElement>(".th");
+      if (!th) return;
+      const b = th.getBoundingClientRect();
+      if (b.bottom < 0 || b.top > window.innerHeight) return;
+      const n = document.createElement("span");
+      n.className = "bb-fly";
+      n.innerHTML = `<span class="em em-${estimator.emoji(c.name, c.cat)}"></span>`;
+      n.style.left = `${a.left + a.width / 2 - 15}px`;
+      n.style.top = `${a.top + a.height / 2 - 15}px`;
+      (root.current?.parentElement ?? document.body).appendChild(n);
+      const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+      const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+      const anim = n.animate(
+        [
+          { transform: "translate(0,0) scale(1)", opacity: 1 },
+          { transform: `translate(${dx * 0.45}px, ${dy * 0.5 - 34}px) scale(1.3)`, opacity: 1, offset: 0.45 },
+          { transform: `translate(${dx}px, ${dy}px) scale(.85)`, opacity: 0.15 },
+        ],
+        { duration: 540, easing: "cubic-bezier(.3,.6,.3,1)" },
+      );
+      anim.onfinish = () => n.remove();
+      anim.oncancel = () => n.remove();
+    }, 70);
+  };
+
+  // Ťuk na bublinu: hneď do zoznamu. Prvý ťuk = počet z textu (alebo 1 ks), každý ďalší +1.
+  const tap = (c: Chip, el: HTMLElement) => {
+    if (c.kind === "multi") {
+      submit();
+      return;
+    }
+    const b = bRef.current[c.k];
+    if (b && b.st !== "on") return; // už pridané, bublina odchádza
+    haptic(8);
+    const preset = !!c.q0 && (!b || !isCountable(c.u));
+    const q = preset ? c.q0! : 1;
+    const u = preset ? c.u : null;
+    putBurst(c.k, { n: (b?.n ?? 0) + q, u: b?.u ?? u, t: Date.now(), st: "on" });
+    arm(c.k);
+    // pole sa vyprázdni hneď – dá sa písať ďalší produkt; bubliny ostávajú, kým sa ťuká
+    if (txtRef.current) setTxt("");
+    if (requestMode) return;
+    void onAdd({ name: c.name, quantity: q, unit: u, categoryId: c.cat, quiet: true, instant: true });
+    fly(el, c);
+  };
+  // Mínus počas ťukania: o kus menej (v zozname aj v počte bubliny).
+  const less = (c: Chip) => {
+    const b = bRef.current[c.k];
+    if (!b || b.st !== "on") return;
+    if (!requestMode) {
+      // kým server nepotvrdí nový riadok, nemá ešte ID – úprava počká (najviac 3 s), počet v bubline sa zmení hneď
+      const apply = (tries: number) => {
+        const it = openRef.current.find((i) => sameProduct(i.name, c.name));
+        if (!it) return;
+        if (it.id.startsWith("tmp-")) {
+          if (tries < 30) setTimeout(() => apply(tries + 1), 100);
+          return;
+        }
+        const u = unitOf(it.unit);
+        const q = qtyOf(it);
+        if (q <= minQty(u)) onRemove(it);
+        else onQty(it, bump(q, u, -1));
+      };
+      apply(0);
+    }
+    haptic(6);
+    if (b.n <= 1) {
+      clearTimeout(bTm.current[c.k]);
+      putBurst(c.k, null);
+      return;
+    }
+    putBurst(c.k, { ...b, n: b.n - 1, t: Date.now() });
+    arm(c.k);
+  };
+
+  const closeWin = () => {
+    inp.current?.blur();
+    onTyping(false);
+  };
+  // otvorenie/zavretie okna: rozpísaný text preč, žiadosti sa odošlú, časté veci nanovo
+  useEffect(() => {
+    stopBursts();
+    if (!typing) setTxt("");
+    refill(typing ? txtRef.current : "");
+  }, [typing]); // eslint-disable-line react-hooks/exhaustive-deps
+  // časté veci a katalóg sa načítajú neskôr; zoznam tiež – kým sa neťuká, bubliny sa doplnia
+  useEffect(() => {
+    if (!Object.keys(bRef.current).length) refill(txtRef.current);
+  }, [poolReady, !!cat, open.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Okno pridávania sa drží presne vo viditeľnej časti obrazovky nad klávesnicou (nič neposkakuje).
+  const [vv, setVv] = useState<{ top: number; h: number } | null>(null);
+  useEffect(() => {
+    const v = window.visualViewport;
+    if (!typing || !v) {
+      setVv(null);
+      return;
+    }
+    const up = () => setVv((o) => (o && o.top === Math.round(v.offsetTop) && o.h === Math.round(v.height) ? o : { top: Math.round(v.offsetTop), h: Math.round(v.height) }));
+    up();
+    v.addEventListener("resize", up);
+    v.addEventListener("scroll", up);
+    return () => {
+      v.removeEventListener("resize", up);
+      v.removeEventListener("scroll", up);
+    };
+  }, [typing]);
+  // iPhone pri otvorení klávesnice posunie obrazovku nahor (aby bolo vidieť pole) a po zatvorení ju niekedy nevráti –
+  // pevné prvky (pole, bubliny, pozadie) potom ostanú o výšku klávesnice vyššie a horná lišta je mimo obrazovky.
+  // Po zavretí okna sa stránka vráti presne tam, kde bola pred písaním.
+  const pageY = useRef<number | null>(null);
+  useEffect(() => {
+    if (typing) return;
+    const y = pageY.current;
+    pageY.current = null;
+    if (y == null) return;
+    const vv = window.visualViewport;
+    const fix = () => {
+      if (vv && vv.offsetTop > 0.5) window.scrollTo(0, y);
+    };
+    window.scrollTo(0, y);
+    const tms = [60, 250, 600, 1000].map((ms) => setTimeout(fix, ms));
+    vv?.addEventListener("resize", fix);
+    const off = setTimeout(() => vv?.removeEventListener("resize", fix), 1500);
+    return () => {
+      tms.forEach(clearTimeout);
+      clearTimeout(off);
+      vv?.removeEventListener("resize", fix);
+    };
+  }, [typing]);
+  // stránka pod oknom sa neposúva
+  useEffect(() => {
+    if (!typing) return;
+    const r = document.documentElement;
+    const prev = r.style.overflow;
+    r.style.overflow = "hidden";
+    return () => {
+      r.style.overflow = prev;
+    };
+  }, [typing]);
+
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!enter.length) return;
-    const before = txt;
-    for (const x of enter) {
-      const l = label(x.name);
-      void onAdd({ name: l.name, quantity: x.quantity, unit: x.unit, categoryId: l.categoryId }).then((o) => o === "FAILED" && setTxt(before));
+    // Text priamo z poľa: klávesnica (napr. Gboard) môže mať posledné písmeno ešte len „rozpísané“
+    // a stav by bol o písmeno pozadu („masl“ namiesto „maslo“).
+    const now = inp.current?.value ?? txt;
+    const parts = now.trim().length >= 2 ? chunks(now.trim()) : [];
+    // „Hotovo“ na klávesnici pri prázdnom poli zavrie okno
+    if (!parts.length) {
+      if (typing && !now.trim()) closeWin();
+      return;
     }
+    const before = now;
+    for (const x of parts) {
+      const l = label(x.name);
+      // neúspech: mimo žiadostí ostane v zozname riadok so „Skúsiť znova“, pri žiadosti sa text vráti do poľa
+      void onAdd({ name: l.name, quantity: x.quantity, unit: x.unit, categoryId: l.categoryId, quiet: !requestMode, instant: !requestMode }).then(
+        (o) => o === "FAILED" && requestMode && setTxt(before),
+      );
+    }
+    haptic([8, 40, 14]);
+    // pridané – text aj návrhy preč, späť časté veci (dá sa písať ďalší produkt)
     setTxt("");
-    onAdded?.();
+    stopBursts();
+    refill("");
   };
 
-  const keep = (e: React.PointerEvent) => e.preventDefault();
-  const est = (r: Resolved | null) => (r ? estimator.est({ name: r.label, quantity: one?.quantity ?? null, unit: one?.unit ?? null }, listStore) : null);
-  const showSugg = typing && txt.trim().length >= 2;
+  // Potiahnutie doku (bubliny, pole) nadol = skryť klávesnicu.
+  const drag = useRef<{ x: number; y: number; id: number } | null>(null);
+  const dragDown = (e: React.PointerEvent) => {
+    drag.current = typing ? { x: e.clientX, y: e.clientY, id: e.pointerId } : null;
+  };
+  const dragMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.id) return;
+    const dy = e.clientY - d.y;
+    if (dy > 36 && dy > Math.abs(e.clientX - d.x) * 1.4) {
+      drag.current = null;
+      closeWin();
+    }
+  };
+  const dragEnd = () => {
+    drag.current = null;
+  };
 
-  return (
-    <div className="dock" ref={root}>
-      {showSugg ? (
-        <div className={`sgl${glass ? " glass2" : ""}`} role="listbox" aria-label={t("li.suggestions")}>
-          {enter.length > 1 && (
-            <button type="button" className="sgr ent" onPointerDown={keep} onClick={() => submit()}>
-              <span className="sgi nwi">
-                <I n="plus" w="bold" />
-              </span>
-              <span className="sgt">
-                <b>{tn("li.items", enter.length)}</b>
-                <small>{enter.map((x) => label(x.name).name).join(", ")}</small>
-              </span>
-              <kbd aria-label="Enter">↵</kbd>
-            </button>
-          )}
-          {one &&
-            (() => {
-              const e = est(head);
-              return (
-                <button type="button" className="sgr ent" onPointerDown={keep} onClick={() => submit()}>
-                  {head ? (
-                    <span className="sgi">
-                      <E k={estimator.emoji(head.label, head.category)} s={30} />
-                    </span>
-                  ) : (
-                    <span className="sgi nwi">
-                      <I n="plus" w="bold" />
-                    </span>
-                  )}
-                  <span className="sgt">
-                    <b>{head ? head.label : cap(one.name)}</b>
-                    <small>
-                      {fmtQty(one.quantity, one.unit)} · {whatOf(head) ?? (typo ? t("li.asTyped") : t("li.newItem"))}
-                    </small>
-                  </span>
-                  {e && <span className="sgp">~{eur(e.v)}</span>}
-                  <kbd aria-label="Enter">↵</kbd>
-                </button>
-              );
-            })()}
-          {sugg.map((r) => {
-            const e = est(r);
-            const isT = !!typo && r.label === typo.label;
-            const what = isT ? t("li.typo") : r.level === "general" ? whatOf(r) : r.level === "brand" ? t("li.brand") : t("li.kind");
-            return (
-              <button type="button" key={`${r.level}:${r.label}`} className={`sgr${isT ? " typo" : ""}`} onPointerDown={keep} onClick={() => add(r)}>
-                <span className="sgi">
-                  <E k={estimator.emoji(r.label, r.category)} s={30} />
-                </span>
-                <span className="sgt">
-                  <b>{isT ? `${r.label}?` : r.label}</b>
-                  <small>{what}</small>
-                </span>
-                {e && <span className="sgp">~{eur(e.v)}</span>}
-              </button>
-            );
-          })}
-        </div>
-      ) : chipsLoading ? (
-        <div className="chips staples" aria-hidden="true" style={{ visibility: "hidden" }}>
-          <span className="chip">&nbsp;</span>
-        </div>
-      ) : (
-        chips.length > 0 && (
-          <div className="chips staples" aria-label={t("li.staples")}>
-            {chips.map((p) => {
-              const pd = pend[p.name];
-              return (
-                <button type="button" key={p.name} className={`chip${pd ? " pend" : ""}${glass ? " glass2" : ""}`} onPointerDown={typing ? keep : undefined} onClick={() => tapStaple(p)}>
-                  <E k={estimator.emoji(p.name, p.cat)} />
-                  {p.name}
-                  {pd ? (
-                    <span className="cnt" key={pd.k}>
-                      +{pd.n}
-                    </span>
-                  ) : (
-                    <span className="pl">
-                      <I n="plus" w="bold" />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )
-      )}
-      <form className={`field${glass ? " glass2" : ""}`} onSubmit={submit}>
-        <input
-          ref={inp}
-          value={txt}
-          onChange={(e) => setTxt(e.target.value)}
-          onFocus={() => onTyping(true)}
-          onBlur={() =>
-            setTimeout(() => {
-              if (document.activeElement !== inp.current) onTyping(false);
-            }, 150)
-          }
-          placeholder={requestMode ? t("ls.placeholderRequest") : t("li.placeholder")}
-          autoComplete="off"
-          autoCorrect="off"
-          enterKeyHint="done"
-          maxLength={160}
-          aria-label={t("li.addAria")}
-        />
-        {txt ? (
-          <button type="submit" className="m" aria-label={t("li.add")} onPointerDown={keep}>
-            <I n="arrow-up" w="bold" />
+  // Ťuk do zoznamu v okne = skryť klávesnicu (posúvanie nie). Ďalší ťuk na riadok otvorí detail ako inde.
+  const tapAt = useRef<{ x: number; y: number } | null>(null);
+  const listDown = (e: React.PointerEvent) => {
+    tapAt.current = { x: e.clientX, y: e.clientY };
+  };
+  const listClick = (e: React.MouseEvent) => {
+    const s = tapAt.current;
+    // po potiahnutí riadku (+1 / −1) prehliadač pošle aj „click“ – ten okno nezatvára
+    if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) return;
+    // „Skúsiť znova“ pri neúspešnom pridaní funguje aj s otvorenou klávesnicou
+    if ((e.target as Element).closest("[data-keep]")) return;
+    e.stopPropagation();
+    e.preventDefault();
+    closeWin();
+  };
+
+  // Ťuk na bublinu nesmie zobrať poľu fokus (inak iPhone zavrie klávesnicu): zabrániť pointerdown aj mousedown.
+  const keep = (e: React.SyntheticEvent) => e.preventDefault();
+
+  const chipEl = (c: Chip) => {
+    if (c.kind === "multi") {
+      return (
+        <span className="bb rec" key={c.k}>
+          <button type="button" className="bb-m" onPointerDown={keep} onMouseDown={keep} onClick={() => submit()}>
+            <span className="bb-pl">
+              <I n="plus" w="bold" />
+            </span>
+            <span className="bb-t">
+              <b>{tn("li.items", c.q0 ?? 0)}</b>
+              <small>{c.name}</small>
+            </span>
           </button>
-        ) : (
-          <button type="button" className="m" onClick={onVoice} aria-label={t("li.voice")}>
-            <I n="microphone" />
+        </span>
+      );
+    }
+    const b = bursts[c.k];
+    const on = b?.st === "on";
+    const it = requestMode ? null : itemOf(c.name);
+    const q0 = c.q0 && !b ? c.q0 : null;
+    const e = c.rec ? estimator.est({ name: c.name, quantity: q0, unit: q0 ? c.u : null }, listStore) : null;
+    const sub: string[] = [];
+    if (b) sub.push(t(requestMode ? "li.asked" : "li.addedQty", { q: fmtQty(b.n, b.u) }));
+    else if (c.kind === "typed" && !c.rec) sub.push(q0 ? fmtQty(q0, c.u) : "", t("li.asTyped"));
+    else {
+      if (it) sub.push(t("li.inList"));
+      if (q0) sub.push(`${it ? "+" : ""}${fmtQty(q0, c.u)}`);
+      if (c.tag) sub.push(c.tag);
+      sub.push(e ? `~${eur(e.v)}` : t("li.noPrice"));
+    }
+    const showIcon = c.kind !== "typed" || c.rec;
+    const bu = b?.u ? unitOf(b.u) : "ks";
+    return (
+      <span className={`bb${on ? " act" : ""}${b && !on ? ` ok ${b.st}` : ""}${c.kind === "typed" && !c.rec ? " typed" : ""}`} key={c.k}>
+        {on && (
+          <button type="button" className="bb-min" onPointerDown={keep} onMouseDown={keep} onClick={() => less(c)} aria-label={t("li.lessAria", { name: c.name })}>
+            <I n="minus" w="bold" />
           </button>
         )}
-      </form>
+        <button
+          type="button"
+          className="bb-m"
+          onPointerDown={keep}
+          onMouseDown={keep}
+          onClick={(ev) => tap(c, ev.currentTarget)}
+          aria-label={t("li.pickAria", { name: c.name })}
+        >
+          {showIcon ? (
+            <E k={estimator.emoji(c.name, c.cat)} s={30} key={b ? `e${b.t}` : "e"} />
+          ) : (
+            <span className="bb-pl">
+              <I n="plus" w="bold" />
+            </span>
+          )}
+          <span className="bb-t">
+            <b>{c.kind === "typed" && !c.rec ? `„${c.name}“` : c.name}</b>
+            <small>{sub.filter(Boolean).join(" · ")}</small>
+          </span>
+          {b && (
+            <span className="bb-n" key={on ? `n${b.n}` : "ok"} aria-live="polite">
+              {on ? (bu === "ks" ? formatNumber(b.n) : fmtQty(b.n, bu)) : <I n="check" w="bold" />}
+            </span>
+          )}
+        </button>
+        {/* pásik: o chvíľu sa ťukanie skončí a bublina odíde */}
+        {on && <i className="bb-bar" key={`b${b.t}`} aria-hidden="true" />}
+      </span>
+    );
+  };
+
+  const strip =
+    chips.length > 0 ? (
+      <div className="bb-row" ref={stripRef} aria-label={mode === "type" ? t("li.suggestions") : t("li.staples")}>
+        {mode === "freq" && <span className="bb-lab">{t("li.staples")}</span>}
+        {chips.map(chipEl)}
+      </div>
+    ) : typing ? (
+      <div className="bb-row" ref={stripRef}>
+        <span className="bb-lab wide">{t("li.typeHint")}</span>
+      </div>
+    ) : !poolReady ? (
+      // kým sa časté veci načítavajú, rad má vyhradené miesto – pole dole potom neposkočí
+      <div className="bb-row" aria-hidden="true" style={{ visibility: "hidden" }} ref={stripRef}>
+        <span className="bb">&nbsp;</span>
+      </div>
+    ) : null;
+
+  return (
+    <div
+      className={`dock${typing ? " addwin" : ""}${glass ? " g-win" : ""}`}
+      ref={root}
+      style={typing ? ({ top: vv ? vv.top : 0, height: vv ? vv.h : "100dvh" } as CSSProperties) : undefined}
+    >
+      {typing && (
+        <div className="aw-head">
+          {/* Späť = zavrieť okno a vrátiť sa do zoznamu (tam je Nakupovať a ‹ Nákupy) */}
+          <button type="button" className="aw-back" onClick={closeWin} aria-label={t("li.backToList")}>
+            <I n="caret-left" w="bold" />
+          </button>
+          <div className="aw-ti">
+            <b>{/[\p{L}\d]/u.test(title) ? title : t("li.thisList")}</b>
+            <small>{requestMode ? t("li.addAsk") : summary}</small>
+          </div>
+          <button type="button" className="aw-done" onClick={closeWin}>
+            {t("li.done")}
+          </button>
+        </div>
+      )}
+      {typing && (
+        <div className="aw-body" onPointerDownCapture={listDown} onClickCapture={listClick}>
+          {list}
+        </div>
+      )}
+      <div className="bb-dock" onPointerDown={dragDown} onPointerMove={dragMove} onPointerUp={dragEnd} onPointerCancel={dragEnd}>
+        {strip}
+        <form className={`field${glass ? " glass2" : ""}`} onSubmit={submit}>
+          <input
+            ref={inp}
+            value={txt}
+            onChange={(e) => {
+              // nový text = nové bubliny; rozťukané bubliny sú už pridané, len sa ukončia
+              setTxt(e.target.value);
+              stopBursts();
+              refill(e.target.value);
+            }}
+            onPointerDown={() => {
+              // poloha stránky ešte pred tým, ako ju iPhone kvôli klávesnici posunie
+              if (!typing) pageY.current = window.scrollY;
+            }}
+            onFocus={() => {
+              if (pageY.current == null) pageY.current = window.scrollY;
+              onTyping(true);
+            }}
+            onBlur={() =>
+              setTimeout(() => {
+                // klávesnicu skryl telefón (alebo ťuk mimo) – hneď späť do zoznamu, nič nečaká
+                if (document.activeElement !== inp.current) onTyping(false);
+              }, 150)
+            }
+            placeholder={requestMode ? t("ls.placeholderRequest") : t("li.placeholder")}
+            autoComplete="off"
+            autoCorrect="off"
+            enterKeyHint="done"
+            maxLength={160}
+            aria-label={t("li.addAria")}
+          />
+          {txt ? (
+            <button type="submit" className="m" aria-label={t("li.add")} onPointerDown={keep} onMouseDown={keep}>
+              <I n="arrow-up" w="bold" />
+            </button>
+          ) : (
+            <button type="button" className="m" onPointerDown={typing ? keep : undefined} onMouseDown={typing ? keep : undefined} onClick={onVoice} aria-label={t("li.voice")}>
+              <I n="microphone" />
+            </button>
+          )}
+        </form>
+      </div>
     </div>
   );
 }
@@ -558,18 +928,13 @@ export function ItemSheet({
             )}
           </div>
           {e?.perKg && <p className="meta">{e.kg != null ? t("li.weighNote", { kg: fmtQty(e.kg, "kg") }) : t("li.perKgNote")}</p>}
-          {up && up.avg && r && (
+          {up && (
             <p className="meta">
-              {r.kinds > 1 ? t("li.avgNoteKinds", { k: up.k, n: r.kinds }) : t("li.avgNote", { k: up.k })}
-              {up.same && store ? t("li.inStore", { store }) : ""}. {eur(up.min) !== eur(up.max) ? t("li.rangeNote", { min: eur(up.min), max: eur(up.max) }) : ""} {t("li.refineNote")}
-            </p>
-          )}
-          {up && !up.avg && (
-            <p className="meta">
-              {r?.level === "brand" && r.brand ? `${t("li.brandOnly", { brand: r.brand })} ` : ""}
-              {up.k === 1 ? t("li.lastBuy") : t("li.median", { k: up.k })}
-              {up.same && store ? t("li.inStore", { store }) : listStore ? t("li.allStores") : ""}. {eur(up.min) !== eur(up.max) ? t("li.rangeNote", { min: eur(up.min), max: eur(up.max) }) : ""}
-              {!up.same && listStore && up.store ? ` ${t("li.notHere", { store, other: storeName(storeKeyOf(up.store)) ?? up.store })}` : ""}
+              {t("li.withProduct", { product: productTag(up.product) })}{" "}
+              {t(up.promo ? "li.priceFromPromo" : "li.priceFrom", { store: storeName(storeKeyOf(up.store ?? "")) ?? up.store ?? "", date: shortDate(up.date) })}
+              {r && r.members.length > 1 && eur(up.min) !== eur(up.max) ? ` ${t("li.rangeProducts", { min: eur(up.min), max: eur(up.max) })}` : ""}
+              {!up.same && listStore && store ? ` ${t("li.notHereYet", { store })}` : ""}
+              {r && r.members.length > 1 ? ` ${t("li.refineProduct")}` : ""}
             </p>
           )}
           {!up && <p className="meta">{t("li.noPriceNote")}</p>}

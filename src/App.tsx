@@ -81,6 +81,7 @@ const ProductPage = page(() => import("@/features/analytics/ProductPage"), "Prod
 const KindPage = page(() => import("@/features/analytics/KindPage"), "KindPage");
 const ProductsTab = page(() => import("@/features/analytics/ProductsTab"), "ProductsTab");
 const StorePage = page(() => import("@/features/analytics/StorePage"), "StorePage");
+const SizesPage = page(() => import("@/features/analytics/SizesPage"), "SizesPage");
 const ReceiptsPage = page(() => import("@/features/receipts/ReceiptsPage"), "ReceiptsPage");
 const MatchPage = page(() => import("@/features/receipts/MatchPage"), "MatchPage");
 const ReceiptDetailPage = page(() => import("@/features/receipts/ReceiptDetailPage"), "ReceiptDetailPage");
@@ -167,6 +168,7 @@ export function App() {
           <Route path="analytics/store/:key" element={<StorePage />} />
           <Route path="analytics/product/:id" element={<ProductPage />} />
           <Route path="analytics/kind/:key" element={<KindPage />} />
+          <Route path="analytics/sizes" element={<SizesPage />} />
           <Route path="more" element={<MorePage />} />
           <Route path="more/household" element={<HouseholdPage />} />
           <Route path="more/notifications" element={<NotificationsPage />} />

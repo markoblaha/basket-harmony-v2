@@ -4,11 +4,11 @@
  * (potiahnutie +1/−1, ťuk na množstvo = − / +, ťuk na riadok = detail), skupiny receptov, „V košíku“
  * a dole pole na pridávanie. Nákup, žiadosti a sledovanie rieši ShoppingPage.
  */
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
 import { useNavigate } from "react-router";
 import { useToast } from "@/components/toast";
 import { errorMessage } from "@/lib/errors";
-import { t } from "@/i18n";
+import { t, tn } from "@/i18n";
 import { useSetting } from "@/lib/settings";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, Back, useScrolled } from "@/mockup/ui";
@@ -19,11 +19,21 @@ import { openVoice } from "@/features/voice/open";
 import type { RecipePlan } from "@/features/recipes/api";
 import { useDeleteItem, useUpdateItem, type Item, type ShoppingList } from "./api";
 import { listTotals, useEstimator } from "./estimate";
-import { Composer, ItemRow, ItemSheet, PriceLine, useKeyboardEdge, useRestoreItem } from "./ListParts";
+import { StoreCompareTip } from "./StoreCompare";
+import { Composer, ItemRow, ItemSheet, PriceLine, useRestoreItem } from "./ListParts";
 import { ListMenuSheet } from "./ListMenuSheet";
-import type { AddOutcome } from "./useSmartAdd";
+import { qtyLabel } from "./qty";
+import type { AddOutcome, FailedAdd } from "./useSmartAdd";
 
-type SmartAdd = (input: { name: string; quantity?: number | null; unit?: string | null; note?: string | null; categoryId?: string | null }) => Promise<AddOutcome>;
+type SmartAdd = (input: {
+  name: string;
+  quantity?: number | null;
+  unit?: string | null;
+  note?: string | null;
+  categoryId?: string | null;
+  quiet?: boolean;
+  instant?: boolean;
+}) => Promise<AddOutcome>;
 
 export function ListView({
   list,
@@ -48,6 +58,9 @@ export function ListView({
   smartAdd,
   landed,
   otherLists,
+  failed,
+  onRetry,
+  onDiscard,
 }: {
   list: ShoppingList;
   items: Item[];
@@ -71,6 +84,9 @@ export function ListView({
   smartAdd: SmartAdd;
   landed: { id: string; n: number } | null;
   otherLists: ShoppingList[];
+  failed: FailedAdd[];
+  onRetry: (f: FailedAdd) => void;
+  onDiscard: (f: FailedAdd) => void;
 }) {
   const navigate = useNavigate();
   const toast = useToast();
@@ -96,7 +112,6 @@ export function ListView({
 
   // Pole pri písaní sa drží nad klávesnicou; spodný okraj zoznamu podľa výšky doku.
   const [typing, setTyping] = useState(false);
-  const kbEdge = useKeyboardEdge(typing);
   useEffect(() => {
     document.body.classList.toggle("kb-typing", typing);
     return () => document.body.classList.remove("kb-typing");
@@ -106,7 +121,8 @@ export function ListView({
   useEffect(() => {
     const el = dockRef.current?.querySelector(".dock") as HTMLElement | null;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => setDockH(el.offsetHeight));
+    // okno pridávania (celá obrazovka) výšku doku nemení – zoznam pod ním neposkočí
+    const ro = new ResizeObserver(() => !el.classList.contains("addwin") && setDockH(el.offsetHeight));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -183,7 +199,8 @@ export function ListView({
     });
   };
 
-  const row = (it: Item, note: string | null) => (
+  // win = kópia riadku v okne pridávania (pri písaní); zasvieti a dôjde sa k nej len tam, kde ju práve vidno
+  const row = (it: Item, note: string | null, win = false) => (
     <ItemRow
       key={it.id}
       it={it}
@@ -196,12 +213,57 @@ export function ListView({
       by={byOf(it)}
       sel={sel === it.id}
       setSel={setSel}
-      flash={flash === it.id}
+      flash={flash === it.id && win === typing}
       onQty={(q) => setQty(it, q)}
       onDelete={() => del(it)}
       onOpen={() => setSheet({ id: it.id, open: true })}
     />
   );
+
+  // Pridanie, ktoré sa nepodarilo: riadok navrchu so „Skúsiť znova“ a zahodením. V okne pridávania tlačidlá
+  // nezatvárajú klávesnicu (data-keep, kurzor ostáva v poli).
+  const keepFocus = (e: SyntheticEvent) => e.preventDefault();
+  const failRow = (f: FailedAdd) => (
+    <div className="row fail" key={f.key} data-keep>
+      <span className="th">
+        <E k={estimator.emoji(f.name, f.categoryId)} />
+      </span>
+      <div className="tx">
+        <b>
+          {f.name}
+          {f.quantity && f.quantity !== 1 ? ` · ${qtyLabel(f.quantity, f.unit)}` : ""}
+        </b>
+        <span className="sub">
+          <span className="err">{t("li.addFailed")}</span>
+        </span>
+      </div>
+      <button type="button" className="qty retry" onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => onRetry(f)}>
+        {t("common.retry")}
+      </button>
+      <button type="button" className="fx" onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => onDiscard(f)} aria-label={t("li.discardAria", { name: f.name })}>
+        <I n="x" w="bold" />
+      </button>
+    </div>
+  );
+  const failLst = failed.length > 0 && <div className={`lst fail-lst${gl}`}>{failed.map(failRow)}</div>;
+
+  // Zoznam v okne pridávania: rovnaké riadky (najnovšie hore) a skupiny receptov, bez „V košíku“.
+  const winList = (
+    <>
+      {failLst}
+      {loose.length > 0 && <div className={`lst${gl}`}>{loose.map((it) => row(it, it.note, true))}</div>}
+      {[...groups.entries()].map(([label, { items: gi }]) => (
+        <Fragment key={label}>
+          <div className="group plain">
+            <span className="gl">{label}</span>
+          </div>
+          <div className={`lst${gl}`}>{gi.map((it) => row(it, groupOf.get(it.id)?.note ?? null, true))}</div>
+        </Fragment>
+      ))}
+      {!open.length && !failed.length && <p className="aw-empty">{t("li.empty")}</p>}
+    </>
+  );
+  const summary = tn("li.items", open.length) + (showEstimate && tot.priced ? ` · ~${eur0(tot.v)}` : "");
 
   const day = list.planned_for ? relDay(list.planned_for) : t("trip.noDay");
   const sn = storeName(storeKey);
@@ -265,18 +327,20 @@ export function ListView({
               </Btn>
             )}
           </div>
+          {showEstimate && !iAmShopping && <StoreCompareTip items={open} estimator={estimator} storeKey={storeKey} gl={gl} />}
 
           {itemsState === "loading" ? null : itemsState === "error" ? (
             itemsError
           ) : (
             <>
-              {!open.length && !done.length && (
+              {!open.length && !done.length && !failed.length && (
                 <div className="empty">
                   <E k="basket" s={64} />
                   <b>{t("li.empty")}</b>
                   <p>{t("li.emptyText")}</p>
                 </div>
               )}
+              {failLst}
               {loose.length > 0 && <div className={`lst${gl}`}>{loose.map((it) => row(it, it.note))}</div>}
               {[...groups.entries()].map(([label, { plan, items: gi }]) => {
                 const art = recipeArtOf({ id: plan.recipe_key, name: plan.recipe_name });
@@ -339,7 +403,7 @@ export function ListView({
         </div>
       </div>
 
-      <div className="bhm bhm-dock" ref={dockRef} style={typing && kbEdge != null ? ({ "--kb-top": `${kbEdge}px` } as React.CSSProperties) : undefined}>
+      <div className="bhm bhm-dock" ref={dockRef}>
         <Composer
           key={list.id}
           householdId={householdId}
@@ -351,8 +415,12 @@ export function ListView({
           typing={typing}
           onTyping={setTyping}
           onAdd={(x) => smartAdd(x)}
-          onAdded={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onQty={setQty}
+          onRemove={del}
           onVoice={() => openVoice(list.id)}
+          title={list.name}
+          summary={summary}
+          list={winList}
         />
       </div>
 

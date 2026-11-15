@@ -20,7 +20,7 @@ import { computePeriod, customPeriod, monthName, shiftMonth, thisMonth, todayIso
 
 /* ------------------------------------------------------------------ obdobie */
 export type Per = "week" | "month" | "year";
-const addIso = (iso: string, d: number) => {
+export const addIso = (iso: string, d: number) => {
   const x = new Date(`${iso}T00:00:00Z`);
   x.setUTCDate(x.getUTCDate() + d);
   return x.toISOString().slice(0, 10);
@@ -28,8 +28,13 @@ const addIso = (iso: string, d: number) => {
 /** Obdobie posunuté o `off` dozadu (0 = aktuálne, −1 = predchádzajúce…). */
 export function periodOf(per: Per, off = 0): Period {
   if (per === "week") {
-    const to = addIso(todayIso(), 7 * off);
-    return customPeriod(addIso(to, -6), to, "all");
+    // kalendárny týždeň pondelok – nedeľa (rozhodnutie 12. 11. 2026); prebiehajúci týždeň končí dneškom
+    const today = todayIso();
+    const dow = (new Date(`${today}T12:00:00`).getDay() + 6) % 7;
+    const from = addIso(today, -dow + 7 * off);
+    const end = addIso(from, 6);
+    const p = customPeriod(from, end < today ? end : today, "all");
+    return { ...p, prevFrom: addIso(p.from, -7), prevTo: addIso(p.to, -7) };
   }
   if (per === "year") return computePeriod("year", `${Number(thisMonth().slice(0, 4)) + off}${thisMonth().slice(4)}`, "all", "year");
   return computePeriod("month", shiftMonth(thisMonth(), off), "all", "month");
@@ -75,7 +80,7 @@ const dm = (iso: string) => formatDateTime(`${iso}T12:00:00`, { day: "numeric", 
 /** Názov obdobia: „November“, „December 2025“, „Týždeň“ / „26. 10. – 1. 11.“, „Rok 2025“. */
 export function perTitle(per: Per, off = 0) {
   const p = periodOf(per, off);
-  if (per === "week") return off ? `${dm(p.from)} – ${dm(p.to)}` : t("mn.week");
+  if (per === "week") return `${dm(p.from)} – ${dm(addIso(p.from, 6))}`;
   if (per === "year") return t("mn.yearN", { y: p.from.slice(0, 4) });
   const m = cap(monthName(Number(p.month.slice(5))));
   return p.month.slice(0, 4) === thisMonth().slice(0, 4) ? m : `${m} ${p.month.slice(0, 4)}`;
@@ -116,8 +121,10 @@ export function Donut({ cats, center, sub, size = 132 }: { cats: { id: string; a
   );
 }
 
-export function CatRows({ cats, onOpen, limit = 6, g }: { cats: { id: string; amount: number }[]; onOpen: (id: string) => void; limit?: number; g: boolean }) {
-  const [all, setAll] = useState(false);
+export function CatRows({ cats, onOpen, limit = 6, g, sel, all: allP, onAll }: { cats: { id: string; amount: number }[]; onOpen: (id: string) => void; limit?: number; g: boolean; /** Kategória zvýraznená v prstenci. */ sel?: string | null; all?: boolean; onAll?: (v: boolean) => void }) {
+  const [allS, setAllS] = useState(false);
+  const all = allP ?? allS;
+  const setAll = onAll ?? setAllS;
   const top = cats.filter((c) => c.amount > 0.5).sort((a, b) => b.amount - a.amount);
   const max = top[0]?.amount ?? 1;
   return (
@@ -126,7 +133,7 @@ export function CatRows({ cats, onOpen, limit = 6, g }: { cats: { id: string; am
         {(all ? top : top.slice(0, limit)).map((x) => {
           const c = cat(x.id);
           return (
-            <button type="button" key={x.id} className="cat" onClick={() => onOpen(x.id)}>
+            <button type="button" key={x.id} className={`cat${sel === x.id ? " sel" : ""}`} onClick={() => onOpen(x.id)}>
               <span className="tile" style={{ "--tc": c.col } as React.CSSProperties}>
                 <E k={c.e} />
               </span>
@@ -162,12 +169,14 @@ export function MissingReceipts({ compact, g }: { compact?: boolean; g: boolean 
   const lists = useLists(household.id).data ?? [];
   const stats = useListStats(household.id).data;
   const later = useSetReceiptLater(household.id);
+  // Vo Výdavkoch je pásik zbalený do jedného riadku, aby neodtlačil prehľad; nákupy sa ukážu po ťuknutí.
+  const [open, setOpen] = useState(false);
   const now = Date.now();
   const ms = lists
     .filter((l) => l.completed_at && l.receipt_state === "LATER" && now - new Date(l.completed_at).getTime() <= MONTH_MS)
     .sort((a, b) => b.completed_at!.localeCompare(a.completed_at!));
   if (!ms.length) return null;
-  const list = compact ? ms.slice(0, 1) : ms;
+  const list = compact ? ms.slice(0, 1) : open ? ms : [];
   const drop = (id: string) =>
     later.mutate(
       { listId: id, later: false },
@@ -178,16 +187,28 @@ export function MissingReceipts({ compact, g }: { compact?: boolean; g: boolean 
     );
   return (
     <div className={`card mrc${g ? " glass2" : ""}`} role="region" aria-label={t("mn.missingAria")}>
-      <div className="mrc-h">
-        <span className="mrc-i">
-          <I n="receipt" />
-          <b>{ms.length}</b>
-        </span>
-        <div className="grow">
-          <div className="t1">{ms.length === 1 ? t("mn.missingOne") : t("mn.missingN", { n: ms.length })}</div>
-          <div className="meta sm">{t("mn.missingS")}</div>
-        </div>
-      </div>
+      {(() => {
+        const head = (
+          <>
+            <span className="mrc-i">
+              <I n="receipt" />
+              <b>{ms.length}</b>
+            </span>
+            <div className="grow">
+              <div className="t1">{ms.length === 1 ? t("mn.missingOne") : t("mn.missingN", { n: ms.length })}</div>
+              <div className="meta sm">{t("mn.missingS")}</div>
+            </div>
+          </>
+        );
+        return compact ? (
+          <div className="mrc-h">{head}</div>
+        ) : (
+          <button type="button" className="mrc-h an-mrct" aria-expanded={open} onClick={() => setOpen(!open)}>
+            {head}
+            <I n={open ? "caret-up" : "caret-down"} w="bold" cls="chev" />
+          </button>
+        );
+      })()}
       {list.map((l) => {
         const k = storeKeyOf(l.name);
         const n = stats?.get(l.id)?.bought ?? 0;
@@ -203,15 +224,21 @@ export function MissingReceipts({ compact, g }: { compact?: boolean; g: boolean 
             <div className="grow">
               <b>{l.name}</b>
               <span className="sub">
-                {formatDateTime(l.completed_at!, { day: "numeric", month: "numeric", hour: "numeric", minute: "2-digit" })}
-                {n ? ` · ${tn("li.items", n)}` : ""}
+                {/* nezalomiteľné medzery: „7 položiek“ ani dátum sa nerozdelia na dva riadky */}
+                {formatDateTime(l.completed_at!, { weekday: "short", day: "numeric", month: "numeric" }).replace(/ /g, "\u00a0")}
+                {n ? ` · ${tn("li.items", n).replace(/ /g, "\u00a0")}` : ""}
               </span>
             </div>
+            {/* Vo Výdavkoch sú pri každom nákupe dve akcie – ako ikony, aby mal názov nákupu miesto (nepretečie). */}
             {!compact && <IB n="x" cls="flat sm" label={t("mn.noReceiptAria", { name: l.name })} onClick={() => drop(l.id)} />}
-            <Btn cls="soft sm" onClick={() => navigate(`/scan?nakup=${l.id}`)}>
-              <I n="camera" />
-              {t("mn.photo")}
-            </Btn>
+            {compact ? (
+              <Btn cls="soft sm" onClick={() => navigate(`/scan?nakup=${l.id}`)}>
+                <I n="camera" />
+                {t("mn.photo")}
+              </Btn>
+            ) : (
+              <IB n="camera" w="fill" cls="flat mrc-cam" label={t("mn.photoAria", { name: l.name })} onClick={() => navigate(`/scan?nakup=${l.id}`)} />
+            )}
           </div>
         );
       })}

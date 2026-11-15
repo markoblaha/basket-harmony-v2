@@ -32,11 +32,46 @@ export const RCOLS: { id: string; e: string; test: ((r: Recipe) => boolean) | nu
 ];
 
 /** Obrázok receptu z mockupu (fotka alebo 3D emoji na farebnom pozadí). */
-export function art(r: Pick<Recipe, "id" | "name" | "mine">): { e: string; pic: string | null; bg: string; big?: string } {
-  if (r.mine) return { e: "pot", pic: null, bg: "peach" };
+/**
+ * Recept bez fotky: emoji a farba podľa toho, čo to je (názov, potom kategória a mäso) – predtým mal každý
+ * rovnaký hrniec na broskyňovej ploche a kniha pôsobila ako ukážka.
+ */
+const GUESS: [RegExp, string, string][] = [
+  [/polievk|kulajd|vyvar|kapustnic|krem\b/, "soup", "peach"],
+  [/gulas|privarok|sosovic|leco|perkelt|ragu|chili/, "stew", "peach"],
+  [/knedl|halusk|pirohy|noky|gnocchi/, "dumpling", "butter"],
+  [/lasagn|spaget|cestovin|penne|granadir|rezanc|makaron|tagliat/, "spaghetti", "butter"],
+  [/pizza/, "pizza", "butter"],
+  [/palacink|lievan|livanc|plack|pancake|wafl/, "pancakes", "butter"],
+  [/kolac|buchty|babovk|torta|medovn|zakusok|muffin|kremes|strudl|zavin/, "cake", "rose"],
+  [/rizot|ryz|risotto/, "rice", "butter"],
+  [/kari\b|curry|masala/, "curry", "peach"],
+  [/kurac|kurca|hydin|morc|kacic/, "poultry", "rose"],
+  [/ryb|losos|tresk|pstruh|tuniak|kreve/, "fish", "sky"],
+  [/salat/, "salad", "sage"],
+  [/fazul|cicer|strukovin/, "beans", "sage"],
+  [/zemiak|hranolk|placky/, "potato", "butter"],
+  [/vajc|omelet|prazenic/, "egg", "butter"],
+  [/bravc|hovadz|rezen|steak|pecen|masov|kotlet|sekan|fasirk|maso/, "meat", "rose"],
+];
+const CAT_ART: Record<string, [string, string]> = {
+  polievky: ["soup", "peach"], cestoviny: ["spaghetti", "butter"], sladke: ["pancakes", "butter"], ranajky: ["egg", "butter"], salaty: ["salad", "sage"],
+};
+const MEAT_ART: Record<string, [string, string]> = { kuracie: ["poultry", "rose"], bravcove: ["meat", "rose"], hovadzie: ["meat", "rose"], ryby: ["fish", "sky"], bez: ["salad", "sage"] };
+function guessArt(r: Pick<Recipe, "name"> & Partial<Pick<Recipe, "category" | "meat">>): { e: string; bg: string } {
+  const n = r.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const hit = GUESS.find(([re]) => re.test(n));
+  if (hit) return { e: hit[1], bg: hit[2] };
+  const c = (r.category && CAT_ART[r.category]) || (r.meat && MEAT_ART[r.meat]);
+  return c ? { e: c[0], bg: c[1] } : { e: "pot", bg: "peach" };
+}
+
+export function art(r: Pick<Recipe, "id" | "name" | "mine"> & Partial<Pick<Recipe, "category" | "meat">>): { e: string; pic: string | null; bg: string; big?: string } {
   // Recept z knihy: malá fotka na karty, veľká (big) na celú obrazovku.
-  if (bookRecipe(r.id)?.book) return { e: "pot", pic: `kb_${r.id}_1s`, big: `kb_${r.id}_1`, bg: "peach" };
-  return recipeArt(r.id, r.name);
+  if (!r.mine && bookRecipe(r.id)?.book) return { e: "pot", pic: `kb_${r.id}_1s`, big: `kb_${r.id}_1`, bg: "peach" };
+  const a = r.mine ? null : recipeArt(r.id, r.name);
+  if (a && (a.pic || a.e !== "pot")) return a;
+  return { ...guessArt(r), pic: null };
 }
 
 /* ------------------------------------------------------------------ mám doma (v zariadení) */

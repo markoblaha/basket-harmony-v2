@@ -169,10 +169,15 @@ export function OfflineBanner() {
 }
 
 // ------------------------------------------------------------------ Stavové obrazovky
+/** Načítavanie: tri bodky vo farbe témy; ukáže sa až po chvíli, aby rýchle načítanie nepreblikovalo (CSS .bh-load v adapt.css). */
 export function Spinner({ label }: { label?: string }) {
   return (
-    <div role="status" className="flex items-center justify-center gap-2 py-16 text-text-3">
-      <Loader2 className="size-5 animate-spin" aria-hidden />
+    <div role="status" className="bh-load">
+      <span className="bh-dots" aria-hidden>
+        <i />
+        <i />
+        <i />
+      </span>
       <span>{label ?? t("common.loading")}</span>
     </div>
   );

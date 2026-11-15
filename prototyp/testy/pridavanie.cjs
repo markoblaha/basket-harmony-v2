@@ -10,7 +10,7 @@ const { chromium } = require('playwright');
     const inp = p.locator('.scr.top .dock input');
     for (const t of ['Smotana', 'smot', 'pivo', 'plzeň', '2 mlieka', 'chleba', 'smotna', 'kyslá smotana']) {
       await inp.fill(''); await inp.click(); await inp.type(t, { delay: 15 }); await p.waitForTimeout(400);
-      R[k + ' ' + t] = await p.locator('.sgl .sgr').evaluateAll((els) => els.map((e) => e.innerText.replace(/\n/g, ' | ')));
+      R[k + ' ' + t] = await p.locator('.bb-row .bb').evaluateAll((els) => els.map((e) => e.innerText.replace(/\n/g, ' | ')));
       await p.screenshot({ path: `${__dirname}/../dist/shots/sg-${k}-${t.replace(/\W+/g, '_')}.png` });
     }
     await inp.fill(''); await inp.type('smotana'); await inp.press('Enter'); await p.waitForTimeout(500);

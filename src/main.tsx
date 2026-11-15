@@ -25,6 +25,8 @@ import "./mockup/mockup.css";
 import "./mockup/assets.css";
 import "./features/recipes/kniha.css";
 import "./mockup/adapt.css";
+import "./features/lists/pick.css";
+import "./styles/analytics-v2.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

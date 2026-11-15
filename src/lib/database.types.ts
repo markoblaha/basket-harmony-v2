@@ -439,6 +439,12 @@ export type Database = {
         Returns: Json;
       };
       set_product_kind: { Args: { p_kind: string; p_product_id: string }; Returns: Database["public"]["Tables"]["products"]["Row"] };
+      analytics_price_kind: { Args: { p_household_id: string; p_kind_key: string }; Returns: Json };
+      analytics_price_product: { Args: { p_product_id: string }; Returns: Json };
+      analytics_price_store: { Args: { p_household_id: string; p_store_key: string }; Returns: Json };
+      analytics_missing_sizes: { Args: { p_household_id: string }; Returns: Json };
+      analytics_daily: { Args: { p_household_id: string; p_from: string; p_to: string; p_category_id?: string | null; p_store_key?: string | null }; Returns: Json };
+      set_product_size: { Args: { p_product_id: string; p_size_unit: string; p_size_value: number }; Returns: Database["public"]["Tables"]["products"]["Row"] };
       analytics_products: { Args: { p_household_id: string }; Returns: Json };
       analytics_product: { Args: { p_product_id: string }; Returns: Json };
       list_price_hints: { Args: { p_list_id: string }; Returns: Json };

@@ -64,7 +64,11 @@ export function HistoryPage() {
               const st = stats.data?.get(l.id);
               const receipt = l.receipt_id ? receipts.data?.find((r) => r.id === l.receipt_id) : undefined;
               const k = storeKeyOf(l.name);
-              const sub = [relDay(l.completed_at!), tn("shop.itemCount", st?.bought ?? 0), receipt?.total != null ? eur(Number(receipt.total)) : ""].filter(Boolean).join(" · ");
+              // Úseky sa nezalomia v strede („3 / položky“), zalomiť sa dá len medzi nimi.
+              const sub = [relDay(l.completed_at!), tn("shop.itemCount", st?.bought ?? 0), receipt?.total != null ? eur(Number(receipt.total)) : ""]
+                .filter(Boolean)
+                .map((x) => x.replace(/ /g, "\u00a0"))
+                .join("\u00a0· ");
               return (
                 <button type="button" key={l.id} className="row tap" onClick={() => navigate(`/history/${l.id}`)}>
                   {k ? (
@@ -74,11 +78,12 @@ export function HistoryPage() {
                       <I n="basket" />
                     </span>
                   )}
+                  {/* Stav bločku pod názvom, nie vedľa neho – dlhý názov nákupu tak nie je odrezaný. */}
                   <div className="tx">
                     <b>{l.name}</b>
                     <span className="sub">{sub}</span>
+                    <RcptPill list={l} receipt={receipt} />
                   </div>
-                  <RcptPill list={l} receipt={receipt} />
                   <I n="caret-right" w="bold" cls="chev" />
                 </button>
               );

@@ -134,13 +134,13 @@ def rename_anims(body, keyframes):
 
 
 css = ''
-for f in ('shell.css', 'base.css', 'w.css', 'g.css', 'polish.css'):
+for f in ('shell.css', 'base.css', 'w.css', 'g.css', 'polish.css', 'finish.css'):
     css += '\n' + strip_comments(open(os.path.join(P, 'css', f)).read())
 # písma sú v appke pod menami balíkov @fontsource-variable
 css = css.replace('"DM Sans"', '"DM Sans Variable", "DM Sans"').replace('"Fraunces"', '"Fraunces Variable", "Fraunces"').replace('"Inter"', '"Inter Variable", "Inter"')
 keyframes = sorted(set(re.findall(r'@keyframes\s+([\w-]+)', css)), key=len, reverse=True)
 scoped = transform(css, keyframes)
-header = '/* VYGENEROVANÉ z prototyp/css (shell, base, w, g, polish) skriptom prototyp/do-appky.py – needitovať ručne. */\n'
+header = '/* VYGENEROVANÉ z prototyp/css (shell, base, w, g, polish, finish) skriptom prototyp/do-appky.py – needitovať ručne. */\n'
 open(os.path.join(OUT, 'mockup.css'), 'w').write(header + scoped + '\n')
 
 # ikony
@@ -156,7 +156,11 @@ for sel, kind, data in re.findall(r'\.((?:em|pic)-[\w-]+)\{background-image:url\
     name = sel.split('-', 1)[1]
     os.makedirs(os.path.join(PUB, folder), exist_ok=True)
     open(os.path.join(PUB, folder, name + '.' + kind), 'wb').write(base64.b64decode(data))
-    lines.append('.%s { background-image: url("/mk/%s/%s.%s"); }' % (sel, folder, name, kind))
+    # aj „.bhm .pic-…“: v appke má .th (dlaždica) prioritu .bhm .th a jej podklad by fotku prekryl
+    if folder == 'pic':
+        lines.append('.%s, .bhm .%s { background-image: url("/mk/%s/%s.%s"); }' % (sel, sel, folder, name, kind))
+    else:
+        lines.append('.%s { background-image: url("/mk/%s/%s.%s"); }' % (sel, folder, name, kind))
 open(os.path.join(OUT, 'assets.css'), 'w').write('/* VYGENEROVANÉ z prototyp/gen/assets.css skriptom prototyp/do-appky.py. */\n' + '\n'.join(lines) + '\n')
 print('mockup.css', len(scoped) // 1024, 'KB ·', len(lines), 'obrázkov ·', len(keyframes), 'animácií')
 

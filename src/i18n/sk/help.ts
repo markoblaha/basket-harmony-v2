@@ -66,7 +66,7 @@ export const skHelp = {
   "co.minsight.t": "Oplatí sa vedieť",
   "co.minsight.x": "Appka porovnáva ceny z tvojich bločkov a ukáže, kde je čo lacnejšie.",
   "co.mrc.t": "Chýba bloček",
-  "co.mrc.x": "Tu sú nákupy bez bločku. Odfoť ho a ceny sa priradia samé.",
+  "co.mrc.x": "Tu sú nákupy bez bločku. Odfoť bloček a ceny sa priradia samé.",
   "co.scan.t": "Odfoť bloček",
   "co.scan.x": "Ceny sa zapíšu k položkám a výdavky sa spočítajú samé.",
   "co.mnotif.t": "Upozornenia",

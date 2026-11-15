@@ -1,54 +1,55 @@
-/* Fotky receptov z knihy (public/kniha). Trieda pic-kb_<id>_<n> ako ostatné obrázky mockupu (assets.css). */
-.pic-kb_svieckova_1 { background-image: url("/kniha/svieckova-1.webp"); }
-.pic-kb_svieckova_2 { background-image: url("/kniha/svieckova-2.webp"); }
-.pic-kb_svieckova_3 { background-image: url("/kniha/svieckova-3.webp"); }
-.pic-kb_svieckova_4 { background-image: url("/kniha/svieckova-4.webp"); }
-.pic-kb_svieckova_1s { background-image: url("/kniha/svieckova-1s.webp"); }
-.pic-kb_kapustnica_1 { background-image: url("/kniha/kapustnica-1.webp"); }
-.pic-kb_kapustnica_2 { background-image: url("/kniha/kapustnica-2.webp"); }
-.pic-kb_kapustnica_3 { background-image: url("/kniha/kapustnica-3.webp"); }
-.pic-kb_kapustnica_4 { background-image: url("/kniha/kapustnica-4.webp"); }
-.pic-kb_kapustnica_1s { background-image: url("/kniha/kapustnica-1s.webp"); }
-.pic-kb_plnena-paprika_1 { background-image: url("/kniha/plnena-paprika-1.webp"); }
-.pic-kb_plnena-paprika_2 { background-image: url("/kniha/plnena-paprika-2.webp"); }
-.pic-kb_plnena-paprika_3 { background-image: url("/kniha/plnena-paprika-3.webp"); }
-.pic-kb_plnena-paprika_4 { background-image: url("/kniha/plnena-paprika-4.webp"); }
-.pic-kb_plnena-paprika_1s { background-image: url("/kniha/plnena-paprika-1s.webp"); }
-.pic-kb_vtacik_1 { background-image: url("/kniha/vtacik-1.webp"); }
-.pic-kb_vtacik_2 { background-image: url("/kniha/vtacik-2.webp"); }
-.pic-kb_vtacik_3 { background-image: url("/kniha/vtacik-3.webp"); }
-.pic-kb_vtacik_4 { background-image: url("/kniha/vtacik-4.webp"); }
-.pic-kb_vtacik_1s { background-image: url("/kniha/vtacik-1s.webp"); }
-.pic-kb_musaka_1 { background-image: url("/kniha/musaka-1.webp"); }
-.pic-kb_musaka_2 { background-image: url("/kniha/musaka-2.webp"); }
-.pic-kb_musaka_3 { background-image: url("/kniha/musaka-3.webp"); }
-.pic-kb_musaka_4 { background-image: url("/kniha/musaka-4.webp"); }
-.pic-kb_musaka_1s { background-image: url("/kniha/musaka-1s.webp"); }
-.pic-kb_chili_1 { background-image: url("/kniha/chili-1.webp"); }
-.pic-kb_chili_2 { background-image: url("/kniha/chili-2.webp"); }
-.pic-kb_chili_3 { background-image: url("/kniha/chili-3.webp"); }
-.pic-kb_chili_4 { background-image: url("/kniha/chili-4.webp"); }
-.pic-kb_chili_1s { background-image: url("/kniha/chili-1s.webp"); }
-.pic-kb_segedin_1 { background-image: url("/kniha/segedin-1.webp"); }
-.pic-kb_segedin_2 { background-image: url("/kniha/segedin-2.webp"); }
-.pic-kb_segedin_3 { background-image: url("/kniha/segedin-3.webp"); }
-.pic-kb_segedin_1s { background-image: url("/kniha/segedin-1s.webp"); }
-.pic-kb_paprikas_1 { background-image: url("/kniha/paprikas-1.webp"); }
-.pic-kb_paprikas_2 { background-image: url("/kniha/paprikas-2.webp"); }
-.pic-kb_paprikas_3 { background-image: url("/kniha/paprikas-3.webp"); }
-.pic-kb_paprikas_1s { background-image: url("/kniha/paprikas-1s.webp"); }
-.pic-kb_kulajda_1 { background-image: url("/kniha/kulajda-1.webp"); }
-.pic-kb_kulajda_2 { background-image: url("/kniha/kulajda-2.webp"); }
-.pic-kb_kulajda_3 { background-image: url("/kniha/kulajda-3.webp"); }
-.pic-kb_kulajda_1s { background-image: url("/kniha/kulajda-1s.webp"); }
-.pic-kb_medovnik_1 { background-image: url("/kniha/medovnik-1.webp"); }
-.pic-kb_medovnik_2 { background-image: url("/kniha/medovnik-2.webp"); }
-.pic-kb_medovnik_3 { background-image: url("/kniha/medovnik-3.webp"); }
-.pic-kb_medovnik_1s { background-image: url("/kniha/medovnik-1s.webp"); }
-.pic-kb_lasagne_1 { background-image: url("/kniha/lasagne-1.webp"); }
-.pic-kb_lasagne_2 { background-image: url("/kniha/lasagne-2.webp"); }
-.pic-kb_lasagne_3 { background-image: url("/kniha/lasagne-3.webp"); }
-.pic-kb_lasagne_1s { background-image: url("/kniha/lasagne-1s.webp"); }
+/* Fotky receptov z knihy (public/kniha). Trieda pic-kb_<id>_<n> ako ostatné obrázky mockupu (assets.css).
+ * Aj „.bhm .pic-…“, inak by podklad dlaždice (.bhm .th) fotku prekryl (napr. Plán týždňa). */
+.pic-kb_svieckova_1, .bhm .pic-kb_svieckova_1 { background-image: url("/kniha/svieckova-1.webp"); }
+.pic-kb_svieckova_2, .bhm .pic-kb_svieckova_2 { background-image: url("/kniha/svieckova-2.webp"); }
+.pic-kb_svieckova_3, .bhm .pic-kb_svieckova_3 { background-image: url("/kniha/svieckova-3.webp"); }
+.pic-kb_svieckova_4, .bhm .pic-kb_svieckova_4 { background-image: url("/kniha/svieckova-4.webp"); }
+.pic-kb_svieckova_1s, .bhm .pic-kb_svieckova_1s { background-image: url("/kniha/svieckova-1s.webp"); }
+.pic-kb_kapustnica_1, .bhm .pic-kb_kapustnica_1 { background-image: url("/kniha/kapustnica-1.webp"); }
+.pic-kb_kapustnica_2, .bhm .pic-kb_kapustnica_2 { background-image: url("/kniha/kapustnica-2.webp"); }
+.pic-kb_kapustnica_3, .bhm .pic-kb_kapustnica_3 { background-image: url("/kniha/kapustnica-3.webp"); }
+.pic-kb_kapustnica_4, .bhm .pic-kb_kapustnica_4 { background-image: url("/kniha/kapustnica-4.webp"); }
+.pic-kb_kapustnica_1s, .bhm .pic-kb_kapustnica_1s { background-image: url("/kniha/kapustnica-1s.webp"); }
+.pic-kb_plnena-paprika_1, .bhm .pic-kb_plnena-paprika_1 { background-image: url("/kniha/plnena-paprika-1.webp"); }
+.pic-kb_plnena-paprika_2, .bhm .pic-kb_plnena-paprika_2 { background-image: url("/kniha/plnena-paprika-2.webp"); }
+.pic-kb_plnena-paprika_3, .bhm .pic-kb_plnena-paprika_3 { background-image: url("/kniha/plnena-paprika-3.webp"); }
+.pic-kb_plnena-paprika_4, .bhm .pic-kb_plnena-paprika_4 { background-image: url("/kniha/plnena-paprika-4.webp"); }
+.pic-kb_plnena-paprika_1s, .bhm .pic-kb_plnena-paprika_1s { background-image: url("/kniha/plnena-paprika-1s.webp"); }
+.pic-kb_vtacik_1, .bhm .pic-kb_vtacik_1 { background-image: url("/kniha/vtacik-1.webp"); }
+.pic-kb_vtacik_2, .bhm .pic-kb_vtacik_2 { background-image: url("/kniha/vtacik-2.webp"); }
+.pic-kb_vtacik_3, .bhm .pic-kb_vtacik_3 { background-image: url("/kniha/vtacik-3.webp"); }
+.pic-kb_vtacik_4, .bhm .pic-kb_vtacik_4 { background-image: url("/kniha/vtacik-4.webp"); }
+.pic-kb_vtacik_1s, .bhm .pic-kb_vtacik_1s { background-image: url("/kniha/vtacik-1s.webp"); }
+.pic-kb_musaka_1, .bhm .pic-kb_musaka_1 { background-image: url("/kniha/musaka-1.webp"); }
+.pic-kb_musaka_2, .bhm .pic-kb_musaka_2 { background-image: url("/kniha/musaka-2.webp"); }
+.pic-kb_musaka_3, .bhm .pic-kb_musaka_3 { background-image: url("/kniha/musaka-3.webp"); }
+.pic-kb_musaka_4, .bhm .pic-kb_musaka_4 { background-image: url("/kniha/musaka-4.webp"); }
+.pic-kb_musaka_1s, .bhm .pic-kb_musaka_1s { background-image: url("/kniha/musaka-1s.webp"); }
+.pic-kb_chili_1, .bhm .pic-kb_chili_1 { background-image: url("/kniha/chili-1.webp"); }
+.pic-kb_chili_2, .bhm .pic-kb_chili_2 { background-image: url("/kniha/chili-2.webp"); }
+.pic-kb_chili_3, .bhm .pic-kb_chili_3 { background-image: url("/kniha/chili-3.webp"); }
+.pic-kb_chili_4, .bhm .pic-kb_chili_4 { background-image: url("/kniha/chili-4.webp"); }
+.pic-kb_chili_1s, .bhm .pic-kb_chili_1s { background-image: url("/kniha/chili-1s.webp"); }
+.pic-kb_segedin_1, .bhm .pic-kb_segedin_1 { background-image: url("/kniha/segedin-1.webp"); }
+.pic-kb_segedin_2, .bhm .pic-kb_segedin_2 { background-image: url("/kniha/segedin-2.webp"); }
+.pic-kb_segedin_3, .bhm .pic-kb_segedin_3 { background-image: url("/kniha/segedin-3.webp"); }
+.pic-kb_segedin_1s, .bhm .pic-kb_segedin_1s { background-image: url("/kniha/segedin-1s.webp"); }
+.pic-kb_paprikas_1, .bhm .pic-kb_paprikas_1 { background-image: url("/kniha/paprikas-1.webp"); }
+.pic-kb_paprikas_2, .bhm .pic-kb_paprikas_2 { background-image: url("/kniha/paprikas-2.webp"); }
+.pic-kb_paprikas_3, .bhm .pic-kb_paprikas_3 { background-image: url("/kniha/paprikas-3.webp"); }
+.pic-kb_paprikas_1s, .bhm .pic-kb_paprikas_1s { background-image: url("/kniha/paprikas-1s.webp"); }
+.pic-kb_kulajda_1, .bhm .pic-kb_kulajda_1 { background-image: url("/kniha/kulajda-1.webp"); }
+.pic-kb_kulajda_2, .bhm .pic-kb_kulajda_2 { background-image: url("/kniha/kulajda-2.webp"); }
+.pic-kb_kulajda_3, .bhm .pic-kb_kulajda_3 { background-image: url("/kniha/kulajda-3.webp"); }
+.pic-kb_kulajda_1s, .bhm .pic-kb_kulajda_1s { background-image: url("/kniha/kulajda-1s.webp"); }
+.pic-kb_medovnik_1, .bhm .pic-kb_medovnik_1 { background-image: url("/kniha/medovnik-1.webp"); }
+.pic-kb_medovnik_2, .bhm .pic-kb_medovnik_2 { background-image: url("/kniha/medovnik-2.webp"); }
+.pic-kb_medovnik_3, .bhm .pic-kb_medovnik_3 { background-image: url("/kniha/medovnik-3.webp"); }
+.pic-kb_medovnik_1s, .bhm .pic-kb_medovnik_1s { background-image: url("/kniha/medovnik-1s.webp"); }
+.pic-kb_lasagne_1, .bhm .pic-kb_lasagne_1 { background-image: url("/kniha/lasagne-1.webp"); }
+.pic-kb_lasagne_2, .bhm .pic-kb_lasagne_2 { background-image: url("/kniha/lasagne-2.webp"); }
+.pic-kb_lasagne_3, .bhm .pic-kb_lasagne_3 { background-image: url("/kniha/lasagne-3.webp"); }
+.pic-kb_lasagne_1s, .bhm .pic-kb_lasagne_1s { background-image: url("/kniha/lasagne-1s.webp"); }
 /* Kniha receptov v appke – doplnky k triedam mockupu (gal, bgroups, bsteps, sbx, binfo). */
 .bhm .bopt { font-size: 12px; font-weight: 700; color: var(--ter); margin-left: 6px; }
 .bhm .bsrc { display: flex; flex-direction: column; gap: 6px; }

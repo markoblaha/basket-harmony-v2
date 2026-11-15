@@ -29,7 +29,11 @@ function useTarget(householdId: string) {
   return lists.filter((l) => !l.completed_at).sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999"))[0];
 }
 
-export function PlanSheet({ open, onClose, day, rid }: { open: boolean; onClose: () => void; day?: string | null; rid?: string }) {
+/**
+ * Naplánovanie receptu na deň. S `planId` určí deň už naplánovanému receptu (napr. „Bez dňa“): suroviny sa
+ * nepridávajú znova a ostane rovnaký nákupný zoznam; dá sa ho aj odstrániť z plánu.
+ */
+export function PlanSheet({ open, onClose, day, rid, planId }: { open: boolean; onClose: () => void; day?: string | null; rid?: string; planId?: string }) {
   const { household } = useHousehold();
   const toast = useToast();
   const recipes = useRecipes(household.id);
@@ -40,6 +44,8 @@ export function PlanSheet({ open, onClose, day, rid }: { open: boolean; onClose:
   const est = useEstimator(household.id);
   const { isHome } = useHave();
   const target = useTarget(household.id);
+  const allLists = useLists(household.id).data ?? [];
+  const existing = planId ? plans.find((p) => p.id === planId) : undefined;
   const [d, setD] = useState<string | null>(day ?? null);
   const [addIng, setAddIng] = useState(true);
   useEffect(() => {
@@ -51,6 +57,35 @@ export function PlanSheet({ open, onClose, day, rid }: { open: boolean; onClose:
   const cur = d ? onDay(d) : undefined;
   const r0 = rid ? recipes.find(rid) : undefined;
   const fail = (e: unknown) => toast.show(errorMessage(e), "error");
+
+  const reschedule = () => {
+    if (!d || !existing) return;
+    // ten istý recept na nový deň: plan_recipes nahradí čakajúci plán; bez surovín, s pôvodným zoznamom (ak ešte existuje)
+    const keep = existing.list_id && allLists.some((l) => l.id === existing.list_id) ? existing.list_id : null;
+    plan.mutate(
+      { listId: keep, newList: null, items: [], recipes: [{ key: existing.recipe_key, name: existing.recipe_name, portions: existing.portions, day: d }] },
+      {
+        onSuccess: () => {
+          toast.show(t("rk.planned", { name: existing.recipe_name, day: dayLabel(d) }), "success");
+          onClose();
+        },
+        onError: fail,
+      },
+    );
+  };
+  const dismiss = () => {
+    if (!existing) return;
+    setStatus.mutate(
+      { id: existing.id, status: "DISMISSED" },
+      {
+        onSuccess: () => {
+          toast.show(t("rk.unplanned"), "info", { undo: () => setStatus.mutate({ id: existing.id, status: "PENDING" }, { onError: fail }) });
+          onClose();
+        },
+        onError: fail,
+      },
+    );
+  };
 
   const go = (r: Recipe) => {
     if (!d) return;
@@ -71,10 +106,10 @@ export function PlanSheet({ open, onClose, day, rid }: { open: boolean; onClose:
   return (
     <Sheet open={open} onClose={onClose} label={t("rk.planTitle")}>
       <div className="sh-head">
-        <h2>{r0 ? t("rk.whenQ", { name: r0.name }) : d ? t("rk.dayQ", { day: dayName(d) }) : t("rk.planTitle")}</h2>
+        <h2>{existing ? t("rk.whenQ", { name: existing.recipe_name }) : r0 ? t("rk.whenQ", { name: r0.name }) : d ? t("rk.dayQ", { day: dayName(d) }) : t("rk.planTitle")}</h2>
       </div>
       <div className="sh-body">
-        {(rid || !day) && (
+        {(rid || existing || !day) && (
           <div className="chips wrap">
             {days.map((x) => (
               <button type="button" key={x.k} className={`chip plain${d === x.k ? " on" : ""}`} onClick={() => setD(x.k)}>
@@ -84,7 +119,7 @@ export function PlanSheet({ open, onClose, day, rid }: { open: boolean; onClose:
             ))}
           </div>
         )}
-        {target && (
+        {target && !existing && (
           <div className="tgrow">
             <span>{t("rk.addIngTo", { name: target.name })}</span>
             <Toggle on={addIng} onChange={setAddIng} label={t("rk.addIngAria")} />
@@ -115,7 +150,17 @@ export function PlanSheet({ open, onClose, day, rid }: { open: boolean; onClose:
             </button>
           </div>
         )}
-        {r0 ? (
+        {existing ? (
+          <>
+            {d && onDay(d) && onDay(d)!.id !== existing.id && <p className="meta sm">{t("rk.dayTaken", { name: onDay(d)!.recipe_name })}</p>}
+            <Btn cls="pri full" disabled={!d || plan.isPending} onClick={reschedule}>
+              {d ? t("rk.planOn", { day: dayLabel(d) }) : t("rk.pickDay")}
+            </Btn>
+            <button type="button" className="lnk dng" onClick={dismiss} disabled={setStatus.isPending}>
+              {t("rk.removeFromPlan")}
+            </button>
+          </>
+        ) : r0 ? (
           <Btn cls="pri full" disabled={!d || plan.isPending} onClick={() => go(r0)}>
             {d ? t("rk.planOn", { day: dayLabel(d) }) : t("rk.planBtn")}
           </Btn>

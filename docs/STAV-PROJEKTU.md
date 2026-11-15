@@ -27,6 +27,9 @@ Starší účet `claude-test-recepty@example.com` (heslo neznáme) ostal nepouž
 v telefónovej veľkosti v 4 vzhľadoch (Teplá a Sklo, svetlý aj tmavý) a hľadá chyby JS, neúspešné volania
 servera, chybové hlásenia, pretekanie, text mimo obrazovky a prekrytia. Fotky + `report.json` do `testy/vysledky/` (mimo gitu).
 `E2E_EMAIL=… E2E_PASSWORD=… node testy/preklikanie.cjs [adresa]` – bez adresy ide na nasadenú testovaciu appku; `ONLY=nakupy,parovanie` preklikne len vybrané obrazovky.
+**Test pridávania:** `testy/pridavanie.cjs` (rovnaké premenné) – nový zoznam → okno pridávania → 3 rýchle ťuky na bublinu
+= 1 riadok s 3 ks (kontrola aj v DB), pole prázdne → mínus → po dokončení časté veci → ťuk na častú vec ju nahradí ďalšou →
+„rozky 2“ + Enter → posúvanie nechá klávesnicu → ťuk do zoznamu okno zavrie; testovací zoznam na konci archivuje.
 **Test toku nákupu:** `testy/nakup.cjs` (rovnaké premenné) – nový zoznam → 3 položky písaním → Nakupovať → všetko do košíka →
 Dokončiť nákup → Teraz nie → zoznam je v Histórii. Zapisuje do testovacej DB (zoznam „Tok nákupu …“); rozbehnutý nákup
 z prerušeného behu na začiatku ukončí (`end_shopping`).
@@ -45,6 +48,10 @@ z prerušeného behu na začiatku ukončí (`end_shopping`).
    (katalóg položiek pre rozpoznanie a odhad ceny v zozname) a `20261102000032_finish_keep_unavailable` (koniec nákupu:
    „nemali“ pokračuje v zozname, pokračujúci zoznam si nechá pôvodný deň), `…033_recipe_week_plan` (deň v pláne
    týždňa, plánovanie bez zoznamu) a `…034_recipe_likes` (Ochutnávač – „Chcem“ za každého člena).
+   Výdavky 2.0 a model cien (13. 11.): `20261112000038_price_model` (v testovacej DB ako 2 kroky), `…039_analytics_daily`,
+   `20261113000040_price_store_count`, `…041_price_comparable` (v testovacej DB ako 3 kroky: price_comparable,
+   price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
+   (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
    Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v5,
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
@@ -218,6 +225,20 @@ Potiahnutie späť z okraja: pevné prvky dostanú vyrovnanie, návrat len prel�
 odídu. Bez podpory View Transitions (iOS < 18) len krátke prelínanie. Pri „obmedziť pohyb“ v telefóne bez animácií.
 3. 11.: Recepty bez čísla na lište (počítalo aj recepty bez dňa, ktoré v Receptoch nevidno; mockup číslo nemá).
 Výdavky: listovanie obdobím ‹ › (mesiac, týždeň, rok) – `?o=-1` v adrese, platí aj na detailoch; v Roku ťuk na mesiac.
+11. 11.: Plán týždňa – časti „Bez dňa“ (recepty pridané do nákupu bez dňa) a „Z minulých dní“ (neuvarené); „Určiť deň“ = `plan_recipes` s pôvodným zoznamom a bez surovín (nič sa nepridá dvakrát), dá sa aj odstrániť z plánu. Bez zmeny DB (migráciu `set_recipe_plan_day` majiteľ nepovolil – netreba).
+11. 11.: **Vizuálne doladenie** (pokyn majiteľa: svetlé vzhľady pôsobili ako demo) – `src/mockup/finish.css` (načítava sa
+posledné): tiene vo farbe témy (kontakt + mäkký rozptyl), Teplá svetlá – karty s jemným prechodom, textúra papiera 3 %,
+hlavné tlačidlo s prechodom a hranou; Sklo svetlé – redší závoj (pozadie má farbu), karty ako zmatnené sklo
+(backdrop blur 22 px, saturate 1,7) so svetlou hranou, aj v tmavom; texty na fotkách kategórií čitateľné (silnejší
+prechod, tieň, max 2 riadky); prepínač (`Seg` v `ui.tsx`) má posuvnú zvolenú plochu; ikona lišty poskočí; odozva na
+dotyk (stmavnutie, ikonové tlačidlá). Opravy: fotky jedál v štvorčekoch (`.th`) sa neukazovali – triedy `pic-` majú
+`:root` (`do-appky.py`, `kniha.css`); suma Spolu na detaile výrobku pretekala; chýbajúce bločky – fotoaparát ako ikona,
+dátum v jednom riadku; podnadpis na Domove sa nezalomí s „·“ na začiatku riadku; recepty bez fotky majú emoji podľa
+jedla (`art()` v `mk.tsx`); varenie – posúvaný krok pri okraji zmizne. `testy/preklikanie.cjs` vie aj inú veľkosť (`W=375 H=667`).
+**Zlúčenie 11. 11. (pokyn majiteľa „zlúč to do testovacej appky“):** do testovacej vetvy prišiel „Finálny vzhľad“ a naklikanie
+kusov z vetvy `claude/jolly-lamport-pu5abj`. Z „Vizuálneho doladenia“ vyššie ostali len emoji podľa jedla (`mk.tsx`),
+mäkký okraj varenia (`adapt.css`) a `W/H` v preklikaní; `src/mockup/finish.css` a posuvná plocha v `Seg` (`ui.tsx`) boli
+odstránené – robili to isté ako `prototyp/css/finish.css` (dva jazdce prepínača, dve vrstvy tieňov).
 Automatické testy prototypu (Playwright, vzor aj pre testy appky): `prototyp/testy/` – `sprievodca.cjs` (celá ukážka,
 FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.cjs` (smotana/pivo/plzeň…), `rozlozenie.cjs`
 (pretekanie a prekrývanie na všetkých obrazovkách), `metriky.cjs` (ťukacie plochy, písmo, kontrast). Spustenie:
@@ -235,6 +256,123 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
 - Položka pridaná počas cudzieho nákupu ide cez schválenie nakupujúcim (3. 11. 2026).
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
+
+- **Pridávanie do zoznamu – IMPLEMENTOVANÉ v testovacej appke (13. 11. 2026, pokyn „implementuj to do testovacej aplikácie“,
+  čaká na skúšku na iPhone):** podľa odporúčaní návrhu (klávesnica pri posúvaní ostáva, potvrdenie v zozname bez hlášok,
+  vodorovné bubliny, pridanie hneď). `Composer` v `ListParts.tsx`: okno nad klávesnicou má hlavičku (‹ · názov · „N položiek
+  · ~X €“ · Hotovo), v tele zoznam (tie isté `ItemRow` z `ListView` – prop `list`; zasvieti/dorolujú sa len riadky v okne),
+  dole rad bublín (`.bb-*` v `pick.css`) a pole. Bubliny sa prepočítajú len pri zmene textu, otvorení okna, načítaní častých
+  vecí/zoznamu – po ťuknutí sa nepohnú. Ťuk = `smartAdd(instant, quiet)`; počas cudzieho nákupu sa ťuky na jednu bublinu
+  spoja do jednej žiadosti (1,2 s). Mínus len na poslednej ťuknutej bubline (pri 1 ks zmaže s „Vrátiť“). Ťuk do zoznamu
+  v okne zavrie klávesnicu (po potiahnutí riadku nie), potiahnutie doku nadol zavrie, `blur` = koniec bez čakania.
+  Dátová vrstva: `useAddItem` s `optimistic` ukáže dočasný riadok hneď; `useSmartAdd` číta položky z cache a ťuky počas
+  letu pridania pripočíta k dočasnému riadku a dopíše jednou úpravou po ID (žiadne dvojité riadky). `sameProduct` spája
+  tvary slova (`itemKey`: banán = banány, rožok = rožky, cukor = cukru; Mlieko ≠ Mlieko polotučné) – platí aj pre hlas.
+  Ikony: 10 nových 3D ikon ovocia (mango, kiwi, hrozno, ananás, hruška, melón ×2, čerešne, mandarínky, čučoriedky; Fluent
+  MIT) v `prototyp/gen/assets.css` → `do-appky.py`, slová v `EXTRA` v `src/mockup/kit.tsx`. Zmazané: odpočítavanie, „Pridané
+  teraz“, názorná ukážka s prstom (+ nepoužívané texty `li.*`).
+  Druhý krok (13. 11., pokyn „Implementuj to“ = zvyšok návrhu): neúspešné okamžité pridanie ostane navrchu zoznamu ako
+  riadok „Nepodarilo sa pridať · Skúsiť znova“ s krížikom (`FailedAdd` z `useSmartAdd.onFailed`, stav v `ShoppingPage`,
+  aj s kusmi naťukanými počas čakania; tlačidlá majú `data-keep`, okno nezatvoria). Ukážka v appke (prototyp
+  `lists.jsx` Composer) má rovnaký rad bublín, ťuk = hneď, preklep ako bublina „Zemiaky?“ (sprievodca upravený). Štýly
+  bublín sú vo vzorovom prototype (`prototyp/css/base.css`, `g.css`) → `do-appky.py` → `mockup.css`; `pick.css` má len okno.
+  Overené: `npm run check`; Playwright s napodobeným serverom (3 ťuky = 1 add + 1 úprava, pomalý server 1,3 s, chyba
+  servera → riadok so „Skúsiť znova“, žiadosti, 4 vzhľady pri výške 422 px); na nasadenej testovacej appke so skutočnou
+  testovacou DB: nový `testy/pridavanie.cjs` (9 krokov, zoznam „Pridávanie …“ sa na konci archivuje), `testy/nakup.cjs`
+  (8 krokov), preklikanie Nákupy + zoznam 4 vzhľady 0 nálezov; testy prototypu `pridavanie.cjs` a `sprievodca.cjs FLOW=all`
+  bez chýb. Neoverené: skutočný iPhone (klávesnica, kurzor pri ťuku na bublinu, posúvanie s otvorenou klávesnicou).
+  Tretí krok (13. 11., po skúške majiteľa na iPhone – bubliny ostávali „visieť“): **ťukanie s dokončením.** Každý ťuk
+  pridá kus hneď, bublina ukazuje počet ťuknutí, „pridané · N ks“ a pásik (1,5 s, `BURST_MS`); keď sa neťuká, bublina
+  dostane ✓ a odíde (`OUT_MS` 420 ms) – časté veci nahradí na tom istom mieste ďalšia najčastejšie kupovaná vec, návrhy
+  pri písaní sa po dokončení vymenia za časté veci. Text v poli zmizne hneď po prvom ťuknutí (dá sa písať ďalší produkt;
+  nový text ťukanie ukončí). Enter = pridá, vyprázdni pole a vráti časté veci. Mínus počas ťukania (aj kým server ešte
+  nepotvrdil nový riadok – úprava počká). Počas cudzieho nákupu jedna žiadosť po dokončení. Rovnako v ukážke (prototyp).
+  `testy/pridavanie.cjs` má 10 krokov (aj výmenu častej veci a návrat častých vecí), prešiel na testovacej DB.
+  Opravy po snímkach majiteľa (13. 11., Sklo tmavé): (1) po zatvorení klávesnice ostala obrazovka na iPhone posunutá
+  o výšku klávesnice (pole a bubliny v strede, horná lišta mimo) – iOS nevráti posun vizuálnej plochy; `Composer` si pri
+  ťuknutí do poľa zapamätá polohu stránky a po zavretí okna ju vráti (`window.scrollTo`, opakovane do 1 s, kým
+  `visualViewport.offsetTop` > 0). Na iPhone neoverené. (2) Riadok zoznamu mal `max-height: 120px` + `overflow: hidden`
+  (kvôli animácii zmazania) – dlhý štítok výrobku sa zalomil a štítok obchodu sa schoval pod ďalší riadok. Teraz 260 px
+  a štítky v riadku (`.sub .mk`) sú na jeden riadok so skrátením „…“ (`prototyp/css/base.css` → `mockup.css`).
+  Návrh: https://claude.ai/artifact/SAVJcwhe4dE5NGpn4rtexX
+  (zdroj `prototyp/pridavanie-navrh.html`: dokument + preklikateľný mockup s nakreslenou klávesnicou, ukážkou a prepínačmi
+  variantov; obrázky a štýly ako pri návrhu Výdavkov – `mk/mockup.css`, `mk/em/*` sa priložia pri publikovaní). Podnet:
+  snímka okna pridávania (okno a „Pridané teraz“ zakrývajú zoznam). Návrh: žiadne samostatné okno – pri písaní ostáva
+  zoznam, hlavička na jeden riadok (názov, počet · suma, Hotovo), karta Odhad sa zbalí; nad klávesnicou vodorovný rad
+  bublín + pole (ten istý prvok aj bez klávesnice); ťuk na bublinu pridá hneď (bez odpočítavania 1,8 s), číslo v bubline =
+  počet v zozname, mínus uberie; po ťuknutí sa pole vyprázdni, ale rad bublín sa nepohne, kým sa nepíše ďalej; klávesnica
+  pri posúvaní zoznamu ostáva, zavrie ju Hotovo, ✓ nad klávesnicou, ťuk do zoznamu, potiahnutie doku nadol alebo skrytie
+  telefónom (nič nečaká); potvrdenie priamo v zozname (nová položka navrchu, ikona priletí, riadok sa rozsvieti), bez hlášok.
+  „banan“ → jedna bublina Banány (iný tvar toho istého slova); Banán/Banány, rožok/rožky sa spoja do jedného riadku.
+  Opravy: ikona najprv podľa názvu (Mango mal fľašu pre bábätká, Kiwi košík; doplniť ikony ovocia), chyba pridania ostane
+  v riadku so „Skúsiť znova“, zápisy pri rýchlom ťukaní spojiť. Mení rozhodnutie z 2. 11. „návrhy ako zoznam riadkov“.
+  Databáza bez zmeny, v appke zatiaľ nič. Po „OK“: najprv `prototyp/src/lists.jsx`, potom `Composer` v `ListParts.tsx`.
+
+- **Výdavky 2.0 – IMPLEMENTOVANÉ v testovacej appke (13. 11. 2026, čaká na „OK“ majiteľa):** pokyn „implementuj to celé
+  aj s mockupom“. Rozhodnutia prijaté podľa odporúčaní návrhu (majiteľ môže zmeniť): kalendárne týždne po–ne, ceny
+  vždy za posledné 3 mesiace k dnešku, v zozname ostáva napísaný názov položky a konkrétny výrobok je štítok pod ním.
+  *Model cien (DB, migrácie 038–041):* fakt = riadok bločku (`_price_facts`); zálohy nie sú tovar (kategória záloha
+  alebo 0,15 €/ks pri alkohole a nápojoch); množstvo = balenia × veľkosť balenia, vážené podľa bločku, „6x“ sa nenásobí
+  dvakrát; jeden kľúč obchodu (`_store_key` + spúšťač `receipts_store_key_norm`, Lidl = LIDL); jednotka porovnania
+  podľa druhu (`_kind_basis`); porovnávajú sa len potraviny, drogéria a pod. (`_comparable` – oblečenie, služby, palivo…
+  nie). „Priemerne platíš“ = peniaze ÷ množstvo za 90 dní; „Cena teraz“ = posledný nákup výrobku v obchode bez akcie
+  (akcia = zľava ≥ 15 %), čerstvá do 45 dní; úspora len z čerstvých cien bez akcie. Funkcie pre appku:
+  `analytics_price_kind`, `analytics_price_product`, `analytics_price_store`, `analytics_daily`, `analytics_missing_sizes`,
+  `set_product_size`; `item_catalog` vracia pri nákupoch aj výrobok, balenie a akciu.
+  *Odhad v zozname (`itemCatalog.ts`):* najčastejší výrobok položky v obchode zoznamu za 120 dní a jeho posledná cena
+  bez akcie; rozpätie = najlacnejší/najdrahší výrobok; vážené podľa hmotnosti s veľkosťou balenia. V detaile položky
+  „podľa výrobku …“, „zatiaľ tu nekúpené“.
+  *Obrazovky:* Výdavky (súhrn s ‹ obdobie › aj potiahnutím, porovnanie k rovnakému dňu, bez porovnania pred prvým
+  bločkom, časová os, Priebeh/Dni v týždni, prstenec kategórií / obchody, Oplatí sa vedieť, bločky), Druh (karty cien,
+  úspora, výrobky bez veľkosti, graf, obchody a ceny, značky a balenia, posledné nákupy), Výrobok (Cena teraz,
+  Priemerne platíš, Najnižšia cena, graf, obchody, porovnanie, pridať do zoznamu), Obchod (Produkty – „najlacnejší pri
+  X z Y produktov, ktoré kupuješ aj inde“, Kategórie, Bločky), Kategória, nová obrazovka Doplniť veľkosť balenia
+  (`/analytics/sizes`). Štýly `src/styles/analytics-v2.css` (triedy `an-*`), texty `mn.*` v sk aj en.
+  *Overené:* `supabase/tests/price_model_test.sql` v testovacej DB ok=16 fails=0; `npm run check` (196 testov);
+  preklikanie 4 vzhľady × 12 obrazoviek na testovacom builde s testovacím účtom – 0 nálezov, fotky prezreté.
+  Na reálnych dátach: pivo priemerne 2,35 €/l, najlacnejšie Tesco 2,10 €/l; 7 pív z Lidla bez veľkosti → fronta veľkostí.
+  Neoverené: skutočný iPhone. Do ostrej DB nič (migrácie v zozname „Pred zlúčením“).
+  **Mockup verzia 4 (13. 11., na otázku „vylepšil by si ešte niečo?“):** v tom istom artefakte, kapitola 7. Návrhy:
+  1) bez opakovaných čísel (výrobok kúpený raz = karta „Kúpené raz“; stále rovnaká cena = len Cena teraz; druh z jedného
+  obchodu bez druhej karty), 2) chýbajúce bločky zbalené do jedného riadku, 3) v zozname „V obchode X by to vyšlo asi o … €
+  lacnejšie“ (len položky s cenou do 6 týždňov v oboch obchodoch, bez akcií; ťuk prepočíta zoznam; v mockupe karta Nákupy),
+  4) veľkosť balenia prevzatá z bločku iného obchodu pri rovnakom výrobku, 5) zdraženie v „Oplatí sa vedieť“ (už v mockupe),
+  6) textový popis grafov pre VoiceOver. Čaká na výber majiteľa; v appke nič z verzie 4 nie je.
+
+- **Výdavky 2.0 – návrh prestavby karty (11. 11. 2026):** https://claude.ai/artifact/TRAxKhERGN3ZcRiLSiMDQw
+  (zdroj `prototyp/vydavky-navrh.html`: dokument + preklikateľný mockup s vymyslenými dátami). Zistenia z testovacej DB:
+  „o 1775 % viac ako august“ (v auguste 1 bloček), „Obchod 681 € · Woolworth“ (v testovacej DB 0 zo 67 bločkov má
+  `store_key` – všetko sa zlialo do `_none`; ostrá DB 96/97), „3 kg“ pri 3 baleniach po 120 g (KindPage/ProductPage
+  píšu k počtu balení jednotku porovnania, pri litroch „ks“), pivo 0,03 €/ks („PLZ 6x“ = zálohy priradené k pivu
+  + dvojité násobenie balenia 6 × 6), 315 z 523 položiek bez veľkosti balenia (107 potraviny) → druh mieša €/ks a €/kg,
+  dva rôzne „priemery“, Lidl/LIDL nezjednotené, zálohy nikde, obdobie 4× na obrazovke, detail druhu má vlastné obdobie.
+  Návrh: jedno obdobie, súhrn s tempom a rozpočtom, pohľady Kategórie / Obchody / Produkty, druh s bežnou cenou
+  (medián 3 mesiacov) a poradím obchodov, obchod s „tu vs. inde“, hľadanie, porovnanie obchodov, fronta „Na doplnenie“;
+  jednotka porovnania uložená pri druhu (`product_kinds`). 5 krokov, 5 otázok na rozhodnutie. Nič nie je implementované.
+  **Verzia 2 (11. 11., po pripomienke majiteľa „neprehľadné, zbytočnosti, vzhľad dospelejší“):** mockup prekreslený –
+  hlavička avatar · lupa · fotoaparát, pod ňou Týždeň/Mesiac/Rok, súhrn (‹ obdobie ›, suma, jedna veta porovnania),
+  pásik „Chýba bloček“, jedna karta s grafom (priebeh mesiaca + rozpočet + odhad), Kam išli peniaze (6 najväčších),
+  Oplatí sa vedieť (max 3), Bločky. Detaily bez vlastného prepínača obdobia. Čiarové ikony kategórií namiesto emoji,
+  produkty len text + cena, karty s tenkou linkou bez tieňov, jeden systém tlačidiel / štítkov / upozornení
+  (kapitola 5 „Vzhľad a prvky“ v dokumente). Majiteľ odmietol: čiarové ikony nie sú z appky.
+  **Verzia 3 (12. 11., pokyn majiteľa: náhľad musí vyzerať ako testovacia appka, farebné ikony, krajšie grafy, lepšie
+  listovanie obdobím, logika kategória → produkt → konkrétny výrobok, použiteľné ceny, animácie):** náhľad sa vykresľuje
+  priamo štýlmi appky (`src/mockup/mockup.css` pod `.bhm`, téma Fotky a sklo tmavá/svetlá) a jej 3D ikonami a fotkou
+  pozadia (`public/mk/em`, `public/mk/pic/trh_p.webp`) – pri publikovaní sa prikladajú ako súbory `mk/…`; nové prvky
+  majú triedy `an-*` v `prototyp/vydavky-navrh.html`. Pozor: triedy `.ok`, `.top`, `.wrap`, `.scr`, `.cam` appka už
+  používa (kolízie). Nové: časová os (stĺpec = mesiac/týždeň, ťuk vyberie, čiarkovaný odhad a rozpočet; v Roku ťuk otvorí
+  mesiac), Priebeh mesiaca s čítaním dňa ťahom prsta, prstenec kategórií, karty cien, cesta v hlavičke detailu
+  (Výdavky › kategória › produkt), prechody `in-push`/`in-pop` z appky. Model cien: „Priemerne platíš“ = peniaze ÷
+  množstvo za 3 mesiace; „Cena teraz“ = posledný nákup výrobku v obchode bez akcie; obchod pri produkte = jeho
+  najlacnejší výrobok podľa ceny za jednotku; „Ušetríš“ = (priemer − najlacnejšie teraz) × mesačné množstvo.
+  **Revízia verzie 3 (12. 11.):** automatická kontrola všetkých obrazoviek × obdobia × tmavý/svetlý × 393/360 px
+  (pretekanie, orezané texty, písmo < 12,5 px, ťukacie plochy < 40 px, NaN, chyby JS) – opravené: pád pri výrobku bez
+  nákupu, pretekanie „Dni v týždni“ na 360 px, písmo 11–11,5 px v grafoch, cesta v hlavičke s plochou 28 px.
+  Logika: ceny produktov sú vždy k dnešku (obdobie mení len sumy), trend porovnáva rovnaký výrobok v rovnakom obchode,
+  úspora len z ceny do 6 týždňov a nie z akcie, obchod s cenou len z akcie nie je „najlacnejší“, v grafe druhu je za
+  obchod čiara jeho najlacnejšieho výrobku, odhad na časovej osi má vlastné číslo. Pri implementácii: grafy sú čisté SVG
+  bez knižnice; ťah po grafe a výseky prstenca potrebujú textovú alternatívu pre čítačky; id v SVG musia byť jedinečné.
+  (Implementované 13. 11. – pozri položku vyššie.)
 
 - **Revízia pred ostrým spustením (3. 11. 2026):** https://claude.ai/artifact/X8aprnTLiiWL5bgiDQwNAT – preklikané
   4 vzhľady × 19 obrazoviek (0 chýb JS/servera), kód, DB, AI. Blokery P0: zmazanie účtu len predstiera (dialóg + hláška
@@ -450,6 +588,55 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     majiteľ (appku treba úplne zavrieť a znova otvoriť). Oprava po snímke majiteľa: `#sbar` mal na iPhone
     minimálne 6 px – na iPhone majiteľa je stránka pod lištou (výrez 0), pás prekryl vrch stránky a odsekol
     tlačidlá hlavičky na všetkých obrazovkách. Výška je teraz len výrez displeja; farbu vtedy dáva pozadie body/html.
+    **Finálny vzhľad (11. 11., pokyn majiteľa „aby to nevyzeralo ako demo, ale ako appka na predaj“; vetva
+    `claude/jolly-lamport-pu5abj`):** farby tém ostali, pribudla nová vrstva `prototyp/css/finish.css` (posledná v
+    `do-appky.py` aj `build.py` → appka aj ukážka). Povrchy: vrstvený mäkký tieň (`--sh`, `--sh-hi` pre súhrny),
+    svetlá hrana zhora; Sklo s diagonálnym odleskom a svetlom aj na spodnej hrane. Tlačidlá: hlavné s prechodom,
+    odleskom a farebným tieňom (`--f-pri`), tónové s hranou, pružné stlačenie. Ikonové dlaždice ako farebné kamienky,
+    3D emoji s tieňom, dlaždica obchodu s leskom. Teplá: teplé svetlo v rohoch pozadia (`--f-glow-*`, v appke na body
+    v `adapt.css`, pás pod lištou iPhonu ostáva čistý nádych). Lišta: aktívna záložka s podkladom, mikrofón plnou farbou.
+    Pohyb: obsah obrazovky nastúpi postupne (`f-rise`, len karty/bloky, `:where` = existujúce zvýraznenia majú
+    prednosť, oneskorenie v premennej), riadky zoznamov, dlaždice Rýchlo a kategórie s pružinou, prepínač `.seg` má
+    posuvného jazdca (`:has`), prázdne stavy s vznášajúcim sa emoji; pri „obmedziť pohyb“ nič z toho. Načítavanie =
+    tri bodky vo farbe témy, ukážu sa až po 250 ms (`Spinner`, `.bh-load`). Texty: dlhé názvy na dva riadky (riadky,
+    karty zoznamov, Domov, chýbajúce bločky), bodka „·“ sa drží predchádzajúceho úseku, Výdavky → chýbajúce bločky majú
+    ikonu fotoaparátu namiesto širokého „Odfotiť“ (`mn.photoAria`), História má stav bločku pod názvom, štatistiky
+    výrobku/druhu v troch rovnakých stĺpcoch s „/ kg“ pod sumou (`PerUnit`). Oprava prevodu: fotky jedál v dlaždiciach
+    (`.th.pic-…` – Plán týždňa, Ochutnávač, panely) prekrýval podklad `.bhm .th` → triedy fotiek majú aj `.bhm .pic-…`
+    (`do-appky.py`, `kniha.css`). Overené: `npm run check`, preklikanie 4 vzhľady × 32 obrazoviek, testy ukážky
+    (sprievodca, nápovedy, pridávanie), test toku nákupu, meranie animácií v prehliadači, preklikanie 4 × 9 obrazoviek
+    na nasadenom náhľade https://claude-jolly-lamport-pu5abj-basket-harmony-v2.markoblaha.workers.dev (testovacia DB).
+    Do `design/v2-mobile-redesign` zatiaľ nezlúčené – čaká na „OK“ majiteľa. Na skutočnom iPhone overí majiteľ.
+    **Pridávanie – pravopis a naklikanie kusov (11. 11., pokyn majiteľa):** Enter (aj tučný prvý riadok návrhov) pridá
+    presne napísaný text s počtom, opraví sa len pravopis (`spellFix` v `itemCatalog.ts` + testy: diakritika podľa
+    názvov produktov, veľké písmeno, vlastné mená, preklep len pri jednom slove – „mleko 3“ → Mlieko 3 ks, „plzen 6“ →
+    Plzeň 6 ks, nie Pilsner Urquell; cena sa aj tak ráta zo značky). Samostatná bublina „preklep?“ zmizla – oprava je
+    rovno v prvom riadku („opravený preklep „mleko““). V každej bubline návrhu sa dajú naklikať kusy: ťuk = +1 (prvý ťuk
+    = napísané množstvo alebo 1 ks), − / +, pásik dole ukazuje čas – po 1,8 s bez ťuknutia sa položka pridá (bublina
+    zozelenie, „✓ Pridané“, ikona odletí), pri ďalšom písaní alebo odchode sa naklikané pridá hneď. Kód `Composer`
+    (`pickRow`) v `ListParts.tsx`, štýly `src/features/lists/pick.css`. Overené v prehliadači (Teplá svetlá/tmavá,
+    Sklo svetlé); do testovacieho zoznamu „Tok nákupu 11-03 15:01“ pribudli skúšobné položky (Svetlé pivo 12°, Plzeň,
+    Banány, Mlieko +3).
+    **Okno pridávania (11. 11., pokyn majiteľa „aby nič neskákalo a klávesnica nepreskakovala“):** ťuk do poľa zoznamu
+    zmení pole na okno cez celú viditeľnú plochu nad klávesnicou (výška z `visualViewport`, stránka pod ním sa neposúva,
+    to isté pole = klávesnica sa nezavrie). Hlavička „Pridávaš do zoznamu · názov“ + Hotovo (s počtom pridaných), v strede
+    návrhy, „Pridané teraz“ (čo pribudlo v tomto okne), názorná ukážka (prst 3× ťukne, krúžok odpočíta, „pridané · 3 ks“ –
+    kým nič nepribudlo) a Často kupuješ ako rovnaké bubliny, dole pole. Bublina: ťuk = +1, krúžok okolo čísla odpočíta
+    1,8 s, potom zelené ✓ a položka je v „Pridané teraz“; − uberie. „Hotovo“ na klávesnici pri prázdnom poli okno zavrie.
+    Overené Playwrightom (pole na rovnakom mieste vo všetkých stavoch, fokus ostáva), test toku nákupu prešiel.
+    Oprava po skúške na iPhone (11. 11.): ťuk na bublinu zobral poľu fokus (iPhone berie fokus pri mousedown, nielen
+    pointerdown) → klávesnica zmizla, okno sa zavrelo a naklikané sa pridalo hneď. Teraz sa bráni aj mousedown, okno
+    kým bublina odpočítava ostáva otvorené aj bez klávesnice. Po pridaní okno aj klávesnica ostávajú otvorené na mieste,
+    pole sa vyprázdni (druhý pokyn majiteľa 11. 11.); zavrie sa len cez Hotovo.
+    Tretí pokyn (11. 11.): `spellFix` už slová NEVYMIEŇA za podobné (preklepy sa neopravujú – „mleko“ ostane Mleko,
+    na výber iného produktu sú bubliny), len diakritika podľa názvov produktov a veľké písmeno. Enter berie text priamo
+    z poľa (Gboard mal posledné písmeno ešte rozpísané → „masl“ → oprava preklepu → „Mäso“). Pole sa vymaže hneď pri
+    pridaní z bubliny.
+    Štvrtý pokyn (11. 11., „z okna sa nedá vyjsť“): chyba – po pridaní z bubliny sa zrušil časovač dokončenia, bublina
+    ostala „rozklikaná“ a okno sa nedalo zavrieť ani skrytím klávesnice. Opravené; keď klávesnica zmizne počas
+    odpočítavania, okno sa po pridaní zavrie (iPhone klávesnicu bez ťuknutia znova neotvorí). V hlavičke okna je šípka
+    späť (zavrie okno → zoznam s Nakupovať a ‹ Nákupy) a Hotovo; zoznam bez písmen v názve = „Bez názvu“. Pod oknom je jeho pozadie (pri pásiku ˄ ˅ ✓ neprešvitá zoznam). Pásik ˄ ˅ ✓ nad klávesnicou
+    web skryť nevie (rozhodnutie z minulosti platí – len natívna appka).
     **6 receptov metódou „kotva“ – HOTOVÉ 15. 11. (pokyn majiteľa: 6 komplikovaných receptov, hlavná fotka + 3 detaily,
     každý recept iná scéna, extra fotorealistické):** sviečková na smotane, kapustnica, plnená paprika, španielsky vtáčik,
     grécka musaka, chili con carne (tikka masala vynechaná – na povolených weboch málo klasických receptov). Majiteľ
