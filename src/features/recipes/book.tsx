@@ -7,7 +7,7 @@ import { formatNumber, t, tn, type Key } from "@/i18n";
 import { E, I } from "@/mockup/ui";
 import type { Estimator } from "@/features/lists/estimate";
 import { FOODS } from "./foods";
-import { recipeAllergens } from "./kniha";
+import { bookCheck, recipeAllergens, type CheckRow } from "./kniha";
 import { formatAmount, ingName, renderStep, roundQty, scaleIngredients, toGrams } from "./logic";
 import type { IngRow } from "./mk";
 import type { Ingredient, Recipe, Step } from "./types";
@@ -186,9 +186,10 @@ export function BookInfo({ r }: { r: Recipe }) {
         <div className="bgh">{t("kb.store")}</div>
         <p>{b.store}</p>
       </div>
+      {b.check && <BookCheckInfo r={r} />}
       <div>
-        <div className="bgh">{tn("kb.sources", b.sources.length)}</div>
-        <p>{t("kb.sourcesHint")}</p>
+        <div className="bgh">{tn(b.check ? "kb.compared" : "kb.sources", b.sources.length)}</div>
+        <p>{t(b.check ? "kb.comparedHint" : "kb.sourcesHint")}</p>
         <div className="bsrc">
           {b.sources.map((s) => (
             <a key={s.k} href={s.url} target="_blank" rel="noopener noreferrer">
@@ -200,6 +201,61 @@ export function BookInfo({ r }: { r: Recipe }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Číslo do tabuľky porovnania: malé množstvá s desatinou, ostatné celé. */
+const num = (v: number) => formatNumber(v, { maximumFractionDigits: v < 10 ? 1 : 0 });
+const rowName = (x: CheckRow) => x.label ?? x.foods.map((f) => FOODS[f]?.name ?? f).join(" + ");
+
+/** Ako recept vznikol (metóda „kotva“): zhoda, základný recept, naše množstvá oproti zdrojom a zmeny oproti základu. */
+function BookCheckInfo({ r }: { r: Recipe }) {
+  const res = bookCheck(r);
+  const c = r.book?.check;
+  if (!res || !c) return null;
+  const anchor = r.book!.sources.find((s) => s.k === c.anchor);
+  const rows = res.rows.filter((x) => x.ours != null);
+  const unit = (x: CheckRow) => t(x.unit === "ks" ? "kb.unit.ks" : "kb.unit.g");
+  return (
+    <div className="bchk">
+      <div className="bgh">{t("kb.check")}</div>
+      <p className="bchk-sum">
+        <b>{t("kb.match", { pct: Math.round(res.score * 100) })}</b>
+        <span>{t("kb.checkSum", { sources: res.sources, sites: res.sites })}</span>
+      </p>
+      {anchor && <p>{t("kb.anchor", { name: anchor.name, site: anchor.site })}</p>}
+      <p>{t("kb.portionsNote", { portions: tn("rk.portions", r.portions) })}</p>
+      <div className="bchk-tab" role="table" aria-label={t("kb.check")}>
+        <div className="bchk-h" role="row">
+          <span role="columnheader">{t("kb.colIng")}</span>
+          <span role="columnheader">{t("kb.colOurs")}</span>
+          <span role="columnheader">{t("kb.colUsual")}</span>
+          <span role="columnheader">{t("kb.colIn")}</span>
+        </div>
+        {rows.map((x) => (
+          <div className={`bchk-r${x.typical === false ? " out" : ""}`} role="row" key={x.foods.join("+")}>
+            <span role="cell">{rowName(x)}</span>
+            <span role="cell">
+              {num(x.ours!)} {unit(x)}
+              {x.typical === false && <small>{t("kb.outside")}</small>}
+            </span>
+            <span role="cell">{x.lo != null && x.hi != null && x.quantified >= 4 ? `${num(x.lo)}–${num(x.hi)} ${unit(x)}` : "—"}</span>
+            <span role="cell">{t("kb.inN", { n: x.count, all: res.sources })}</span>
+          </div>
+        ))}
+      </div>
+      <p className="bchk-note">{t("kb.usualHint")}</p>
+      {c.changes.length > 0 && (
+        <>
+          <div className="bgh">{t("kb.changes")}</div>
+          <ul className="bchk-ch">
+            {c.changes.map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

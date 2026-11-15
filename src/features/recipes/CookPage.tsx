@@ -303,7 +303,8 @@ export function CookPage() {
           ) : (
             <div key={i} ref={stepEl} className={`ckst${dir > 0 ? " in-next" : dir < 0 ? " in-prev" : ""}`}>
               <span className="stn">{i + 1}</span>
-              <p className="stx">{renderStep(st.text, scaled)}</p>
+              {/* Dlhší, podrobne rozpísaný krok má menšie písmo, aby sa zmestil na obrazovku. */}
+              <p className={`stx${st.text.length > 260 ? " xl" : st.text.length > 170 ? " lg" : ""}`}>{renderStep(st.text, scaled)}</p>
               {st.heat && <StepChips st={{ heat: st.heat }} />}
               {stepIngs.length > 0 && (
                 <div className="ck-ing" aria-label={t("ck.forStep")}>

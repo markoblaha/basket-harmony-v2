@@ -1,4 +1,34 @@
 /* Fotky receptov z knihy (public/kniha). Trieda pic-kb_<id>_<n> ako ostatné obrázky mockupu (assets.css). */
+.pic-kb_svieckova_1 { background-image: url("/kniha/svieckova-1.webp"); }
+.pic-kb_svieckova_2 { background-image: url("/kniha/svieckova-2.webp"); }
+.pic-kb_svieckova_3 { background-image: url("/kniha/svieckova-3.webp"); }
+.pic-kb_svieckova_4 { background-image: url("/kniha/svieckova-4.webp"); }
+.pic-kb_svieckova_1s { background-image: url("/kniha/svieckova-1s.webp"); }
+.pic-kb_kapustnica_1 { background-image: url("/kniha/kapustnica-1.webp"); }
+.pic-kb_kapustnica_2 { background-image: url("/kniha/kapustnica-2.webp"); }
+.pic-kb_kapustnica_3 { background-image: url("/kniha/kapustnica-3.webp"); }
+.pic-kb_kapustnica_4 { background-image: url("/kniha/kapustnica-4.webp"); }
+.pic-kb_kapustnica_1s { background-image: url("/kniha/kapustnica-1s.webp"); }
+.pic-kb_plnena-paprika_1 { background-image: url("/kniha/plnena-paprika-1.webp"); }
+.pic-kb_plnena-paprika_2 { background-image: url("/kniha/plnena-paprika-2.webp"); }
+.pic-kb_plnena-paprika_3 { background-image: url("/kniha/plnena-paprika-3.webp"); }
+.pic-kb_plnena-paprika_4 { background-image: url("/kniha/plnena-paprika-4.webp"); }
+.pic-kb_plnena-paprika_1s { background-image: url("/kniha/plnena-paprika-1s.webp"); }
+.pic-kb_vtacik_1 { background-image: url("/kniha/vtacik-1.webp"); }
+.pic-kb_vtacik_2 { background-image: url("/kniha/vtacik-2.webp"); }
+.pic-kb_vtacik_3 { background-image: url("/kniha/vtacik-3.webp"); }
+.pic-kb_vtacik_4 { background-image: url("/kniha/vtacik-4.webp"); }
+.pic-kb_vtacik_1s { background-image: url("/kniha/vtacik-1s.webp"); }
+.pic-kb_musaka_1 { background-image: url("/kniha/musaka-1.webp"); }
+.pic-kb_musaka_2 { background-image: url("/kniha/musaka-2.webp"); }
+.pic-kb_musaka_3 { background-image: url("/kniha/musaka-3.webp"); }
+.pic-kb_musaka_4 { background-image: url("/kniha/musaka-4.webp"); }
+.pic-kb_musaka_1s { background-image: url("/kniha/musaka-1s.webp"); }
+.pic-kb_chili_1 { background-image: url("/kniha/chili-1.webp"); }
+.pic-kb_chili_2 { background-image: url("/kniha/chili-2.webp"); }
+.pic-kb_chili_3 { background-image: url("/kniha/chili-3.webp"); }
+.pic-kb_chili_4 { background-image: url("/kniha/chili-4.webp"); }
+.pic-kb_chili_1s { background-image: url("/kniha/chili-1s.webp"); }
 .pic-kb_segedin_1 { background-image: url("/kniha/segedin-1.webp"); }
 .pic-kb_segedin_2 { background-image: url("/kniha/segedin-2.webp"); }
 .pic-kb_segedin_3 { background-image: url("/kniha/segedin-3.webp"); }
@@ -135,3 +165,26 @@
 .bhm .hvsh .sh-act .btn { min-width: 0; }
 .bhm .hv-edit { align-self: center; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 12px; color: var(--acc); font-weight: 700; font-size: 15px; }
 .bhm .hv-edit .ico { width: 14px; height: 14px; }
+
+/* Overenie receptu (metóda „kotva“): zhoda, tabuľka naše množstvo / bežne v zdrojoch, zmeny oproti základu. */
+.bhm .bchk { display: flex; flex-direction: column; gap: 8px; }
+.bhm .bchk-sum { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.bhm .bchk-sum b { color: var(--acc); font-size: 16px; font-weight: 800; }
+.bhm .bchk-sum span { color: var(--sec); font-size: 14px; }
+.bhm .bchk-tab { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: var(--card); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.bhm .bchk-h, .bhm .bchk-r { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; align-items: baseline; padding: 7px 12px; }
+.bhm .bchk-h { font-size: 11.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--sec); background: var(--card2); }
+.bhm .bchk-r + .bchk-r { box-shadow: inset 0 1px 0 var(--line); }
+.bhm .bchk-h > span:not(:first-child), .bhm .bchk-r > span:not(:first-child) { text-align: right; white-space: nowrap; }
+.bhm .bchk-r > span:first-child { font-weight: 650; }
+.bhm .bchk-r > span:nth-child(2) { font-weight: 750; }
+.bhm .bchk-r > span:nth-child(3), .bhm .bchk-r > span:nth-child(4) { color: var(--sec); }
+.bhm .bchk-r small { display: block; font-size: 10.5px; font-weight: 700; color: var(--warn, #b7791f); }
+.bhm .bchk-note { font-size: 13px; color: var(--sec); }
+.bhm .bchk-ch { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; color: var(--sec); }
+
+/* Varenie: dlhý krok (podrobný postup pre začiatočníka) menším písmom. */
+.bhm .cook .stx.lg { font-size: 24px; }
+.bhm .cook .stx.xl { font-size: 21px; line-height: 1.3; }
+.w .bhm .cook .stx.lg { font-size: 28px; }
+.w .bhm .cook .stx.xl { font-size: 24px; line-height: 1.28; }

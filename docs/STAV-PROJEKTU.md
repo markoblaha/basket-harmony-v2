@@ -450,6 +450,25 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     majiteľ (appku treba úplne zavrieť a znova otvoriť). Oprava po snímke majiteľa: `#sbar` mal na iPhone
     minimálne 6 px – na iPhone majiteľa je stránka pod lištou (výrez 0), pás prekryl vrch stránky a odsekol
     tlačidlá hlavičky na všetkých obrazovkách. Výška je teraz len výrez displeja; farbu vtedy dáva pozadie body/html.
+    **6 receptov metódou „kotva“ – HOTOVÉ 15. 11. (pokyn majiteľa: 6 komplikovaných receptov, hlavná fotka + 3 detaily,
+    každý recept iná scéna, extra fotorealistické):** sviečková na smotane, kapustnica, plnená paprika, španielsky vtáčik,
+    grécka musaka, chili con carne (tikka masala vynechaná – na povolených weboch málo klasických receptov). Majiteľ
+    odmietol pôvodnú metódu (stredná hodnota každej suroviny zvlášť dáva pomery, ktoré nikto neuvaril). Nová metóda
+    (`src/features/recipes/kniha-overene.ts`, typ `BookCheck` v `types.ts`, výpočet `bookCheck`/`basePortions` v `kniha.ts`):
+    11–16 skutočných receptov z 4–7 povolených webov (JSON-LD, skripty v scratchpade `r6/grab.py`), základná porcia =
+    najčastejšia v zdrojoch (pri zhode bližšia k mediánu), kotva = skutočný dobre hodnotený recept s najviac surovinami
+    väčšiny, jeho pomery ostávajú; zmena len keď chýba surovina väčšiny, surovinu má < 30 % zdrojov alebo je množstvo mimo
+    bežného rozpätia (20.–80. percentil na porciu) – každá zmena je zapísaná (`changes`). Úkony postupu (`acts`): úkon väčšiny
+    musí byť v postupe, každý úkon v postupe robí kotva alebo ≥ 30 % zdrojov, menšinové sú rady. Zhoda = priemer (suroviny
+    väčšiny, množstvá v bežnom rozpätí, úkony väčšiny) ≥ 90 %; výsledok 97–100 %. Kroky sú rozpísané pre začiatočníka
+    (2–4 vety, oheň, čas, „Hotové je, keď“, „Pozor“, rady zo zdrojov), suroviny pri kroku presne (`USES`, test).
+    V detaile receptu nová sekcia „Ako sme recept overili“ (zhoda, základný recept, tabuľka u nás / bežne / koľko zdrojov,
+    zmeny oproti základu). Nové potraviny s hodnotami USDA SR Legacy (lokálna kópia dát v scratchpade `usda/`), staršie
+    potraviny doplnené o alergény (`horcica`, `zeler`, `eidam`…). Fotky: `gemini-3-pro-image` 2K, hlavná fotka zo zadania
+    podľa receptu, 3 ďalšie s hlavnou ako predlohou (iný uhol, ten istý tanier), 3 zábery prerobené (boli takmer rovnaké
+    ako hlavná); 4 × 6 fotiek WebP 1080×1341 + náhľad 480 px v `public/kniha/`, cena asi 3–5 $. Funkcia `proto-images`
+    bola na várku dočasne zapnutá (v7, heslo len v scratchpade) a hneď znova vypnutá (v8, 410). Dlhé kroky majú pri varení
+    menšie písmo (`.stx.lg/.xl`). Overené lokálne (Teplá svetlá, Sklo tmavé): 4 fotky, tabuľka, varenie, Ochutnávač, bez chýb.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

@@ -7,8 +7,9 @@
  * Obsah receptov je údaj (ako názov produktu), nie text rozhrania – preto nie je v i18n.
  */
 import { FOODS, type Allergen } from "./foods";
-import { findRef } from "./logic";
-import type { Ingredient, Recipe, Step } from "./types";
+import { findRef, toGrams } from "./logic";
+import type { BookCheck, Ingredient, Recipe, Step } from "./types";
+import { BOOK_CHECKED } from "./kniha-overene";
 
 type I = [food: string, qty: number, unit: Ingredient["unit"], src: string, extra?: Partial<Ingredient>];
 type S = [text: string, min: number, src: string, extra?: Partial<Step>];
@@ -18,7 +19,8 @@ const ings = (group: string, list: I[]): Ingredient[] =>
 const steps = (list: S[]): Step[] =>
   list.map(([text, min, src, extra]) => ({ text, timerMin: min || null, src, ...extra }));
 
-export const BOOK: Recipe[] = [
+/** Staršie recepty knihy: spojené z 3–5 zdrojov (bez overenia metódou „kotva“). */
+const BOOK_MERGED: Recipe[] = [
   {
     id: "segedin",
     name: "Segedínsky guláš",
@@ -335,6 +337,9 @@ export const BOOK: Recipe[] = [
   },
 ];
 
+/** Celá kniha: najprv recepty overené metódou „kotva“ (kniha-overene.ts), potom staršie. */
+export const BOOK: Recipe[] = [...BOOK_CHECKED, ...BOOK_MERGED];
+
 /** Recept z knihy podľa kľúča. */
 export const bookRecipe = (id: string) => BOOK.find((r) => r.id === id);
 
@@ -374,6 +379,11 @@ export const SAID: Record<string, string> = {
   maslo: "masl", zemiaky: "zemiak", sampinony: "hub", kopor: "kôpor", ocot: "oct", tuk: "tuk", cukor: "cukr", med: "med(om)?\\b",
   soda: "sód", kondenz: "kondenz\\S* mliek|karamel", orechy: "orech(y|mi)\\b", olivovy_olej: "olej", mrkva: "mrkv", zeler_stopkovy: "zeler",
   pasirovane: "paradaj", muskat: "muškát", lasagne: "platn", parmezan: "parmez", mlieko: "mliek",
+  hovadzie: "mäs", udene: "mäs|údené", klobasa: "klobás", huby_susene: "hub|hríb", baklazan: "baklažán", pretlak: "pretlak",
+  paradajky_kraj: "paradaj", fazula: "fazu", paprika: "papri", paprika_cervena: "papri", chilli: "chilli",
+  rimska_rasca: "rímsk\\S* rasc", skorica: "škoric", bobkovy_list: "bobkov", nove_korenie: "nov\\S* koren", korenie_cele: "koren",
+  citron: "citrón", brusnice: "brusn", horcica: "horčic", uhorky_kysle: "uhor", ryza: "ryž", eidam: "syr", oregano: "oregan",
+  majoran: "majorán", slanina: "slanin", parky: "párk|párok", zeler: "zeler", petrzlen: "petržl",
 };
 /** Výraz, ktorý nájde surovinu v texte (na začiatku slova). */
 export const said = (food: string) => new RegExp(`(^|[^a-záäčďéíĺľňóôŕšťúýž])(${SAID[food] ?? "\\u0000"})`, "i");
@@ -403,4 +413,129 @@ export function stepFoods(st: Pick<Step, "text" | "uses">, scaled: Ingredient[])
     }
   }
   return scaled.filter((x) => pick.has(x));
+}
+
+/* ------------------------------------------------------------------ overenie metódou „kotva“ */
+
+/** Percentil zoradených hodnôt (lineárne medzi susednými). */
+function pct(sorted: number[], p: number) {
+  const i = (sorted.length - 1) * p;
+  const lo = Math.floor(i);
+  return sorted[lo]! + (sorted[Math.min(lo + 1, sorted.length - 1)]! - sorted[lo]!) * (i - lo);
+}
+
+/** Základná porcia: najčastejší počet porcií v zdrojoch; pri zhode ten bližší k mediánu. */
+export function basePortions(portions: number[]) {
+  const count = new Map<number, number>();
+  for (const p of portions) count.set(p, (count.get(p) ?? 0) + 1);
+  const top = Math.max(...count.values());
+  const med = pct([...portions].sort((a, b) => a - b), 0.5);
+  return [...count].filter(([, c]) => c === top).map(([p]) => p).sort((a, b) => Math.abs(a - med) - Math.abs(b - med) || a - b)[0]!;
+}
+
+export type CheckRow = {
+  foods: string[];
+  /** Názov riadku, keď spája viac potravín (napr. „Tuk (olej, maslo)“). */
+  label?: string;
+  unit: "g" | "ks";
+  /** V koľkých zdrojoch surovina je (a z koľkých). */
+  count: number;
+  share: number;
+  /** Naše množstvo na základné porcie (null = surovinu nemáme). */
+  ours: number | null;
+  /** Množstvo vo zdrojoch prepočítané na naše porcie: celé rozpätie a bežné rozpätie (20.–80. percentil). */
+  min: number | null;
+  max: number | null;
+  lo: number | null;
+  hi: number | null;
+  /** Koľko zdrojov uvádza množstvo (porovnáva sa od 4). */
+  quantified: number;
+  /** Naše množstvo je v bežnom rozpätí (null = neporovnáva sa). */
+  typical: boolean | null;
+  inRange: boolean | null;
+};
+
+export type CheckResult = {
+  sources: number;
+  sites: number;
+  base: number;
+  rows: CheckRow[];
+  /** Suroviny väčšiny (viac ako polovica zdrojov), ktoré v recepte chýbajú. */
+  missing: string[];
+  /** Naše suroviny, ktoré má menej ako 30 % zdrojov (voliteľné menej ako 20 %), alebo nie sú v porovnaní. */
+  weak: string[];
+  /** Úkony väčšiny, ktoré v postupe chýbajú. */
+  actsMissing: string[];
+  /** Zhoda 0–1: priemer (suroviny väčšiny, množstvá v bežnom rozpätí, úkony väčšiny). */
+  score: number;
+  parts: { ingredients: number; amounts: number; steps: number };
+};
+
+/** Naše množstvo pre riadok porovnania (gramy alebo kusy). */
+function ourAmount(r: Recipe, foods: string[], unit: "g" | "ks") {
+  let sum = 0;
+  let found = false;
+  for (const ing of r.ingredients) {
+    if (!foods.includes(ing.food)) continue;
+    found = true;
+    if (unit === "ks") sum += ing.unit === "ks" ? ing.qty : (toGrams(ing.food, ing.qty, ing.unit) ?? 0) / (FOODS[ing.food]?.g || 1);
+    else sum += toGrams(ing.food, ing.qty, ing.unit) ?? 0;
+  }
+  return found ? sum : null;
+}
+
+/** Porovná recept so všetkými zdrojmi (suroviny, množstvá na porciu, úkony) a vypočíta zhodu. */
+export function bookCheck(r: Recipe): CheckResult | null {
+  const c: BookCheck | undefined = r.book?.check;
+  if (!c) return null;
+  const letters = r.book!.sources.map((s) => s.k);
+  const n = letters.length;
+  const known = Object.values(c.portions);
+  const base = basePortions(known.length ? known : [r.portions]);
+  const rows: CheckRow[] = c.rows.map((row) => {
+    const foods = row.foods.split("+");
+    const have = Object.keys(row.v).filter((k) => letters.includes(k));
+    const per = have.filter((k) => row.v[k]! > 0 && c.portions[k]).map((k) => (row.v[k]! / c.portions[k]!) * r.portions).sort((a, b) => a - b);
+    const ours = ourAmount(r, foods, row.unit);
+    const q = per.length;
+    const min = q ? per[0]! : null;
+    const max = q ? per[q - 1]! : null;
+    const lo = q >= 4 ? pct(per, 0.2) : min;
+    const hi = q >= 4 ? pct(per, 0.8) : max;
+    const near = (x: number, y: number) => Math.abs(x - y) < 1e-6;
+    const cmp = ours != null && q >= 4;
+    return {
+      foods, label: row.label, unit: row.unit, count: have.length, share: have.length / n, ours, min, max, lo, hi, quantified: q,
+      typical: cmp ? (ours >= lo! || near(ours, lo!)) && (ours <= hi! || near(ours, hi!)) : null,
+      inRange: cmp ? (ours >= min! || near(ours, min!)) && (ours <= max! || near(ours, max!)) : null,
+    };
+  });
+  const name = (foods: string[]) => foods.map((f) => FOODS[f]?.name ?? f).join(" + ");
+  const core = rows.filter((x) => x.share > 0.5);
+  const missing = core.filter((x) => x.ours == null).map((x) => name(x.foods));
+  const weak: string[] = [];
+  for (const ing of r.ingredients) {
+    if (FOODS[ing.food]?.free) continue;
+    const row = rows.find((x) => x.foods.includes(ing.food));
+    if (!row || row.share < (ing.optional ? 0.2 : 0.3)) weak.push(ing.label || FOODS[ing.food]?.name || ing.food);
+  }
+  const majorActs = c.acts.filter((a) => a.src.length / n > 0.5);
+  const actsMissing = majorActs.filter((a) => !a.step).map((a) => a.a);
+  const compared = rows.filter((x) => x.typical != null);
+  const parts = {
+    ingredients: core.length ? (core.length - missing.length) / core.length : 1,
+    amounts: compared.length ? compared.filter((x) => x.typical).length / compared.length : 1,
+    steps: majorActs.length ? (majorActs.length - actsMissing.length) / majorActs.length : 1,
+  };
+  return {
+    sources: n,
+    sites: new Set(r.book!.sources.map((s) => s.site)).size,
+    base,
+    rows,
+    missing,
+    weak,
+    actsMissing,
+    score: (parts.ingredients + parts.amounts + parts.steps) / 3,
+    parts,
+  };
 }

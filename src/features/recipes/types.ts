@@ -37,9 +37,29 @@ export type Step = {
   uses?: string[];
 };
 
-/** Recept z knihy: spojený z 3–5 skutočných receptov (zdroje), s fotkami a doplnkami. */
+/**
+ * Overenie receptu (metóda „kotva“, 15. 11. 2026): základom je jeden skutočný recept (kotva) a každá surovina,
+ * množstvo a úkon sa porovná so všetkými zdrojmi. Výpočet a pravidlá: bookCheck v kniha.ts, test v kniha.test.ts.
+ */
+export type BookCheck = {
+  /** Písmeno zdroja, ktorého recept je základom. */
+  anchor: string;
+  /** Na koľko porcií je recept zdroja (chýba = zdroj porcie neuvádza). */
+  portions: Record<string, number>;
+  /**
+   * Suroviny v zdrojoch: kľúče potravín (viac cez +, napr. koreňová zelenina), jednotka (g alebo ks)
+   * a množstvo na celý recept zdroja; 0 = zdroj surovinu má, ale bez množstva („podľa chuti“).
+   */
+  rows: { foods: string; unit: "g" | "ks"; v: Record<string, number>; label?: string }[];
+  /** Úkony postupu: ktoré zdroje ich robia a ktorý náš krok ho robí (od 1), alebo je z neho rada (tip). */
+  acts: { a: string; src: string; step?: number; tip?: boolean }[];
+  /** Čo sa oproti kotve zmenilo a prečo. */
+  changes: string[];
+};
+
+/** Recept z knihy: spojený zo skutočných receptov (zdroje), s fotkami a doplnkami. */
 export type BookInfo = {
-  /** Fotky: hlavná, zhora, zblízka (súbory public/kniha/<id>-<n>.webp, triedy pic-kb_<id>_<n>). */
+  /** Fotky: hlavná a ďalšie zábery (súbory public/kniha/<id>-<n>.webp, triedy pic-kb_<id>_<n>). */
   photos: number;
   /** Čas práce v minútách (minutes = celkový čas). */
   active: number;
@@ -51,6 +71,8 @@ export type BookInfo = {
   sources: { k: string; site: string; name: string; url: string }[];
   /** Zdroje skupiny, ktorá má vlastné zdroje (napr. halušky). */
   groupSources?: Record<string, string>;
+  /** Overenie metódou „kotva“ (novšie recepty); staršie recepty sú spojené z 3–5 zdrojov bez neho. */
+  check?: BookCheck;
 };
 
 export type QA = { q: string; a: string };
