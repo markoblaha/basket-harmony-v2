@@ -96,7 +96,7 @@ function fromServer(ops: ServerOp[]): VoiceOp[] {
   return out;
 }
 
-/** Limit AI domácnosti: AI_LIMIT = veľa viet za krátky čas, AI_MONTH_LIMIT = vyčerpaný mesačný rozpočet. */
+/** Limit AI domácnosti: AI_LIMIT = veľa viet za krátky čas, AI_MONTH_LIMIT = vyčerpaná rezerva rozpočtu (dopĺňa sa denne). */
 export type AiLimit = "AI_LIMIT" | "AI_MONTH_LIMIT";
 export const isAiLimit = (code: unknown): code is AiLimit => code === "AI_LIMIT" || code === "AI_MONTH_LIMIT";
 

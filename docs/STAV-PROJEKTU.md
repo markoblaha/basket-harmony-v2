@@ -59,7 +59,8 @@ presnosť (nákup / povel / rozhovor), čas odpovede; ~5 centov. Spustiť po ka�
    `20261113000040_price_store_count`, `…041_price_comparable` (v testovacej DB ako 3 kroky: price_comparable,
    price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
    (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
-   Rozpočet AI domácnosti (15. 11.): `20261114000043_ai_household_budget` (v testovacej DB ako `ai_household_budget`).
+   Rozpočet AI domácnosti (15. 11.): `20261114000043_ai_household_budget` (v testovacej DB ako `ai_household_budget`)
+   a `20261115000044_ai_daily_refill` (ako `ai_daily_refill`).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
    Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v13 (krátke pokyny, 15. 11.) a voice-live-token v9 (účtuje 15 s, 15. 11.),
    recipe-ai v7 (všetky s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND; AI_MONTH_LIMIT), extract-receipt v3, normalize-products v4,
@@ -155,6 +156,15 @@ presnosť (nákup / povel / rozhovor), čas odpovede; ~5 centov. Spustiť po ka�
   *Kratšie pokyny pre AI* (parse-voice v13): vstup z ~1 650 na ~930 tokenov, pri texte sa nevracia prepis →
   **0,051 c za vetu** (predtým 0,076, −33 %); sada viet 58/58, medián 1,2 s, všetko flash-lite. Názov jedla z AI dostane
   veľké písmeno v appke (`api.ts`).
+  *Denné dopĺňanie (migrácia 044, pokyn „plnohodnotne využívať, ale so stropom, aby som zarobil“):* k danému dňu smie
+  domácnosť minúť len `strop × (deň + 4) / dní v mesiaci` (`_ai_month_share`), nevyužité ostáva. 1. deň 20 c na hlas
+  (≈ 20 nákupov hlasom), každý ďalší deň +4 c (≈ 4 nákupy; bežná rodina ~1 denne), posledný deň celý strop – mesačný
+  maximálny náklad sa nemení. Nikto (napr. dieťa) tak nevyčerpá hlas rodine na celý mesiac, po vyčerpaní „zajtra sa hlas
+  doplní“. Kód ostal `AI_MONTH_LIMIT` (edge funkcie bez zmeny). Overené blokom s vrátením (`fails=0`: 15. 11. podiel 0,633
+  = 0,76 $, nad ním AI_MONTH_LIMIT, cudzí NOT_FOUND) a `testy/hlas.cjs` 13/13 aj s `REAL=1`.
+  *Ekonomika (4 €/mes.):* po DPH 23 % a poplatku obchodu 15 % ostane ~2,75 €; servery (Supabase Pro ~25 $/mes.) pri 100
+  rodinách ~0,23 €/rodinu. AI bežnej rodiny ~0,15–0,40 €, najviac (strop hlasu 1,20 $ + bločky) ~1,20 € → aj najnáročnejšia
+  rodina je v zisku (~1,30 €), bežná ~2,1–2,4 €.
   *Odhad:* rodina 4 ľudí ~2–3 nákupy týždenne hlasom ≈ 0,30–0,60 $/mes. (živý prepis ~0,9 c/min reči je väčšina ceny),
   strop 1,20 $ dosiahne len extrémne používanie. `testy/hlas.cjs` 13/13 aj s `REAL=1` (krok 13: vyčerpaný rozpočet).
   Najväčšia ďalšia úspora: natívna appka s rozpoznávaním reči v telefóne (zadarmo) – živý prepis by odpadol.

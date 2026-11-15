@@ -171,7 +171,7 @@ export const enVoice: Record<keyof typeof skVoice, string> = {
   "vx.prevDraft.few": "Unsaved list from before ({n} items)",
   "vx.prevDraft.other": "Unsaved list from before ({n} items)",
   "vx.restore": "Restore",
-  "voice.limitMonth": "Voice has used up this month’s household allowance. Type items for now – voice resets on the 1st of next month.",
+  "voice.limitMonth": "Voice has used up today’s household allowance. Type items for now – voice tops up tomorrow.",
   "voice.limitHour": "Voice is taking a short break (many sentences in a short time). Type items for now and tap the mic again in a moment.",
   "vx.unclearHint": "tap the right option",
 };

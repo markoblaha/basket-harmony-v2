@@ -170,7 +170,7 @@ export const skVoice = {
   "vx.prevDraft.few": "Neuložený zoznam z minula ({n} položky)",
   "vx.prevDraft.other": "Neuložený zoznam z minula ({n} položiek)",
   "vx.restore": "Obnoviť",
-  "voice.limitMonth": "Hlas má tento mesiac vyčerpaný rozpočet domácnosti. Položky zatiaľ napíš – hlas sa obnoví 1. dňa ďalšieho mesiaca.",
+  "voice.limitMonth": "Hlas na dnes vyčerpal rezervu domácnosti. Položky zatiaľ napíš – zajtra sa hlas doplní.",
   "voice.limitHour": "Hlas si dáva krátku prestávku (veľa viet za krátky čas). Položky zatiaľ napíš, o chvíľu ťukni na mikrofón.",
   "vx.unclearHint": "ťukni na správnu možnosť",
 } as const;

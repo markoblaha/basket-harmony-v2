@@ -26,7 +26,7 @@ export const skErrors = {
   "error.RECEIPT_LIMIT": "Domácnosť dnes nahrala priveľa bločkov. Skús to zajtra.",
   "error.DELETE_FAILED": "Účet sa nepodarilo zmazať. Skús to znova o chvíľu.",
   "error.AI_LIMIT": "Domácnosť už použila AI priveľakrát. Skús to neskôr.",
-  "error.AI_MONTH_LIMIT": "Domácnosť tento mesiac vyčerpala rozpočet AI. Obnoví sa 1. dňa ďalšieho mesiaca.",
+  "error.AI_MONTH_LIMIT": "Domácnosť na dnes vyčerpala rezervu AI. Zajtra sa doplní.",
   "error.AI_GUARD_FAILED": "AI sa teraz nedá overiť. Skús to o chvíľu znova.",
   "error.RECIPE_AI_FAILED": "Gemini teraz recept nespracoval. Skús to o chvíľu znova.",
   // Supabase Auth

@@ -1110,7 +1110,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
               aria-label={listening ? t("vx.pause") : t("vx.listen")}
               aria-pressed={micOn}
             >
-              {/* Hlas nedostupný (mesačný rozpočet, bez povolenia mikrofónu): bledý mikrofón, nie „pauza“. */}
+              {/* Hlas nedostupný (vyčerpaná rezerva, bez povolenia mikrofónu): bledý mikrofón, nie „pauza“. */}
               <I n={micOn || blocked || limited === "AI_MONTH_LIMIT" ? "microphone" : "pause"} />
             </button>
             {selItem ? (

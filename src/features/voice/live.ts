@@ -28,7 +28,7 @@ async function fetchToken(): Promise<Token> {
   const { data, error } = await supabase.functions.invoke("voice-live-token", {
     body: { household_id: currentHouseholdId(), locale: getLocale() },
   });
-  // Kód z servera (napr. AI_MONTH_LIMIT – vyčerpaný mesačný rozpočet), aby appka vedela, prečo hlas nejde.
+  // Kód z servera (napr. AI_MONTH_LIMIT – vyčerpaná rezerva domácnosti), aby appka vedela, prečo hlas nejde.
   if (error) throw new Error((await functionErrorCode(error)) ?? "AI_UNAVAILABLE");
   if (!data?.token) throw new Error(typeof data?.error === "string" ? data.error : "AI_UNAVAILABLE");
   return data as Token;
