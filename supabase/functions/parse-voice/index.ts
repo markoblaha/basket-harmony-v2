@@ -64,73 +64,48 @@ const SCHEMA = {
   propertyOrdering: ["transcript", "intent", "ops", "cook", "store"],
 };
 
-/**
- * Mikrofón počúva nepretržite – pravidlá, čo do zoznamu patrí a čo nie (pre hovorenú reč; napísaný text sa nefiltruje).
+/** Pri texte netreba prepis späť (máme ho) – kratšia odpoveď = lacnejšia. */
+const { transcript: _transcript, ...TEXT_PROPS } = SCHEMA.properties;
+const SCHEMA_TEXT = { ...SCHEMA, properties: TEXT_PROPS, required: ["intent", "ops", "cook"], propertyOrdering: ["intent", "ops", "cook", "store"] };
+
+/*
+ * Pokyny sú zámerne stručné: vstup tvorí ~2/3 ceny vety (14. 11. 2026 skrátené z ~1 650 tokenov).
+ * Po každej zmene spusti testy/hlas-vety.mjs – všetkých 58 viet musí prejsť.
  */
-const LISTEN_RULES = `Mikrofón počúva nepretržite, takže zachytí aj rozhovor s inými ľuďmi, telefonát, televízor, rádio, pieseň, deti alebo šum.
-Do zoznamu patrí LEN to, čo človek chce kúpiť. Najprv urč intent:
-- "list": diktuje nákupný zoznam alebo hovorí, čo treba kúpiť, čo doma chýba, čo pridať, zmeniť či zmazať v zozname
-  ("mlieko chlieb a dve masla", "treba kúpiť prací prášok", "nemáme už maslo", "kúp ešte pivo", "ešte dve", "zmaž banány", "hotovo"),
-  chce niečo uvariť ("chcem uvariť guláš") alebo hovorí, do ktorého obchodu ide ("idem do Lidla").
-- "other": všetko ostatné – rozhovor, otázky a odpovede, rozprávanie o tom, čo sa stalo, pokyny inému človeku, reklama a správy
-  z televízora či rádia, spev, útržky bez zmyslu. Príklady: "kde máš kľúče od auta", "ahoj ako sa máš", "počkaj chvíľu",
-  "včera sme mali na obed rezne", "podaj mi tú lyžicu", "zober si bundu je zima", "dobre tak zajtra", "hm", "ďakujem",
-  "obleč sa ideme von", "najlepšie ceny len tento týždeň", "kedy prídeš domov", "ja som nič nevidel", "dnes sme nič nekúpili",
-  citoslovcia a reakcie ("ty kokos" nie je kokos, "ale to je", "no teda", "fakt") a prepis, ktorý je len zoznam výrazov
-  oddelených pomlčkami alebo nedáva zmysel ako veta (ozvena šumu).
-  Pri "other": ops [], cook [], store null.
-Ak sa v jednej vete mieša rozhovor s nákupom ("počkaj chvíľu, a ešte kúp mlieko"), intent "list" a ops len z nákupnej časti.
-Vec spomenutá v rozhovore bez toho, aby ju chcel kúpiť ("podaj mi lyžicu", "mlieko je v chladničke"), do ops NEPATRÍ.
-is_product: true len pre tovar z obchodu (potraviny, nápoje, drogéria, čistiace prostriedky, potreby do domácnosti,
-pre zvieratá a deti, lieky, papiernictvo). Mená ľudí, miesta, časy, činnosti, pocity, služby a slová z rozhovoru sú is_product false
-a do ops ich nedávaj vôbec. Nevymýšľaj položky, ktoré nezazneli.`;
 
-const rules = (items: string, target: string | null, vocab: string) => `Rozdeľ reč na jednotlivé položky a vráť operácie (ops) v poradí, ako zazneli.
+/** Mikrofón počúva stále – čo do zoznamu patrí (len pre hovorenú reč; napísaný text sa nefiltruje). */
+const LISTEN_RULES = `Mikrofón počúva stále – zachytí aj rozhovor, telefonát, televízor, spev či šum. Do zoznamu patrí LEN to, čo chce kúpiť.
+intent "list": diktuje nákup alebo hovorí, čo treba kúpiť či čo chýba ("nemáme už maslo", "kúp ešte pivo"), mení zoznam ("ešte dve", "zmaž banány", "hotovo"), chce variť ("chcem uvariť guláš") alebo ide do obchodu ("idem do Lidla").
+intent "other" (ops [], cook [], store null): všetko ostatné – rozhovor, otázky, rozprávanie, pokyny iným, televízor, rádio, citoslovcia, nezmysel. Napr. "kde máš kľúče", "podaj mi lyžicu", "mlieko je v chladničke", "včera sme mali rezne", "koľko stálo to maslo", "ty kokos", "ale to je", "dnes sme nič nekúpili", "najlepšie ceny len tento týždeň", výrazy oddelené pomlčkami.
+Zmiešaná veta ("počkaj chvíľu, a kúp mlieko"): intent "list", ops len z nákupnej časti.
+is_product true len pre tovar z obchodu; mená, miesta, činnosti a slová z rozhovoru do ops nedávaj. Nevymýšľaj.`;
 
-Delenie: každý produkt je samostatná položka. Množstvo patrí k produktu, pri ktorom zaznelo:
-"banány 3 rožky maslo šunka" -> Banány | Rožok 3 ks | Maslo | Šunka
-"mrkva pivo 6 kusov šunka" -> Mrkva | Pivo 6 ks | Šunka
-"mlieko 3 kusy banány smotana 3 kusy" -> Mlieko 3 ks | Banány | Smotana 3 ks
-"tri banány" = "banány 3 kusy" -> Banány 3 ks
-
-- add: name = názov v 1. páde v jazyku, v ktorom zaznel (anglicky povedané ostane anglicky: "two milks" -> "Milk" 2 ks), prvé písmeno veľké, bez množstva ("tri nugátové šišky" -> "Nugátová šiška" 3 ks; "pol kila múky" -> "Múka" 0.5 kg;
-  "dvadsaťpäť deka šunky" -> "Šunka" 25 dkg; "hovädzie dvesto päťdesiat gramov" -> "Hovädzie mäso" 250 g). Bez množstva: quantity null, unit null.
-  Jednotky iba: ${UNITS.join(", ")}.
+const rules = (items: string, target: string | null, vocab: string) => `ops v poradí, ako zazneli; každý produkt zvlášť, množstvo patrí k produktu, pri ktorom zaznelo:
+"banány 3 rožky maslo" -> Banány | Rožok 3 ks | Maslo; "mlieko 3 kusy banány" -> Mlieko 3 ks | Banány; "tri banány" -> Banány 3 ks.
+- add: name v 1. páde a v jazyku, v ktorom zaznel ("two milks" -> Milk 2 ks), prvé písmeno veľké, bez množstva; "pol kila múky" -> Múka 0.5 kg; "25 deka šunky" -> Šunka 25 dkg. Bez množstva quantity a unit null. Jednotky: ${UNITS.join(", ")}.
 - category_id: ${CATEGORIES.join(", ")}.
-- status "needs_qty": mäso, ryby, syr/šunka z pultu bez zaznetého množstva. "unclear": znie to ako tovar, ale slovo je asi zle rozpoznané
-  (suggestions: 2–3 podobne znejúce produkty v 1. páde). Slovo, ktoré nie je tovar, nie je "unclear" – do ops nepatrí. Inak "ok", suggestions [].
-- change: produkt už je v zozname ("ešte jedny banány" -> target "Banány", delta 1; "banánov daj tri" -> target "Banány", quantity 3, unit "ks";
-  "nie, tri" -> posledná alebo upravovaná položka). remove: "zmaž/vymaž X" -> target. done: "hotovo", "to je všetko". target presne podľa zoznamu.
-- cook: jedlá, ktoré chce človek uvariť alebo pripraviť ("chcem uvariť hovädzí guláš", "urobím burgre", "na večeru lasagne",
-  "upečiem bábovku") -> názov jedla v 1. páde ("Hovädzí guláš", "Hovädzí burger"). Suroviny takého jedla NEPRIDÁVAJ do ops – appka ponúkne recepty.
-  Len konkrétne jedlo, ktoré chce sám navariť alebo upiecť – nie všeobecné "jedlo", "večera", "niečo", nie nápoj ani jedlo,
-  ktoré by len zjedol či objednal ("urobím ti čaj", "zjedol by som pizzu", "urobím jedlo" = intent "other"). Ak nič také nezaznelo, cook [].
-- store: obchod, do ktorého ide nakupovať, ak ho povedal ("idem do Lidla" -> "Lidl", "v Kauflande" -> "Kaufland"), inak null. Obchod nie je položka.
-${vocab ? `Produkty, ktoré táto domácnosť často kupuje: ${vocab}\n  Keď vyslovené slovo v nákupe znie podobne ako niektorý z nich, je to on – použi presne tento názov. Iné produkty zapíš normálne.\n  Rozhovor podľa tohto zoznamu na nákup NEMEŇ.\n` : ""}${target ? `Upravuje sa položka "${target}": ak veta hovorí o nej (množstvo, jednotka alebo nový názov), vráť jednu operáciu change s target "${target}". Rozhovor ju nemení.\n` : ""}
-Zoznam (názov | množstvo):
+- status: "needs_qty" = mäso, ryby, syr či šunka z pultu bez množstva; "unclear" = asi zle rozpoznaný tovar (suggestions: 2–3 podobné produkty); inak "ok", suggestions [].
+- change: produkt už je v zozname ("ešte jedny banány" -> target Banány, delta 1; "banánov daj tri" -> quantity 3; "nie, tri" -> posledná položka). remove: "zmaž X". done: "hotovo", "to je všetko". target presne podľa zoznamu.
+- cook: konkrétne jedlo, ktoré chce sám uvariť či upiecť ("chcem uvariť hovädzí guláš" -> Hovädzí guláš); jeho suroviny do ops nedávaj. Nie: "jedlo", nápoj, "urobím ti čaj", "zjedol by som pizzu".
+- store: obchod, do ktorého ide nakupovať ("idem do Lidla" -> Lidl), inak null.
+${vocab ? `Domácnosť často kupuje: ${vocab}. Slovo z nákupu, ktoré znie podobne, je to – použi presne ten názov.\n` : ""}${target ? `Upravuje sa položka "${target}": ak veta hovorí o nej, vráť jednu operáciu change s target "${target}".\n` : ""}Zoznam (názov | množstvo):
 ${items || "(prázdny)"}`;
 
 const textPrompt = (text: string, items: string, target: string | null, vocab: string) =>
-  `Veta zachytená mikrofónom v hlasovom nákupnom zozname (slovenčina). Prepis z rozpoznávania reči NEMÁ čiarky a môže mať chyby.
+  `Veta z mikrofónu v nákupnom zozname (slovenčina, bez čiarok, môže mať chyby rozpoznávania).
 ${LISTEN_RULES}
 ${rules(items, target, vocab)}
-
-transcript = veta bez zmeny.
 Veta: "${text}"`;
 
 const typedPrompt = (text: string, items: string, target: string | null) =>
-  `Text, ktorý človek napísal rukou do nákupného zoznamu (slovenčina). Je určený do zoznamu: intent "list", každá položka is_product true.
+  `Text napísaný do nákupného zoznamu (slovenčina): intent "list", každá položka is_product true.
 ${rules(items, target, "")}
-
-transcript = text bez zmeny.
 Text: "${text}"`;
 
 const audioPrompt = (items: string, target: string | null, vocab: string) =>
-  `Priložený zvuk je krátky úsek z mikrofónu v hlasovom nákupnom zozname (slovenčina; môže byť šum z obchodu).
-transcript = presný prepis toho, čo zaznelo (s diakritikou, bez úvodzoviek). Počúvaj pozorne každé slovo – často zaznie viac produktov
-za sebou ("mlieko chlieb a dve masla"): prepíš všetky, nič nevynechaj a nespájaj dva produkty do jedného slova.
-Nevymýšľaj: čo nie je zrozumiteľné, nedopĺňaj; ak je ticho alebo nič zrozumiteľné, transcript "", intent "other" a ops [].
-Vzdialený hlas, televízor, rádio alebo hudba (nie človek, ktorý hovorí do telefónu) je intent "other".
+  `Zvuk z mikrofónu v nákupnom zozname (slovenčina; môže byť šum z obchodu).
+transcript = presný prepis s diakritikou; prepíš každý produkt ("mlieko chlieb a dve masla"), nespájaj dva do jedného slova, nedopĺňaj nezrozumiteľné.
+Ticho alebo nič zrozumiteľné: transcript "", intent "other". Vzdialený hlas, televízor, rádio či hudba: intent "other".
 ${LISTEN_RULES}
 ${rules(items, target, vocab)}`;
 
@@ -164,10 +139,10 @@ const unavailable = new Set<string>();
 type Part = Record<string, unknown>;
 type Result = { transcript?: string; intent?: unknown; ops: Record<string, unknown>[]; cook?: unknown[]; store?: unknown };
 
-async function call(cfg: Cfg, parts: Part[], timeoutMs: number, g: Guarded): Promise<Result> {
+async function call(cfg: Cfg, parts: Part[], schema: unknown, timeoutMs: number, g: Guarded): Promise<Result> {
   try {
     const res = await callGemini({
-      model: cfg.model, parts, schema: SCHEMA,
+      model: cfg.model, parts, schema,
       thinking: cfg.thinking?.thinkingLevel as ThinkingLevel | undefined, timeoutMs,
     });
     g.log(cfg.model, res.usage, true);
@@ -190,7 +165,7 @@ async function askGemini(parts: Part[], audio: boolean, g: Guarded): Promise<Res
     const left = deadline - Date.now();
     if (left < 800) break;
     try {
-      const r = await call(cfg, parts, Math.min(audio ? 9_000 : 4_500, left), g);
+      const r = await call(cfg, parts, audio ? SCHEMA : SCHEMA_TEXT, Math.min(audio ? 9_000 : 4_500, left), g);
       return { ...r, model: cfg.model + (cfg.thinking ? "+min" : "") };
     } catch (e) {
       lastError = e instanceof Error ? e.message : String(e);

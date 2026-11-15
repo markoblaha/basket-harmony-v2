@@ -20,6 +20,8 @@ import { getSetting } from "@/lib/settings";
 import {
   interpretAI,
   interpretAudio,
+  isAiLimit,
+  type AiLimit,
   loadDraft,
   saveDraft,
   useKnownStores,
@@ -118,6 +120,8 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   const [skipped, setSkipped] = useState("");
   /** Mikrofón sa sám pozastavil, lebo okolo sa len rozprávalo (SKIP_LIMIT viet za sebou). */
   const [autoPaused, setAutoPaused] = useState(false);
+  /** Domácnosť vyčerpala limit AI – hlas stojí, píše sa (lokálny rozbor funguje aj bez AI). */
+  const [limited, setLimited] = useState<AiLimit | null>(null);
   const skipRun = useRef(0);
   const [refining, setRefining] = useState(0);
   /** Nahrávky na serveri, ktoré ešte nemajú výsledok – v zozname ich ukazuje karta „Spracúvam…“. */
@@ -389,6 +393,13 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
 
   // ---------------------------------------------------------------- vety
 
+  /** Limit AI domácnosti: mikrofón sa zastaví (nestojí peniaze) a otvorí sa písanie; jasná správa prečo. */
+  const hitLimit = useCallback((code: AiLimit) => {
+    setLimited(code);
+    setListening(false);
+    setTyping(true);
+  }, []);
+
   /** Veta nebola nákup: ukáže sa ako nepridaná; po SKIP_LIMIT takých vetách za sebou sa počúvanie pozastaví. */
   const skip = useCallback((text: string) => {
     setSkipped(text);
@@ -498,7 +509,10 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       setRefining((r) => r + 1);
       // Zoznam „často kupujete“ (pokyn „podobne znejúce slovo = ten produkt“) patrí len k nahrávke, kde sa
       // slovo môže zle počuť. Pri texte sa nič zle počuť nedá – inak AI zmenila „chlieb“ na „Rožky“.
-      void interpretAI(sp.rest, before, target, [], typed).then((ai) => {
+      void interpretAI(sp.rest, before, target, [], typed).then((res) => {
+        // Limit AI: veta sa spracuje ako bez AI (napísaný text celý, z reči len to, čo vyzerá ako tovar).
+        if (isAiLimit(res)) hitLimit(res);
+        const ai = isAiLimit(res) ? null : res;
         setRefining((r) => r - 1);
         if (held && typed) setPendingAudio((p) => p - 1);
         if (!ai) {
@@ -546,7 +560,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         present(r.items);
       });
     },
-    [stores, targetListId, present, toast, runCommand, cards, showRemoved, productLike, skip],
+    [stores, targetListId, present, toast, runCommand, cards, showRemoved, productLike, skip, hitLimit],
   );
 
   /** Nahrávka (iPhone): prepis aj rozbor prišiel naraz z AI. */
@@ -601,12 +615,13 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
         const res = await answer;
         setRefining((r) => r - 1);
         setPendingAudio((p) => p - 1);
+        if (isAiLimit(res)) return hitLimit(res);
         if (!res) return toast.show(t("voice.audioFailed"));
         if (!res.transcript && !res.ops.length && !res.cook.length) return;
         audioRef.current(res, sel);
       });
     },
-    [toast],
+    [toast, hitLimit],
   );
 
   const onFinal = useCallback(
@@ -685,9 +700,11 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
       if (on) {
         rec.start();
         if (liveOk)
-          lt.current?.connect().catch(() => {
+          lt.current?.connect().catch((e: unknown) => {
+            const code = e instanceof Error ? e.message : "";
+            if (isAiLimit(code)) hitLimit(code);
             // Bez živého prepisu ďalej (pôvodné posielanie viet) – hlas nesmie prestať fungovať.
-            setLiveOk(false);
+            else setLiveOk(false);
           });
       } else {
         rec.stop();
@@ -711,8 +728,11 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
   // Medzi vetami: spojenie sa obnoví (token platí 6 minút, po výpadku signálu sa pripojí znova).
   useEffect(() => {
     if (engine !== "rec" || !liveOk || !listening || busy || rec.hearing) return;
-    lt.current?.connect().catch(() => undefined);
-  }, [engine, liveOk, listening, busy, rec.hearing]);
+    lt.current?.connect().catch((e: unknown) => {
+      const code = e instanceof Error ? e.message : "";
+      if (isAiLimit(code)) hitLimit(code);
+    });
+  }, [engine, liveOk, listening, busy, rec.hearing, hitLimit]);
   useEffect(() => () => lt.current?.close(), []);
 
   // ---------------------------------------------------------------- zatvorenie, zahodenie
@@ -1006,6 +1026,11 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
                 <I n="warning-circle" />
                 {engine === "none" ? t("voice.unsupportedText") : isIOS() ? t("voice.blockedTextIos") : t("voice.blockedText")}
               </p>
+            ) : limited && !micOn ? (
+              <p className="vx-note" role="status">
+                <I n="warning-circle" />
+                {t(limited === "AI_MONTH_LIMIT" ? "voice.limitMonth" : "voice.limitHour")}
+              </p>
             ) : stalled ? (
               <span className="dim">{t("voice.tapToStart")}</span>
             ) : live ? (
@@ -1074,16 +1099,19 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
               type="button"
               ref={orb}
               className={`vx-orb${micOn ? " on" : ""}${selItem ? " edit" : ""}${hearing ? " hear" : ""}`}
-              disabled={blocked}
+              disabled={blocked || limited === "AI_MONTH_LIMIT"}
               onClick={() => {
-                if (blocked || stalled) return;
+                if (blocked || stalled || limited === "AI_MONTH_LIMIT") return;
                 haptic(8);
+                // Krátkodobý limit: ďalší pokus po chvíli (server znova rozhodne).
+                if (limited) setLimited(null);
                 setListening((l) => !l);
               }}
               aria-label={listening ? t("vx.pause") : t("vx.listen")}
               aria-pressed={micOn}
             >
-              <I n={micOn ? "microphone" : "pause"} />
+              {/* Hlas nedostupný (mesačný rozpočet, bez povolenia mikrofónu): bledý mikrofón, nie „pauza“. */}
+              <I n={micOn || blocked || limited === "AI_MONTH_LIMIT" ? "microphone" : "pause"} />
             </button>
             {selItem ? (
               <button type="button" className="vx-side dng" onClick={() => removeCard(selItem.id)}>
@@ -1096,7 +1124,7 @@ export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void
               </button>
             )}
           </div>
-          {!blocked && <p className="vx-cap">{selItem ? t("vx.capEdit") : micOn ? (n ? t("vx.capOnItems") : t("vx.capOn")) : t("vx.capOff")}</p>}
+          {!blocked && limited !== "AI_MONTH_LIMIT" && <p className="vx-cap">{selItem ? t("vx.capEdit") : micOn ? (n ? t("vx.capOnItems") : t("vx.capOn")) : t("vx.capOff")}</p>}
         </div>
 
         {(modal === "where" || modal === "store") && (

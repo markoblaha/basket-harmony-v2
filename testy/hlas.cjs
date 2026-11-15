@@ -102,7 +102,8 @@ const CANNED = {
   const calls = [];
   page.on("pageerror", (e) => errs.push(`js: ${e.message}`));
   page.on("response", (r) => {
-    if (r.status() >= 400 && /supabase\.co/.test(r.url())) errs.push(`http ${r.status()}: ${r.url().replace(/\?.*/, "").slice(-70)}`);
+    // 429 = limit AI; posledný krok ho zámerne podvrhuje (vyčerpaný mesačný rozpočet), nie je to chyba appky.
+    if (r.status() >= 400 && r.status() !== 429 && /supabase\.co/.test(r.url())) errs.push(`http ${r.status()}: ${r.url().replace(/\?.*/, "").slice(-70)}`);
   });
   await page.route("**/functions/v1/voice-live-token", (route) =>
     route.fulfill({ json: { token: "falosny", setup: {}, expiresAt: new Date(Date.now() + 360000).toISOString() } }),
@@ -253,6 +254,28 @@ const CANNED = {
     return items.map((i) => `${i.name} ${i.quantity ?? ""}`.trim()).join(", ");
   });
   await archive();
+  listId = null;
+  await step("vyčerpaný mesačný rozpočet AI → jasná správa, mikrofón vypnutý, písanie funguje bez AI", async () => {
+    await page.unroute("**/functions/v1/voice-live-token");
+    await page.unroute("**/functions/v1/parse-voice");
+    await page.route("**/functions/v1/voice-live-token", (r) => r.fulfill({ status: 429, json: { error: "AI_MONTH_LIMIT" } }));
+    await page.route("**/functions/v1/parse-voice", (r) => r.fulfill({ status: 429, json: { error: "AI_MONTH_LIMIT" } }));
+    await page.evaluate(() => {
+      for (const k of Object.keys(localStorage)) if (k.startsWith("bh.voiceDraft.")) localStorage.removeItem(k);
+    });
+    await page.locator("nav.tabbar").getByRole("button", { name: "Hlasový nákup" }).click();
+    await page.getByText("vyčerpaný rozpočet domácnosti", { exact: false }).waitFor({ timeout: 15000 });
+    expect(await page.locator(".vx-orb").isDisabled(), "mikrofón sa dá zapnúť");
+    await page.locator(".vx-kbd input").fill("mlieko a chlieb");
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => document.querySelectorAll(".vx-list .vxi b").length >= 2, null, { timeout: 15000 });
+    const got = (await names()).join(", ");
+    await page.waitForTimeout(900); // fotka až po animácii otvorenia
+    await page.evaluate(() => {
+      for (const k of Object.keys(localStorage)) if (k.startsWith("bh.voiceDraft.")) localStorage.removeItem(k);
+    });
+    return got;
+  });
   console.log("volania parse-voice:", calls.join(" | "));
   if (errs.length) console.log("chyby:", errs.join(" | "));
   await browser.close();

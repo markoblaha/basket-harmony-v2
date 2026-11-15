@@ -96,6 +96,22 @@ function fromServer(ops: ServerOp[]): VoiceOp[] {
   return out;
 }
 
+/** Limit AI domácnosti: AI_LIMIT = veľa viet za krátky čas, AI_MONTH_LIMIT = vyčerpaný mesačný rozpočet. */
+export type AiLimit = "AI_LIMIT" | "AI_MONTH_LIMIT";
+export const isAiLimit = (code: unknown): code is AiLimit => code === "AI_LIMIT" || code === "AI_MONTH_LIMIT";
+
+/** Kód chyby z edge funkcie ({ error: "KÓD" } v odpovedi s chybovým stavom). */
+export async function functionErrorCode(error: unknown): Promise<string | null> {
+  const res = (error as { context?: { json?: () => Promise<unknown> } } | null)?.context;
+  if (!res?.json) return null;
+  try {
+    const body = (await res.json()) as { error?: unknown } | null;
+    return typeof body?.error === "string" ? body.error : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Výsledok AI: operácie so zoznamom, jedlá, ktoré chce človek uvariť, a obchod, ak ho povedal.
  * intent "other" = veta nie je nákup (rozhovor, televízor, šum) – nič sa nepridá.
@@ -104,17 +120,26 @@ export type Interpretation = { transcript: string; intent: "list" | "other"; ops
 
 const draftItems = (items: DraftItem[]) => items.map((i) => ({ name: i.name, qty: i.quantity ? qtyLabel(i.quantity, i.unit) : "-" }));
 
-async function callParse(body: Record<string, unknown>, ms: number): Promise<Interpretation | null> {
+/** null = nepodarilo sa (bez internetu, chyba); AiLimit = domácnosť vyčerpala limit AI. */
+async function callParse(body: Record<string, unknown>, ms: number): Promise<Interpretation | AiLimit | null> {
   try {
     const call = supabase.functions.invoke("parse-voice", { body: { ...body, household_id: currentHouseholdId() } });
     const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), ms));
     const { data, error } = await Promise.race([call, timeout]);
-    if (error || !Array.isArray(data?.ops)) return null;
+    if (error) {
+      const code = await functionErrorCode(error);
+      return isAiLimit(code) ? code : null;
+    }
+    if (!Array.isArray(data?.ops)) return null;
     return {
       transcript: typeof data.transcript === "string" ? data.transcript.trim() : "",
       intent: data.intent === "other" ? "other" : "list",
       ops: fromServer(data.ops as ServerOp[]),
-      cook: (Array.isArray(data.cook) ? data.cook : []).filter((x: unknown): x is string => typeof x === "string" && !!x.trim()).slice(0, 3),
+      // Názov jedla s veľkým písmenom („bábovka“ → „Bábovka“) – AI ho niekedy vráti malým.
+      cook: (Array.isArray(data.cook) ? data.cook : [])
+        .filter((x: unknown): x is string => typeof x === "string" && !!x.trim())
+        .map((x: string) => x.trim()[0]!.toLocaleUpperCase("sk-SK") + x.trim().slice(1))
+        .slice(0, 3),
       store: typeof data.store === "string" && data.store.trim() ? data.store.trim() : null,
     };
   } catch {

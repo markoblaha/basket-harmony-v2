@@ -2233,6 +2233,8 @@
 .bhm .vx-orb .ico { width: 32px; height: 32px; }
 .bhm .vx-orb:not(.on), .w .bhm .vx-orb:not(.on) { filter: none; background: var(--card); color: var(--sec); box-shadow: inset 0 0 0 1.5px var(--line2), var(--sh); }
 .bhm .vx-orb.on::after { inset: -12px; border-color: color-mix(in srgb, var(--acc) 30%, transparent); }
+.bhm .vx-orb:disabled { opacity: .45; cursor: default; }
+.bhm .vx-orb:disabled:active { transform: none; }
 .bhm .vx-orb.hear::after { animation: none; opacity: 0; }
 .bhm .vx-orb.edit, .w .bhm .vx-orb.edit { background: var(--honey); color: #fff; }
 .bhm .vx-heard small { display: inline-flex; align-items: center; gap: 7px; }

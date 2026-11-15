@@ -520,6 +520,7 @@ export type Database = {
       remove_member: { Args: { p_household_id: string; p_user_id: string }; Returns: undefined };
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };
       start_shopping: { Args: { p_list_id: string }; Returns: SessionRow };
+      log_voice_live: { Args: { p_household_id: string; p_seconds: number }; Returns: undefined };
     };
     Enums: {
       invitation_status: "PENDING" | "ACCEPTED" | "REVOKED";

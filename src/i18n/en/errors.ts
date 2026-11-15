@@ -24,6 +24,7 @@ export const enErrors: Record<keyof typeof skErrors, string> = {
   "error.RECEIPT_LIMIT": "Your household has uploaded too many receipts today. Try again tomorrow.",
   "error.DELETE_FAILED": "The account couldn't be deleted. Try again in a moment.",
   "error.AI_LIMIT": "Your household has reached the AI limit. Try again later.",
+  "error.AI_MONTH_LIMIT": "Your household has used up this month’s AI allowance. It resets on the 1st of next month.",
   "error.AI_GUARD_FAILED": "AI can't be verified right now. Try again in a moment.",
   "error.RECIPE_AI_FAILED": "Gemini couldn't process the recipe right now. Try again in a moment.",
   // Supabase Auth

@@ -59,9 +59,10 @@ presnosť (nákup / povel / rozhovor), čas odpovede; ~5 centov. Spustiť po ka�
    `20261113000040_price_store_count`, `…041_price_comparable` (v testovacej DB ako 3 kroky: price_comparable,
    price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
    (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
+   Rozpočet AI domácnosti (15. 11.): `20261114000043_ai_household_budget` (v testovacej DB ako `ai_household_budget`).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
-   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v11 a voice-live-token v8 (rozhovor vs. nákup, slovník 40 položiek domácnosti, 14. 11.),
-   recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
+   Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v13 (krátke pokyny, 15. 11.) a voice-live-token v9 (účtuje 15 s, 15. 11.),
+   recipe-ai v7 (všetky s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND; AI_MONTH_LIMIT), extract-receipt v3, normalize-products v4,
    read-statement v3. Funkciu `proto-images` (vypnutá, 410) možno zmazať.
 4. `supabase/tests/core_test.sql` celý nebežal (obsahuje `delete` testovacích riadkov vo vnútri bloku, ktorý sa celý vráti
    späť → treba súhlas majiteľa). Nové časti (fronta dokladov, poistka AI, katalóg položiek) overené samostatným blokom:
@@ -139,10 +140,24 @@ presnosť (nákup / povel / rozhovor), čas odpovede; ~5 centov. Spustiť po ka�
   `testy/hlas.cjs` 12/12. *Cena (cenník Google 14. 11.):* flash-lite vstup $0,30 / výstup $2,50 za 1M tokenov, cache $0,03;
   živý prepis ~$0,009/min reči. Rozbor vety: ~1 650 tokenov vstupu (64 % ceny) + ~110 výstupu; implicitná cache sa NEdeje
   (log „parse-voice tokeny … z cache 0“) – úspora len skrátením pokynov (~30 %) alebo explicitnou cache (~1 $/mes. za celú
-  appku, oplatí sa od ~3 000 viet/mes.). Mesačný strop AI na domácnosť je $5 (`_ai_month_cap`) – pri cene appky 3–4 € ho
-  treba znížiť (rozhodnutie majiteľa). Najväčšia úspora do budúcna: v natívnej appke rozpoznávanie reči priamo v telefóne
+  appku, oplatí sa od ~3 000 viet/mes.). Strop AI na domácnosť znížený 15. 11. (pozri nižšie). Najväčšia úspora do budúcna: v natívnej appke rozpoznávanie reči priamo v telefóne
   (zadarmo) namiesto živého prepisu. Neoverené: skutočná reč (prirodzený syntetický hlas Piper sa nepodarilo stiahnuť – prostredie
   to nepovolilo; espeak je príliš robotický) a iPhone.
+- **Hlas – náklady pre rodinu 3–4 ľudí (15. 11. 2026, predplatné 4 €/mes. za domácnosť):**
+  *Rozpočet patrí domácnosti, nie osobe* (migrácia `20261114000043_ai_household_budget`): hlas + recepty (voice-live,
+  voice-live-audio, parse-voice, recipe-ai) najviac **1,20 $/mes.** (`_ai_voice_month_cap`), všetka AI spolu (aj bločky)
+  najviac **2 $/mes.** (`_ai_month_cap`, predtým 5 $). Po vyčerpaní `ai_allow` hlási `AI_MONTH_LIMIT` (guard.ts → 429):
+  appka zastaví mikrofón (bledý, neaktívny), ukáže „Hlas má tento mesiac vyčerpaný rozpočet domácnosti…“ a otvorí písanie –
+  písanie aj známe položky fungujú bez AI; obnoví sa 1. dňa mesiaca. Bločky tým nie sú dotknuté (majú vlastný RECEIPT_LIMIT).
+  Hodinový limit (`AI_LIMIT`) má vlastnú správu a ďalší ťuk skúsi znova.
+  *Presné účtovanie živého prepisu:* predtým sa každé otvorenie rátalo ako minúta. Teraz `voice-live-token` v9 započíta 15 s
+  a appka po relácii nahlási skutočné sekundy reči (`log_voice_live`, riadok `voice-live-audio`, najviac 6 min).
+  *Kratšie pokyny pre AI* (parse-voice v13): vstup z ~1 650 na ~930 tokenov, pri texte sa nevracia prepis →
+  **0,051 c za vetu** (predtým 0,076, −33 %); sada viet 58/58, medián 1,2 s, všetko flash-lite. Názov jedla z AI dostane
+  veľké písmeno v appke (`api.ts`).
+  *Odhad:* rodina 4 ľudí ~2–3 nákupy týždenne hlasom ≈ 0,30–0,60 $/mes. (živý prepis ~0,9 c/min reči je väčšina ceny),
+  strop 1,20 $ dosiahne len extrémne používanie. `testy/hlas.cjs` 13/13 aj s `REAL=1` (krok 13: vyčerpaný rozpočet).
+  Najväčšia ďalšia úspora: natívna appka s rozpoznávaním reči v telefóne (zadarmo) – živý prepis by odpadol.
 - **Viac:** hlavné prepínače + „Rozšírené“, rozpočet cez list z Analytiky, poradie obchodov ťahaním,
   vibrácie na iPhone cez systémový prepínač (`haptic()` v `components/kit.tsx`).
 - Systémová lišta iPhonu vo farbe témy, plynulejšie animácie (`components/motion.ts`: FLIP, animateOut, collapseOut).

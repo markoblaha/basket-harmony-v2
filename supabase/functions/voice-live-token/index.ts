@@ -8,7 +8,7 @@
 // Odpoveď: { token, model, expiresAt } alebo { error: KÓD }.
 //
 // Náklady: model účtuje ~0,9 centa za minútu streamovaného zvuku. Appka posiela zvuk len počas reči.
-// Do ai_usage sa pri vydaní tokenu zapíše odhad 1 minúty (skutočnú dĺžku server nevidí).
+// Do ai_usage sa pri vydaní tokenu zapíše 15 s; skutočnú dlhšiu reč appka nahlási po relácii (log_voice_live).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { guardAi } from "../_shared/guard.ts";
 
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
   if (!res || !res.ok) return json({ error: "AI_UNAVAILABLE" }, 502);
   const data = await res.json();
   if (typeof data?.name !== "string") return json({ error: "AI_UNAVAILABLE" }, 502);
-  // Odhad 1 minúty (25 zvukových tokenov/s, ~175 tokenov textu/min) – pre limity a prehľad nákladov.
-  g.log(MODEL, { input: 1500, output: 175, thinking: 0 }, true);
+  // 15 s reči (25 zvukových tokenov/s, ~175 tokenov textu/min); zvyšok nahlási appka po relácii (log_voice_live).
+  g.log(MODEL, { input: 375, output: 44, thinking: 0 }, true);
   return json({ token: data.name, model: MODEL, setup, expiresAt, vocab: vocab.length });
 });

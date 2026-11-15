@@ -38,6 +38,8 @@ export async function guardAi(
   if (allowed.error) {
     const code = allowed.error.message;
     if (code === "AI_LIMIT") return { error: "AI_LIMIT", status: 429 };
+    // Mesačný rozpočet AI domácnosti je vyčerpaný (obnoví sa 1. dňa mesiaca) – appka prepne na písanie.
+    if (code === "AI_MONTH_LIMIT") return { error: "AI_MONTH_LIMIT", status: 429 };
     if (code === "NOT_FOUND") return { error: "NOT_FOUND", status: 403 };
     console.error(fn, "ai_allow", code);
     return { error: "AI_GUARD_FAILED", status: 500 };

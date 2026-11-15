@@ -12,6 +12,7 @@
 import { supabase } from "@/lib/supabase";
 import { currentHouseholdId } from "@/features/household/current";
 import { getLocale } from "@/i18n";
+import { functionErrorCode } from "./api";
 
 const WS = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained";
 const RATE = 16_000;
@@ -27,7 +28,9 @@ async function fetchToken(): Promise<Token> {
   const { data, error } = await supabase.functions.invoke("voice-live-token", {
     body: { household_id: currentHouseholdId(), locale: getLocale() },
   });
-  if (error || !data?.token) throw new Error(typeof data?.error === "string" ? data.error : "AI_UNAVAILABLE");
+  // Kód z servera (napr. AI_MONTH_LIMIT – vyčerpaný mesačný rozpočet), aby appka vedela, prečo hlas nejde.
+  if (error) throw new Error((await functionErrorCode(error)) ?? "AI_UNAVAILABLE");
+  if (!data?.token) throw new Error(typeof data?.error === "string" ? data.error : "AI_UNAVAILABLE");
   return data as Token;
 }
 
@@ -52,6 +55,8 @@ export class LiveTranscriber {
   private peak = 0.05;
   /** Slovník relácie (v náhodnom poradí) – podľa neho appka spozná, keď model vypíše slovník namiesto reči. */
   vocab: string[] = [];
+  /** Vzorky (16 kHz) poslané v tejto relácii – Google účtuje skutočné sekundy reči. */
+  private sent = 0;
   constructor(private h: LiveHandlers) {}
 
   /** Pripojí sa (alebo obnoví reláciu). Vyhodí chybu, ak sa nedá – appka potom použije pôvodný spôsob. */
@@ -98,6 +103,7 @@ export class LiveTranscriber {
           clearTimeout(timer);
           reject(new Error("LIVE_CLOSED"));
           if (this.ws === ws) {
+            this.report();
             this.ws = null;
             this.ready = null;
             if (!this.closed) this.h.onDown();
@@ -148,6 +154,7 @@ export class LiveTranscriber {
   private flush() {
     if (!this.fill || !this.open) return;
     const data = b64(this.buf.subarray(0, this.fill));
+    this.sent += this.fill;
     this.fill = 0;
     this.ws!.send(JSON.stringify({ realtimeInput: { audio: { data, mimeType: `audio/pcm;rate=${RATE}` } } }));
   }
@@ -159,7 +166,19 @@ export class LiveTranscriber {
     if (this.open) this.ws!.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
   }
 
+  /**
+   * Koniec relácie: skutočná dĺžka reči ide do prehľadu nákladov domácnosti (prvých 15 s započítal už token).
+   * Bez nej by sa mesačný rozpočet míňal podľa odhadu – pri 3–4 ľuďoch v rodine nespravodlivo.
+   */
+  private report() {
+    const seconds = Math.round(this.sent / RATE);
+    this.sent = 0;
+    const household = currentHouseholdId();
+    if (seconds > 15 && household) void supabase.rpc("log_voice_live", { p_household_id: household, p_seconds: seconds }).then(() => undefined, () => undefined);
+  }
+
   private drop() {
+    this.report();
     const ws = this.ws;
     this.ws = null;
     this.ready = null;

@@ -24,7 +24,7 @@ export function useDictation(onText: (text: string) => void, vocab: string[] = [
       setPending((p) => p + 1);
       void interpretAudio({ mime: "audio/wav", data: wav }, [], null, vocabRef.current).then((res) => {
         setPending((p) => p - 1);
-        if (!res) return setFailed(true);
+        if (!res || typeof res === "string") return setFailed(true);
         if (res.transcript) {
           setInterim(res.transcript);
           textRef.current(res.transcript);
