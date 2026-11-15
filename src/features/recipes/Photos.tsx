@@ -39,7 +39,7 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
   const [hold, setHold] = useState(false); // dotkol sa → fotky sa už samy neposúvajú
   const sc = useRef<HTMLDivElement>(null);
   const raf = useRef(0);
-  const names = [t("kb.ph.1"), t("kb.ph.2"), t("kb.ph.3")];
+  const names = [t("kb.ph.1"), t("kb.ph.2"), t("kb.ph.3"), t("kb.ph.4")];
 
   const go = useCallback(
     (k: number) => {
@@ -86,9 +86,9 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
     return () => window.removeEventListener("keydown", key);
   }, [active, n, i, go]);
 
-  // Detail receptu: ťuk na ľavú tretinu = späť, na pravú = ďalej.
+  // Ťuk na ľavú časť fotky = späť, na pravú = ďalej (detail receptu aj Ochutnávač; v Ochutnávači je stred na dvojťuk „Chcem“).
   const tap = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (feed || n < 2) return;
+    if (n < 2) return;
     const box = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX - box.left) / box.width;
     if (x < 0.3) go(i - 1);

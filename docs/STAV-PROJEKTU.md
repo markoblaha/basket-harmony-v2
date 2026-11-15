@@ -656,6 +656,18 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     ako hlavná); 4 × 6 fotiek WebP 1080×1341 + náhľad 480 px v `public/kniha/`, cena asi 3–5 $. Funkcia `proto-images`
     bola na várku dočasne zapnutá (v7, heslo len v scratchpade) a hneď znova vypnutá (v8, 410). Dlhé kroky majú pri varení
     menšie písmo (`.stx.lg/.xl`). Overené lokálne (Teplá svetlá, Sklo tmavé): 4 fotky, tabuľka, varenie, Ochutnávač, bez chýb.
+    **Fotky prerobené realistickejšie (16. 11., majiteľ: fotky „vidno, že sú umelé“):** rovnaký model `gemini-3-pro-image`,
+    ale 4K, nový štýl (skutočná fotka do kuchárky, denné svetlo z okna, tlmené prirodzené farby, drobné nedokonalosti,
+    žiadne svetielka a „sklený“ lesk – `scratchpad/foto/style7.txt`), 2 varianty hlavnej fotky na výber, detaily s hlavnou
+    ako predlohou, potom zmenšenie zo 4K + jemné zrno a vinetácia (`scratchpad/foto/proc.py`). Hotové sady: sviečková
+    (slanina už v mäse, nie navrchu), kapustnica (detail = výrez zo 4K), plnená paprika, vtáčik. **Kredit Gemini na Google
+    účte došiel (chyba 402) – musaka a chili majú zatiaľ pôvodné fotky z 15. 11.**; po dobití kreditu (Google AI Studio →
+    projekt → Billing) treba dorobiť ich detaily (zadania v `scratchpad/foto/details7.json`, hlavné fotky už sú
+    `r7/musaka-1b.jpg`, `r7/chili-1a.jpg`). Pozor: rovnaký kľúč používajú aj AI funkcie appky (čítanie bločkov, hlas,
+    recepty) – kým nie je kredit, v testovacej appke nepôjdu. `proto-images` znova vypnutá (v10).
+    **Ochutnávač – ťuk vľavo/vpravo (16. 11.):** ťuk na ľavú tretinu fotky = predchádzajúca fotka, na pravú = ďalšia
+    (`PhotoSwiper` aj vo feede), dvojťuk „Chcem“ len v strednej časti (rýchle ťukanie na kraj nedá „Chcem“); návod
+    v Ochutnávači upravený. Overené dotykom v prehliadači.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

@@ -284,7 +284,7 @@ export function TastePage() {
               <span>{t("tst.hintUpS")}</span>
             </div>
             <div>
-              <I n="hand-swipe-left" />
+              <I n="hand-tap" />
               <b>{t("tst.hintSide")}</b>
               <span>{t("tst.hintSideS")}</span>
             </div>
@@ -377,12 +377,17 @@ const TasteCard = memo(
     const tap = useRef({ t: 0, x: 0, y: 0 });
     if (!visible) return <section className="tst-card" data-k={k} aria-label={r.name} />;
 
-    // Dvakrát ťuknúť (blízko seba) = Chcem; srdce vyskočí tam, kde si ťukol.
+    // Dvakrát ťuknúť (blízko seba) = Chcem; srdce vyskočí tam, kde si ťukol. Pri receptoch s viac fotkami
+    // je ľavá a pravá časť na listovanie fotiek (PhotoSwiper) – rýchle ťukanie tam nesmie dať „Chcem“.
     const onTap = (e: React.MouseEvent<HTMLDivElement>) => {
       const now = Date.now();
       const box = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - box.left;
       const y = e.clientY - box.top;
+      if ((r.book?.photos ?? 0) > 1 && (x < box.width * 0.3 || x > box.width * 0.7)) {
+        tap.current = { t: 0, x: 0, y: 0 };
+        return;
+      }
       const p = tap.current;
       if (now - p.t < 320 && Math.hypot(x - p.x, y - p.y) < 60) {
         if (!on) onLike(r.id, true);
