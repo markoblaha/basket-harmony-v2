@@ -260,6 +260,16 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   Vaření.cz, Labužník.cz, recepty.aktuality.sk, Receptár.sk (strojovo nezakazujú; meranie v scratchpade `ana/cover.py`).
   Varecha.sk strojové sťahovanie zakazuje (noai, tdm-reservation) – nepoužívať. Voľný text: staré kuchárky Vansovej
   a Rettigovej, Wikiknihy (CC BY-SA); voľné fotky: Wikimedia Commons.
+- **Recept = jeden najlepší skutočný recept, nie spojenie viacerých (16. 11. 2026).** Z 11–20 receptov na jedlo sa vyberie
+  najlepší (najviac hodnotení, všetky množstvá, najpodrobnejší postup, redakčný), ktorý prejde kontrolou proti ostatným:
+  má suroviny väčšiny (najviac 1 chýba), najviac 1 množstvo mimo bežného rozpätia a postup väčšiny. Suroviny a množstvá
+  sa prevezmú presne bez zmien; postup s rovnakými krokmi, časmi a teplotami sa napíše vlastnými slovami, podrobnejšie
+  pre začiatočníka. Ak žiadny recept neprejde, jedlo ide do karantény (doplniť zdroje), nič sa nevymýšľa. Overené na
+  našich 11 jedlách: vyhovujúci recept existuje pri 10 (nie pri muse, má len 11 zdrojov). Duplikáty stráži zoznam jedál
+  (jedno jedlo = jeden záznam, varianty len pri inom postupe/surovinách). Návrh ChatGPT (balík „Recipe Factory“,
+  16. 11.) slúži ako kontrolný zoznam: prevziať katalóg v DB, uložený stav receptov, poctivé stavy overenia; nie
+  9 tabuliek, fronty a vymýšľanie receptov. Jeho katalóg 250 jedál treba očistiť od duplikátov.
+- **Fotky až na konci, keď bude databáza receptov plná (16. 11. 2026).**
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
