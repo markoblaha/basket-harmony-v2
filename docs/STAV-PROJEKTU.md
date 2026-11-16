@@ -278,6 +278,17 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   zdroje, recepty knihy; stavy naplánovaný → zdroje → vybraný → napísaný → schválený → s fotkami / karanténa). Nástroje:
   recipe-scrapers (MIT) na čítanie webov, slovník slovenských/českých názvov surovín, kontroly = kód appky. Fázy:
   1 databáza a zoznam 250 jedál, 2 linka na 1 recepte, 3 pilot 20 receptov, 4 dávky, 5 fotky, 6 ostrá appka.
+  **Spresnenia majiteľa (16. 11. večer, zapracované v dokumente):** postup sa preberá VERNE – každý úkon, poradie, čas,
+  teplota a množstvo ako v recepte, nič sa nevymýšľa ani nevynecháva; mení sa len jazyk viet (preklad do slovenčiny,
+  delenie dlhých krokov). Recept sa berie z 3 najlepších webov – Apetitonline.cz, Vaření.cz, Toprecepty.cz (merané:
+  medián 39 / 53 / 15 hodnotení na recept, 151 / 128 / 118 slov postupu); slovenské špeciality z recepty.aktuality.sk
+  a Receptár.sk, zahraničné z GuteKueche.at; Labužník len na porovnanie (medián 1 hodnotenie). Varianty = samostatné
+  recepty spojené do rodiny (rezeň, cheesecake, halušky…), najviac 6 na rodinu, každý s vlastným zdrojom a kontrolou.
+  Základná porcia = porcia pôvodného receptu; prepočet podľa druhu jedla: voľný (½–2×) pri varení, po kusoch, pri pečení
+  len celé násobky; časy sa nenásobia, vajcia na celé kusy. Výživa a alergény počítané zo surovín (USDA, 14 alergénov EÚ),
+  označené „vypočítané zo surovín“. Cieľ asi 3 000 receptov (míľniky 20 / 250 / 1 000 / 3 000), prevažne SK/CZ + asi
+  300 u nás bežne varených zahraničných; ďalšie krajiny neskôr (recept má kuchyňu a jazyk). Ochutnávač ukazuje recept
+  až s fotkami; kategórie sa rozšíria (prílohy, šaláty, pečivo, koláče, torty, sviatočné).
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
