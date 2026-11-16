@@ -254,6 +254,12 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
 - Texty po slovensky, jednoduché, bez skloňovania mien („Nakupuje: Lucia“).
 - Appka tyká (3. 11. 2026). Dokument = „bloček“.
 - Položka pridaná počas cudzieho nákupu ide cez schválenie nakupujúcim (3. 11. 2026).
+- **Recepty – poradie (16. 11. 2026): najprv slovenské a české, potom zahraničné, nakoniec exotické.** Recepty musia byť
+  skutočné a overené metódou „kotva“ (žiadne priemery), s fotkami. Analýza zdrojov (16. 11.): dokument „Zdroje receptov:
+  najprv slovenské a české…“ na https://claude.ai/artifact/4RnqjfoFYcEBJ7z44YNiak. Pre SK/CZ: Toprecepty.cz, Apetitonline.cz,
+  Vaření.cz, Labužník.cz, recepty.aktuality.sk, Receptár.sk (strojovo nezakazujú; meranie v scratchpade `ana/cover.py`).
+  Varecha.sk strojové sťahovanie zakazuje (noai, tdm-reservation) – nepoužívať. Voľný text: staré kuchárky Vansovej
+  a Rettigovej, Wikiknihy (CC BY-SA); voľné fotky: Wikimedia Commons.
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
