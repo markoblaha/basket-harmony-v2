@@ -270,6 +270,14 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   16. 11.) slúži ako kontrolný zoznam: prevziať katalóg v DB, uložený stav receptov, poctivé stavy overenia; nie
   9 tabuliek, fronty a vymýšľanie receptov. Jeho katalóg 250 jedál treba očistiť od duplikátov.
 - **Fotky až na konci, keď bude databáza receptov plná (16. 11. 2026).**
+- **Návrh riešenia knihy receptov (16. 11. 2026, schvaľuje majiteľ):** https://claude.ai/artifact/BqMuG8JGCLiVFMY7FwwaBo –
+  výrobná linka v 9 krokoch (zoznam jedál → zber 11–20 receptov zo 6 webov → kontrola a výber → prevzatie → rady pre
+  kuchára s pôvodom → 9 automatických kontrol vrátane nezávislej druhej kontroly textu → schválený recept v DB → fotky
+  na konci → ostrá appka). Bez skúšobného varenia a bez ručnej kontroly (majiteľ nemá čas) – o kvalite rozhodujú
+  automatické kontroly, neprejdený recept ide do karantény. Recepty sa presúvajú z kódu do DB (3 časti: zoznam jedál,
+  zdroje, recepty knihy; stavy naplánovaný → zdroje → vybraný → napísaný → schválený → s fotkami / karanténa). Nástroje:
+  recipe-scrapers (MIT) na čítanie webov, slovník slovenských/českých názvov surovín, kontroly = kód appky. Fázy:
+  1 databáza a zoznam 250 jedál, 2 linka na 1 recepte, 3 pilot 20 receptov, 4 dávky, 5 fotky, 6 ostrá appka.
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
