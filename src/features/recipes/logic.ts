@@ -29,8 +29,9 @@ const SPOON_UNITS = ["lyzica", "lyzicka", "strucik", "stipka", "hrst"];
 export function formatAmount(qty: number, unit: string): string {
   if (unit === "g" || unit === "ml" || unit === "kg" || unit === "l") return formatQuantity(qty, unit) ?? "";
   if (unit === "ks") return t("rc.unit.ks", { n: formatNumber(qty, { maximumFractionDigits: 1 }) });
-  // Pol lyžičky sa píše ako „½ lyžičky“, nie „0,5 lyžičky“.
-  if (SPOON_UNITS.includes(unit)) return tn(`rc.unit.${unit}` as PluralBase, qty, { n: qty === 0.5 ? "½" : formatNumber(qty, { maximumFractionDigits: 1 }) });
+  // Pol a štvrť lyžičky sa píše ako „½ lyžičky“ a „¼ lyžičky“, nie „0,5“ či „0,3 lyžičky“.
+  const frac = qty === 0.5 ? "½" : qty === 0.25 ? "¼" : null;
+  if (SPOON_UNITS.includes(unit)) return tn(`rc.unit.${unit}` as PluralBase, qty, { n: frac ?? formatNumber(qty, { maximumFractionDigits: 1 }) });
   return `${formatNumber(qty, { maximumFractionDigits: 1 })} ${unit}`;
 }
 

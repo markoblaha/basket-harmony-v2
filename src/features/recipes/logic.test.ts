@@ -8,20 +8,21 @@ const segedin = find("segedin")!;
 describe("recepty", () => {
   it("prepočíta porcie a zaokrúhli ako človek", () => {
     const two = scaleIngredients(segedin, 2);
-    expect(two.find((x) => x.food === "pliecko")?.qty).toBe(350);
+    expect(two.find((x) => x.food === "pliecko")?.qty).toBe(400);
     expect(two.find((x) => x.food === "cibula")?.qty).toBe(1);
     expect(two.find((x) => x.food === "cesnak")?.qty).toBe(1);
   });
 
   it("doplní množstvá do krokov", () => {
     const text = renderStep("Cibuľu ({cibula}) opeč a podlej {vyvar} vývaru.", scaleIngredients(segedin, 4));
-    expect(text).toBe("Cibuľu (2 ks) opeč a podlej 750 ml vývaru.");
+    expect(text).toBe("Cibuľu (2 ks) opeč a podlej 500 ml vývaru.");
   });
 
   it("skloňuje lyžice a strúčiky", () => {
     expect(formatAmount(1, "lyzica")).toBe("1 lyžica");
     expect(formatAmount(5, "lyzica")).toBe("5 lyžíc");
     expect(formatAmount(1.5, "lyzica")).toBe("1,5 lyžice");
+    expect(formatAmount(0.25, "lyzicka")).toBe("¼ lyžičky");
     expect(formatAmount(2, "strucik")).toBe("2 strúčiky");
   });
 
@@ -42,7 +43,7 @@ describe("recepty", () => {
   it("navrhne balenie a váhu na nákup", () => {
     const rows = mergeIngredients([{ recipeId: "segedin", portions: 4 }], find);
     const meat = buyPlan(rows.find((r) => r.food === "pliecko")!);
-    expect(meat).toMatchObject({ qty: 0.7, unit: "kg" });
+    expect(meat).toMatchObject({ qty: 0.8, unit: "kg" });
     const cream = buyPlan(rows.find((r) => r.food === "smotana_sladka")!);
     expect(cream).toMatchObject({ qty: 1, unit: "ks" });
     const garlic = buyPlan(rows.find((r) => r.food === "cesnak")!);
@@ -53,11 +54,13 @@ describe("recepty", () => {
     const q = interpretQuery("niečo rýchle s kuracím");
     expect(q.filters).toMatchObject({ time: 30, meat: "kuracie" });
     expect(q.terms).toEqual([]);
-    expect(CATALOG.filter((r) => matchesFilters(r, q.filters)).map((r) => r.id)).toContain("kuracie-kari");
+    const beef = interpretQuery("niečo s hovädzím");
+    expect(beef.filters).toMatchObject({ meat: "hovadzie" });
+    expect(CATALOG.filter((r) => matchesFilters(r, beef.filters)).map((r) => r.id)).toEqual(expect.arrayContaining(["svieckova", "chili"]));
   });
 
   it("výživa na porciu je rozumná a soľ do vody sa nepočíta", () => {
-    const nu = recipeNutrition(find("carbonara")!);
+    const nu = recipeNutrition(find("paprikas")!);
     expect(nu.perPortion.kcal).toBeGreaterThan(400);
     expect(nu.perPortion.kcal).toBeLessThan(1200);
     expect(nu.skipped).toContain("Soľ");

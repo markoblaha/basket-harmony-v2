@@ -9,34 +9,17 @@ import { BOOK, SAID, basePortions, bookCheck, bookPics, recipeAllergens, said, s
 import { findRef, recipeNutrition, scaleIngredients } from "./logic";
 import type { Recipe } from "./types";
 
-const groupOf = (r: Recipe, g: string | undefined) => r.book!.groupSources?.[g ?? ""] ?? r.book!.sources.map((s) => s.k).join("");
+/** Metóda kotva: písmená zdrojov hlavného jedla alebo skupiny s vlastnými zdrojmi (halušky) a ich kotva. */
+const checkOf = (r: Recipe, g?: string) => {
+  const c = r.book!.check!;
+  if (g && c.groups?.[g]) return { letters: c.groups[g].src, anchor: c.groups[g].anchor };
+  const inGroup = Object.values(c.groups ?? {}).map((x) => x.src).join("");
+  return { letters: r.book!.sources.map((s) => s.k).filter((k) => !inGroup.includes(k)).join(""), anchor: c.anchor };
+};
 
 describe.each(BOOK.map((r) => [r.name, r] as const))("kniha: %s", (_, r) => {
   const b = r.book!;
   const foods = new Set(r.ingredients.map((x) => x.food));
-
-  it.skipIf(!!b.check)("má 3–5 skutočných zdrojov z rôznych webov na každú skupinu", () => {
-    const groups = new Set(r.ingredients.map((x) => groupOf(r, x.group)));
-    for (const letters of groups) {
-      expect(letters.length, letters).toBeGreaterThanOrEqual(3);
-      expect(letters.length, letters).toBeLessThanOrEqual(5);
-      const sites = [...letters].map((k) => b.sources.find((s) => s.k === k)?.site);
-      expect(sites.every(Boolean), `neznámy zdroj v ${letters}`).toBe(true);
-      expect(new Set(sites).size, `rovnaký web dvakrát v ${letters}`).toBe(sites.length);
-    }
-    for (const s of b.sources) expect(s.url).toMatch(/^https:\/\//);
-  });
-
-  it.skipIf(!!b.check)("každá surovina je vo viac ako polovici zdrojov (voliteľná aspoň v 35 %)", () => {
-    for (const ing of r.ingredients) {
-      const all = groupOf(r, ing.group);
-      const src = ing.src ?? "";
-      expect([...src].every((k) => all.includes(k)), `${ing.food}: zdroj mimo skupiny`).toBe(true);
-      const share = src.length / all.length;
-      if (ing.optional) expect(share, `${ing.food} (voliteľná)`).toBeGreaterThanOrEqual(0.35);
-      else expect(share, `${ing.food} má len ${src}`).toBeGreaterThan(0.5);
-    }
-  });
 
   it("každý krok má zdroj a odkazy {…} v krokoch existujú", () => {
     const all = b.sources.map((s) => s.k).join("");
@@ -90,57 +73,64 @@ describe.each(BOOK.map((r) => [r.name, r] as const))("kniha: %s", (_, r) => {
     expect(recipeAllergens(r).allergens.length).toBeGreaterThan(0);
   });
 
-  it.runIf(!!b.check)("metóda kotva: aspoň 11 zdrojov zo 4 webov, kotva je jeden z nich", () => {
+  it("metóda kotva: aspoň 11 zdrojov zo 4 webov (skupina s vlastnými zdrojmi aspoň 8 z 3), kotva je jeden z nich", () => {
+    expect(b.check, "recept nie je overený metódou kotva").toBeTruthy();
     const c = b.check!;
-    expect(b.sources.length).toBeGreaterThanOrEqual(11);
     expect(new Set(b.sources.map((s) => s.url)).size, "rovnaký recept dvakrát").toBe(b.sources.length);
-    expect(new Set(b.sources.map((s) => s.site)).size).toBeGreaterThanOrEqual(4);
     for (const s of b.sources) expect(s.url).toMatch(/^https:\/\//);
-    expect(b.sources.some((s) => s.k === c.anchor), "kotva").toBe(true);
-    expect(c.portions[c.anchor], "kotva má uvedené porcie").toBeGreaterThan(0);
-    for (const row of c.rows) for (const k of Object.keys(row.v)) expect(b.sources.some((s) => s.k === k), `${row.foods}: zdroj ${k}`).toBe(true);
+    for (const g of [undefined, ...Object.keys(c.groups ?? {})]) {
+      const { letters, anchor } = checkOf(r, g);
+      const sites = new Set(b.sources.filter((s) => letters.includes(s.k)).map((s) => s.site));
+      expect(letters.length, g).toBeGreaterThanOrEqual(g ? 8 : 11);
+      expect(sites.size, g).toBeGreaterThanOrEqual(g ? 3 : 4);
+      expect(letters.includes(anchor), `kotva ${g ?? ""}`).toBe(true);
+      if (!c.whole) expect(c.portions[anchor], "kotva má uvedené porcie").toBeGreaterThan(0);
+    }
+    for (const row of c.rows) {
+      const { letters } = checkOf(r, row.group);
+      for (const k of Object.keys(row.v)) expect(letters.includes(k), `${row.foods}: zdroj ${k}`).toBe(true);
+    }
   });
 
-  it.runIf(!!b.check)("metóda kotva: základná porcia je najčastejšia porcia v zdrojoch", () => {
-    expect(r.portions).toBe(basePortions(Object.values(b.check!.portions)));
+  it.skipIf(!!b.check?.whole)("metóda kotva: základná porcia je najčastejšia porcia v zdrojoch", () => {
+    const { letters } = checkOf(r);
+    expect(r.portions).toBe(basePortions([...letters].map((k) => b.check!.portions[k]).filter((p): p is number => !!p)));
   });
 
-  it.runIf(!!b.check)("metóda kotva: suroviny väčšiny sú v recepte, nič navyše (každá surovina má aspoň 30 % zdrojov)", () => {
+  it("metóda kotva: suroviny väčšiny sú v recepte, nič navyše (každá surovina má aspoň 30 % zdrojov)", () => {
     const res = bookCheck(r)!;
     expect(res.missing, "chýba surovina väčšiny").toEqual([]);
     expect(res.weak, "surovina, ktorú má málo zdrojov").toEqual([]);
   });
 
-  it.runIf(!!b.check)("metóda kotva: množstvá na porciu sú v rozpätí zdrojov", () => {
+  it("metóda kotva: množstvá na porciu sú v rozpätí zdrojov", () => {
     for (const x of bookCheck(r)!.rows) {
       if (x.inRange == null) continue;
       expect(x.inRange, `${x.foods.join("+")}: ${x.ours?.toFixed(1)} mimo ${x.min?.toFixed(1)}–${x.max?.toFixed(1)}`).toBe(true);
     }
   });
 
-  it.runIf(!!b.check)("metóda kotva: úkony väčšiny sú v postupe, každý úkon v postupe robí kotva alebo aspoň 30 % zdrojov", () => {
+  it("metóda kotva: úkony väčšiny sú v postupe, každý úkon v postupe robí kotva alebo aspoň 30 % zdrojov", () => {
     const c = b.check!;
-    const n = b.sources.length;
     const res = bookCheck(r)!;
     expect(res.actsMissing, "chýba úkon väčšiny").toEqual([]);
     for (const a of c.acts) {
-      expect([...a.src].every((k) => b.sources.some((s) => s.k === k)), a.a).toBe(true);
-      if (a.step) {
-        expect(a.step, a.a).toBeLessThanOrEqual(r.steps.length);
-        expect(a.src.length / n >= 0.3 || a.src.includes(c.anchor), `${a.a}: robí ho málo zdrojov`).toBe(true);
-      }
+      const { letters, anchor } = checkOf(r, a.group);
+      expect([...a.src].every((k) => letters.includes(k)), a.a).toBe(true);
+      if (a.step) expect(a.src.length / letters.length >= 0.3 || a.src.includes(anchor), `${a.a}: robí ho málo zdrojov`).toBe(true);
+      if (a.step) expect(a.step, a.a).toBeLessThanOrEqual(r.steps.length);
     }
     // každý krok robí niektorý zo zdrojov a krok úkonu má jeho zdroje
     for (const a of c.acts) if (a.step) expect(r.steps[a.step - 1]!.src, a.a).toBeTruthy();
   });
 
-  it.runIf(!!b.check)("metóda kotva: zhoda so zdrojmi aspoň 90 %", () => {
+  it("metóda kotva: zhoda so zdrojmi aspoň 90 %", () => {
     const res = bookCheck(r)!;
     expect(res.score, JSON.stringify(res.parts)).toBeGreaterThanOrEqual(0.9);
   });
 
   it("má aspoň 3 fotky toho istého jedla a malú na karty", () => {
-    expect(b.photos).toBeGreaterThanOrEqual(b.check ? 4 : 3);
+    expect(b.photos).toBeGreaterThanOrEqual(3);
     const css = readFileSync("src/features/recipes/kniha.css", "utf8");
     for (const p of [...bookPics(r), `kb_${r.id}_1s`]) {
       expect(css, p).toContain(`.pic-${p} `);
@@ -154,17 +144,17 @@ describe("kniha: suroviny pri kroku (varenie)", () => {
   const scaled = (id: string) => scaleIngredients(BOOK.find((r) => r.id === id)!, 4);
   const names = (id: string, step: number) => stepFoods(BOOK.find((r) => r.id === id)!.steps[step]!, scaled(id)).map((x) => `${x.ref ?? x.food}:${x.qty}`);
   it("halušky: múka a voda z halušiek, nie z omáčky", () => {
-    expect(names("paprikas", 5)).toEqual(expect.arrayContaining(["muka_h:300", "voda_h:200", "vajce:1", "sol_h:0.5"]));
-    expect(names("paprikas", 5)).not.toContain("muka:3");
+    expect(names("paprikas", 4)).toEqual(expect.arrayContaining(["muka_h:400", "voda_h:300", "vajce:2", "sol_h:1"]));
+    expect(names("paprikas", 4)).not.toContain("muka:3");
   });
   it("omáčka: múka a smotana z paprikáša", () => {
-    expect(names("paprikas", 8)).toEqual(expect.arrayContaining(["muka:3", "smotana:250"]));
+    expect(names("paprikas", 9)).toEqual(["muka:3", "smotana:200"]);
   });
   it("varenie halušiek: len soľ do vody", () => {
-    expect(names("paprikas", 6)).toEqual(["sol_v:1"]);
+    expect(names("paprikas", 5)).toEqual(["sol_v:1"]);
   });
-  it("segedín: krok s mäsom má mäso, rascu, soľ a korenie", () => {
-    expect(names("segedin", 2)).toEqual(expect.arrayContaining(["pliecko:700", "rasca:1", "sol:1", "korenie:1"]));
+  it("segedín: krok s mäsom má mäso, cesnak, soľ a múku", () => {
+    expect(names("segedin", 2)).toEqual(expect.arrayContaining(["pliecko:800", "cesnak:2", "sol:1", "muka:2"]));
   });
 });
 

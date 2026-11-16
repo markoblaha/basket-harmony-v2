@@ -561,6 +561,8 @@ export const skRecipes = {
   "kb.match": "Zhoda so zdrojmi: {pct} %",
   "kb.checkSum": "Skutočné recepty: {sources} · weby: {sites}",
   "kb.anchor": "Základ je skutočný recept „{name}“ ({site}) – z porovnávaných receptov má najviac surovín, na ktorých sa zhodne väčšina. Každé množstvo sme porovnali so všetkými zdrojmi.",
+  "kb.groupAnchor": "{group}: základ je skutočný recept „{name}“ ({site}). Skutočné recepty: {sources} · weby: {sites}.",
+  "kb.wholeNote": "Každý recept je na jeden celý kus, preto množstvá v tabuľke porovnávame na celý kus. Na krájanie: {portions}.",
   "kb.portionsNote": "Základná porcia je tá, ktorú má najviac receptov. Množstvá v tabuľke sú pre: {portions}.",
   "kb.colIng": "Surovina",
   "kb.colOurs": "U nás",

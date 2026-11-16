@@ -176,6 +176,7 @@
 .bhm .bchk-h, .bhm .bchk-r { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; align-items: baseline; padding: 7px 12px; }
 .bhm .bchk-h { font-size: 11.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--sec); background: var(--card2); }
 .bhm .bchk-r + .bchk-r { box-shadow: inset 0 1px 0 var(--line); }
+.bhm .bchk-g { padding: 9px 12px 5px; font-size: 11.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--sec); background: var(--card2); }
 .bhm .bchk-h > span:not(:first-child), .bhm .bchk-r > span:not(:first-child) { text-align: right; white-space: nowrap; }
 .bhm .bchk-r > span:first-child { font-weight: 650; }
 .bhm .bchk-r > span:nth-child(2) { font-weight: 750; }

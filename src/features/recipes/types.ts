@@ -46,13 +46,22 @@ export type BookCheck = {
   anchor: string;
   /** Na koľko porcií je recept zdroja (chýba = zdroj porcie neuvádza). */
   portions: Record<string, number>;
+  /** Recept na jeden kus (torta): každý zdroj je na celý kus, množstvá sa porovnávajú na celý kus; porcie = kúsky na krájanie. */
+  whole?: boolean;
+  /**
+   * Skupina surovín s vlastnými zdrojmi (napr. halušky k paprikášu): písmená jej zdrojov a jej kotva.
+   * Riadky a úkony skupiny (group) sa porovnávajú len s jej zdrojmi; hlavné jedlo so zvyšnými.
+   * Riadok so skupinou, ktorá tu nie je (napr. „Krém“), sa porovnáva s hlavnými zdrojmi, ale patria k nemu
+   * len suroviny tej skupiny (maslo do krému ≠ maslo do cesta).
+   */
+  groups?: Record<string, { src: string; anchor: string }>;
   /**
    * Suroviny v zdrojoch: kľúče potravín (viac cez +, napr. koreňová zelenina), jednotka (g alebo ks)
    * a množstvo na celý recept zdroja; 0 = zdroj surovinu má, ale bez množstva („podľa chuti“).
    */
-  rows: { foods: string; unit: "g" | "ks"; v: Record<string, number>; label?: string }[];
+  rows: { foods: string; unit: "g" | "ks"; v: Record<string, number>; label?: string; group?: string }[];
   /** Úkony postupu: ktoré zdroje ich robia a ktorý náš krok ho robí (od 1), alebo je z neho rada (tip). */
-  acts: { a: string; src: string; step?: number; tip?: boolean }[];
+  acts: { a: string; src: string; step?: number; tip?: boolean; group?: string }[];
   /** Čo sa oproti kotve zmenilo a prečo. */
   changes: string[];
 };
@@ -69,8 +78,6 @@ export type BookInfo = {
   tools: string[];
   store: string;
   sources: { k: string; site: string; name: string; url: string }[];
-  /** Zdroje skupiny, ktorá má vlastné zdroje (napr. halušky). */
-  groupSources?: Record<string, string>;
   /** Overenie metódou „kotva“ (novšie recepty); staršie recepty sú spojené z 3–5 zdrojov bez neho. */
   check?: BookCheck;
 };

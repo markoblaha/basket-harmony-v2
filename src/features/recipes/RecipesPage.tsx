@@ -203,9 +203,9 @@ export function RecipesPage() {
                 <>
                   <button type="button" className="tentry" onClick={() => navigate("/recipes/taste")}>
                     <span className="te-ph">
-                      <i className="pic-gulas_p" />
-                      <i className="pic-palacinky_p" />
-                      <i className="pic-rizoto_p" />
+                      <i className="pic-kb_svieckova_1s" />
+                      <i className="pic-kb_chili_1s" />
+                      <i className="pic-kb_musaka_1s" />
                     </span>
                     <span className="te-tx">
                       <b>{t("rk.tasteT")}</b>
@@ -217,24 +217,28 @@ export function RecipesPage() {
                   </button>
                   <div className="h2">{t("rk.cats")}</div>
                   <div className="cgrid">
-                    {RCATS.map((c) => (
-                      <button type="button" key={c.id} className={`ctile pic-${c.pic}`} onClick={() => navigate(`/recipes/c/cat/${c.id}`)}>
-                        <span>
-                          <b>{t(`rk.cat.${c.id}` as Key)}</b>
-                          <small>{tn("rk.recipes", recipes.all.filter(c.test).length)}</small>
-                        </span>
-                      </button>
-                    ))}
+                    {RCATS.map((c) => ({ c, n: recipes.all.filter(c.test).length }))
+                      .filter(({ n }) => n > 0)
+                      .map(({ c, n }) => (
+                        <button type="button" key={c.id} className={`ctile pic-${c.pic}`} onClick={() => navigate(`/recipes/c/cat/${c.id}`)}>
+                          <span>
+                            <b>{t(`rk.cat.${c.id}` as Key)}</b>
+                            <small>{tn("rk.recipes", n)}</small>
+                          </span>
+                        </button>
+                      ))}
                   </div>
                   <div className="h2">{t("rk.quick")}</div>
                   <div className="chips">
-                    {RCOLS.map((c) => (
-                      <button type="button" key={c.id} className="chip" onClick={() => navigate(`/recipes/c/col/${c.id}`)}>
-                        <E k={c.e} />
-                        {t(`rk.col.${c.id}` as Key)}
-                        <span className="cn">{count(c.test)}</span>
-                      </button>
-                    ))}
+                    {RCOLS.map((c) => ({ c, n: count(c.test) }))
+                      .filter(({ n }) => n > 0)
+                      .map(({ c, n }) => (
+                        <button type="button" key={c.id} className="chip" onClick={() => navigate(`/recipes/c/col/${c.id}`)}>
+                          <E k={c.e} />
+                          {t(`rk.col.${c.id}` as Key)}
+                          <span className="cn">{n}</span>
+                        </button>
+                      ))}
                   </div>
                   {recom.length > 0 && (
                     <>

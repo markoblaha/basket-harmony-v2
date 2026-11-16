@@ -14,14 +14,14 @@ import type { Recipe } from "./types";
 
 /** Kategórie knihy (ako v mockupe) – nad kategóriami a druhom mäsa receptov z appky. */
 export const RCATS: { id: string; e: string; pic: string; test: (r: Recipe) => boolean }[] = [
-  { id: "polievky", e: "stew", pic: "p_zeleninova", test: (r) => r.category === "polievky" },
-  { id: "maso", e: "meat", pic: "gulas_p", test: (r) => (r.meat === "bravcove" || r.meat === "hovadzie") && r.category !== "polievky" && r.category !== "cestoviny" },
-  { id: "hydina", e: "poultry", pic: "stehna_p", test: (r) => r.meat === "kuracie" && r.category !== "polievky" },
-  { id: "cestoviny", e: "spaghetti", pic: "penne_p", test: (r) => r.category === "cestoviny" },
+  { id: "polievky", e: "stew", pic: "kb_kapustnica_1s", test: (r) => r.category === "polievky" },
+  { id: "maso", e: "meat", pic: "kb_svieckova_1s", test: (r) => (r.meat === "bravcove" || r.meat === "hovadzie") && r.category !== "polievky" && r.category !== "cestoviny" },
+  { id: "hydina", e: "poultry", pic: "kb_paprikas_1s", test: (r) => r.meat === "kuracie" && r.category !== "polievky" },
+  { id: "cestoviny", e: "spaghetti", pic: "kb_lasagne_1s", test: (r) => r.category === "cestoviny" },
   { id: "ryby", e: "fish", pic: "losos_p", test: (r) => r.meat === "ryby" },
-  { id: "bezmasa", e: "salad", pic: "salat_p", test: (r) => r.meat === "bez" && r.category !== "sladke" && r.category !== "ranajky" },
-  { id: "sladke", e: "pancakes", pic: "palacinky_p", test: (r) => r.category === "sladke" || r.category === "ranajky" },
-  { id: "all", e: "books", pic: "x_pizza", test: () => true },
+  { id: "bezmasa", e: "salad", pic: "kb_kulajda_1s", test: (r) => r.meat === "bez" && r.category !== "sladke" && r.category !== "ranajky" },
+  { id: "sladke", e: "pancakes", pic: "kb_medovnik_1s", test: (r) => r.category === "sladke" || r.category === "ranajky" },
+  { id: "all", e: "books", pic: "kb_musaka_1s", test: () => true },
 ];
 /** Do koľko € na porciu je jedlo „lacné“. */
 export const CHEAP = 1.2;

@@ -3,6 +3,7 @@
  * množstvom, kroky s časom, ohňom a radami („Hotové je, keď“, „Pozor“, „Tip“),
  * alergény (odvodené zo surovín), náradie, skladovanie a zdroje, z ktorých recept vznikol. Fotky: Photos.tsx.
  */
+import { Fragment } from "react";
 import { formatNumber, t, tn, type Key } from "@/i18n";
 import { E, I } from "@/mockup/ui";
 import type { Estimator } from "@/features/lists/estimate";
@@ -225,7 +226,11 @@ function BookCheckInfo({ r }: { r: Recipe }) {
         <span>{t("kb.checkSum", { sources: res.sources, sites: res.sites })}</span>
       </p>
       {anchor && <p>{t("kb.anchor", { name: anchor.name, site: anchor.site })}</p>}
-      <p>{t("kb.portionsNote", { portions: tn("rk.portions", r.portions) })}</p>
+      {res.groups.map((g) => {
+        const a = r.book!.sources.find((s) => s.k === g.anchor);
+        return a ? <p key={g.name}>{t("kb.groupAnchor", { group: g.name, name: a.name, site: a.site, sources: g.sources, sites: g.sites })}</p> : null;
+      })}
+      <p>{t(c.whole ? "kb.wholeNote" : "kb.portionsNote", { portions: tn("rk.portions", r.portions) })}</p>
       <div className="bchk-tab" role="table" aria-label={t("kb.check")}>
         <div className="bchk-h" role="row">
           <span role="columnheader">{t("kb.colIng")}</span>
@@ -233,16 +238,23 @@ function BookCheckInfo({ r }: { r: Recipe }) {
           <span role="columnheader">{t("kb.colUsual")}</span>
           <span role="columnheader">{t("kb.colIn")}</span>
         </div>
-        {rows.map((x) => (
-          <div className={`bchk-r${x.typical === false ? " out" : ""}`} role="row" key={x.foods.join("+")}>
-            <span role="cell">{rowName(x)}</span>
-            <span role="cell">
-              {num(x.ours!)} {unit(x)}
-              {x.typical === false && <small>{t("kb.outside")}</small>}
-            </span>
-            <span role="cell">{x.lo != null && x.hi != null && x.quantified >= 4 ? `${num(x.lo)}–${num(x.hi)} ${unit(x)}` : "—"}</span>
-            <span role="cell">{t("kb.inN", { n: x.count, all: res.sources })}</span>
-          </div>
+        {rows.map((x, i) => (
+          <Fragment key={`${x.group ?? ""}:${x.foods.join("+")}`}>
+            {x.group && x.group !== rows[i - 1]?.group && (
+              <div className="bchk-g" role="row">
+                <span role="cell">{x.group}</span>
+              </div>
+            )}
+            <div className={`bchk-r${x.typical === false ? " out" : ""}`} role="row">
+              <span role="cell">{rowName(x)}</span>
+              <span role="cell">
+                {num(x.ours!)} {unit(x)}
+                {x.typical === false && <small>{t("kb.outside")}</small>}
+              </span>
+              <span role="cell">{x.lo != null && x.hi != null && x.quantified >= 4 ? `${num(x.lo)}–${num(x.hi)} ${unit(x)}` : "—"}</span>
+              <span role="cell">{t("kb.inN", { n: x.count, all: x.all })}</span>
+            </div>
+          </Fragment>
         ))}
       </div>
       <p className="bchk-note">{t("kb.usualHint")}</p>

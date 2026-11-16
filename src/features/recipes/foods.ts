@@ -58,7 +58,7 @@ export const FOODS: Record<string, Food> = {
   krkovicka: f("Bravčová krkovička", "meat_fish", [250, 16, 0, 0, 21, 7.5, 0, 0.15], { loose: true }),
   bravcove_stehno: f("Bravčové stehno (rezne)", "meat_fish", [140, 21, 0, 0, 6, 2, 0, 0.15], { loose: true }),
   kuracie_prsia: f("Kuracie prsia", "meat_fish", [110, 23, 0, 0, 1.5, 0.4, 0, 0.15], { loose: true }),
-  kuracie_stehna: f("Kuracie stehná", "meat_fish", [200, 18, 0, 0, 14, 4, 0, 0.2], { loose: true, g: 250 }),
+  kuracie_stehna: f("Kuracie stehná", "meat_fish", [214, 16.4, 0.2, 0, 16, 4.4, 0, 0.21], { loose: true, g: 250, edible: 0.75, al: [] }), // fdc 172378 (stehno s kožou); jedlý podiel odhad – kosť asi štvrtina
   hovadzie: f("Hovädzie zadné", "meat_fish", [198, 20.7, 0, 0, 12.2, 4.8, 0, 0.13], { loose: true, al: [] }), // fdc 168697
   mlete: f("Mleté mäso zmiešané", "meat_fish", [263, 16.9, 0, 0, 21.2, 7.9, 0, 0.14], { pack: { g: 500 }, al: [] }), // fdc 167902
   slanina: f("Údená slanina", "meat_fish", [393, 13.7, 0, 0.3, 37.1, 12.6, 0, 1.88], { pack: { g: 150 }, al: [] }), // fdc 168277

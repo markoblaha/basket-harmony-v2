@@ -13,7 +13,6 @@ import { HelpBtn } from "@/features/help/Help";
 import { Btn } from "@/mockup/kit";
 import { haptic } from "@/components/kit";
 import { useCookRecipe, useRecipes } from "./api";
-import { STEP_DETAILS } from "./catalog";
 import { StepChips } from "./book";
 import type { Step } from "./types";
 import { formatAmount, ingName, renderStep, scaleIngredients, stepIngredients } from "./logic";
@@ -151,8 +150,8 @@ export function CookPage() {
   const steps = r.steps.length ? r.steps : [{ text: t("ck.noSteps") }];
   const st = steps[Math.min(i, steps.length - 1)]!;
   const scaled = scaleIngredients(r, portions);
-  // Recept z knihy má podrobnosti priamo v kroku; staršie recepty ich majú v STEP_DETAILS.
-  const det: Pick<Step, "done" | "tip" | "more" | "warn"> | undefined = r.book || st.done || st.tip || st.more ? st : STEP_DETAILS[r.id]?.[i];
+  // Podrobnosti kroku (kniha aj vlastné recepty prečítané Gemini) sú priamo v kroku.
+  const det: Pick<Step, "done" | "tip" | "more" | "warn"> = st;
   const end = timers[i];
   const left = end ? Math.max(0, (end - Date.now()) / 1000) : null;
   // Suroviny tohto kroku s množstvom (kniha: podľa slov v texte, inak podľa {odkazov}).

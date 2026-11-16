@@ -551,6 +551,8 @@ export const enRecipes: Record<keyof typeof skRecipes, string> = {
   "kb.match": "Match with sources: {pct} %",
   "kb.checkSum": "Real recipes: {sources} · websites: {sites}",
   "kb.anchor": "The base is the real recipe “{name}” ({site}) – of the compared recipes it has the most ingredients the majority agrees on. Every amount was compared with all sources.",
+  "kb.groupAnchor": "{group}: the base is the real recipe “{name}” ({site}). Real recipes: {sources} · websites: {sites}.",
+  "kb.wholeNote": "Every recipe makes one whole cake, so the amounts in the table are compared for the whole cake. To cut: {portions}.",
   "kb.portionsNote": "The base serving count is the one most recipes use. Amounts in the table are for: {portions}.",
   "kb.colIng": "Ingredient",
   "kb.colOurs": "Ours",

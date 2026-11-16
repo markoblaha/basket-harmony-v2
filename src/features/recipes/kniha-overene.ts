@@ -25,10 +25,12 @@ const row = (foods: string, unit: "g" | "ks", v: string, label?: string): BookCh
 });
 type Act = BookCheck["acts"][number];
 const act = (a: string, src: string, at?: number | "tip"): Act => (at === "tip" ? { a, src, tip: true } : at ? { a, src, step: at } : { a, src });
+/** Riadky a úkony skupiny s vlastnými zdrojmi (napr. halušky): porovnávajú sa len s jej zdrojmi. */
+const grp = <T extends object>(group: string, list: T[]): (T & { group: string })[] => list.map((x) => ({ ...x, group }));
 
 /** Zdroje, porcie zdrojov a písmená zdrojov pri surovinách (podľa riadkov porovnania). */
 function book(
-  info: Omit<BookInfo, "sources" | "check" | "photos">,
+  info: Omit<BookInfo, "sources" | "check" | "photos"> & { photos?: number },
   src: Src[],
   check: Omit<BookCheck, "portions">,
 ): BookInfo {
@@ -55,16 +57,27 @@ const USES: Record<string, string[][]> = {
     ["maslo", "muka", "mlieko", "eidam"], [], []],
   chili: [["cibula", "paprika_cervena", "cesnak"], ["olej", "chilli", "paprika_mleta", "rimska_rasca"], ["mlete"],
     ["vyvar", "paradajky_kraj", "oregano", "pretlak", "sol", "korenie"], [], ["fazula"], []],
+  segedin: [["pliecko", "cibula", "cesnak"], ["mast", "rasca"], ["pliecko", "cesnak", "sol", "muka"], ["paprika_mleta"], ["vyvar", "bobkovy_list"],
+    ["kapusta", "vyvar"], ["smotana_sladka", "sol", "korenie"], ["knedla"]],
+  paprikas: [["kuracie_stehna", "sol", "cibula"], ["maslo", "cibula"], ["paprika_mleta", "voda"], ["kuracie_stehna", "voda"], ["muka_h", "vajce", "sol_h", "voda_h"],
+    ["sol_v"], [], ["olej"], [], ["muka", "smotana"], ["sol"]],
+  kulajda: [["sampinony", "cibula", "zemiaky"], ["voda", "sampinony", "cibula", "bobkovy_list", "nove_korenie", "korenie_cele", "rasca"], ["muka", "kysla_smotana"],
+    ["zemiaky"], ["vajce"], ["ocot", "sol", "korenie", "kopor"], ["maslo"], ["vajce", "sol", "korenie", "kopor"]],
+  medovnik: [["kondenz"], ["maslo", "tuk"], ["vajce", "med", "cukor", "muka", "soda"], [], [], [], ["orechy"], ["maslo", "kondenz"], [], [], []],
+  lasagne: [["cibula", "cesnak"], ["olej", "cibula", "cesnak"], ["mlete", "sol", "korenie", "oregano"], ["paradajky_kraj"], ["eidam"],
+    ["maslo", "muka", "mlieko", "muskat", "sol", "korenie"], ["lasagne", "eidam"], []],
 };
 
 /** Pri každej surovine písmená zdrojov, ktoré ju majú, a pri krokoch ich suroviny. */
 function finish(r: Recipe): Recipe {
   const rows = r.book?.check?.rows ?? [];
   const uses = USES[r.id];
+  const groups = r.book?.check?.groups ?? {};
   return {
     ...r,
     ingredients: r.ingredients.map((x) => {
-      const row = rows.find((w) => w.foods.split("+").includes(x.food));
+      const g = x.group && (groups[x.group] || rows.some((w) => w.group === x.group)) ? x.group : undefined;
+      const row = rows.find((w) => w.foods.split("+").includes(x.food) && w.group === g);
       return row ? { ...x, src: Object.keys(row.v).sort().join("") } : x;
     }),
     steps: r.steps.map((st, i) => (uses?.[i] ? { ...st, uses: uses[i] } : st)),
@@ -789,5 +802,629 @@ const chili: Recipe = {
   ]),
 };
 
+/* ===================================================================== segedínsky guláš */
+const segedin: Recipe = {
+  id: "segedin",
+  name: "Segedínsky guláš",
+  category: "hlavne",
+  meat: "bravcove",
+  minutes: 110,
+  difficulty: 2,
+  portions: 4,
+  hue: 25,
+  icon: "CookingPot",
+  tags: ["klasika"],
+  source: "",
+  book: book(
+    {
+      photos: 3, // staršie fotky; nové (4) čakajú na kredit na obrázky
+      active: 30,
+      cuisine: "Česko · Slovensko",
+      tools: ["hrniec s hrubým dnom a pokrievkou (aspoň 4 l)", "sitko na kapustu", "lis na cesnak"],
+      store: "V chladničke 3 dni v uzavretej nádobe, dá sa zamraziť. Ohrievaj pomaly a často miešaj.",
+    },
+    [
+      ["A", AP, "Tradiční segedínský guláš", "https://www.apetitonline.cz/recept/tradicni-segedinsky-gulas", 4],
+      ["B", AP, "Segedínský guláš jako od babičky", "https://www.apetitonline.cz/recept/segedinsky-gulas-jako-od-babicky", 4],
+      ["C", AP, "Segedínský guláš podle Pohlreicha", "https://www.apetitonline.cz/recept/segedinsky-gulas-podle-pohlreicha", 4],
+      ["D", AP, "Segedínský guláš se zakysanou smetanou", "https://www.apetitonline.cz/recept/segedinsky-gulas-se-zakysanou-smetanou", 5],
+      ["E", AP, "Guláš Székely neboli segedínský guláš", "https://www.apetitonline.cz/recept/gulas-szekely-neboli-segedinsky-gulas", 7],
+      ["F", LB, "Segedinský guláš", "https://www.labuznik.cz/recept/segedinsky-gulas/", 4],
+      ["G", LB, "Segedinský guláš", "https://www.labuznik.cz/recept/segedinsky-gulas-1/", 4],
+      ["H", LB, "Székely Gulyás, prostě další segedín", "https://www.labuznik.cz/recept/szekely-gulyas-proste-dalsi-segedin/", 6],
+      ["I", TR, "Segedínský guláš", "https://www.toprecepty.cz/recept/1495-segedinsky-gulas/", 5],
+      ["J", TR, "Můj segedínský guláš", "https://www.toprecepty.cz/recept/19069-muj-segedinsky-gulas/", 8],
+      ["K", TR, "Segedínský guláš, jak ho vařila maďarská babička", "https://www.toprecepty.cz/recept/30046-segedinsky-gulas-jak-ho-varila-madarska-babicka/", 4],
+      ["L", TR, "Náš segedínský guláš", "https://www.toprecepty.cz/recept/33653-nas-segedinsky-gulas/", 4],
+      ["M", VA, "Dobrý segedínský guláš", "https://www.vareni.cz/recepty/dobry-segedinsky-gulas/", 4],
+      ["N", VA, "Domácí segedínský guláš", "https://www.vareni.cz/recepty/domaci-segedinsky-gulas/", 8],
+      ["O", VA, "Jednoduchý segedínský guláš", "https://www.vareni.cz/recepty/jednoduchy-segedinsky-gulas/", 4],
+      ["P", VA, "Segedín po česku", "https://www.vareni.cz/recepty/segedin-po-cesku/", 6],
+      ["Q", GK, "Szegediner Gulasch", "https://www.gutekueche.at/szegediner-gulasch-rezept-27537", 4],
+    ],
+    {
+      anchor: "A",
+      rows: [
+        row("pliecko", "g", "A800 B1000 C750 D1000 E900 F400 G400 H1000 I500 J1200 K500 L500 M400 N1250 O1000 P750 Q800", "Bravčové mäso (pliecko, krkovička)"),
+        row("mast+olej+maslo", "g", "A39 B C100 D39 E100 F40 H26 I J150 K L M N13 O P26 Q", "Tuk (masť, olej)"),
+        row("cibula", "g", "A480 B240 C200 D120 E250 F80 G240 H150 I360 J540 K360 L120 M240 N360 O180 P240 Q"),
+        row("rasca", "g", "A2 C2 E2 F1.5 H3 I J L N O P Q1"),
+        row("cesnak", "g", "A20 E10 H5 K7.5 L10 Q10"),
+        row("muka", "g", "A20 B20 C80 D30 F30 H20 I30 J20 L O P20"),
+        row("paprika_mleta", "g", "A14 B2.5 C5 D7 E15 F7.5 G H14 I3.75 J20 K5 L M21 N14 O P5 Q16.5"),
+        row("vyvar+voda", "g", "A1200 C500 D200 G H720 L1000 N500 P Q350", "Vývar alebo voda"),
+        row("bobkovy_list", "ks", "A4 D G3 L1 M3 N P3 Q1"),
+        row("kapusta", "g", "A400 B1000 C700 D400 E1200 F400 G300 H500 I500 J750 K500 L1000 M300 N500 O500 P Q350"),
+        row("smotana_sladka+kysla_smotana+smotana", "g", "A260 B200 C300 D200 E400 F250 G H120 I100 J200 K300 L30 M200 N200 O200 P Q150", "Smotana (sladká, kyslá)"),
+        row("sol", "g", "A B C D E F G H I J K L M N O P Q"),
+        row("korenie", "g", "A B C D G H I L M O P Q"),
+        row("knedla", "ks", "A B C H J K L M N O P"),
+      ],
+      acts: [
+        act("Na tuku speniť cibuľu dozlatista", "ABCEFIJLNP", 2),
+        act("Pridať rascu", "ACEFHINOPQ", 2),
+        act("Pridať mäso a opiecť ho zo všetkých strán", "ACDEFHIJKLNPQ", 3),
+        act("Zaprášiť múkou", "ABCDFHIJLOP", 3),
+        act("Pridať mletú papriku a krátko ju opražiť", "ABCDEFGHIJKLMNOPQ", 4),
+        act("Podliať vývarom alebo vodou a dusiť pod pokrievkou", "ABCDEFHIJKLNOPQ", 5),
+        act("Pridať kyslú kapustu a dusiť, kým nie je mäso mäkké", "ABCDEFGHIJKLMNOPQ", 6),
+        act("Kapustu prepláchnuť, ak je veľmi kyslá", "BCHLNPQ", "tip"),
+        act("Zjemniť smotanou a krátko povariť", "ABCDEFGHIJKLMNOPQ", 7),
+        act("Podávať s knedľou", "ABCHJKLMNOP", 8),
+        act("Na tanier pridať lyžicu kyslej smotany", "A", "tip"),
+      ],
+      changes: [
+        "Cibuľa 2 ks namiesto 4: štyri cibule sú najviac zo všetkých zdrojov (bežne 120–270 g na 4 porcie).",
+        "Cesnak 2 strúčiky namiesto 4, mletá paprika 1 lyžica namiesto 2, bobkové listy 2 namiesto 4 a vývar 500 ml namiesto 1,2 l: množstvá kotvy sú nad bežným rozpätím zdrojov.",
+        "Kyslá kapusta 500 g namiesto 400 g: jedno bežné balenie, stále v bežnom rozpätí zdrojov.",
+        "Kyslá smotana na tanier je v rade, nie medzi surovinami – je na ozdobu.",
+      ],
+    },
+  ),
+  ingredients: [
+    ...ings("Guláš", [
+      ["pliecko", 800, "g", { note: "alebo krkovička" }],
+      ["cibula", 2, "ks"],
+      ["cesnak", 2, "strucik"],
+      ["mast", 3, "lyzica", { note: "alebo olej" }],
+      ["rasca", 1, "lyzicka", { note: "celá, pomletá alebo nasekaná" }],
+      ["sol", 1, "lyzicka"],
+      ["muka", 2, "lyzica", { note: "hladká" }],
+      ["paprika_mleta", 1, "lyzica", { note: "sladká" }],
+      ["vyvar", 500, "ml", { label: "Vývar", note: "hovädzí alebo bravčový, aj z kocky" }],
+      ["bobkovy_list", 2, "ks"],
+    ]),
+    ...ings("Kapusta a smotana", [
+      ["kapusta", 500, "g"],
+      ["smotana_sladka", 200, "ml"],
+      ["korenie", 1, "stipka", { note: "mleté" }],
+    ]),
+    ...ings("Na podávanie", [["knedla", 1.5, "ks", { label: "Žemľová knedľa" }]]),
+  ],
+  steps: steps([
+    ["Mäso ({pliecko}) nakrájaj na kocky asi 3 cm a osuš ho papierovou utierkou. Cibuľu ({cibula}) nakrájaj nadrobno, cesnak ({cesnak}) olúp a prelisuj.", 0, "ABCDEFGHIJKLMNOPQ"],
+    ["V hrnci s hrubým dnom rozpusti masť ({mast}) a cibuľu na nej za občasného miešania opekaj asi 8 minút dozlatista. Pridaj rascu ({rasca}) a minútu ju opekaj s cibuľou.", 9, "ABCEFIJLNP", {
+      heat: "stredný oheň", done: "Cibuľa je mäkká a zlatistá, nie tmavohnedá.", tip: "Rascu pred pridaním pomeľ alebo nasekaj nožom – lepšie pustí vôňu a nebude škrípať pod zubami." }],
+    ["Pridaj mäso a za občasného miešania ho opekaj asi 8 minút, kým nie je zo všetkých strán zatiahnuté – sivé, bez ružových miest. Pridaj cesnak, osoľ ({sol}), poprás múkou ({muka}) a za stáleho miešania ešte minútu opekaj.", 9, "ACDEFHIJKLNPQ", {
+      heat: "silnejší oheň", warn: "Ak sa mäso nezmestí do hrnca v jednej vrstve, opekaj ho po dávkach. Naraz by pustilo šťavu a dusilo by sa namiesto opekania." }],
+    ["Stíš oheň, posyp mäso mletou paprikou ({paprika_mleta}) a za stáleho miešania ju opekaj len asi pol minúty, kým nezavonia.", 1, "ABCDEFGHIJKLMNOPQ", {
+      heat: "mierny oheň", warn: "Paprika na horúcom tuku za pár sekúnd zhorkne – hneď ako zavonia, pokračuj ďalším krokom." }],
+    ["Zalej mäso polovicou vývaru ({vyvar}), pridaj bobkové listy ({bobkovy_list}), priveď do varu, prikry pokrievkou a dus 30 minút.", 30, "ABCDEFHIJKLNOPQ", {
+      heat: "mierny oheň", wait: true, done: "Mäso je polomäkké – vidlička prejde, ale ešte s odporom." }],
+    ["Kapustu ({kapusta}) ochutnaj a nakrájaj na kratšie kúsky. Pridaj ju k mäsu aj s trochou jej šťavy a so zvyšným vývarom, premiešaj, prikry a dus ďalších 40 minút. Občas premiešaj, a ak sa guláš prichytáva, podlej trochou vody.", 40, "ABCDEFGHIJKLMNOPQ", {
+      heat: "mierny oheň", wait: true, done: "Kúsok mäsa sa ľahko roztlačí vidličkou a kapusta je mäkká.",
+      tip: "Ak je kapusta veľmi kyslá, pred pridaním ju v sitku prepláchni studenou vodou a vytlač – guláš bude jemnejší." }],
+    ["Vmiešaj smotanu ({smotana_sladka}) a na miernom ohni povar ešte 5 minút, aby sa chute spojili. Ochutnaj a dochuť soľou a korením ({korenie}).", 5, "ABCDEFGHIJKLMNOPQ", {
+      heat: "mierny oheň", done: "Omáčka je krémová a jemne obalí lyžicu." }],
+    ["Vyber bobkové listy a guláš podávaj s nakrájanou knedľou ({knedla}).", 0, "ABCHJKLMNOP", {
+      tip: "Kto má rád, dá si navrch lyžicu kyslej smotany." }],
+  ]),
+};
+
+/* ===================================================================== kurací paprikáš s haluškami */
+const paprikas: Recipe = {
+  id: "paprikas",
+  name: "Kurací paprikáš s haluškami",
+  category: "hlavne",
+  meat: "kuracie",
+  minutes: 80,
+  difficulty: 2,
+  portions: 4,
+  hue: 20,
+  icon: "Drumstick",
+  tags: ["klasika"],
+  source: "",
+  book: book(
+    {
+      photos: 3, // staršie fotky; nové (4) čakajú na kredit na obrázky
+      active: 35,
+      cuisine: "Slovensko · Maďarsko · Česko",
+      tools: ["široký hrniec s pokrievkou", "veľký hrniec na halušky (aspoň 4 l)", "sitko na halušky", "dierovaná lyžica", "miska a metlička"],
+      store: "Paprikáš v chladničke 2 dni, halušky zvlášť. Halušky prehrej na troche masla alebo v horúcej vode.",
+    },
+    [
+      ["A", AP, "Klasické kuře na paprice", "https://www.apetitonline.cz/recept/klasicke-kure-na-paprice", 4],
+      ["B", AP, "Kuře na paprice", "https://www.apetitonline.cz/recept/kure-na-paprice", 4],
+      ["C", AP, "Kuře na paprice s noky", "https://www.apetitonline.cz/recept/kure-na-paprice-s-noky", 4],
+      ["D", GK, "Paprikahendl", "https://www.gutekueche.at/paprikahendl-rezept-4909", 4],
+      ["E", GK, "Ungarisches Paprikahuhn", "https://www.gutekueche.at/ungarisches-paprikahuhn-rezept-23122", 3],
+      ["F", GK, "Paprikahuhn mit Spätzle", "https://www.gutekueche.at/paprikahuhn-mit-spaetzle-rezept-23123", 2],
+      ["G", LB, "Kuře na paprice", "https://www.labuznik.cz/recept/kure-na-paprice/", 4],
+      ["H", LB, "Paprikás cirke – kuřecí paprikáš", "https://www.labuznik.cz/recept/paprikas-cirke-kureci-paprikas/", 4],
+      ["I", NS, "Csirkepaprikás", "https://www.nosalty.hu/recept/csirkepaprikas", 3],
+      ["J", TR, "Kuřecí paprikáš", "https://www.toprecepty.cz/recept/1474-kureci-paprikas/", 6],
+      ["K", TR, "Kuře na paprice", "https://www.toprecepty.cz/recept/1432-kure-na-paprice/", 2],
+      ["L", TR, "Kuře na paprice", "https://www.toprecepty.cz/recept/2058-kure-na-paprice/", 6],
+      ["M", TR, "Kuře na paprice se smetanou", "https://www.toprecepty.cz/recept/12648-kure-na-paprice-se-smetanou/", 4],
+      ["N", VA, "Klasické kuře na paprice", "https://www.vareni.cz/recepty/klasicke-kure-na-paprice/", 4],
+      ["O", TR, "Halušky", "https://www.toprecepty.cz/recept/1363-halusky/", 4],
+      ["P", AP, "Halušky", "https://www.apetitonline.cz/recept/halusky", 6],
+      ["Q", NS, "Nokedli egyszerűen", "https://www.nosalty.hu/recept/nokedli-tokeletes", 6],
+      ["R", NS, "Nokedli", "https://www.nosalty.hu/recept/nokedli", 4],
+      ["S", GK, "Nockerl", "https://www.gutekueche.at/nockerl-rezept-6018", 2],
+      ["T", GK, "Eiernockerln", "https://www.gutekueche.at/eiernockerl-rezept-4453", 2],
+      ["U", GK, "Spätzleteig", "https://www.gutekueche.at/spaetzleteig-rezept-3858", 4],
+      ["V", GK, "Spätzle", "https://www.gutekueche.at/spaetzle-rezept-1178", 4],
+      ["W", GK, "Spätzleteig", "https://www.gutekueche.at/spaetzleteig-rezept-23602", 4],
+      ["X", GK, "Spätzle", "https://www.gutekueche.at/spaetzle-rezept-24350", 2],
+    ],
+    {
+      anchor: "N",
+      groups: { "Halušky": { src: "OPQRSTUVWX", anchor: "Q" } },
+      rows: [
+        row("kuracie_stehna+kurca", "g", "A1500 B1500 C1300 D700 E1300 F500 G1300 H750 I720 J1300 K650 L1300 M800 N1000", "Kuracie mäso s kosťou"),
+        row("maslo+olej+mast", "g", "A50 B60 C100 D39 E39 F26 G102 H26 I J K26 L M28 N50", "Tuk (maslo, olej, masť)"),
+        row("cibula", "g", "A150 B120 C240 D360 E120 G60 H120 I J120 K120 L240 M240 N120"),
+        row("paprika_mleta", "g", "A14 B7 C D7 E14 F14 G H10.5 I J7 K10.5 L17.5 M25 N"),
+        row("voda+vyvar", "g", "B1000 D420 E250 F250 H250 L M500 N", "Voda alebo vývar"),
+        row("muka", "g", "A10 B20 C60 D30 E20 F20 H20 I10 J30 K10 L15 M25 N40"),
+        row("smotana+smotana_sladka+kysla_smotana", "g", "A250 B200 C300 D30 E200 F100 G400 H350 I200 J250 K200 M200 N200", "Smotana (sladká, kyslá)"),
+        row("sol", "g", "A B C D E F G H I J K L M N"),
+        ...grp("Halušky", [
+          row("muka", "g", "O150 P500 Q400 R400 S250 T300 U250 V500 W400 X250"),
+          row("vajce", "ks", "O1 P2 Q2 R1 S2 T1 U3 V3 W4 X2"),
+          row("voda+mlieko", "g", "O P300 Q300 R300 S200 T250 U125 V200 W200 X125", "Voda alebo mlieko"),
+          row("sol", "g", "O P Q R S T U V W X"),
+          row("olej+maslo", "g", "Q13 R T20 X25", "Tuk na premiešanie halušiek"),
+        ]),
+      ],
+      acts: [
+        act("Mäso osoliť", "ABCDEFGHJKLMN", 1),
+        act("Na tuku speniť cibuľu", "ABCDEGHIJKLMN", 2),
+        act("Pridať mletú papriku a krátko ju opražiť", "ABDEFHIJKMN", 3),
+        act("Podliať vodou alebo vývarom", "ABCDEFGHIJKLMN", 3),
+        act("Vložiť mäso a dusiť pod pokrievkou do mäkka", "ABCDEFGHIJKLMN", 4),
+        act("Mäso pred dusením zľahka opiecť", "BCEFGHJ", "tip"),
+        act("Mäkké mäso vybrať", "ABCGHIJKLMN", 9),
+        act("Zahustiť múkou rozmiešanou v smotane a povariť", "BCDEFHIJKM", 10),
+        act("Omáčku precediť alebo rozmixovať", "CGIN", "tip"),
+        act("Mäso vrátiť do omáčky a prehriať", "ABCGHIJKLMN", 11),
+        act("Mäso obrať z kostí a natrhať na kúsky", "AKLMN", "tip"),
+        act("Podávať s haluškami (nokmi)", "CFJN", 11),
+        ...grp("Halušky", [
+          act("Zmiešať múku, vajcia, soľ a vodu na husté hladké cesto", "OPQRSTUVWX", 5),
+          act("Priviesť do varu osolenú vodu", "OPQRTVWX", 6),
+          act("Cesto pretláčať cez sitko na halušky do vriacej vody", "OPQRUVWX", 7),
+          act("Variť po dávkach a premiešať, aby sa nezlepili", "QRVX", 7),
+          act("Variť, kým halušky nevyplávajú", "OQRTUW", 7),
+          act("Vyberať dierovanou lyžicou alebo sceďiť", "QRTUWX", 8),
+          act("Premiešať s olejom alebo maslom", "QTX", 8),
+          act("Bez sitka odrezávať cesto nožom z mokrej dosky", "PQR", "tip"),
+          act("Ak sa nepodávajú hneď, prepláchnuť studenou vodou", "STUW", "tip"),
+        ]),
+      ],
+      changes: [
+        "Omáčku zahusťujeme múkou rozmiešanou v smotane, ako 10 zo 14 zdrojov. Kotva robí najprv svetlú zápražku z múky a masla a smotanu pridáva až potom.",
+        "Múka do omáčky 3 lyžice namiesto 40 g: 40 g je nad bežným rozpätím zdrojov.",
+        "Mletá paprika 2 lyžice a voda 400 ml: kotva množstvo neuvádza, sú to bežné množstvá zdrojov.",
+        "Kuracie stehná 4 ks (asi 1 kg): kotva píše „4 porcie kurčaťa“.",
+        "Halušky sú podľa receptu „Nokedli egyszerűen“ (nosalty.hu) – 400 g múky, 2 vajcia, 300 ml vody a lyžica oleja na premiešanie. Porovnané s 10 receptami na halušky, nokedli a Spätzle.",
+      ],
+    },
+  ),
+  ingredients: [
+    ...ings("Paprikáš", [
+      ["kuracie_stehna", 4, "ks", { note: "celé stehná so záklnom, asi 1 kg" }],
+      ["sol", 1, "lyzicka"],
+      ["cibula", 1, "ks"],
+      ["maslo", 50, "g"],
+      ["paprika_mleta", 2, "lyzica", { note: "sladká" }],
+      ["voda", 400, "ml", { note: "alebo vývar" }],
+      ["muka", 3, "lyzica", { note: "hladká" }],
+      ["smotana", 200, "ml", { note: "12 %" }],
+    ]),
+    ...ings("Halušky", [
+      ["muka", 400, "g", { ref: "muka_h", note: "hladká" }],
+      ["vajce", 2, "ks"],
+      ["sol", 1, "lyzicka", { ref: "sol_h" }],
+      ["voda", 300, "ml", { ref: "voda_h" }],
+      ["sol", 1, "lyzica", { ref: "sol_v", note: "do vody" }],
+      ["olej", 1, "lyzica"],
+    ]),
+  ],
+  steps: steps([
+    ["Kuracie stehná ({kuracie_stehna}) osuš papierovou utierkou a zo všetkých strán osoľ ({sol}). Cibuľu ({cibula}) olúp a nakrájaj na drobné kocky.", 0, "ABCDEFGHJKLMN"],
+    ["V širokom hrnci rozpusti maslo ({maslo}) a cibuľu na ňom za občasného miešania opekaj asi 8 minút, kým nie je mäkká a zlatistá.", 8, "ABCDEGHIJKLMN", {
+      heat: "stredný oheň", done: "Cibuľa je mäkká a zlatistá, nie hnedá." }],
+    ["Stíš oheň a za stáleho miešania vsyp mletú papriku ({paprika_mleta}). Opekaj ju len asi pol minúty, kým nezavonia, a hneď podlej asi tretinou vody ({voda}).", 1, "ABDEFHIJKMN", {
+      heat: "mierny oheň", warn: "Paprika sa na horúcom tuku za pár sekúnd pripáli a omáčka zhorkne. Pre istotu môžeš hrniec na ten čas stiahnuť z ohňa." }],
+    ["Vlož mäso, priveď do varu, prikry pokrievkou a na miernom ohni dus asi 45 minút. V polovici mäso obráť, a keď sa šťava vyvarí, podlej zvyšnou vodou, aby sa nič neprichytávalo.", 45, "ABCDEFGHIJKLMN", {
+      heat: "mierny oheň", wait: true, done: "Mäso sa ľahko oddeľuje od kosti a šťava pri kosti nie je ružová.",
+      tip: "Kto chce výraznejšiu chuť, stehná pred dusením na tuku zľahka opečie zo všetkých strán a až potom opekaj cibuľu." }],
+    ["Kým sa mäso dusí, priprav cesto na halušky: múku ({muka_h}) daj do misy, v strede sprav jamku, rozbi do nej vajcia ({vajce}) a vidličkou ich rozšľahaj. Pridaj soľ ({sol_h}), prilej vodu ({voda_h}) a varechou vymiešaj hladké cesto.", 0, "OPQRSTUVWX", {
+      done: "Cesto je husté a lesklé a pomaly, súvisle steká z lyžice.", tip: "Ak je cesto príliš tuhé, prilej lyžicu vody, ak je riedke, primiešaj lyžicu múky." }],
+    ["Vo veľkom hrnci priveď do varu asi 3 litre vody s lyžicou soli ({sol_v}).", 0, "OPQRTVWX", {
+      heat: "silný oheň" }],
+    ["Polož sitko na halušky na hrniec a cesto cez neho pretláčaj priamo do vriacej vody – po dávkach, nie všetko naraz. Halušky hneď jemne premiešaj, aby sa nezlepili, a var ich 2–3 minúty, kým nevyplávajú na hladinu.", 3, "OPQRUVWX", {
+      heat: "silný oheň", wait: true, done: "Halušky plávajú na hladine.",
+      warn: "Nevkladaj všetko cesto naraz, halušky by sa zlepili. Rob ich na 2–3 dávky.",
+      tip: "Ak nemáš sitko na halušky, daj cesto na mokrú dosku a mokrým nožom ho odrezávaj po malých kúskoch do vody." }],
+    ["Uvarené halušky vyberaj dierovanou lyžicou do misy, pokvapkaj ich olejom ({olej}) a premiešaj, aby sa nelepili. Rovnako uvar zvyšné cesto.", 0, "QRTUWX", {
+      tip: "Ak halušky nebudeš podávať hneď, prepláchni ich studenou vodou – nezlepia sa." }],
+    ["Mäkké mäso vyber z hrnca na tanier a prikry ho, aby nevychladlo.", 0, "ABCGHIJKLMN"],
+    ["V miske rozmiešaj múku ({muka}) so smotanou ({smotana}) dohladka. Primiešaj do nej naberačku horúcej šťavy z hrnca a až potom ju za stáleho miešania vlej do hrnca. Povar na miernom ohni asi 10 minút, občas premiešaj.", 10, "BCDEFHIJKM", {
+      heat: "mierny oheň", wait: true, done: "Omáčka zhustla a jemne obalí lyžicu.",
+      warn: "Studenú smotanu s múkou nevlievaj rovno do vriacej omáčky – zrazila by sa a vznikli by hrudky.",
+      tip: "Ak chceš úplne hladkú omáčku, preceď ju cez sitko alebo rozmixuj ponorným mixérom." }],
+    ["Mäso vráť do omáčky a nechaj ho asi 5 minút prehriať, už ho nevar. Ochutnaj, dochuť soľou a podávaj s haluškami.", 5, "ABCGHIJKLMN", {
+      heat: "mierny oheň", tip: "Mäso môžeš pred vrátením obrať z kostí a natrhať na menšie kúsky – lepšie sa je." }],
+  ]),
+};
+
+/* ===================================================================== kulajda */
+const kulajda: Recipe = {
+  id: "kulajda",
+  name: "Kulajda s vajcom",
+  category: "polievky",
+  meat: "bez",
+  minutes: 45,
+  difficulty: 1,
+  portions: 4,
+  hue: 80,
+  icon: "Soup",
+  tags: ["klasika"],
+  source: "",
+  book: book(
+    {
+      photos: 3, // staršie fotky; nové (4) čakajú na kredit na obrázky
+      active: 20,
+      cuisine: "Česko",
+      tools: ["hrniec (aspoň 3 l)", "malý hrniec na vajcia", "miska a metlička"],
+      store: "Polievka bez vajec v chladničke 2 dni. Vajcia uvar vždy čerstvé, keď polievku ohrievaš.",
+    },
+    [
+      ["A", AP, "Kulajda", "https://www.apetitonline.cz/recept/kulajda", 4],
+      ["B", AP, "Jihočeská kulajda", "https://www.apetitonline.cz/recept/jihoceska-kulajda"],
+      ["C", AP, "Kulajda s vejcem", "https://www.apetitonline.cz/recept/kulajda-s-vejcem", 4],
+      ["D", AP, "Kulajda podle Jana Punčocháře", "https://www.apetitonline.cz/recept/kulajda-podle-jana-puncochare", 4],
+      ["E", AP, "Kátina kulajda", "https://www.apetitonline.cz/recept/katina-kulajda", 4],
+      ["F", LB, "Jihočeská kulajda", "https://www.labuznik.cz/recept/jihoceska-kulajda/"],
+      ["G", LB, "Kulajda", "https://www.labuznik.cz/recept/kulajda/", 4],
+      ["H", LB, "Kulajda od Elenky", "https://www.labuznik.cz/recept/kulajda-od-elenky/"],
+      ["I", LB, "Kulajda z Českomoravské vysočiny", "https://www.labuznik.cz/recept/kulajda-z-ceskomoravske-vysociny/", 4],
+      ["J", TR, "Pravá jihočeská kulajda", "https://www.toprecepty.cz/recept/1048-prava-jihoceska-kulajda/", 4],
+      ["K", TR, "Jihočeská kulajda", "https://www.toprecepty.cz/recept/13711-jihoceska-kulajda/", 6],
+      ["L", TR, "Kulajda", "https://www.toprecepty.cz/recept/389-kulajda/"],
+      ["M", TR, "Kulajda", "https://www.toprecepty.cz/recept/31243-kulajda/", 4],
+      ["N", TR, "Babiččina kulajda", "https://www.toprecepty.cz/recept/50081-babiccina-kulajda/", 2],
+      ["O", TR, "Kulajda mé maminky", "https://www.toprecepty.cz/recept/22527-kulajda-me-maminky/", 4],
+      ["P", VA, "Jihočeská kulajda", "https://www.vareni.cz/recepty/jihoceska-kulajda/"],
+      ["Q", VA, "Kulajda", "https://www.vareni.cz/recepty/kulajda/", 4],
+      ["R", VA, "Jihočeská kulajda s vejcem", "https://www.vareni.cz/recepty/jihoceska-kulajda-s-vejcem/", 4],
+      ["S", VA, "Kulajda od babičky", "https://www.vareni.cz/recepty/kulajda-od-babicky/", 4],
+      ["T", VA, "Dobrá jihočeská kulajda", "https://www.vareni.cz/recepty/dobra-jihoceska-kulajda/", 4],
+    ],
+    {
+      anchor: "C",
+      rows: [
+        row("voda+vyvar", "g", "A1000 C1250 D500 E1500 F1000 G H1000 J1000 K1000 L1000 M1500 N500 O P1250 Q1000 S1000 T", "Voda alebo vývar"),
+        row("sampinony", "g", "B C400 D250 F G I J300 K250 M160 N70 O P250", "Čerstvé huby"),
+        row("cibula", "g", "C120 E80 F150 G J120 K150 O120 Q150 T240"),
+        row("bobkovy_list", "ks", "B C2 E1 G K3 M4 N1 O R4 T2"),
+        row("nove_korenie", "ks", "B C5 E5 G K4 M6 N2.5 O R5 T5"),
+        row("korenie_cele+korenie", "ks", "B C5 D E5 G M6 N O P R5 T10", "Čierne korenie"),
+        row("rasca", "g", "A1 C0.5 G H J L O P"),
+        row("muka", "g", "A20 B C20 D10 E20 F30 G20 H40 I10 J30 K45 L40 M N15 O P Q20 R10 S30 T20"),
+        row("kysla_smotana+smotana_sladka+smotana", "g", "A200 B C250 D200 E200 F250 G200 H500 I250 J250 K200 L200 M400 N120 O250 P100 Q200 R200 S250 T200", "Smotana (kyslá, sladká)"),
+        row("zemiaky", "g", "A500 B C500 D300 E500 F625 G H300 I450 J600 K500 L500 M600 N150 O625 P250 Q250 R400 S750 T250"),
+        row("vajce", "ks", "A1 C4 D2 E2 F4 G4 H4 I2 J4 K1 M6 N2 O2 R6 S2 T2"),
+        row("ocot+citron", "g", "A B C15 D30 E15 F5 H7.5 K30 N15 O P Q R5 T15", "Ocot (alebo citrónová šťava)"),
+        row("kopor", "ks", "A B C1 D E F G H I J K1 L M N O1 Q S"),
+        row("maslo+mast+olej", "g", "B C14 D28 E28 H40 N28 O P Q50 T13", "Tuk (maslo, masť)"),
+        row("sol", "g", "A B C D E F G H I J K L M N O P Q R S T"),
+      ],
+      acts: [
+        act("Huby variť vo vode alebo vo vývare", "ACFGIJKMNO", 2),
+        act("Pridať celé korenie a bobkový list", "BCEGKMNORT", 2),
+        act("Pridať rascu", "ACGHJLOP", 2),
+        act("Zahustiť polievku múkou", "ABCDEFGHIJKLMNOPQRST", 3),
+        act("Múku rozmiešať v smotane a vliať do polievky", "ACGIJLOT", 3),
+        act("Zjemniť smotanou", "ABCDEFGHIJKLMNOPQRST", 3),
+        act("Pridať zemiaky a variť do mäkka", "ABCDEFGHIJKLMNOPQRST", 4),
+        act("Uvariť vajcia zvlášť a dať ich do taniera", "CDHJMNQR", 5),
+        act("Vajce rozšľahať alebo rozbiť priamo do vriacej polievky", "AEFGIKOST", "tip"),
+        act("Dochutiť octom", "ACDEHKNOPQRT", 6),
+        act("Pridať kôpor", "ABCDEFGHIJKLMNOQS", 6),
+        act("Kôpor už nevariť", "FKLQ", "tip"),
+        act("Zjemniť maslom", "CN", 7),
+        act("Namiesto čerstvých použiť sušené huby namočené vo vode", "ABCEFIL", "tip"),
+      ],
+      changes: [
+        "Čerstvé huby 300 g namiesto 400 g: 400 g je nad bežným rozpätím zdrojov.",
+        "Ligurček z kotvy vynechaný: má ho len 1 z 20 zdrojov.",
+      ],
+    },
+  ),
+  ingredients: [
+    ...ings("Polievka", [
+      ["sampinony", 300, "g", { label: "Čerstvé huby", note: "lesné alebo šampiňóny" }],
+      ["cibula", 1, "ks"],
+      ["zemiaky", 4, "ks", { note: "stredné" }],
+      ["voda", 1250, "ml"],
+      ["bobkovy_list", 2, "ks"],
+      ["nove_korenie", 5, "ks", { note: "guľky" }],
+      ["korenie_cele", 5, "ks", { note: "guľky" }],
+      ["rasca", 0.25, "lyzicka", { note: "drvená" }],
+      ["muka", 2, "lyzica", { note: "hladká" }],
+      ["kysla_smotana", 250, "g"],
+      ["ocot", 1, "lyzica", { note: "podľa chuti" }],
+      ["sol", 1, "lyzicka"],
+      ["korenie", 1, "stipka", { note: "mleté" }],
+      ["kopor", 1, "ks", { note: "1 zväzok" }],
+      ["maslo", 1, "lyzica"],
+    ]),
+    ...ings("Na podávanie", [["vajce", 4, "ks"]]),
+  ],
+  steps: steps([
+    ["Huby ({sampinony}) očisti – ak treba, krátko ich opláchni pod studenou vodou alebo otri vlhkou utierkou – a nakrájaj na hrubšie plátky. Cibuľu ({cibula}) olúp a rozpoľ. Zemiaky ({zemiaky}) ošúp a nakrájaj na kocky asi 1,5 cm.", 0, "ABCDEFGHIJKLMNOPQRST"],
+    ["V hrnci priveď do varu vodu ({voda}). Pridaj huby, cibuľu, bobkové listy ({bobkovy_list}), nové korenie ({nove_korenie}), guľky korenia ({korenie_cele}) a rascu ({rasca}) a znova priveď do varu.", 5, "ACFGIJKMNO", {
+      heat: "silný oheň", tip: "Namiesto čerstvých húb môžeš použiť 2 hrste sušených: namoč ich aspoň na hodinu do vlažnej vody a pridaj ich aj s vodou." }],
+    ["V miske rozmiešaj múku ({muka}) s kyslou smotanou ({kysla_smotana}) dohladka – ak je hustá, zrieď ju 2–3 lyžicami studenej vody. Za stáleho miešania ju vlej do polievky a metličkou dobre rozšľahaj.", 0, "ACGIJLOT", {
+      warn: "Vlievaj pomaly a stále miešaj, inak vzniknú hrudky." }],
+    ["Polievku znova priveď do varu, pridaj zemiaky a var na miernom ohni 10–15 minút, kým nie sú mäkké. Občas premiešaj, aby sa nič neprichytilo ku dnu.", 15, "ABCDEFGHIJKLMNOPQRST", {
+      heat: "mierny oheň", wait: true, done: "Zemiaky sú mäkké, ale nerozpadajú sa." }],
+    ["Kým sa zemiaky varia, priveď v malom hrnci do varu vodu, lyžicou do nej opatrne vlož vajcia ({vajce}) a var ich 6–7 minút. Potom ich zchlaď v studenej vode a olúp.", 7, "CDHJMNQR", {
+      heat: "stredný oheň", wait: true, done: "Bielok je pevný, žĺtok v strede ešte mäkký.",
+      warn: "Mäkký žĺtok nie je vhodný pre tehotné, malé deti, seniorov a ľudí s oslabenou imunitou. Pre nich var vajcia 10 minút natvrdo." }],
+    ["Keď sú zemiaky mäkké, dochuť polievku octom ({ocot}), soľou ({sol}) a mletým korením ({korenie}) a vmiešaj polovicu nasekaného kôpru ({kopor}). Kulajda má byť jemne kyslá.", 0, "ACDEHKNOPQRT", {
+      warn: "Kôpor už nevar, stratil by vôňu.", tip: "Ak chceš, vylov pred podávaním polovice cibule a bobkové listy." }],
+    ["Stiahni hrniec z ohňa a vmiešaj maslo ({maslo}).", 0, "CN"],
+    ["Vajcia opatrne rozpoľ. Polievku rozdeľ do tanierov, do každého daj polovičky vajca, zľahka ich osoľ, okoreň a posyp zvyšným kôprom.", 0, "CDHJMNQR", {
+      tip: "Vajce môžeš aj rozšľahať a za stáleho miešania vliať priamo do vriacej polievky – zrazí sa na jemné vločky." }],
+  ]),
+};
+
+/* ===================================================================== medovník */
+const medovnik: Recipe = {
+  id: "medovnik",
+  name: "Medovník s karamelovým krémom",
+  category: "sladke",
+  meat: "bez",
+  minutes: 210,
+  difficulty: 3,
+  portions: 16,
+  hue: 35,
+  icon: "CakeSlice",
+  tags: ["sviatočné"],
+  source: "",
+  book: book(
+    {
+      photos: 3, // staršie fotky; nové (4) čakajú na kredit na obrázky
+      active: 90,
+      wait: "aspoň 1 deň odležať",
+      cuisine: "Česko · Slovensko",
+      tools: ["hrniec a žiaruvzdorná misa na vodný kúpeľ", "ručný mixér so špirálovými hákmi a metlami", "papier na pečenie a gumová stierka", "tanier alebo tortová forma s priemerom 22–24 cm"],
+      store: "V chladničke prikrytý 5 dní. Dá sa zamraziť po kúskoch.",
+    },
+    [
+      ["A", AP, "Medovník", "https://www.apetitonline.cz/recept/medovnik"],
+      ["B", AP, "Domácí medový dort", "https://www.apetitonline.cz/recept/domaci-medovy-dort"],
+      ["C", LB, "MARLENKA – arménska medová torta", "https://www.labuznik.cz/recept/marlenka-armenska-medova-torta/"],
+      ["D", TR, "Můj medovník", "https://www.toprecepty.cz/recept/12041-muj-medovnik/"],
+      ["E", TR, "Medovník originál", "https://www.toprecepty.cz/recept/22668-medovnik-original/"],
+      ["F", TR, "Medový dort s krémem a oříšky", "https://www.toprecepty.cz/recept/22101-medovnik-marlenka/"],
+      ["G", TR, "Jednoduchý medovník", "https://www.toprecepty.cz/recept/13666-jednoduchy-medovnik/"],
+      ["H", VA, "Domácí medovník", "https://www.vareni.cz/recepty/domaci-medovnik/"],
+      ["I", VA, "Krémový medovník", "https://www.vareni.cz/recepty/kremovy-medovnik/"],
+      ["J", VA, "Vynikající medovník", "https://www.vareni.cz/recepty/vynikajici-medovnik/"],
+      ["K", TR, "Zamilovaný medovník", "https://www.toprecepty.cz/recept/5687-zamilovany-medovnik/"],
+      ["L", TR, "Medovník IV.", "https://www.toprecepty.cz/recept/7528-medovnik-iv/"],
+      ["M", AP, "Medovník s odlehčeným krémem", "https://www.apetitonline.cz/recept/medovnik-s-odlehcenym-kremem"],
+    ],
+    {
+      anchor: "A",
+      whole: true,
+      rows: [
+        row("tuk+maslo", "g", "A250 B180 C130 D250 E250 F250 G110 H250 I150 J30 K180 L150 M125", "Tuk do cesta (Hera, maslo)"),
+        row("vajce", "ks", "A3 B1 C2 D3 E3 F3 G6 H3 I2 J1 K1 L2 M3"),
+        row("med", "g", "A60 B140 C60 D60 E60 F110 G150 H80 I60 J40 K60 L60 M150"),
+        row("cukor", "g", "A300 B180 C250 D300 E300 F50 G150 H300 I200 J100 K180 L200 M125"),
+        row("muka", "g", "A400 B500 C700 D400 E400 F450 G370 H400 I350 J250 K450 L350 M500"),
+        row("soda", "g", "A4.6 B6.9 C13.8 D4.6 E4.6 F4.6 H4.6 J13.8 K6.9 L4.6 M4.6"),
+        row("orechy", "g", "A30 B100 C F120 G300 H60 J170 K120", "Vlašské orechy (posyp, krém)"),
+        ...grp("Krém", [
+          row("kondenz", "ks", "A1 B1 C1.2 D1 E1 F1 G1 H1 I1 J1 K1 L1 M0.63", "Karamelové kondenzované mlieko (plechovka 397 g)"),
+          row("maslo", "g", "A300 B200 C375 D187.5 E300 F300 G250 H320 I375 J250 K200 L375"),
+        ]),
+      ],
+      acts: [
+        act("Karamelizovať kondenzované mlieko varením neotvorenej plechovky", "FGHIJKL", 1),
+        act("Nad parou alebo na miernom ohni rozpustiť tuk (s medom a cukrom)", "ABCDEFHIJKLM", 2),
+        act("Pridať vajcia, med, cukor, múku a sódu a vymiešať hladké cesto", "ABCDEFHIJKLM", 3),
+        act("Miešať nad parou, kým cesto nezozlatne", "ADEFH", 3),
+        act("Cesto rozdeliť na rovnaké diely", "ABEFHJK", 4),
+        act("Rozotrieť alebo rozvaľkať tenké pláty podľa formy", "ABCDEFHIJKLM", 5),
+        act("Pláty piecť krátko dozlatista", "ABCDEFHIJKLM", 6),
+        act("Pláty orezať podľa formy", "AEFHIJKL", 7),
+        act("Odrezky rozdrobiť na posyp", "ABDFHIKL", 7),
+        act("Vyšľahať maslo s karamelom na krém", "ABCDEFGHIJKL", 8),
+        act("Pláty skladať a natierať krémom, natrieť aj vrch a boky", "ABCDEFGHIJKLM", 9),
+        act("Obsypať drobkami (s orechmi)", "ABDFHIKL", 10),
+        act("Nechať odležať aspoň do druhého dňa", "ADHL", 11),
+      ],
+      changes: [
+        "Vlašské orechy 100 g (jedno balenie) namiesto hrsti (asi 30 g): hrsť je pod bežným rozpätím zdrojov.",
+        "Kotva používa hotové karamelové kondenzované mlieko. Ako ho uvariť z obyčajného, je v prvom kroku – robí to 7 z 13 zdrojov.",
+      ],
+    },
+  ),
+  ingredients: [
+    ...ings("Cesto (6 plátov)", [
+      ["tuk", 250, "g", { note: "napr. Hera" }],
+      ["vajce", 3, "ks"],
+      ["med", 3, "lyzica", { note: "najlepšie tmavý" }],
+      ["cukor", 300, "g", { note: "kryštálový" }],
+      ["muka", 400, "g", { note: "hladká" }],
+      ["soda", 1, "lyzicka"],
+    ]),
+    ...ings("Krém", [
+      ["kondenz", 1, "ks", { note: "karamelové, plechovka 397 g" }],
+      ["maslo", 300, "g", { note: "mäkké" }],
+    ]),
+    ...ings("Na posypanie", [["orechy", 100, "g", { note: "nasekané" }]]),
+  ],
+  steps: steps([
+    ["Ak nemáš hotové karamelové kondenzované mlieko: neotvorenú plechovku obyčajného sladeného kondenzovaného mlieka ({kondenz}) vlož do hrnca, zalej vodou a var 2 hodiny. Nechaj ju vychladnúť vo vode – najlepšie deň vopred.", 120, "FGHIJKL", {
+      heat: "mierny var", wait: true, warn: "Plechovka musí byť celý čas pod vodou – vodu dolievaj. Otvor ju až úplne vychladnutú, inak môže horúci karamel vystreknúť." }],
+    ["Maslo na krém ({maslo}) vyber z chladničky, aby zmäklo. Priprav vodný kúpeľ: do hrnca nalej trochu vody a polož naň žiaruvzdornú misu tak, aby sa jej dno nedotýkalo hladiny. Vodu priveď k miernemu varu a v mise rozpusti tuk ({tuk}).", 5, "ABCDEFHIJKLM", {
+      heat: "voda mierne vrie", warn: "Voda sa nesmie dotýkať misy – vajcia by sa v ďalšom kroku zrazili." }],
+    ["Pridaj vajcia ({vajce}), med ({med}), cukor ({cukor}), múku ({muka}) a sódu bikarbónu ({soda}). Zmes nad parou miešaj asi 10 minút, kým nevznikne hladké cesto zlatistej farby. Najľahšie to ide ručným mixérom so špirálovými hákmi – na šľahacie metly sa cesto lepí.", 10, "ABCDEFHIJKLM", {
+      heat: "voda mierne vrie", done: "Cesto je hladké, lesklé a zlatisté ako med." }],
+    ["Misu stiahni z pary a cesto rozdeľ na 6 rovnakých dielov. Rúru predhrej na 170 °C (teplovzdušnú na 150 °C).", 0, "ABEFHJK"],
+    ["Na papier na pečenie obkresli tanier alebo tortovú formu s priemerom 22–24 cm a papier otoč kresbou dole. Do kruhu gumovou stierkou alebo prstami rozotri jeden diel cesta na čo najtenšiu vrstvu – asi centimeter za čiaru.", 0, "ABCDEFHIJKLM", {
+      tip: "Kým je cesto teplé, rozotiera sa ľahko. Diely, ktoré čakajú, nechaj v mise prikryté." }],
+    ["Plát peč 7–10 minút dozlatista. Takto upeč všetkých 6 dielov – v teplovzdušnej rúre môžeš piecť viac plechov naraz.", 8, "ABCDEFHIJKLM", {
+      heat: "170 °C, každý plát 7–10 minút", wait: true, done: "Plát je zlatý, nie hnedý.", warn: "Pár minút navyše a plát stvrdne a zhorkne." }],
+    ["Ešte teplé pláty orež podľa taniera alebo formy – polož ho na plát a nožom odrež, čo presahuje. Odrezky rozdrob nadrobno a zmiešaj s nasekanými orechmi ({orechy}).", 0, "AEFHIJKL", {
+      tip: "Teplé pláty sa režú ľahko, vychladnuté sa lámu." }],
+    ["Krém: mäkké maslo a karamelové kondenzované mlieko šľahaj mixérom asi 10 minút do hladkého krému.", 10, "ABCDEFGHIJKL", {
+      done: "Krém je hladký, lesklý a nadýchaný.", tip: "Krém sa nezrazí, keď maslo najprv vyšľaháš do peny a karamel pridávaš po častiach." }],
+    ["Skladaj: na tanier polož prvý plát, rozotri naň vrstvu krému, prikry ďalším plátom a znova natri. Pokračuj, kým neminieš všetky pláty. Nakoniec natri krémom aj vrch a boky.", 0, "ABCDEFGHIJKLM"],
+    ["Celý medovník obsyp drobkami s orechmi – vrch aj boky.", 0, "ABDFHIKL"],
+    ["Nechaj odležať v chlade aspoň do druhého dňa, najlepšie 2–3 dni.", 0, "ADHL", {
+      done: "Pláty od krému zmäknú, nôž prejde ľahko a kúsky sú vláčne." }],
+  ]),
+};
+
+/* ===================================================================== lasagne bolognese */
+const lasagne: Recipe = {
+  id: "lasagne",
+  name: "Lasagne bolognese",
+  category: "cestoviny",
+  meat: "hovadzie",
+  minutes: 105,
+  difficulty: 2,
+  portions: 4,
+  hue: 10,
+  icon: "UtensilsCrossed",
+  tags: ["víkend"],
+  source: "",
+  book: book(
+    {
+      photos: 3, // staršie fotky; nové (4) čakajú na kredit na obrázky
+      active: 35,
+      cuisine: "Taliansko",
+      tools: ["veľká panvica alebo široký hrniec s pokrievkou", "menší hrniec a metlička na bešamel", "zapekacia misa asi 20 × 30 cm", "papier na pečenie", "strúhadlo"],
+      store: "V chladničke 3 dni. Upečené aj neupečené sa dajú zamraziť.",
+    },
+    [
+      ["A", AP, "Lasagne s hovězím masem a rajčaty", "https://www.apetitonline.cz/recept/lasagne-s-hovezim-masem-rajcaty", 3],
+      ["B", LB, "Lasagne al forno", "https://www.labuznik.cz/recept/lasagne-al-forno/"],
+      ["C", LB, "Italské Lasagne", "https://www.labuznik.cz/recept/italske-lasagne/", 4],
+      ["D", TR, "Lasagne s boloňskou omáčkou", "https://www.toprecepty.cz/recept/14052-lasagne-s-bolonskou-omackou/", 4],
+      ["E", TR, "Lasagne s mletým masem", "https://www.toprecepty.cz/recept/12132-lasagne-s-mletym-masem/", 6],
+      ["F", TR, "Maminčiny domácí lasagne (masové)", "https://www.toprecepty.cz/recept/10446-maminciny-domaci-lasagne-masove/", 4],
+      ["G", TR, "Výborné lasagne", "https://www.toprecepty.cz/recept/12958-vyborne-lasagne/", 4],
+      ["H", VA, "Boloňské lasagně", "https://www.vareni.cz/recepty/bolonske-lasagne/", 4],
+      ["I", VA, "Klasické lasagne", "https://www.vareni.cz/recepty/klasicke-lasagne/", 4],
+      ["J", VA, "Italské lasagne", "https://www.vareni.cz/recepty/italske-lasagne/", 4],
+      ["K", VA, "Chutné lasagne s mletým masem a bešamelem", "https://www.vareni.cz/recepty/chutne-lasagne-s-mletym-masem-a-besamelem/", 4],
+      ["L", NS, "Bolognai lasagne", "https://www.nosalty.hu/recept/bolognai-lasagne", 4],
+      ["M", NS, "Bolognai lasagne házitésztával", "https://www.nosalty.hu/recept/bolognai-lasagne-hazitesztaval", 6],
+      ["N", NS, "Bolognai lasagne DoGGmától", "https://www.nosalty.hu/recept/bolognai-lasagne-doggmatol", 8],
+    ],
+    {
+      anchor: "G",
+      rows: [
+        row("olej+olivovy_olej", "g", "A E F G H100 I52 J K L26 M20 N100", "Olej"),
+        row("cibula", "g", "B120 C120 D150 F120 G150 H240 I120 K120 L50 M150 N240"),
+        row("cesnak", "g", "A15 B5 C15 D12.5 F15 G10 H30 I5 K10 M10"),
+        row("mlete", "g", "A200 B300 C500 D500 E500 F500 G400 H600 I200 J275 K400 L220 M500 N1000", "Mleté mäso"),
+        row("oregano", "g", "A B C F G I J M"),
+        row("paradajky_kraj+pasirovane+pretlak+paradajky", "g", "A500 B16 C450 D470 E160 F500 G400 H1000 I200 J320 K400 L100 M220 N32", "Paradajky (konzerva, pasírované, pretlak)"),
+        row("maslo", "g", "A50 C62.5 E30 G50 H200 I75 J50 K42 L112 M100 N70"),
+        row("muka", "g", "A40 C12 E30 G50 H150 I75 J50 K20 L75 M60 N70"),
+        row("mlieko", "g", "A600 C750 E500 G500 H800 I750 J500 K300 L770 M1000 N700", "Mlieko (do bešamelu)"),
+        row("muskat", "g", "B C E G H J L M"),
+        row("lasagne", "g", "A250 B C250 D300 E500 F G H500 I200 J200 K250 L200 M N125"),
+        row("eidam+parmezan", "g", "A B75 C450 D200 E250 F150 G H150 I J50 K200 L50 M300 N300", "Strúhaný syr (eidam, parmezán…)"),
+        row("sol", "g", "A B C D E F G H I J K L M N"),
+        row("korenie", "g", "B C D E G H I J L M N"),
+      ],
+      acts: [
+        act("Na tuku opražiť cibuľu a cesnak", "CDFGHIKLMN", 2),
+        act("Pridať mleté mäso, rozdrobiť ho a opiecť", "ABCDEFGHIJKLMN", 3),
+        act("Ochutiť soľou, korením a bylinkami", "ABCDEFGHIJKLMN", 3),
+        act("Pridať paradajky", "ABCDEFGHIJKLMN", 4),
+        act("Ragù dusiť na miernom ohni 20–60 minút", "BDEFHIKLM", 4),
+        act("Podliať vínom a odpariť ho", "BHLN", "tip"),
+        act("Misu vymazať tukom alebo vyložiť papierom", "BCDEGILN", 5),
+        act("Bešamel: zo zápražky z masla a múky a z mlieka uvariť hustú omáčku", "ACEGHIJKLMN", 6),
+        act("Bešamel ochutiť muškátovým orechom", "BCEGHL", 6),
+        act("Vrstviť platne, ragù a bešamel", "ABCDEFGHIJKLMN", 7),
+        act("Navrch posypať syrom", "ABCDEFGHIJKLMN", 7),
+        act("Piecť v rúre pri 175–200 °C", "BDEFGHJKLMN", 8),
+        act("Prikryť alobalom, aby vrch nezhnedol priskoro", "HK", "tip"),
+        act("Pred krájaním nechať odpočinúť", "L", "tip"),
+      ],
+      changes: [
+        "Ragù dusíme 30 minút: kotva ho len krátko povarí, 9 zo 14 zdrojov ho dusí 20–60 minút.",
+        "Kečup a grilovacie korenie z kotvy vynechané: kečup majú len 3 zo 14 zdrojov, grilovacie korenie žiadny ďalší. Bazalku majú len 2 – ostalo oregano (8 zo 14).",
+        "Lasagne 250 g a syr 150 g: kotva píše „1 balenie“ a „tvrdý syr“ bez množstva – sú to bežné množstvá zdrojov.",
+      ],
+    },
+  ),
+  ingredients: [
+    ...ings("Ragù", [
+      ["cibula", 1, "ks", { note: "väčšia" }],
+      ["cesnak", 2, "strucik"],
+      ["olej", 2, "lyzica"],
+      ["mlete", 400, "g", { label: "Mleté mäso", note: "hovädzie alebo zmiešané" }],
+      ["sol", 1, "lyzicka"],
+      ["korenie", 1, "stipka", { note: "mleté" }],
+      ["oregano", 1, "lyzicka", { note: "sušené" }],
+      ["paradajky_kraj", 400, "g", { label: "Lúpané alebo krájané paradajky", note: "1 konzerva" }],
+    ]),
+    ...ings("Bešamel", [
+      ["maslo", 50, "g"],
+      ["muka", 50, "g", { note: "hladká" }],
+      ["mlieko", 500, "ml"],
+      ["muskat", 1, "stipka", { label: "Muškátový orech", note: "strúhaný" }],
+    ]),
+    ...ings("Skladanie", [
+      ["lasagne", 250, "g", { note: "bez predvárania" }],
+      ["eidam", 150, "g", { note: "alebo iný tvrdý syr, parmezán" }],
+    ]),
+  ],
+  steps: steps([
+    ["Cibuľu ({cibula}) nakrájaj nadrobno, cesnak ({cesnak}) olúp a nakrájaj na tenké plátky.", 0, "CDFGHIKLMN"],
+    ["Vo väčšej panvici rozohrej olej ({olej}) a cibuľu s cesnakom na ňom za občasného miešania opekaj asi 5 minút dozlatista.", 5, "CDFGHIKLMN", {
+      heat: "stredný oheň", warn: "Cesnak sa pripaľuje ľahšie ako cibuľa – ak začne tmavnúť, stíš oheň." }],
+    ["Pridaj mleté mäso ({mlete}) a za stáleho miešania ho vareškou rozdrob na drobné kúsky. Opekaj asi 8 minút, kým nie je celé sivohnedé. Osoľ ({sol}), okoreň ({korenie}) a pridaj oregano ({oregano}) – ragù má byť výrazne ochutené.", 8, "ABCDEFGHIJKLMN", {
+      heat: "silnejší oheň" }],
+    ["Pridaj paradajky ({paradajky_kraj}), priveď do varu, stíš oheň, prikry a dus 30 minút. Občas premiešaj, a ak sa ragù prichytáva, prilej trochu vody.", 30, "BDEFHIKLM", {
+      heat: "mierny oheň", wait: true, done: "Ragù je husté a šťavnaté, paradajky sa rozpadli.",
+      tip: "Kto má rád, podleje mäso pred paradajkami 100 ml červeného vína a nechá ho odpariť." }],
+    ["Medzitým rúru predhrej na 180 °C a zapekaciu misu vylož papierom na pečenie. Syr ({eidam}) nastrúhaj nadrobno.", 0, "BCDEGILN"],
+    ["Bešamel: v menšom hrnci rozpusti maslo ({maslo}), vmiešaj múku ({muka}) a za stáleho miešania ju minútu opekaj na svetlú zápražku. Postupne prilievaj mlieko ({mlieko}) a stále miešaj metličkou. Pridaj muškátový orech ({muskat}), štipku soli a korenia a za stáleho miešania var asi 5 minút.", 6, "ACEGHIJKLMN", {
+      heat: "mierny oheň", done: "Bešamel je hladký a hustý ako puding.", warn: "Mlieko prilievaj po troškách a stále miešaj, inak vzniknú hrudky." }],
+    ["Skladaj do misy: vrstva platní ({lasagne}), na ňu časť ragù a vrstva bešamelu. Opakuj, kým neminieš všetko – posledná vrstva má byť ragù a bešamel. Navrch rovnomerne posyp syr.", 0, "ABCDEFGHIJKLMN", {
+      warn: "Platne musia byť celé pod omáčkou, inak ostanú tvrdé." }],
+    ["Peč asi 45 minút, kým nie je vrch zlatohnedý.", 45, "BDEFGHJKLMN", {
+      heat: "180 °C", wait: true, done: "Vrch je zlatohnedý, na okrajoch bublá a nôž prejde platňami ľahko.",
+      tip: "Ak vrch hnedne priskoro, prikry misu alobalom. Pred krájaním nechaj lasagne 15 minút odpočinúť – kúsky sa nerozpadnú." }],
+  ]),
+};
+
 /** Recepty overené metódou „kotva“ (v knihe idú pred staršími). */
-export const BOOK_CHECKED: Recipe[] = [svieckova, kapustnica, plnenaPaprika, vtacik, musaka, chili].map(finish);
+export const BOOK_CHECKED: Recipe[] = [svieckova, kapustnica, plnenaPaprika, vtacik, musaka, chili, segedin, paprikas, kulajda, medovnik, lasagne].map(finish);

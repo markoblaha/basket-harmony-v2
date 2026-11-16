@@ -665,6 +665,24 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     projekt → Billing) treba dorobiť ich detaily (zadania v `scratchpad/foto/details7.json`, hlavné fotky už sú
     `r7/musaka-1b.jpg`, `r7/chili-1a.jpg`). Pozor: rovnaký kľúč používajú aj AI funkcie appky (čítanie bločkov, hlas,
     recepty) – kým nie je kredit, v testovacej appke nepôjdu. `proto-images` znova vypnutá (v10).
+    **Kniha len z overených receptov (16. 11., pokyn majiteľa: odstrániť ukážkové recepty a recepty bez fotiek, ostatné
+    prerobiť novou metódou):** 18 ukážkových receptov z prvej verzie (bez fotiek, `catalog.ts`) je preč, kniha má 11 receptov
+    a všetky sú overené metódou „kotva“. Starších 5 (segedín, paprikáš s haluškami, kulajda, medovník, lasagne) je
+    prerobených: segedín 17 zdrojov (kotva apetitonline „Tradiční segedínský guláš“), paprikáš 14 + halušky 10 zdrojov
+    (kotvy vareni „Klasické kuře na paprice“ a nosalty „Nokedli egyszerűen“), kulajda 20 (apetitonline „Kulajda s vejcem“),
+    medovník 13 medovníkov s karamelovým krémom (apetitonline „Medovník“), lasagne 14 (toprecepty „Výborné lasagne“; základná
+    porcia je teraz 4, nie 6). Zhoda 96–100 %. Metóda vie dve nové veci: **skupina s vlastnými zdrojmi** (`check.groups` –
+    halušky sa porovnávajú len s receptami na halušky/nokedli/Spätzle, v tabuľke majú vlastný nadpis) a **porovnanie na celý
+    kus** (`check.whole` – torta: každý zdroj je jedna torta, porcie sú kúsky na krájanie). Riadok so skupinou bez vlastných
+    zdrojov (medovník „Krém“) oddelí maslo do krému od masla do cesta. Starý spôsob „spájania 3–5 zdrojov“ (`BOOK_MERGED`
+    a jeho testy) je zrušený. Kategórie a rýchly výber bez receptu sa nezobrazujú, dlaždice kategórií a Ochutnávača majú
+    fotky z knihy namiesto ukážkových jedál. „¼ lyžičky“ sa píše zlomkom. **Fotky týchto 5 receptov sú zatiaľ staré
+    (3 zábery z 3. 11.)** – nové realistické (hlavná + 3 detaily) čakajú na dobitie kreditu Gemini (16. 11. stále chyba 402;
+    `proto-images` krátko zapnutá v11 a hneď vypnutá v12). Test fotiek dočasne žiada aspoň 3 zábery; po nových fotkách vrátiť
+    na 4 (`kniha.test.ts`) a v `kniha-overene.ts` zmazať `photos: 3`. Pozor pri kulajde: stará fotka má vajce v polievke,
+    nový recept dáva polovičky vareného vajca. V DB (`recipe_plans`) ostali plány s kľúčmi zmazaných receptov
+    (palacinky, bryndzove, cesnakova, rezen, sosovica, vepro) – appka ich neukazuje a nepadá (overené); zmazanie riadkov len
+    so súhlasom majiteľa.
     **Ochutnávač – ťuk vľavo/vpravo (16. 11.):** ťuk na ľavú tretinu fotky = predchádzajúca fotka, na pravú = ďalšia
     (`PhotoSwiper` aj vo feede), dvojťuk „Chcem“ len v strednej časti (rýchle ťukanie na kraj nedá „Chcem“); návod
     v Ochutnávači upravený. Overené dotykom v prehliadači.
