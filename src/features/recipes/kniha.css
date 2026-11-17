@@ -20,6 +20,26 @@
 .pic-kb_babovka_1s, .bhm .pic-kb_babovka_1s { background-image: url("/kniha/babovka-1s.webp"); }
 .pic-kb_cheesecake_1, .bhm .pic-kb_cheesecake_1 { background-image: url("/kniha/cheesecake-1.webp"); }
 .pic-kb_cheesecake_1s, .bhm .pic-kb_cheesecake_1s { background-image: url("/kniha/cheesecake-1s.webp"); }
+.pic-kb_svieckova_1, .bhm .pic-kb_svieckova_1 { background-image: url("/kniha/svieckova-1.webp"); }
+.pic-kb_svieckova_1s, .bhm .pic-kb_svieckova_1s { background-image: url("/kniha/svieckova-1s.webp"); }
+.pic-kb_kulajda_1, .bhm .pic-kb_kulajda_1 { background-image: url("/kniha/kulajda-1.webp"); }
+.pic-kb_kulajda_1s, .bhm .pic-kb_kulajda_1s { background-image: url("/kniha/kulajda-1s.webp"); }
+.pic-kb_kapustnica_1, .bhm .pic-kb_kapustnica_1 { background-image: url("/kniha/kapustnica-1.webp"); }
+.pic-kb_kapustnica_1s, .bhm .pic-kb_kapustnica_1s { background-image: url("/kniha/kapustnica-1s.webp"); }
+.pic-kb_plnena_paprika_1, .bhm .pic-kb_plnena_paprika_1 { background-image: url("/kniha/plnena_paprika-1.webp"); }
+.pic-kb_plnena_paprika_1s, .bhm .pic-kb_plnena_paprika_1s { background-image: url("/kniha/plnena_paprika-1s.webp"); }
+.pic-kb_sekana_1, .bhm .pic-kb_sekana_1 { background-image: url("/kniha/sekana-1.webp"); }
+.pic-kb_sekana_1s, .bhm .pic-kb_sekana_1s { background-image: url("/kniha/sekana-1s.webp"); }
+.pic-kb_syr_1, .bhm .pic-kb_syr_1 { background-image: url("/kniha/syr-1.webp"); }
+.pic-kb_syr_1s, .bhm .pic-kb_syr_1s { background-image: url("/kniha/syr-1s.webp"); }
+.pic-kb_bramboraky_1, .bhm .pic-kb_bramboraky_1 { background-image: url("/kniha/bramboraky-1.webp"); }
+.pic-kb_bramboraky_1s, .bhm .pic-kb_bramboraky_1s { background-image: url("/kniha/bramboraky-1s.webp"); }
+.pic-kb_knedle_1, .bhm .pic-kb_knedle_1 { background-image: url("/kniha/knedle-1.webp"); }
+.pic-kb_knedle_1s, .bhm .pic-kb_knedle_1s { background-image: url("/kniha/knedle-1s.webp"); }
+.pic-kb_strudla_1, .bhm .pic-kb_strudla_1 { background-image: url("/kniha/strudla-1.webp"); }
+.pic-kb_strudla_1s, .bhm .pic-kb_strudla_1s { background-image: url("/kniha/strudla-1s.webp"); }
+.pic-kb_lievance_1, .bhm .pic-kb_lievance_1 { background-image: url("/kniha/lievance-1.webp"); }
+.pic-kb_lievance_1s, .bhm .pic-kb_lievance_1s { background-image: url("/kniha/lievance-1s.webp"); }
 /* Kniha receptov v appke – doplnky k triedam mockupu (gal, bgroups, bsteps, sbx, binfo). */
 .bhm .bopt { font-size: 12px; font-weight: 700; color: var(--ter); margin-left: 6px; }
 .bhm .bsrc { display: flex; flex-direction: column; gap: 6px; }

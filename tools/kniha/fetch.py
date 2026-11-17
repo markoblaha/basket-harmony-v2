@@ -52,7 +52,7 @@ def micro(u, s):
         if m: return m.group(1)
         v = all_(prop); return v[0] if v else None
     name = all_("name"); rv = meta("ratingValue"); rc = meta("ratingCount") or meta("reviewCount")
-    if not (rv and rv.replace(".", "").isdigit() and float(rv) > 0): rc = None  # počet bez hodnotenia (Receptár: 0/5) nie sú hodnotenia
+    rv = rc = None  # Receptár: hodnotenia v mikrodátach nesedia so stránkou (0/5 pri tisícoch hlasov) – recept je len na porovnanie
     return {"url": u, "site": urllib.parse.urlparse(u).netloc.replace("www.", ""), "name": name[0] if name else "",
             "yield": meta("recipeYield"), "time": meta("totalTime"), "rating": float(rv) if rv and rv.replace(".", "").isdigit() and float(rv) > 0 else None,
             "count": int(rc) if rc and rc.isdigit() and int(rc) > 0 else None,

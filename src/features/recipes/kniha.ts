@@ -44,19 +44,20 @@ export function bookPhotos(r: Pick<Recipe, "id" | "book">) {
 /* Ako sa surovina volá v texte postupu (začiatky slov, slovenské tvary). Používa ho kontrolný program
  * (kniha.test.ts: suroviny ↔ postup) aj varenie (suroviny pri kroku). Nová surovina v knihe = nový riadok. */
 export const SAID: Record<string, string> = {
-  pliecko: "mäs", bocik: "bôčik|mäs", kurca: "kurč|mäs", kuracie_stehna: "steh|mäs|kurať|kurac", mlete: "mäs", mast: "masť|mast[ií]", cibula: "cibu", cesnak: "cesn", rasca: "rasc",
+  pliecko: "mäs", bocik: "bôčik|mäs", kurca: "kurč|mäs", kuracie_stehna: "steh|mäs|kurať|kurac", kuracie_prsia: "prs|mäs|kurať|kurac", mlete: "mäs", mast: "masť|mast[ií]", cibula: "cibu", cesnak: "cesn", rasca: "rasc",
   paprika_mleta: "papri", paprika_udena: "papri", sol: "soľ|osoľ|osol|soli", korenie: "koren|koreň|okoren|okoreň", gulas_korenie: "koren", tekute_korenie: "tekut\\S* koren",
   vyvar: "vývar", kapusta: "kapust", smotana_sladka: "smotan", smotana: "smotan", kysla_smotana: "smotan", muka: "múk", muka_polohruba: "múk", muka_hruba: "múk",
   knedla: "knedľ", olej: "olej", voda: "vod", vajce: "vajc|vajce|vajíč|žĺt|bielk", zltok: "žĺt", maslo: "masl", zemiaky: "zemiak", sampinony: "hub", kopor: "kôpor", ocot: "oct",
   tuk: "tuk", cukor: "cukr|cukor|pocukr", cukor_mly: "cukr|cukor|práškov", cukor_vanil: "vanilk", med: "med(om)?\\b", soda: "sód", kondenz: "kondenz\\S* mliek|karamel",
-  orechy: "orech(y|mi)\\b", olivovy_olej: "olej", mrkva: "mrkv", zeler_stopkovy: "zeler", pasirovane: "paradaj", muskat: "muškát", lasagne: "platn",
-  parmezan: "parmez|syr", pecorino: "pecorin|syr", kremovy_syr: "syr", mlieko: "mliek", hovadzie: "mäs", udene: "mäs|údené", klobasa: "klobás",
+  orechy: "orech(y|mi)\\b", olivovy_olej: "olej", mrkva: "mrkv", zeler_stopkovy: "zeler", pasirovane: "paradaj", muskat: "muškát", lasagne: "lasagn",
+  parmezan: "parmez|syr", pecorino: "pecorin|syr", kremovy_syr: "syr", mlieko: "mliek", hovadzie: "mäs|sviečkov", udene: "mäs|údené", klobasa: "klobás",
   huby_susene: "hub|hríb", baklazan: "baklažán", pretlak: "paradajk\\S* pretlak|pretlak", paradajky_kraj: "paradaj", fazula: "fazu", paprika: "papri", paprika_cervena: "papri",
   chilli: "chilli", rimska_rasca: "rímsk\\S* rasc", skorica: "škoric", bobkovy_list: "bobkov", nove_korenie: "nov\\S* koren", korenie_cele: "koren",
-  citron: "citrón", citron_kora: "kôr", vanilka: "vanilk", brusnice: "brusn", horcica: "horčic", uhorky_kysle: "uhor", ryza: "ryž", eidam: "syr", oregano: "oregan",
+  citron: "citrón", citron_kora: "kôru|kôra|kôry|citrónov\\S* kôr", vanilka: "vanilk", brusnice: "brusn", horcica: "horčic", uhorky_kysle: "uhor", ryza: "ryž", eidam: "syr", oregano: "oregan",
   majoran: "majorán", slanina: "slanin|pancett|špek", parky: "párk|párok", zeler: "zeler", petrzlen: "petržl", petrzlenova_vnat: "petržl|vňať",
   bryndza: "bryndz", spagety: "špaget|cestovin", cestoviny: "kolienk|cestovin", susienky: "sušienk", majoneza: "majonéz", tatarska: "tatársk",
-  kakao: "kaka", prasok: "kypriac", hrasok: "hrášok|hrášk", jablko: "jablk|jabĺk", kapia: "kápi",
+  kakao: "kaka", prasok: "kypriac|prášk\\S* do peč", paradajky: "paradaj", klincek: "klinček", ryza_varena: "ryž", pazitka: "pažít", marhule: "marhu",
+  listkove_cesto: "lístkov", skoricovy_cukor: "škoricov\\S* cukor|škoricov\\S* cukr", hrozienka: "hrozien", tvaroh: "tvaroh", struhanka: "strúhank", hrasok: "hrášok|hrášk", jablko: "jablk|jabĺk", kapia: "kápi",
 };
 /** Výraz, ktorý nájde surovinu v texte (na začiatku slova). */
 export const said = (food: string) => new RegExp(`(^|[^a-záäčďéíĺľňóôŕšťúýž])(${SAID[food] ?? "\\u0000"})`, "i");
@@ -127,9 +128,14 @@ export type CheckRow = {
   hi: number | null;
   /** Koľko zdrojov uvádza množstvo (porovnáva sa od 4). */
   quantified: number;
-  /** Naše množstvo je v bežnom rozpätí (null = neporovnáva sa). Malé množstvá (koreniny pod 1 g) sa porovnávajú
-   * len hrubo: mimo je až viac ako trojnásobok bežného. */
+  /** Naše množstvo nie je neobvyklé – je v Tukeyho hraniciach (null = neporovnáva sa). Malé množstvá (koreniny pod 1 g)
+   * sa porovnávajú len hrubo: neobvyklé je až viac ako trojnásobok bežného. Do pravidla „najviac 1“ sa ráta toto. */
   typical: boolean | null;
+  /** Naše množstvo je v pásme „bežne“ (20.–80. percentil) – len informácia. */
+  usual: boolean | null;
+  /** Tukeyho hranice (log škála): mimo nich je množstvo neobvyklé. */
+  fenceLo: number | null;
+  fenceHi: number | null;
   inRange: boolean | null;
 };
 
@@ -149,9 +155,9 @@ export type CheckResult = {
   actsMissing: string[];
   /** Počet úkonov väčšiny. */
   actsMajor: number;
-  /** Koľko našich množstiev je mimo bežného rozpätia. */
+  /** Koľko našich množstiev je neobvyklých (mimo Tukeyho hraníc). */
   outside: number;
-  /** Prešiel kontrolou: chýba najviac 1 surovina väčšiny, najviac 1 množstvo mimo bežného, väčšina úkonov väčšiny. */
+  /** Prešiel kontrolou: chýba najviac 1 surovina väčšiny, najviac 1 neobvyklé množstvo, väčšina úkonov väčšiny. */
   ok: boolean;
   /** Zhoda 0–1: priemer (suroviny väčšiny, množstvá v bežnom rozpätí, úkony väčšiny). */
   score: number;
@@ -221,10 +227,19 @@ export function bookCheck(r: Recipe): CheckResult | null {
     const cmp = ours != null && ours > 0 && q >= 4 && !isBase;
     // na porciu (alebo na 100 g základu) pod 1 g = korenina: porovnáva sa len hrubo
     const tiny = cmp && pct(per, 0.5) / (baseRow || c.whole ? 1 : r.portions) < 1;
+    // Neobvyklé množstvo = mimo Tukeyho hraníc na logaritmickej škále (kvartily ± 1,5 × medzikvartilové rozpätie);
+    // pásmo lo–hi (20.–80. percentil) je len informácia „bežne“.
+    const lg = per.filter((x) => x > 0).map(Math.log);
+    const q1 = lg.length >= 4 ? pct(lg, 0.25) : null;
+    const q3 = lg.length >= 4 ? pct(lg, 0.75) : null;
+    const fenceLo = q1 != null && q3 != null ? Math.exp(q1 - 1.5 * (q3 - q1)) : null;
+    const fenceHi = q1 != null && q3 != null ? Math.exp(q3 + 1.5 * (q3 - q1)) : null;
     return {
       foods, group: row.group, all: letters.length, label: row.label, unit: row.unit, count: have.length, share: have.length / letters.length,
       ours, min, max, lo, hi, quantified: q,
-      typical: !cmp ? null : tiny ? ours! <= hi! * 3 : (ours! >= lo! || near(ours!, lo!)) && (ours! <= hi! || near(ours!, hi!)),
+      fenceLo, fenceHi,
+      usual: cmp ? (ours! >= lo! || near(ours!, lo!)) && (ours! <= hi! || near(ours!, hi!)) : null,
+      typical: !cmp ? null : tiny ? ours! <= hi! * 3 : ours! >= fenceLo! * 0.999 && ours! <= fenceHi! * 1.001,
       inRange: cmp ? (ours! >= min! || near(ours!, min!)) && (ours! <= max! || near(ours!, max!)) : null,
     };
   });

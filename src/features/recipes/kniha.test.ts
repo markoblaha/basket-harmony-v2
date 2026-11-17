@@ -103,8 +103,8 @@ const checkOf = (r: Recipe, g?: string) => {
     expect(bookCheck(r)!.missing.length, bookCheck(r)!.missing.join(", ")).toBeLessThanOrEqual(1);
   });
 
-  it("najviac 1 množstvo je mimo bežného rozpätia", () => {
-    const out = bookCheck(r)!.rows.filter((x) => x.typical === false).map((x) => `${x.foods.join("+")}: ${x.ours?.toFixed(1)} (bežne ${x.lo?.toFixed(1)}–${x.hi?.toFixed(1)})`);
+  it("najviac 1 množstvo je neobvyklé (mimo Tukeyho hraníc)", () => {
+    const out = bookCheck(r)!.rows.filter((x) => x.typical === false).map((x) => `${x.foods.join("+")}: ${x.ours?.toFixed(1)} (obvykle ${x.fenceLo?.toFixed(1)}–${x.fenceHi?.toFixed(1)})`);
     expect(out.length, out.join("; ")).toBeLessThanOrEqual(1);
   });
 

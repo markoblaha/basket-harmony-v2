@@ -23,7 +23,7 @@ export function inCategory(r: Recipe, cat: string | null) {
 }
 
 /* ------------------------------------------------------------------ jednotky */
-const SPOON_UNITS = ["lyzica", "lyzicka", "strucik", "stipka", "hrst", "hrncek", "bal"];
+const SPOON_UNITS = ["lyzica", "lyzicka", "strucik", "stipka", "hrst", "hrncek", "bal", "platok"];
 /** Množstvo bez čísla („soľ podľa chuti“, „olej na vyprážanie“) – nekupuje sa podľa množstva a vo výžive sa nepočíta. */
 export const isFreeAmount = (unit: string) => unit === "podla_chuti" || unit === "podla_potreby";
 
@@ -55,6 +55,8 @@ export function toGrams(foodKey: string | null, qty: number, unit: string): numb
     case "hrst": return qty * (food.lyz <= 7 ? 10 : 30);
     case "hrncek": return qty * 250 * food.dens;
     case "bal": return food.g ? qty * food.g : food.pack?.g ? qty * food.pack.g : null;
+    // Plátok: hmotnosť kusu potraviny (eidam 40 g), inak 15 g (saláma, slanina).
+    case "platok": return qty * (food.g ?? 15);
     default: return null;
   }
 }
@@ -66,7 +68,7 @@ export function roundQty(q: number, unit: string) {
     if (q < 200) return Math.round(q / 5) * 5;
     return Math.round(q / 10) * 10;
   }
-  if (unit === "strucik" || unit === "stipka" || unit === "bal") return Math.max(1, Math.round(q));
+  if (unit === "strucik" || unit === "stipka" || unit === "bal" || unit === "platok") return Math.max(1, Math.round(q));
   if (unit === "ks" || unit === "lyzica" || unit === "lyzicka") return Math.max(0.5, Math.round(q * 2) / 2);
   return Math.round(q * 10) / 10;
 }

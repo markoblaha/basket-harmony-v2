@@ -748,7 +748,24 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     s USDA hodnotami a alergénmi. Dlaždice kategórií berú obrázok z prvého receptu kategórie, šaláty sú v „Bez mäsa
     a šaláty“. Testy logiky majú vlastné skúšobné recepty (nezávislé od knihy). Overené na testovacej adrese (prihlásený,
     telefón): kategórie, detail receptu, tabuľka porovnania, žiadne chyby v konzole.
-    **Čaká na majiteľa:** prejsť šaržu 1 v testovacej appke a povedať, čo zmeniť (v2, v3…), alebo spustiť výrobu.
+    **Šarža 2 (17. 11. 2026, majiteľ: „Pokračuj“) – v knihe je 20 receptov (míľnik 20).** Kniha je rozdelená: `kniha-pomocne.ts`
+    (spoločné funkcie, pôvod tipov `from()`/`fromAct()` z dát porovnania – písmená sa nikdy nepíšu ručne), `kniha-sarza1.ts`,
+    `kniha-sarza2.ts`, `kniha-overene.ts` ich spája. Šarža 2: sviečková Toprecepty (58), juhočeská kulajda Toprecepty (133),
+    slovenská kapustnica s klobásou Vaření (87), plnené papriky Vaření (27), babkina sekaná Apetit (651), vyprážaný syr
+    Toprecepty (62), zemiakové placky Vaření (46 867), marhuľové knedle Vaření (188), jablková štrúdľa Apetit (220),
+    lievance Vaření (1 037). Obrázky „Testovacia šarža 2“ (`node tools/kniha/obrazky-sarze.cjs <priečinok> 2`).
+    **Zmeny metódy (platia pre všetky šarže):** (1) „mimo bežného“ = **Tukeyho hranice na log škále** (kvartily ± 1,5 ×
+    medzikvartilové rozpätie), nie 20.–80. percentil – pásmo z definície označilo 40 % zdrojov a vyraďovalo najlepšie recepty
+    (napr. bramboráky so 46 867 hodnoteniami); pásmo ostáva v tabuľke ako „bežne“, do pravidla „najviac 1“ sa ráta len
+    „neobvyklé“. (2) Víťaz musí mať **aspoň ★4,0 a 10 hodnotení**. (3) Bez množstva smú byť koreniny, voda/vývar na
+    podlievanie, trojobal a tuk na vyprážanie, zriedkavé prílohy/ozdoba. (4) Receptár.sk sa číta z mikrodát, jeho hodnotenia
+    sa ignorujú (nesedia) – je len na porovnanie. (5) Pečenie a knedle sa porovnávajú na 100 g základnej suroviny.
+    Dôsledok pre šaržu 1: paprikáš je teraz Toprecepty „Kuře na paprice (i pro začátečníky)“ (561) a segedín Apetit
+    „Tradiční segedínský guláš“ (248) – oba nanovo preložené. Nové: jednotka `platok`, `book.portionsGuess` (zdroj porcie
+    neuvádza – appka to pri porciách napíše), ~15 nových potravín s USDA hodnotami.
+    **Odložené:** gulášová polievka (má víťaza Apetit „Pikantní gulášová polévka s chilli“, 259 – do šarže 3), rezeň
+    (len 12 klasických receptov, víťaz s 15 hodnoteniami – treba širší zber), cesnaková polievka je v šarži 1.
+    **Čaká na majiteľa:** prejsť šarže 1 a 2 v testovacej appke a povedať, čo zmeniť; inak pokračovať šaržou 3.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

@@ -79,9 +79,13 @@ RULES = [
     (r"smetan|smotan", "smotana_sladka"),
     (r"zloutk|zltk|zltok|zloutek", "zltok"),
     (r"bilk|bielk", "vajce_bielok"),
-    (r"vejc|vajic|vajec|vajca|vajce|vajick|vajicko", "vajce"),
+    (r"vejc|vajic|vajec|vajca|vajce|vajci|vajick|vajicko", "vajce"),
     (r"rozink|hrozien", "hrozienka"),
     (r"brusin|brusnic", "brusnice"),
+    (r"hrebic|klinc", "klincek"),
+    (r"badyan|anyz|anis", "badyan"),
+    (r"pernikov\w* koren", "pernikove_korenie"),
+    (r"kari koren|\bkari\b|curry", "kari_korenie"),
     (r"rozmaryn", "rozmaryn"),
     (r"kokos", "kokos"),
     (r"cokolad|granko", "cokolada"),
@@ -92,7 +96,7 @@ RULES = [
     (r"polevkov\w* zelenin|polievkov\w* zelenin|korenov\w* zelenin|zelenin\w* na polev", "zelenina_polievkova"),
     (r"margarin|rama|perla|flora", "tuk"),
     (r"gulasov\w* koren|gulasov\w* korenie|koren\w* na gulas", "gulas_korenie"),
-    (r"polevkov\w* koren|maggi|podravk|vegeta|masox|dochucov|sojov\w* omack|worcester|liboc|libec|glutaman", "dochucovadlo"),
+    (r"polevkov\w* koren|maggi|podravk|veget|masox|dochucov|sojov\w* omack|worcester|liboc|libec|glutaman", "dochucovadlo"),
     (r"\bkren|\bkren\b", "kren"),
     (r"salotk|salotka", "cibula"),
     (r"feferon|ostr\w* papric|paliv\w* papric|jalapen", "chilli"),
@@ -165,6 +169,10 @@ RULES = [
     (r"pepr|pepr\w* cel|korenie|cierne koren|cern\w* koren|kulick", "korenie"),
     (r"muskat", "muskat"),
     (r"skoric", "skorica"),
+    (r"skoricov\w* cukr|skoricov\w* cukor", "skoricovy_cukor"),
+    (r"merunk|marhul", "marhule"),
+    (r"salam|sunkov\w* salam", "salama"),
+    (r"koren\w* na mlet\w* mas", "korenie_mlete_maso"),
     (r"vanilkov\w* cukr|vanilin\w* cukr|vanilk\w* cukor|vanilin|vanilk|vanilin", "cukor_vanil"),
     (r"mouckov\w* cukr|moucn\w* cukr|prask\w* cukor|praskov\w* cukor|mlet\w* cukr|cukr moucka|moucka", "cukor_mly"),
     (r"cukr|cukor|krystal", "cukor"),
@@ -178,7 +186,8 @@ RULES = [
     (r"horcic", "horcica"),
     (r"strouhank|struhank", "struhanka"),
     (r"spaget|spaghet|testovin|cestovin|linguin|bucatin|rigaton|tagliatel", "spagety"),
-    (r"chleb|chlieb|veka|rohlik|bagetk|toust|krajic|kruton|topink", "chlieb"),
+    (r"rohlik|rozok|rozk|zeml|housk", "rozok"),
+    (r"chleb|chlieb|veka|bagetk|toust|krajic|kruton|topink", "chlieb"),
     (r"voda|vody|vodou|vodu|vod\b", "voda"),
     (r"sul\b|soli\b|sol\b|soľ|osolit|\bsul|sul,|morsk\w* sul", "sol"),
 ]
@@ -231,6 +240,7 @@ def num(s):
 
 # Kľúče výberu → kľúče databázy potravín v appke (foods.ts); prevody (kus, lyžica, hustota) sa berú z appky.
 APP = {"cream_cheese": "kremovy_syr", "guanciale": "slanina", "zemiaky_varene": "zemiaky", "syr_tvrdy": "eidam", "huby_susene": "huby_susene"}
+
 def appfood(key):
     return FOODS.get(APP.get(key, key))
 
@@ -244,7 +254,8 @@ def grams(key, qty, unit, text=""):
         if unit == "lyzica": return qty * af["lyz"]
         if unit == "lyzicka": return qty * af["lyzk"]
         if unit == "hrst": return qty * (10 if af["lyz"] <= 7 else 30)
-        if unit == "pack" and af.get("g") and key in ("cukor_vanil", "prasok"): return qty * af["g"]
+        if unit == "pack" and af.get("g") and key in ("cukor_vanil", "prasok", "skoricovy_cukor"): return qty * af["g"]
+        if unit == "platok": return qty * (af.get("g") or 15)
         if unit in ("ks", None) and af.get("g"):
             return qty * af["g"]  # ako v appke: veľkosť („veľká cibuľa“) sa neprepočítava
     if unit == "g": return qty

@@ -42,8 +42,8 @@ export type Step = {
 /**
  * Overenie receptu: recept je jeden skutočný recept (kotva = najhodnotenejší, ktorý prešiel kontrolou), prevzatý
  * presne (suroviny, množstvá, postup – len preložený). Každá surovina, množstvo a úkon sa porovná s ostatnými
- * receptami toho istého variantu (11–20). Prejde, keď: chýba najviac 1 surovina väčšiny, najviac 1 množstvo je mimo
- * bežného rozpätia a má väčšinu úkonov väčšiny. Výpočet: bookCheck v kniha.ts, test v kniha.test.ts.
+ * receptami toho istého variantu (11–20). Prejde, keď: chýba najviac 1 surovina väčšiny, najviac 1 množstvo je neobvyklé
+ * (mimo Tukeyho hraníc na log škále) a má väčšinu úkonov väčšiny. Výpočet: bookCheck v kniha.ts, test v kniha.test.ts.
  */
 export type BookCheck = {
   /** Písmeno zdroja, ktorého recept je základom. */
@@ -91,6 +91,8 @@ export type BookInfo = {
    * „whole“ = pečenie, len celé násobky receptu (forma). Časy sa neprepočítavajú, vajcia sa zaokrúhlia na celé.
    */
   scale?: "free" | "piece" | "whole";
+  /** Pôvodný recept počet porcií neuvádza – porcie sú odhad (napr. knedle, štrúdľa na krájanie). */
+  portionsGuess?: boolean;
   /** Overenie metódou „kotva“ (novšie recepty); staršie recepty sú spojené z 3–5 zdrojov bez neho. */
   check?: BookCheck;
 };

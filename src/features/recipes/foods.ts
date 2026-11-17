@@ -57,7 +57,7 @@ export const FOODS: Record<string, Food> = {
   pliecko: f("Bravčové pliecko", "meat_fish", [236, 17.2, 0, 0, 18, 6.2, 0, 0.16], { loose: true, al: [] }), // fdc 167843
   krkovicka: f("Bravčová krkovička", "meat_fish", [250, 16, 0, 0, 21, 7.5, 0, 0.15], { loose: true }),
   bravcove_stehno: f("Bravčové stehno (rezne)", "meat_fish", [140, 21, 0, 0, 6, 2, 0, 0.15], { loose: true }),
-  kuracie_prsia: f("Kuracie prsia", "meat_fish", [110, 23, 0, 0, 1.5, 0.4, 0, 0.15], { loose: true }),
+  kuracie_prsia: f("Kuracie prsia", "meat_fish", [120, 22.5, 0, 0, 2.6, 0.6, 0, 0.11], { loose: true, al: [] }), // fdc 171077
   kuracie_stehna: f("Kuracie stehná", "meat_fish", [214, 16.4, 0.2, 0, 16, 4.4, 0, 0.21], { loose: true, g: 250, edible: 0.75, al: [] }), // fdc 172378 (stehno s kožou); jedlý podiel odhad – kosť asi štvrtina
   hovadzie: f("Hovädzie zadné", "meat_fish", [198, 20.7, 0, 0, 12.2, 4.8, 0, 0.13], { loose: true, al: [] }), // fdc 168697
   mlete: f("Mleté mäso zmiešané", "meat_fish", [263, 16.9, 0, 0, 21.2, 7.9, 0, 0.14], { pack: { g: 500 }, al: [] }), // fdc 167902
@@ -74,7 +74,7 @@ export const FOODS: Record<string, Food> = {
   petrzlen: f("Petržlen koreň", "produce", [55, 3, 12, 4.9, 0.6, 0.1, 4.3, 0.03], { g: 80, loose: true, al: [] }),
   zeler: f("Zeler", "produce", [42, 1.5, 9.2, 1.6, 0.3, 0.1, 1.8, 0.25], { g: 400, loose: true, al: ["zeler"] }), // fdc 170400
   sampinony: f("Šampiňóny", "produce", [22, 3.1, 3.3, 2, 0.3, 0.1, 1, 0.01], { pack: { g: 250 }, al: [] }), // fdc 169251
-  paradajky: f("Paradajky", "produce", [18, 0.9, 3.9, 2.6, 0.2, 0, 1.2, 0.01], { g: 120, loose: true }),
+  paradajky: f("Paradajky", "produce", [18, 0.9, 3.9, 2.6, 0.2, 0, 1.2, 0.01], { g: 120, loose: true, al: [] }), // fdc 170457
   uhorka: f("Uhorka šalátová", "produce", [15, 0.7, 3.6, 1.7, 0.1, 0, 0.5, 0], { g: 300 }),
   paprika: f("Paprika", "produce", [20, 0.9, 4.6, 2.4, 0.2, 0.1, 1.7, 0.01], { g: 150, loose: true, al: [] }), // fdc 170427 (zelená)
   paprika_cervena: f("Červená paprika", "produce", [26, 1, 6, 4.2, 0.3, 0.1, 2.1, 0.01], { g: 180, loose: true, al: [] }), // fdc 170108
@@ -91,17 +91,17 @@ export const FOODS: Record<string, Food> = {
   vajce: f("Vajcia", "dairy_eggs", [143, 12.6, 0.7, 0.4, 9.5, 3.1, 0, 0.35], { g: 50, pack: { ks: 10 }, al: ["vajcia"] }), // fdc 171287
   maslo: f("Maslo", "dairy_eggs", [717, 0.9, 0.1, 0.1, 81.1, 50.5, 0, 0.03], { lyz: 14, pack: { g: 250 }, al: ["mlieko"] }), // fdc 173430
   parmezan: f("Parmezán", "dairy_eggs", [392, 35.8, 3.2, 0.1, 25, 14.9, 0, 2.94], { pack: { g: 100 }, al: ["mlieko"] }), // fdc 170848
-  eidam: f("Eidam", "dairy_eggs", [357, 25, 1.4, 0, 28.6, 18.7, 0, 2.43], { pack: { g: 100 }, al: ["mlieko"] }), // fdc 173419
+  eidam: f("Eidam", "dairy_eggs", [357, 25, 1.4, 0, 28.6, 18.7, 0, 2.43], { g: 40, pack: { g: 100 }, al: ["mlieko"] }), // fdc 173419; g = plátok asi 1,5 cm (40 g)
   bryndza: f("Bryndza", "dairy_eggs", [260, 14, 2, 2, 21, 14, 0, 2.4], { lyz: 20, pack: { g: 125 }, al: ["mlieko"] }),
   feta: f("Feta", "dairy_eggs", [264, 14, 4, 4, 21, 15, 0, 2.8], { pack: { g: 200 } }),
-  tvaroh: f("Tvaroh", "dairy_eggs", [120, 13, 3.5, 3.5, 6, 4, 0, 0.08], { pack: { g: 250 } }),
+  tvaroh: f("Tvaroh", "dairy_eggs", [120, 13, 3.5, 3.5, 6, 4, 0, 0.08], { lyz: 20, pack: { g: 250 }, al: ["mlieko"] }),
 
   // ---------------------------------------------------- trvanlivé a pečivo
   spagety: f("Špagety", "pantry", [371, 13, 74.7, 2.7, 1.5, 0.3, 3.2, 0.01], { pack: { g: 500 }, al: ["lepok"], check: true }), // fdc 169736
   cestoviny: f("Cestoviny (kolienka)", "pantry", [371, 13, 74.7, 2.7, 1.5, 0.3, 3.2, 0.01], { pack: { g: 500 }, al: ["lepok"], check: true }), // fdc 169736
   ryza: f("Ryža", "pantry", [365, 7.1, 80, 0.1, 0.7, 0.2, 1.3, 0.01], { lyz: 15, pack: { g: 1000 }, al: [] }), // fdc 169756
   sosovica: f("Šošovica", "pantry", [352, 25, 60, 2, 1.1, 0.2, 11, 0.02], { pack: { g: 500 } }),
-  struhanka: f("Strúhanka", "pantry", [395, 13, 72, 6, 5, 1, 4.5, 1.2], { pack: { g: 250 } }),
+  struhanka: f("Strúhanka", "pantry", [395, 13.3, 72, 6.2, 5.3, 1.2, 4.5, 1.83], { lyz: 8, lyzk: 2.7, dens: 0.45, pack: { g: 250 }, al: ["lepok"], check: true }), // fdc 174928
   pasirovane: f("Pasírované paradajky", "pantry", [16, 0.8, 3.5, 2.6, 0.3, 0, 1.9, 0.29], { pack: { g: 500 }, al: [] }), // fdc 170051
   kapusta: f("Kyslá kapusta", "pantry", [19, 0.9, 4.3, 1.8, 0.1, 0, 2.9, 1.65], { pack: { g: 500 }, al: [] }), // fdc 169279
   kokosove_mlieko: f("Kokosové mlieko", "pantry", [197, 2, 3, 2, 20, 18, 0, 0.05], { pack: { ml: 400 } }),
@@ -157,6 +157,17 @@ Object.assign(FOODS, {
   jablko: f("Jablko", "produce", [52, 0.3, 13.8, 10.4, 0.2, 0, 2.4, 0], { g: 180, loose: true, al: [] }), // fdc 171688
   tatarska: f("Tatárska omáčka", "pantry", [211, 1, 13.3, 4.2, 16.7, 3.3, 0.5, 1.67], { lyz: 14, lyzk: 5, pack: { g: 250 }, al: ["vajcia", "horcica"], check: true }), // fdc 171826
   tekute_korenie: f("Tekuté korenie (Maggi)", "pantry", [53, 8.1, 4.9, 0.4, 0.6, 0.1, 0.8, 13.73], { lyz: 15, lyzk: 5, pack: { ml: 160 }, al: ["lepok", "soja"], check: true }), // ako sójová omáčka fdc 174277
+  // ---------------------------------------------------- šarža 2 (17. 11. 2026), USDA SR Legacy
+  salama: f("Šunková saláma", "meat_fish", [164, 16.6, 3.6, 1, 8.8, 0.5, 1.3, 2.04], { pack: { g: 100 }, al: [], check: true }), // fdc 173864 (šunka)
+  rozok: f("Rožok", "bakery", [310, 10.9, 52, 5.5, 6.5, 1.4, 2, 1.17], { g: 40, pack: { ks: 1 }, al: ["lepok"], check: true }), // fdc 172793
+  korenie_mlete_maso: f("Korenie na mleté mäso", "pantry", [282, 14.1, 54, 10.3, 12.9, 2.1, 34.9, 0.17], { lyz: 7, lyzk: 2.5, pack: { g: 30 }, al: [], check: true }), // zmes, hodnoty ako paprika (fdc 171329)
+  listkove_cesto: f("Lístkové cesto", "dairy_eggs", [551, 7.3, 45.1, 0.7, 38.1, 9.6, 1.5, 0.62], { pack: { g: 500 }, al: ["lepok"], check: true }), // fdc 172790
+  hrozienka: f("Hrozienka", "pantry", [299, 3.3, 79.3, 65.2, 0.2, 0.1, 4.5, 0.07], { lyz: 10, lyzk: 3.5, pack: { g: 100 }, al: ["siricitany"], check: true }), // fdc 168165
+  skoricovy_cukor: f("Škoricový cukor", "pantry", [387, 0, 100, 99.8, 0, 0, 0, 0], { g: 20, lyz: 12, lyzk: 4, pack: { g: 20 }, al: [] }), // ako cukor; 1 balenie 20 g
+  marhule: f("Marhule", "produce", [48, 1.4, 11.1, 9.2, 0.4, 0, 2, 0], { g: 40, loose: true, al: [] }), // fdc 171697
+  pazitka: f("Pažítka", "produce", [30, 3.3, 4.3, 1.9, 0.7, 0.1, 2.5, 0.01], { lyz: 3, lyzk: 1, pack: { g: 25 }, al: [] }), // fdc 169994
+  klincek: f("Klinčeky", "pantry", [274, 6, 65.5, 2.4, 13, 4, 33.9, 0.69], { g: 0.1, lyzk: 2.1, pack: { g: 20 }, al: [] }), // fdc 171321
+  ryza_varena: f("Varená ryža", "pantry", [130, 2.7, 28.2, 0.1, 0.3, 0.1, 0.4, 0], { lyz: 15, lyzk: 5, pack: { g: 1000 }, al: [] }), // fdc 168878 (kupuje sa suchá ryža)
   paprika_udena: f("Údená paprika", "pantry", [282, 14.1, 54, 10.3, 12.9, 2.1, 34.9, 0.17], { lyz: 7, lyzk: 2.5, pack: { g: 50 }, al: [] }), // fdc 171329
   // ---------------------------------------------------- recepty overené metódou „kotva“ (15. 11. 2026), USDA SR Legacy
   bobkovy_list: f("Bobkový list", "pantry", [313, 7.6, 75, 0, 8.4, 2.3, 26.3, 0.06], { g: 0.2, pack: { g: 10 }, al: [] }), // fdc 170917

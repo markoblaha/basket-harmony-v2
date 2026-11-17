@@ -215,7 +215,12 @@ export function RecipePage() {
                 <span className="meta">{t("rk.forHowMany")}</span>
                 <Stepper label={tn("rk.portions", por)} minDisabled={por <= lim.min} onMinus={() => setPor(Math.max(lim.min, por - lim.step))} onPlus={() => setPor(Math.min(lim.max, por + lim.step))} />
               </div>
-              {r.book?.scale && <p className="t-xs t-2 bscale">{t(r.book.scale === "whole" ? "kb.scaleWhole" : "kb.scaleFree")}</p>}
+              {r.book?.scale && (
+                <p className="t-xs t-2 bscale">
+                  {t(r.book.scale === "whole" ? "kb.scaleWhole" : "kb.scaleFree")}
+                  {r.book.portionsGuess && ` ${t("kb.portionsGuess")}`}
+                </p>
+              )}
               {r.book ? (
                 <BookIngredients r={r} portions={por} rows={rows} est={est} onToggle={(x) => toggle(r.id, x)} />
               ) : (

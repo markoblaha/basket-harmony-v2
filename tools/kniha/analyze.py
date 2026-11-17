@@ -11,6 +11,8 @@ import json, re, sys, os
 from parse import parse, fold
 from rules import R
 
+# Koreniny a bylinky: „podľa chuti“ bez množstva je v poriadku.
+SPICE = ("sol", "korenie", "korenie_cele", "petrzlenova_vnat", "pazitka", "kopor", "majoran", "rasca", "tymian", "muskat", "chilli", "nove_korenie", "bobkovy_list", "oregano", "rozmaryn", "paprika_pal", "skorica", "klincek", "badyan", "pernikove_korenie", "kari_korenie")
 MAIN = {"apetitonline.cz", "vareni.cz", "toprecepty.cz"}
 SK = {"recepty.aktuality.sk", "receptar.sk"}
 
@@ -89,7 +91,13 @@ def analyze(dish):
     for k in allrows:
         have = [x for x in same if k in x["rows"]]
         per = [v for v in (amount(x, k) for x in have) if v is not None]
-        stats[k] = dict(share=len(have) / n, n=len(have), q=len(per),
+        import math
+        lg = sorted(math.log(v) for v in per if v > 0)
+        if len(lg) >= 4:
+            q1, q3 = pct(lg, .25), pct(lg, .75); iqr = q3 - q1
+            fence = (math.exp(q1 - 1.5 * iqr), math.exp(q3 + 1.5 * iqr))
+        else: fence = (None, None)
+        stats[k] = dict(share=len(have) / n, n=len(have), q=len(per), flo=fence[0], fhi=fence[1],
                         lo=pct(per, .2) if len(per) >= 4 else None, hi=pct(per, .8) if len(per) >= 4 else None,
                         min=min(per) if per else None, max=max(per) if per else None, med=pct(per, .5) if per else None)
     core = [k for k, s in stats.items() if s["share"] > 0.5]
@@ -99,11 +107,13 @@ def analyze(dish):
         if not x["variant"]: x["ok"] = False; x["prob"] = x["why"]; continue
         if x["r"]["site"] not in MAIN | (SK if cfg.get("sk") else set()): prob.append("web len na porovnanie")
         if not whole and not x["por"]: prob.append("bez porcií")
+        if int(x["r"].get("count") or 0) < 10: prob.append(f"málo hodnotení ({x['r'].get('count') or 0})")
         if x["r"].get("rating") is not None and float(x["r"]["rating"]) < 4.0: prob.append(f"hodnotenie pod 4,0 (★{float(x['r']['rating']):.1f})")
         bad = [it["text"] for it in x["items"] if it["key"] is None or it["key"].startswith("SKIP_h")]
         if bad: prob.append("nečitateľné: " + "; ".join(bad[:3]))
         noq = [it["text"] for it in x["items"] if it["key"] and not it["key"].startswith("SKIP") and it["g"] is None and not it.get("serve")
-               and it["key"] not in cfg.get("free_q", ()) and it["key"] not in ("sol", "korenie", "voda", "korenie_cele", "petrzlenova_vnat", "pazitka", "kopor", "majoran", "rasca", "tymian", "muskat", "chilli", "nove_korenie", "bobkovy_list", "oregano", "voda", "vyvar", "vyvar_kocka", "tymian", "rozmaryn")]
+               and it["key"] not in cfg.get("free_q", ()) and it["key"] not in SPICE + ("voda", "vyvar", "vyvar_kocka")
+               and stats.get(row_of(cfg, it["key"]), {}).get("share", 0) >= 0.3]  # zriedkavá surovina bez množstva = príloha/ozdoba
         if noq: prob.append("bez množstva: " + "; ".join(noq[:3]))
         if len(x["r"]["steps"]) < 2 or len(" ".join(x["r"]["steps"])) < 200: prob.append("krátky postup")
         miss = [k for k in core if k not in x["rows"] and k not in ("sol", "korenie")]
@@ -113,10 +123,12 @@ def analyze(dish):
             if k != base and s["lo"] is not None and v is not None and s["med"] < 1.0 and v > 3 * s["hi"]:
                 dev.append(f"{k} {v:.1f} (bežne {s['lo']:.1f}–{s['hi']:.1f}, priveľa)")
             elif k != base and s["lo"] is not None and v is not None and s["med"] >= 1.0:
-                if v < s["lo"] * 0.999 or v > s["hi"] * 1.001: dev.append(f"{k} {v:.0f} (bežne {s['lo']:.0f}–{s['hi']:.0f})")
+                if os.environ.get("FENCE") == "0":
+                    if v < s["lo"] * 0.999 or v > s["hi"] * 1.001: dev.append(f"{k} {v:.0f} (bežne {s['lo']:.0f}–{s['hi']:.0f})")
+                elif v < s["flo"] * 0.999 or v > s["fhi"] * 1.001: dev.append(f"{k} {v:.0f} (neobvyklé, obvykle {s['flo']:.0f}–{s['fhi']:.0f})")
         rare = [k for k in x["rows"] if stats[k]["share"] < 0.3 and k not in cfg.get("free_q", ())]
         am = [a for a in acts_major if a not in x["acts"]]
-        unq = [k for k in core if k in x["rows"] and not x["rows"][k] and k not in x["serve_rows"] and k not in ("sol", "korenie", "korenie_cele", "tekutina", "vyvar", "voda") and k not in cfg.get("free_q", ())
+        unq = [k for k in core if k in x["rows"] and not x["rows"][k] and k not in x["serve_rows"] and k not in SPICE + ("tekutina", "vyvar", "voda") and k not in cfg.get("free_q", ())
                and not (stats[k]["med"] is not None and stats[k]["med"] < 1.0)]
         if unq: prob.append("väčšinová bez množstva: " + ", ".join(unq))
         if len(miss) > 1: prob.append("chýba väčšinová: " + ", ".join(miss))
