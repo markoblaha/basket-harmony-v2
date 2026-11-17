@@ -765,7 +765,20 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     neuvádza – appka to pri porciách napíše), ~15 nových potravín s USDA hodnotami.
     **Odložené:** gulášová polievka (má víťaza Apetit „Pikantní gulášová polévka s chilli“, 259 – do šarže 3), rezeň
     (len 12 klasických receptov, víťaz s 15 hodnoteniami – treba širší zber), cesnaková polievka je v šarži 1.
-    **Čaká na majiteľa:** prejsť šarže 1 a 2 v testovacej appke a povedať, čo zmeniť; inak pokračovať šaržou 3.
+    **Kniha v databáze, nie v kóde (17. 11. 2026, rozhodnutie majiteľa):** recepty už nie sú v kóde. Migrácia
+    `20261117000043_recipe_book.sql` (nasadená do TESTOVACEJ DB, do ostrej až pri zlúčení do `main`): `book_dishes`, `book_recipes`
+    (stav draft/quarantine/approved/published, verzia, šarža, `check_data` = porovnanie, `verification` = výsledok kontrol, `image_path`),
+    `book_sources`, `book_runs` (záznam každého behu – tu vidno, kde pokračovať). Appka číta len approved/published cez RLS
+    (`useBookRecipes` v api.ts), obrázky sa pridávajú za behu (`injectBookPics`). Zapisuje len linka: `tools/kniha/nahraj.py`
+    (SUPABASE_URL + SUPABASE_SERVICE_KEY z prostredia, nikdy nie do gitu). Vzorka 20 receptov pre testy: `__fixtures__/kniha.json`.
+    **Linka bez ručného písania receptov:** `light.py` (výber víťaza z 3 webov) → Haiku „low“ pomocníci prekladajú (`in/` → `out/`)
+    → `overit.py` (čísla, počet surovín a krokov) → `previest.py` (kľúče potravín, zdroje, stav) → `nahraj.py`. Neprešli = karanténa.
+    Prvá dávka z predplatného (šarža 3): 9 receptov, 8 prešlo, hrachová polievka v karanténe (pomocník zdvojil maslo, vynechal cibuľu).
+    Pozor: tajný kľúč testovacej DB bol vložený do chatu – po dokončení ho v Supabase obnoviť (rotovať).
+    **Fotky:** až po naplnení knihy, dávkovo cez Gemini (kredit musí byť dobitý); dovtedy obrázok šarže (`image_status = batch_label`).
+    **Zostáva:** dopĺňať potraviny (nové suroviny dostávajú kľúč `x_…` bez výživy), údaje 20 receptov šarží 1–2 sú plné (porovnanie),
+    nové z linky „light“ (bez tabuľky porovnania), kategórie a Ochutnávač čítajú z DB.
+    **Čaká na majiteľa:** prejsť recepty (28) v testovacej appke a povedať, čo zmeniť; potom ďalšie dávky z predplatného.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI

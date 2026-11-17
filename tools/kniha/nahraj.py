@@ -12,7 +12,7 @@ dishes, recs, srcs = [], [], []
 for r in recipes:
     b = r["book"]; ch = b.get("check")
     dishes.append({"id": r["id"], "name_sk": r["name"], "category": r["category"], "cuisine": "SK-CZ", "status": "done"})
-    recs.append({"id": r["id"], "dish_id": r["id"], "variant_key": "classic", "status": status, "batch": b.get("batch"), "name": r["name"],
+    recs.append({"id": r["id"], "dish_id": r["id"], "variant_key": "classic", "status": b.get("_status", status), "batch": b.get("batch"), "name": r["name"],
         "category": r["category"], "meat": r["meat"], "cuisine": b.get("cuisine"), "minutes": r["minutes"], "active_minutes": b.get("active"),
         "difficulty": r["difficulty"], "portions": r["portions"], "scale": b.get("scale"), "portions_guess": bool(b.get("portionsGuess")),
         "tags": r.get("tags", []), "tools": b.get("tools", []), "store": b.get("store"), "wait": b.get("wait"),

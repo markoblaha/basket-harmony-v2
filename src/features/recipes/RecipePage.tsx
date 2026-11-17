@@ -60,10 +60,14 @@ export function RecipePage() {
   const [tab, setTab] = useState<"ing" | "steps">("ing");
   const [sheet, setSheet] = useState<null | "add" | "plan" | "nutri" | "del">(null);
   useEffect(() => {
-    if (r) setPor(r.portions);
     setTab("ing");
     window.scrollTo({ top: 0 });
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id]);
+  // Recept z knihy príde z databázy až po načítaní – porcie sa nastavia na porcie receptu pri zmene receptu aj pri jeho načítaní.
+  const loaded = r?.id;
+  useEffect(() => {
+    if (r) setPor(r.portions);
+  }, [id, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!r && recipes.isPending) return <Spinner />;
   if (!r) {

@@ -30,7 +30,18 @@ const R2 = [
   ["strudla", "Jablková štrúdľa", "Koláče", "apple", ["#f9efd9", "#c8a26b"]],
   ["lievance", "Nadýchané lievance", "Raňajky", "pancakes", ["#fff1d6", "#f0b860"]],
 ];
-const R = BATCH === 2 ? R2 : R1;
+const R3 = [
+  ["hrachova", "Hrachová polievka", "Polievky", "soup", ["#e3f0c8", "#a9c97a"]],
+  ["bramborova", "Zemiaková polievka", "Polievky", "potato", ["#fbe9c6", "#e0b36a"]],
+  ["bramborovy_gulas", "Zemiakový guláš", "Hlavné jedlá", "stew", ["#f7c9a8", "#d97b4a"]],
+  ["lasagne", "Lasagne", "Cestoviny", "spaghetti", ["#ffd9b8", "#e0824f"]],
+  ["buchty", "Buchty s jablkami", "Sladké", "bread", ["#fff0d2", "#e8b66a"]],
+  ["tvarohovy_kolac", "Tvarohový koláč", "Sladké", "cake", ["#fff6e0", "#edc984"]],
+  ["jablkovy_kolac", "Jablkový koláč", "Sladké", "apple", ["#f9e8c8", "#c9a15d"]],
+  ["zemiakova_kasa", "Zemiaková kaša", "Prílohy", "potato", ["#fff4d6", "#e6c27a"]],
+  ["gulasovka", "Gulášová polievka", "Polievky", "stew", ["#f8c9b0", "#cf6f4a"]],
+];
+const R = BATCH === 3 ? R3 : BATCH === 2 ? R2 : R1;
 const html = ([, name, cat, em, [a, b]]) => `<!doctype html><meta charset="utf-8"><style>
 *{margin:0;box-sizing:border-box} body{width:1080px;height:1350px;font-family:Inter,"Segoe UI",system-ui,sans-serif;overflow:hidden}
 .c{position:relative;width:100%;height:100%;background:linear-gradient(135deg,${a},${b});display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#2b211b}
