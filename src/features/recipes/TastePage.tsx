@@ -435,7 +435,7 @@ const TasteCard = memo(
             {t("tst.full")}
             <I n="caret-right" w="bold" />
           </button>
-          {r.book && <span className="tst-ai">{t("tst.aiPhotos")}</span>}
+          {r.book && <span className="tst-ai">{r.book.batch ? t("kb.batch", { n: r.book.batch }) : t("tst.aiPhotos")}</span>}
         </div>
         <div className="tst-rail">
           <button type="button" className={`tr-b${on ? " on" : ""}`} onClick={() => onLike(r.id, !on)} aria-pressed={on}>
