@@ -586,7 +586,7 @@ export const skRecipes = {
   "kb.usualHint": "„Bežne“ je rozpätie, do ktorého patrí väčšina zdrojov (20.–80. percentil). „Neobvyklé“ je množstvo ďaleko mimo neho (štatistické hranice pre odľahlé hodnoty) – recept smie mať najviac jedno. Pomlčka znamená, že zdroje množstvo neuvádzajú (napr. „podľa chuti“).",
   "kb.outside": "neobvyklé",
   "kb.votes": ", ★ {rating} · {votes} hodnotení",
-  "kb.baseNote": "Formy majú rôznu veľkosť, preto množstvá v tabuľke porovnávame na 100 g suroviny „{base}“.",
+  "kb.baseNote": "Recepty sú rôzne veľké (forma, množstvo cesta), preto množstvá v tabuľke porovnávame na 100 g suroviny „{base}“.",
   "kb.verdictOk": "Prešiel kontrolou: chýba {missing} z max. 1 suroviny väčšiny, neobvyklé množstvá: {outside} z max. 1, úkony väčšiny: {acts}.",
   "kb.verdictBad": "Neprešiel kontrolou (chýba {missing} surovín väčšiny, neobvyklé množstvá: {outside}) – recept by mal ísť do karantény.",
   "kb.batchPhoto": "Testovacia šarža {n} – fotka príde na konci",

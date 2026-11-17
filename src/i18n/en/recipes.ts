@@ -575,7 +575,7 @@ export const enRecipes: Record<keyof typeof skRecipes, string> = {
   "kb.inN": "{n} of {all}",
   "kb.usualHint": "“Usual” is the range most sources fall into (20th–80th percentile). “Unusual” is an amount far outside it (statistical outlier limits) – a recipe may have at most one. A dash means the sources give no amount (e.g. “to taste”).",
   "kb.votes": ", ★ {rating} · {votes} ratings",
-  "kb.baseNote": "Baking tins differ in size, so the table compares amounts per 100 g of “{base}”.",
+  "kb.baseNote": "Recipes differ in size (tin, amount of dough), so the table compares amounts per 100 g of “{base}”.",
   "kb.verdictOk": "Passed the check: {missing} of max. 1 majority ingredient missing, unusual amounts: {outside} of max. 1, majority steps: {acts}.",
   "kb.verdictBad": "Did not pass the check ({missing} majority ingredients missing, unusual amounts: {outside}) – the recipe should go to quarantine.",
   "kb.batchPhoto": "Test batch {n} – the photo comes at the end",
