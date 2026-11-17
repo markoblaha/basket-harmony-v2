@@ -17,7 +17,8 @@ const checkOf = (r: Recipe, g?: string) => {
   return { letters: r.book!.sources.map((s) => s.k).filter((k) => !inGroup.includes(k)).join(""), anchor: c.anchor };
 };
 
-describe.each(BOOK.map((r) => [r.name, r] as const))("kniha: %s", (_, r) => {
+// Kniha môže byť dočasne prázdna (čistý začiatok pred šaržou) – kontroly sa vtedy nespúšťajú.
+(BOOK.length ? describe.each(BOOK.map((r) => [r.name, r] as const)) : () => () => undefined)("kniha: %s", (_: string, r: Recipe) => {
   const b = r.book!;
   const foods = new Set(r.ingredients.map((x) => x.food));
 
@@ -140,25 +141,7 @@ describe.each(BOOK.map((r) => [r.name, r] as const))("kniha: %s", (_, r) => {
   });
 });
 
-describe("kniha: suroviny pri kroku (varenie)", () => {
-  const scaled = (id: string) => scaleIngredients(BOOK.find((r) => r.id === id)!, 4);
-  const names = (id: string, step: number) => stepFoods(BOOK.find((r) => r.id === id)!.steps[step]!, scaled(id)).map((x) => `${x.ref ?? x.food}:${x.qty}`);
-  it("halušky: múka a voda z halušiek, nie z omáčky", () => {
-    expect(names("paprikas", 4)).toEqual(expect.arrayContaining(["muka_h:400", "voda_h:300", "vajce:2", "sol_h:1"]));
-    expect(names("paprikas", 4)).not.toContain("muka:3");
-  });
-  it("omáčka: múka a smotana z paprikáša", () => {
-    expect(names("paprikas", 9)).toEqual(["muka:3", "smotana:200"]);
-  });
-  it("varenie halušiek: len soľ do vody", () => {
-    expect(names("paprikas", 5)).toEqual(["sol_v:1"]);
-  });
-  it("segedín: krok s mäsom má mäso, cesnak, soľ a múku", () => {
-    expect(names("segedin", 2)).toEqual(expect.arrayContaining(["pliecko:800", "cesnak:2", "sol:1", "muka:2"]));
-  });
-});
-
-describe("kniha: suroviny pri krokoch receptov overených metódou kotva", () => {
+(BOOK.some((x) => x.book?.check) ? describe : describe.skip)("kniha: suroviny pri krokoch receptov overených metódou kotva", () => {
   for (const r of BOOK.filter((x) => x.book?.check)) {
     it(`${r.name}: každý krok má zoznam surovín a každá surovina sa pri niektorom kroku použije`, () => {
       const scaled = scaleIngredients(r, r.portions);
@@ -176,6 +159,14 @@ describe("kniha: suroviny pri krokoch receptov overených metódou kotva", () =>
 });
 
 describe("kniha: celá", () => {
+  it("suroviny pri kroku: odkaz {kľúč} a slová z textu, soľ do vody nie", () => {
+    const ing = [
+      { food: "cibula", qty: 2, unit: "ks" },
+      { food: "muka", qty: 3, unit: "lyzica" },
+      { food: "sol", qty: 1, unit: "lyzicka", note: "do vody" },
+    ] as Recipe["ingredients"];
+    expect(stepFoods({ text: "Cibuľu ({cibula}) opeč, zapráš múkou a osoľ." }, ing).map((x) => x.food)).toEqual(["cibula", "muka"]);
+  });
   it("kľúče receptov sú jedinečné", () => {
     expect(new Set(BOOK.map((r) => r.id)).size).toBe(BOOK.length);
   });

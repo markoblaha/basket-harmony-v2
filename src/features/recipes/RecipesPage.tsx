@@ -35,6 +35,8 @@ export function RecipesPage() {
   const sec = (params.get("t") as Tab | null) ?? "discover";
   const setSec = (v: Tab) => setParams(v === "discover" ? {} : { t: v }, { replace: true });
   const recipes = useRecipes(household.id);
+  // Náhľad Ochutnávača: fotky prvých troch receptov s fotkou (bez nich sa vstup neukáže).
+  const shots = useMemo(() => recipes.catalog.filter((r) => r.book?.photos).slice(0, 3).map((r) => art(r).pic!), [recipes.catalog]);
   const favs = useFavorites(household.id).data ?? new Set<string>();
   const plans = useRecipePlans(household.id).data ?? [];
   const lists = useLists(household.id).data ?? [];
@@ -201,11 +203,12 @@ export function RecipesPage() {
                 </>
               ) : (
                 <>
+                  {shots.length > 0 && (
                   <button type="button" className="tentry" onClick={() => navigate("/recipes/taste")}>
                     <span className="te-ph">
-                      <i className="pic-kb_svieckova_1s" />
-                      <i className="pic-kb_chili_1s" />
-                      <i className="pic-kb_musaka_1s" />
+                      {shots.map((p) => (
+                        <i key={p} className={`pic-${p}`} />
+                      ))}
                     </span>
                     <span className="te-tx">
                       <b>{t("rk.tasteT")}</b>
@@ -215,12 +218,17 @@ export function RecipesPage() {
                       <I n="play" />
                     </span>
                   </button>
+                  )}
                   <div className="h2">{t("rk.cats")}</div>
                   <div className="cgrid">
-                    {RCATS.map((c) => ({ c, n: recipes.all.filter(c.test).length }))
+                    {RCATS.map((c) => {
+                      const list = recipes.all.filter(c.test);
+                      return { c, n: list.length, pic: list.map((r) => art(r).pic).find(Boolean) };
+                    })
                       .filter(({ n }) => n > 0)
-                      .map(({ c, n }) => (
-                        <button type="button" key={c.id} className={`ctile pic-${c.pic}`} onClick={() => navigate(`/recipes/c/cat/${c.id}`)}>
+                      .map(({ c, n, pic }) => (
+                        <button type="button" key={c.id} className={`ctile ${pic ? `pic-${pic}` : `bg-${c.bg}`}`} onClick={() => navigate(`/recipes/c/cat/${c.id}`)}>
+                          {!pic && <E k={c.e} />}
                           <span>
                             <b>{t(`rk.cat.${c.id}` as Key)}</b>
                             <small>{tn("rk.recipes", n)}</small>

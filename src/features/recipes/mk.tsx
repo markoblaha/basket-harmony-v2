@@ -12,16 +12,16 @@ import { STAPLE_KEYS } from "./foods";
 import { bookRecipe } from "./kniha";
 import type { Recipe } from "./types";
 
-/** Kategórie knihy (ako v mockupe) – nad kategóriami a druhom mäsa receptov z appky. */
-export const RCATS: { id: string; e: string; pic: string; test: (r: Recipe) => boolean }[] = [
-  { id: "polievky", e: "stew", pic: "kb_kapustnica_1s", test: (r) => r.category === "polievky" },
-  { id: "maso", e: "meat", pic: "kb_svieckova_1s", test: (r) => (r.meat === "bravcove" || r.meat === "hovadzie") && r.category !== "polievky" && r.category !== "cestoviny" },
-  { id: "hydina", e: "poultry", pic: "kb_paprikas_1s", test: (r) => r.meat === "kuracie" && r.category !== "polievky" },
-  { id: "cestoviny", e: "spaghetti", pic: "kb_lasagne_1s", test: (r) => r.category === "cestoviny" },
-  { id: "ryby", e: "fish", pic: "losos_p", test: (r) => r.meat === "ryby" },
-  { id: "bezmasa", e: "salad", pic: "kb_kulajda_1s", test: (r) => r.meat === "bez" && r.category !== "sladke" && r.category !== "ranajky" },
-  { id: "sladke", e: "pancakes", pic: "kb_medovnik_1s", test: (r) => r.category === "sladke" || r.category === "ranajky" },
-  { id: "all", e: "books", pic: "kb_musaka_1s", test: () => true },
+/** Kategórie knihy (ako v mockupe) – nad kategóriami a druhom mäsa receptov z appky. Obrázok dlaždice = fotka prvého receptu kategórie, inak ikona. */
+export const RCATS: { id: string; e: string; bg: string; test: (r: Recipe) => boolean }[] = [
+  { id: "polievky", e: "stew", bg: "peach", test: (r) => r.category === "polievky" },
+  { id: "maso", e: "meat", bg: "rose", test: (r) => (r.meat === "bravcove" || r.meat === "hovadzie") && r.category !== "polievky" && r.category !== "cestoviny" },
+  { id: "hydina", e: "poultry", bg: "rose", test: (r) => r.meat === "kuracie" && r.category !== "polievky" },
+  { id: "cestoviny", e: "spaghetti", bg: "butter", test: (r) => r.category === "cestoviny" },
+  { id: "ryby", e: "fish", bg: "sky", test: (r) => r.meat === "ryby" },
+  { id: "bezmasa", e: "salad", bg: "sage", test: (r) => r.meat === "bez" && r.category !== "sladke" && r.category !== "ranajky" },
+  { id: "sladke", e: "pancakes", bg: "butter", test: (r) => r.category === "sladke" || r.category === "ranajky" },
+  { id: "all", e: "books", bg: "peach", test: () => true },
 ];
 /** Do koľko € na porciu je jedlo „lacné“. */
 export const CHEAP = 1.2;
