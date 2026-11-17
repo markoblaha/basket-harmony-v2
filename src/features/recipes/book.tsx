@@ -245,7 +245,7 @@ function BookCheckInfo({ r }: { r: Recipe }) {
       })}
       <p>
         {c.base
-          ? t("kb.baseNote", { base: FOODS[c.base]?.name ?? c.base })
+          ? t("kb.baseNote", { base: c.rows.find((x) => x.foods.split("+").includes(c.base!))?.label ?? FOODS[c.base]?.name ?? c.base })
           : t(c.whole ? "kb.wholeNote" : "kb.portionsNote", { portions: tn("rk.portions", r.portions) })}
       </p>
       <div className="bchk-tab" role="table" aria-label={t("kb.check")}>
@@ -265,7 +265,7 @@ function BookCheckInfo({ r }: { r: Recipe }) {
             <div className={`bchk-r${x.typical === false ? " out" : ""}`} role="row">
               <span role="cell">{rowName(x)}</span>
               <span role="cell">
-                {num(x.ours!)} {unit(x)}
+                {x.ours ? `${num(x.ours)} ${unit(x)}` : t("rc.unit.toTaste")}
                 {x.typical === false && <small>{t("kb.outside")}</small>}
               </span>
               <span role="cell">{x.lo != null && x.hi != null && x.quantified >= 4 ? `${num(x.lo)}–${num(x.hi)} ${unit(x)}` : "—"}</span>

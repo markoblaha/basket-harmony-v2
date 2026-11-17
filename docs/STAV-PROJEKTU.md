@@ -1,6 +1,6 @@
 # Stav projektu (odovzdanie pre ďalšiu reláciu)
 
-Aktualizované 2. 11. 2026 (Fáza 0 prestavby). Pred prácou si prečítaj celé – je to krátke.
+Aktualizované 17. 11. 2026 (kniha receptov: skúšobná šarža 1). Pred prácou si prečítaj celé – je to krátke.
 
 ## Kde čo beží
 
@@ -721,6 +721,34 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     **Ochutnávač – ťuk vľavo/vpravo (16. 11.):** ťuk na ľavú tretinu fotky = predchádzajúca fotka, na pravú = ďalšia
     (`PhotoSwiper` aj vo feede), dvojťuk „Chcem“ len v strednej časti (rýchle ťukanie na kraj nedá „Chcem“); návod
     v Ochutnávači upravený. Overené dotykom v prehliadači.
+    **Čistý začiatok a skúšobná šarža 1 (17. 11. 2026, pokyn majiteľa):** v testovacej DB zmazané (so súhlasom) všetky
+    recepty domácností (7), plány varenia (24) a obľúbené/„páči sa mi“ (boli 0). Z kódu preč 11 starých receptov knihy
+    a ich 50 fotiek (commit 2924695). Potom **šarža 1 = 10 receptov** (kniha-overene.ts, commit a9f40db), každý je JEDEN
+    skutočný recept prevzatý presne a preložený, namiesto fotky obrázok „Testovacia šarža 1 · v1 · 17. 11. 2026“
+    (`book.batch`, `public/kniha/<id>-1.webp`, robí ho `tools/kniha/obrazky-sarze.cjs`). Výber robí nástroj **`tools/kniha/`**
+    (Python; pracovné dáta mimo gitu v `tools/kniha/data` alebo `KNIHA_DATA`): `loose.py` adresy z mapy stránok
+    3 hlavných webov + Labužník/Receptár/Aktuality → `fetch.py` stiahne JSON-LD → `parse.py` prevedie riadok suroviny
+    na potravinu a gramy (rovnaké prevody ako appka) → `rules.py` variant jedla (čo musí/nesmie mať, úkony) →
+    `analyze.py` porovná s 20 najhodnotenejšími receptmi variantu a vyberie víťaza (najviac hodnotení, prešiel kontrolou:
+    všetky suroviny čitateľné a s množstvom okrem korenín/„podľa chuti“, porcie uvedené, max 1 chýbajúca surovina väčšiny,
+    max 1 množstvo mimo 20.–80. percentilu, väčšina úkonov; koreniny pod 1 g na porciu sa porovnávajú len hrubo, pečenie
+    na 100 g múky/krémového syra) → `export.py` zapíše `src/features/recipes/kniha-porovnanie.ts`. Appka (bookCheck) počíta
+    to isté a ukazuje verdikt; test žiada `ok`.
+    Víťazi šarže 1 (hodnotenia): cesnaková polievka Apetit (380), hovädzí guláš Vaření R. Novák (325), segedín Toprecepty
+    „Můj segedínský guláš“ (53), kurací paprikáš Toprecepty „Kuře na paprice se smetanou“ (89), bryndzové halušky Apetit
+    (204), carbonara Apetit (706), vianočný zemiakový šalát Vaření (846), palacinky Vaření (3 854), bábovka Apetit (1 133),
+    New York cheesecake Apetit (426). Kategórie: polievky 1, mäso 3, hydina 1, cestoviny 1, šaláty 1, sladké 3.
+    **Neprešli / odložené:** kapustnica – víťaz mal len 10 hodnotení (aktuality.sk), lepšie recepty mali 2 odchýlky; rezeň –
+    len 11 čistých klasických receptov a víťaz s 15 hodnoteniami (treba širší zber, aj SK weby); pri prvom behu aj
+    cesnaková (pred porovnaním tekutín spolu). Receptár.sk nemá JSON-LD (treba vlastné čítanie stránky).
+    Zmeny v appke: pravidlá kontroly (max 1/max 1/väčšina úkonov, `check.base`, `res.ok`), jednotky `podla_chuti`,
+    `podla_potreby`, `hrncek`, `bal`, `hrst` (10 g bylinky / 30 g ostatné), `Ingredient.alt` (náhrada v postupe „masť alebo
+    olej“), režimy porcií `book.scale` (free ½–2×, piece, whole = celé násobky) s poznámkou pod porciami, vajcia sa pri
+    prepočte zaokrúhlia na celé, hodnotenie zdroja (`sources.rating/votes`) v „Ako sme recept overili“, 21 nových potravín
+    s USDA hodnotami a alergénmi. Dlaždice kategórií berú obrázok z prvého receptu kategórie, šaláty sú v „Bez mäsa
+    a šaláty“. Testy logiky majú vlastné skúšobné recepty (nezávislé od knihy). Overené na testovacej adrese (prihlásený,
+    telefón): kategórie, detail receptu, tabuľka porovnania, žiadne chyby v konzole.
+    **Čaká na majiteľa:** prejsť šaržu 1 v testovacej appke a povedať, čo zmeniť (v2, v3…), alebo spustiť výrobu.
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
