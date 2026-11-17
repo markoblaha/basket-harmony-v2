@@ -23,9 +23,23 @@ L={
  "babovka":(r"^(babovka|mramorova-babovka|babovka-mramorova|klasicka-babovka|babovka-klasicka|domaci-babovka|babiccina-babovka|tradicni-babovka|nadychana-babovka|vlacna-babovka|kakaova-babovka|jednoducha-babovka|nejlepsi-babovka|babovka-od-babicky|babovka-podle-babicky|mramorovana-babovka|obycejna-babovka|klasicka-mramorova-babovka|tradicni-mramorova-babovka)(-\d+|-i+|-v)?$",r"$^"),
  "cheesecake":(r"cheesecake",r"nepec|bez-pec|nepecen|jahod|malin|boruvk|cokol|oreo|karamel|citron|limet|dyn|mango|tresn|visn|banan|kokos|matcha|kav|tiramisu|mini|kosick|tycink|rez|mufin|muffin|brownie|lotus|pistac|kesu|fit|vegan|bez-|zmrzl|lesn|ovoc|marakuj|merunk|broskv|jabl|hrus|svestk|kiwi|baileys|nutell|slan|kozi|sklenic|pohar|tvaroh|dort|jogurt|ricott|mascarp|keks|susenk|pern|mak|rebarb|vanoc|perni|skoric|puding|protein|bily|bile|cervent|rum|caj|chai|mrkv|hrnk|sneh|meruk|mandl|orech|lavend|rasp|blue|marbl|mramor|salted|kuk|med|kvark|sir|syrn|nebe|cuket|ruz|bram|pastel|cuprin|basque|baskick|japon|lehk")
 }
+L.update({
+ "svieckova":(r"svickov|svieckov",r"vegan|kure|kurac|krut|morc|tofu|zverin|jelen|srnc|losos|seitan|tempeh|rychl|tlak|papin|pomal|bez-|light|soj|houb|klobas|polevk|polievk|salat|chlebic|pizz|burger|wrap|tortil|sendvic|rizot|cestovin|testovin|lasagn|mini|kral|vepr|bravc"),
+ "kulajda":(r"kulajd",r"vegan|bez-|rychl|instant|light"),
+ "gulasovka":(r"gulasov\w*-pol(evk|ievk)",r"kotlik|vegan|soj|houb|fazol|zverin|kure|kurac|segedin|dyn|cock|cocek|bez-|light|ryb|rychl|instant|tlak|papin|pomal|vepr|bravc|krut|drstk|drzk|kral"),
+ "syr":(r"(smazen|vyprazan)\w*-syr|syr\w*-smazen|vyprazany-syr|smazeny-syr",r"koz|niva|hermel|camembert|brie|parmaz|olomouc|tvaruz|halloumi|mozzar|feta|gril|troub|airfry|horkovz|bez-|light|cornfl|kukur|sezam|bramb|zelenin|syrec|plnen|sunk|salat|tortil|burger|sendvic|bageta|mini|kosticky|tycink|pivn|chips|ovesn|mandl|orech|kokos"),
+ "bramboraky":(r"bramborak|zemiakov\w*-plack|bramborov\w*-plack",r"sladk|plnen|mas|kur|cuket|mrkv|dyn|zelenin|syr|sunk|slanin|zapec|zapek|troub|vegan|bez-|light|mini|zeli|hub|houb|tvaroh|pizz|sendvic|burger|vafl|chips|krokety|lokse|vareny|vareny|uzen|klobas|parek|spenat|batat|dip|losos|kapust|brokol|kvetak|pohank|ovesn|celozrn|hrnick|horkovz|airfry|gulas|lecs|paprik"),
+ "plnena_paprika":(r"plnen\w*-papri",r"kur|krut|zapec|zapek|troub|syr|vegan|soj|tofu|cizrn|cocek|cock|kuskus|bulgur|quinoa|zelenin|tvaroh|feta|sunk|vajic|pecen|gril|mexic|reck|dyn|houb|tuna|ryb|jahl|pohank|bez-|light|mini|nalozen|nakladan|sterilov|zavar|lecs|paprikas|kapi|mozzar|bryndz|klobas|spenat|ryze-a|slanin|sladk"),
+ "sekana":(r"sekan|fasirk|fasirov",r"kur|krut|vegan|zelenin|soj|cocek|cizrn|hub|houb|syr|tlak|papin|pomal|kotlet|rizek|karbanat|burger|knedl|sendvic|ryb|tunak|losos|bez-|light|mexic|bbq|cuket|dyn|brokol|spenat|mrkv|kapust|hrnick|mini|muffin|kosick|tortil|zavin|rolad|pizz|cesnek|cibul|lecs|chili|bram|zemiak|rajsk|omack|gyros|kebab|keb"),
+ "knedle":(r"ovocn\w*-knedl|svestkov\w*-knedl|slivkov\w*-knedl|knedl\w*-s-ovoc|ovocne-knedle|tvarohov\w*-ovocn\w*-knedl|svestkove-knedliky|merunkov\w*-knedl|slivkov\w*-gul",r"vegan|bez-|light|fit|celozrn|spald|pohank|kukur|mini|mrazen|smazen|pecen|troub|zapec|cokol|nutel|sladk\w*-bramb|bezlep|protein|oves|kokos|mak-"),
+ "strudla":(r"jablec\w*-(strudl|zavin)|jablk\w*-(strudl|zavin)|(strudl|zavin)\w*-s-jablk|^(strudl|strudel|zavin|jablecny-zavin|jablkovy-zavin|jablkova-strudla|jablecny-strudl)(-\d+|-i+)?$",r"vegan|bez-|light|fit|celozrn|spald|tvaroh|mak|ores|orech|tykev|dyn|hrus|svestk|visn|tresn|rebarb|cokol|nutel|karamel|mini|kos|rez|muffin|zmrzl|krem|pudink|salt|slan|zeli|kapust|zelenin|mas|kur|sunk|syr|hrnick|bezlep|protein|jogurt|kokos|med|rum|perni|vanoc|skoric-a"),
+ "lievance":(r"livanc|lievanc",r"cuket|bramb|zemiak|spenat|dyn|mrkv|ovesn|banan|tvaroh|cokol|kakao|bez-|light|fit|vegan|protein|celozrn|spald|pohank|kukur|syr|sunk|slan|amerik|pancak|mini|jablec|jablk|boruv|borov|cucor|jahod|malin|ovoc|svestk|sliv|merunk|marhul|hrus|tresn|visn|rybiz|ribez|dzem|kokos|mak|orech|med|perni|vanoc|skoric|jogurt|zakys|kefir|podmasl|mrazen|smazen|troub|hrnick|chia|lnen|kvas|bezlep|rychl|mlec|ryz|kase|krupic|tykev|pyre"),
+})
+import sys
+WANT=sys.argv[1:] or list(L)
 N=35
-out={}
-for k,(pat,neg) in L.items():
+out=json.load(open("loose.json")) if __import__("os").path.exists("loose.json") else {}
+for k,(pat,neg) in [(k,L[k]) for k in WANT]:
     P=re.compile(pat); Q=re.compile(neg); res={}
     for s,us in idx.items():
         seen={}

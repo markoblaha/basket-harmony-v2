@@ -71,4 +71,58 @@ R = {
         acts={"orestovať cibuľu": r"cibul\w*.{0,80}(osmah|orest|zpen|zlatov|sklovit|opraz|smaz)|(osmah|orest|zpen|sklovit|opraz|smaz).{0,80}cibul",
               "mäso opiecť": r"(opec|orest|rest|zatahn|osmah|opraz).{0,80}mas|mas\w*.{0,80}(opec|orest|rest|zatahn|osmah|opraz)", "paprika": r"paprik", "podliať a dusiť": r"podlij|podlej|zalij|zalej|dus",
               "kapusta": r"zeli|kapust", "smotana s múkou": r"smetan|smotan", "zahustiť": r"zahust|mouk|muk"}),
+    # ------------------------------------------------------------------ šarža 2
+    "svieckova": dict(
+        must=["hovadzie", "mrkva|petrzlen|zeler", "smotana_sladka|smotana|kysla_smotana"], forbid=["bravcove_stehno", "kurca"],
+        forbid_name=[r"dyn|italsk|minutk|petiden|rychl|fale|vegan|kral|jelen|srnc|zverin|kure"],
+        rows={"tuk": FAT, "muka": FLOUR, "smotana": CREAM, "zelenina": ["mrkva", "petrzlen", "zeler"], "tekutina": ["voda", "vyvar"]}, ignore=["knedla", "brusnice", "citron_kora"], free_q=["cukor", "ocot"],
+        acts={"prešpikovať slaninou": r"prospik|spik|prerast|slanin", "opiecť mäso": r"(opec|orest|rest|zatahn|osmah|opraz).{0,80}mas|mas\w*.{0,80}(opec|orest|rest|zatahn|osmah|opraz)",
+              "zelenina orestovať": r"zelenin|mrkv|celer", "korenie (bobkový list, nové korenie)": r"bobkov|nov\w* koren|pepr|kulick", "dusiť / piecť": r"dus|troub|rur|pec",
+              "rozmixovať / prepasírovať omáčku": r"rozmix|mixer|propasir|prolis|pasir|sit|cedit|precedi", "smotana": r"smetan|smotan", "dochutiť": r"cukr|citron|oct|dochut"}),
+    "kulajda": dict(
+        must=["zemiaky", "kopor", "kysla_smotana|smotana_sladka|smotana"], forbid=["hovadzie", "kurca", "klobasa"],
+        rows={"smotana": CREAM, "huby": ["sampinony", "huby_susene"], "tekutina": ["voda", "vyvar"], "muka": FLOUR, "tuk": FAT}, ignore=[], free_q=["cukor", "ocot"],
+        acts={"zemiaky uvariť": r"brambor|zemiak", "huby": r"houb|hub|hrib|zampion", "smotana s múkou": r"smetan\w*.{0,80}mouk|mouk\w*.{0,80}smetan|zahust", "kôpor": r"kopr|kopor",
+              "vajce": r"vejc|vajc|vajic", "ocot": r"oct|ocet"}),
+    "gulasovka": dict(
+        must=["hovadzie", "zemiaky", "paprika_mleta", "cibula"], forbid=["fazula", "pivo", "vino", "kurca", "klobasa"],
+        rows={"tuk": FAT, "muka": FLOUR, "tekutina": ["voda", "vyvar"]}, ignore=["dochucovadlo"], free_q=["cukor", "ocot"],
+        acts={"orestovať cibuľu": r"cibul\w*.{0,80}(osmah|orest|rest|zpen|zlatov|sklovit|opraz|smaz)|(osmah|orest|rest|zpen|sklovit|opraz|smaz).{0,80}cibul",
+              "mäso opiecť": r"(opec|orest|rest|zatahn|osmah|opraz|pridame).{0,80}mas|mas\w*.{0,80}(opec|orest|rest|zatahn|osmah|opraz)", "paprika": r"paprik",
+              "zaliať a variť": r"zalij|zalej|podlij|podlej|var|dus", "zemiaky": r"brambor|zemiak", "zahustiť": r"zahust|mouk|jisk|zaprask"}),
+    "syr": dict(
+        must=["syr_tvrdy", "vajce", "struhanka", "muka|muka_polohruba|muka_hruba"], forbid=["sunka", "salama", "hermelin", "kremovy_syr"],
+        rows={"tuk": FAT, "muka": FLOUR}, ignore=["voda", "zemiaky", "tatarska", "majoneza", "citron"],
+        acts={"nakrájať plátky": r"platk|platek|plat|kraj|kousk", "obaliť v trojobale": r"obal|trojobal|mouk|vejc|strouhank", "obaliť dvakrát": r"dvakrat|znovu|podruhe|dvojit|2x|dvojite",
+              "vyprážať v tuku": r"smaz|vypraz|olej|tuk|fritov", "osušiť": r"papir|ubrous|okap|odkap"}),
+    "bramboraky": dict(
+        must=["zemiaky", "muka|muka_polohruba|muka_hruba", "cesnak|majoran"], forbid=["tvaroh", "kysla_smotana", "slanina", "klobasa", "mlete"],
+        rows={"tuk": FAT, "muka": FLOUR}, ignore=["voda"],
+        acts={"nastrúhať zemiaky": r"strouh|struh|nastrouh", "vyžmýkať / scediť": r"vymack|vyzdim|vymacka|scedi|slij|slej|prebyt|vod", "cesnak a majorán": r"cesnek|majoran",
+              "cesto": r"testo|mouk|vejc|promich|smich", "smažiť na tuku": r"smaz|osmah|opec|pan|sadl|olej", "tenké placky": r"plack|rozprostr|rozetr|tenk|lzic"}),
+    "plnena_paprika": dict(
+        must=["paprika", "mlete|bravcove_stehno|hovadzie", "ryza", "pretlak|paradajky|pasirovane"], forbid=["kurca", "kuracie_prsia", "syr_tvrdy", "zemiaky"],
+        rows={"maso": ["mlete", "bravcove_stehno", "hovadzie"], "omacka": ["pretlak", "paradajky", "pasirovane"], "muka": FLOUR, "tuk": FAT, "tekutina": ["voda", "vyvar"]}, ignore=[], free_q=["cukor", "ocot"],
+        acts={"ryža": r"ryz|ryž|ryže", "naplniť papriky": r"naplni|plnim|plnit|naplnte|naplnime|plnku|napln", "paradajková omáčka": r"rajsk|rajc|protlak|omack|paradaj",
+              "dusiť / variť": r"dus|var|pec", "zahustiť": r"zahust|jisk|mouk|zaprask", "osladiť": r"cukr|oslad|dochut"}),
+    "sekana": dict(
+        must=["mlete|bravcove_stehno|hovadzie", "vajce", "chlieb|struhanka"], forbid=["kurca", "kuracie_prsia", "syr_tvrdy", "sampinony"],
+        rows={"maso": ["mlete", "bravcove_stehno", "hovadzie"], "pecivo": ["chlieb", "struhanka"], "tuk": FAT, "mlieko": ["mlieko", "voda"]}, ignore=[], free_q=["cukor"],
+        acts={"namočiť pečivo": r"namoc|namac|rozmoc|mlek|vymack", "cibuľa": r"cibul", "zmiešať": r"smich|promich|zaprac|hnet|prohnet|smes",
+              "tvarovať šišku": r"tvar|bochnik|sisk|vek|forem|pekac|valec", "piecť": r"pec|troub|rur", "podlievať": r"podlev|podlij|polev|prelev|vypek"}),
+    "knedle": dict(
+        must=["ovocie|slivky|jablko", "tvaroh"], forbid=["drozdie", "zemiaky", "zemiaky_varene"],
+        rows={"muka": FLOUR + ["krupica"], "ovocie": ["ovocie", "slivky"], "tuk": FAT, "cukor": ["cukor", "cukor_mly", "cukor_vanil"]}, ignore=["voda"],
+        acts={"cesto z tvarohu": r"tvaroh|testo", "obaliť ovocie": r"obal|zabal|ovoc|svestk|merunk|jahod", "variť vo vode": r"var|vod", "kým vyplávajú": r"vyplav|na hladin|vypla",
+              "posypať / poliať": r"posyp|polij|polej|prelij|maslem|maslo|cukr"}),
+    "strudla": dict(
+        must=["jablko", "listkove_cesto|strudlove_cesto"], forbid=["tvaroh", "mak"],
+        rows={"cukor": ["cukor", "cukor_mly", "cukor_vanil"], "tuk": FAT, "pecivo": ["struhanka", "susienky"], "ovocie_suche": ["hrozienka", "orechy"]}, ignore=["voda"],
+        acts={"jablká nastrúhať / nakrájať": r"jabl.{0,80}(strouh|struh|kraj|plat)|(strouh|struh|kraj|plat).{0,80}jabl", "skorica a cukor": r"skoric|cukr", "rozvaľkať cesto": r"rozvalc|vyvalc|rozvin|rozlozi|rozprostr|plat",
+              "zavinúť": r"zavin|zaroln|stoc|svin", "potrieť": r"potri|potre|vajic|vejc|zlout", "piecť": r"pec|troub|rur"}),
+    "lievance": dict(
+        must=["muka|muka_polohruba|muka_hruba", "mlieko", "vajce"], forbid=["tvaroh", "kakao", "zemiaky"],
+        rows={"muka": FLOUR, "tuk": FAT, "cukor": ["cukor", "cukor_vanil", "cukor_mly"], "kypridlo": ["drozdie", "prasok", "soda"]}, ignore=["dzem", "ovocie", "smotana_sladka", "kysla_smotana"],
+        acts={"kvások / kypridlo": r"kvasek|kvask|drozd|prasek|kyprici", "cesto": r"testo|smich|rozmich|vymich|metl", "nechať kysnúť / odpočinúť": r"kyn|vykyn|odpoc|nechame|minut",
+              "piecť na lievanečníku / panvici": r"livanec|lievanec|pan|plotn|lzic", "otočiť": r"obrat|otoc|prevrat", "podávať": r"podav|dzem|marmelad|smetan|tvaroh"}),
 }

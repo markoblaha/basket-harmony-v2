@@ -81,6 +81,8 @@ RULES = [
     (r"bilk|bielk", "vajce_bielok"),
     (r"vejc|vajic|vajec|vajca|vajce|vajick|vajicko", "vajce"),
     (r"rozink|hrozien", "hrozienka"),
+    (r"brusin|brusnic", "brusnice"),
+    (r"rozmaryn", "rozmaryn"),
     (r"kokos", "kokos"),
     (r"cokolad|granko", "cokolada"),
     (r"marmelad|dzem|lekvar|povidl|nutell|merunkov\w* dzem", "dzem"),
@@ -99,6 +101,14 @@ RULES = [
     (r"oregan|dobromysl", "oregano"),
     (r"tymian", "tymian"),
     (r"vlock", "vlocky"),
+    (r"mlet\w* (vepr\w* |hovez\w* |smes\w* |veprove\w* a hovez\w* )?mas|mlet\w* (vepr|hovez|smes)|mlete maso|mleteho masa", "mlete"),
+    (r"\bryz|\bryze|\bryzi|\bryza|ryze\b", "ryza"),
+    (r"pasirovan\w* rajc|passat|drcen\w* rajc|krajen\w* rajc|rajcat\w* v plech|pasirovan\w* paradaj|sekan\w* rajc|loupan\w* rajc", "pasirovane"),
+    (r"listov\w* test|listkov\w* cest|lístkov\w* cest|listov\w* cest", "listkove_cesto"),
+    (r"strudlov\w*|testo na strudl|filo|fillo|tazen\w* test", "strudlove_cesto"),
+    (r"krupic(e|i|a|ou)\b|krupici\b|detsk\w* krupic", "krupica"),
+    (r"\bmak\b|\bmaku\b|makem|mletý mák|mlety mak", "mak"),
+    (r"kopr|kopor", "kopor"),
     (r"anglick\w* slanin|slanin|spek|bacon|oravsk", "slanina"),
     (r"guanciale|pancett", "guanciale"),
     (r"uzen\w* mas|uzen\w* vepr|udene|udeneho|uzene|uzeneho|uzenin|uzen\w* kolen|uzen\w* zebr|udene rebr|udenin|koleno|zebirk|rebierk|kotlet\w* uzen", "udene"),
@@ -220,7 +230,7 @@ def num(s):
     return FR.get(s) or float(s)
 
 # Kľúče výberu → kľúče databázy potravín v appke (foods.ts); prevody (kus, lyžica, hustota) sa berú z appky.
-APP = {"cream_cheese": "kremovy_syr", "guanciale": "slanina", "zemiaky_varene": "zemiaky"}
+APP = {"cream_cheese": "kremovy_syr", "guanciale": "slanina", "zemiaky_varene": "zemiaky", "syr_tvrdy": "eidam", "huby_susene": "huby_susene"}
 def appfood(key):
     return FOODS.get(APP.get(key, key))
 

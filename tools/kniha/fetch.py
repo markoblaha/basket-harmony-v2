@@ -41,7 +41,23 @@ def one(u):
                 return {"url":u,"site":urllib.parse.urlparse(u).netloc.replace("www.",""),"name":clean(r.get("name")),
                   "yield":r.get("recipeYield"),"time":r.get("totalTime"),"rating":rat.get("ratingValue"),"count":rat.get("ratingCount") or rat.get("reviewCount"),
                   "ing":[clean(i) for i in r.get("recipeIngredient",[]) if clean(i)],"steps":[clean(t) for t in steps(r.get("recipeInstructions")) if clean(t)]}
-    return None
+    return micro(u, s)
+
+def micro(u, s):
+    """Recept v microdata (itemprop, napr. Receptár.sk), keď stránka nemá JSON-LD."""
+    if 'itemprop="recipeIngredient"' not in s and 'itemprop="ingredients"' not in s: return None
+    def all_(prop): return [clean(x) for x in re.findall(r'itemprop="' + prop + r'"[^>]*>(.*?)</(?:li|p|span|div|h1|h2)>', s, re.S)]
+    def meta(prop):
+        m = re.search(r'itemprop="' + prop + r'"[^>]*content="([^"]*)"', s) or re.search(r'content="([^"]*)"[^>]*itemprop="' + prop + r'"', s)
+        if m: return m.group(1)
+        v = all_(prop); return v[0] if v else None
+    name = all_("name"); rv = meta("ratingValue"); rc = meta("ratingCount") or meta("reviewCount")
+    if not (rv and rv.replace(".", "").isdigit() and float(rv) > 0): rc = None  # počet bez hodnotenia (Receptár: 0/5) nie sú hodnotenia
+    return {"url": u, "site": urllib.parse.urlparse(u).netloc.replace("www.", ""), "name": name[0] if name else "",
+            "yield": meta("recipeYield"), "time": meta("totalTime"), "rating": float(rv) if rv and rv.replace(".", "").isdigit() and float(rv) > 0 else None,
+            "count": int(rc) if rc and rc.isdigit() and int(rc) > 0 else None,
+            "ing": [x for x in all_("recipeIngredient") if x] or [y.strip(" .") for x in all_("ingredients") for y in re.split(r",\s+|;\s*", x) if y.strip(" .")],
+            "steps": [x for x in all_("recipeInstructions") if x]}
 dish=sys.argv[1]; L=json.load(open("loose.json"))[dish]
 os.makedirs("raw",exist_ok=True); f=f"raw/{dish}.json"
 data=json.load(open(f)) if os.path.exists(f) else []

@@ -27,6 +27,7 @@ ROW = {  # riadok výberu → potraviny v appke a názov
     "majoneza": ("majoneza+tatarska", "Majonéza a tatárska omáčka"),
     "cream_cheese": ("kremovy_syr", None),
 }
+APPKEY = {"cream_cheese": "kremovy_syr", "syr_tvrdy": "eidam", "guanciale": "slanina"}
 KEEP_STEPS = {"palacinky": 3}  # ďalšie „kroky“ zdroja sú poznámky a tipy, nie postup
 BASE_APP = {"cream_cheese": "kremovy_syr"}
 
@@ -42,7 +43,7 @@ def export(dish):
     rows = []
     for k, st in sorted(A["stats"].items(), key=lambda kv: -kv[1]["share"]):
         if st["share"] < 0.25 and k not in w["rows"]: continue
-        foods, label = ROW.get(k, (k, None))
+        foods, label = ROW.get(k, (APPKEY.get(k, k), None))
         v = {L[x["i"]]: round(x["rows"][k], 1) if x["rows"][k] else 0 for x in same if k in x["rows"]}
         rows.append(dict(foods=foods, unit="g", v=v, **({"label": label} if label else {})))
     nsteps = KEEP_STEPS.get(dish, len(w["r"]["steps"]))

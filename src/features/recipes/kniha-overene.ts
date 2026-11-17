@@ -23,6 +23,20 @@ const RULE = {
   leftovers: "Varené jedlo schlaď a daj do chladničky do 2 hodín, zjedz do 3–4 dní (pravidlo USDA).",
 };
 
+/** Pôvod rady zo zdroja: písmeno a web podľa adresy receptu („A – Vaření“), aby sedel aj po novom porovnaní. */
+const SITE: Record<string, string> = { "vareni.cz": "Vaření", "apetitonline.cz": "Apetit", "toprecepty.cz": "Toprecepty", "labuznik.cz": "Labužník", "receptar.sk": "Receptár", "recepty.aktuality.sk": "Aktuality" };
+function from(id: string, url: string) {
+  const s = COMPARE[id]!.sources.find((x) => x.url === url);
+  if (!s) throw new Error(`${id}: zdroj ${url} nie je v porovnaní`);
+  return `zdroj ${s.k} (${SITE[s.site] ?? s.site})`;
+}
+/** Pôvod rady z úkonu, ktorý robia viaceré zdroje: „zdroje A, F, I“. */
+function fromAct(id: string, act: string) {
+  const a = COMPARE[id]!.check.acts.find((x) => x.a === act);
+  if (!a?.src) throw new Error(`${id}: úkon ${act} nemá zdroje`);
+  return `zdroje ${[...a.src].join(", ")}`;
+}
+
 const ings = (group: string | undefined, list: I[]): Ingredient[] =>
   list.map(([food, qty, unit, extra]) => ({ food, qty, unit, ...(group ? { group } : {}), ...extra }));
 
@@ -106,7 +120,7 @@ const cesnakova: Recipe = {
       "Opečené zemiaky vráťte do polievky, prípadne ich rozdeľte do tanierov a zalejte horúcou cesnačkou. Podľa chuti ešte osoľte a okoreňte a podávajte ozdobené čerstvým majoránom.",
       0,
       ["zemiaky", "sol", "korenie", "majoran_c"],
-      { tip: "Pre silnejší cesnakový efekt môžete pridať ďalšie 3 strúčiky cesnaku, tentoraz už prelisovaného. — zdroj A (Vaření)" },
+      { tip: `Pre silnejší cesnakový efekt môžete pridať ďalšie 3 strúčiky cesnaku, tentoraz už prelisovaného. — ${from("cesnakova", "https://www.vareni.cz/recepty/cesnecka-se-syrem/")}` },
     ],
   ]),
 };
@@ -322,7 +336,7 @@ const halusky: Recipe = {
       "Zlejte prebytočnú tekutinu, zemiaky osoľte, pridajte vajce a vmiešajte toľko múky, aby ste získali riedke cesto. Konzistenciou by malo pripomínať cesto na lievance alebo riedku zemiakovú kašu.",
       0,
       ["zemiaky", "sol", "vajce", "muka_polohruba"],
-      { tip: "Správnu hustotu zistíte tak, že kúsok cesta uvaríte v horúcej vode. Ak sa rozpadne, cesto je príliš riedke a treba pridať múku. — zdroj A (Vaření)" },
+      { tip: `Správnu hustotu zistíte tak, že kúsok cesta uvaríte v horúcej vode. Ak sa rozpadne, cesto je príliš riedke a treba pridať múku. — ${from("halusky", "https://www.vareni.cz/recepty/prave-slovenske-halusky-s-bryndzou-a-slaninou/")}` },
     ],
     [
       "Cesto postupne pretláčajte do vriacej osolenej vody špeciálnym sitom na halušky s veľkými okami a opatrne zamiešajte. Ak sito nemáte, môžete z cesta na doske odkrajovať nožom kúsky a hádzať ich jeden po druhom do vriacej vody.",
@@ -559,7 +573,7 @@ const babovka: Recipe = {
       65,
       ["cukor_mly"],
       {
-        done: "špajdľa zapichnutá do stredu bábovky po vytiahnutí ostane suchá. — zdroje A, F, I, L, M, O, P",
+        done: `špajdľa zapichnutá do stredu bábovky po vytiahnutí ostane suchá. — ${fromAct("babovka", "skúška špajdlou")}`,
         tip: "Ako šikovne vyklopiť bábovku? Na formu priklopte rovný tanier alebo tácku a bábovku obráťte. Ak hneď nevypadne, priložte na obrátenú formu utierky namočené v studenej vode. — z pôvodného receptu (Apetit)",
       },
     ],

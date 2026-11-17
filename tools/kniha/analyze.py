@@ -99,10 +99,11 @@ def analyze(dish):
         if not x["variant"]: x["ok"] = False; x["prob"] = x["why"]; continue
         if x["r"]["site"] not in MAIN | (SK if cfg.get("sk") else set()): prob.append("web len na porovnanie")
         if not whole and not x["por"]: prob.append("bez porcií")
+        if x["r"].get("rating") is not None and float(x["r"]["rating"]) < 4.0: prob.append(f"hodnotenie pod 4,0 (★{float(x['r']['rating']):.1f})")
         bad = [it["text"] for it in x["items"] if it["key"] is None or it["key"].startswith("SKIP_h")]
         if bad: prob.append("nečitateľné: " + "; ".join(bad[:3]))
         noq = [it["text"] for it in x["items"] if it["key"] and not it["key"].startswith("SKIP") and it["g"] is None and not it.get("serve")
-               and it["key"] not in cfg.get("free_q", ()) and it["key"] not in ("sol", "korenie", "voda", "korenie_cele", "petrzlenova_vnat", "pazitka", "kopor", "majoran", "rasca", "tymian", "muskat", "chilli", "nove_korenie", "bobkovy_list", "oregano")]
+               and it["key"] not in cfg.get("free_q", ()) and it["key"] not in ("sol", "korenie", "voda", "korenie_cele", "petrzlenova_vnat", "pazitka", "kopor", "majoran", "rasca", "tymian", "muskat", "chilli", "nove_korenie", "bobkovy_list", "oregano", "voda", "vyvar", "vyvar_kocka", "tymian", "rozmaryn")]
         if noq: prob.append("bez množstva: " + "; ".join(noq[:3]))
         if len(x["r"]["steps"]) < 2 or len(" ".join(x["r"]["steps"])) < 200: prob.append("krátky postup")
         miss = [k for k in core if k not in x["rows"] and k not in ("sol", "korenie")]
@@ -115,7 +116,7 @@ def analyze(dish):
                 if v < s["lo"] * 0.999 or v > s["hi"] * 1.001: dev.append(f"{k} {v:.0f} (bežne {s['lo']:.0f}–{s['hi']:.0f})")
         rare = [k for k in x["rows"] if stats[k]["share"] < 0.3 and k not in cfg.get("free_q", ())]
         am = [a for a in acts_major if a not in x["acts"]]
-        unq = [k for k in core if k in x["rows"] and not x["rows"][k] and k not in x["serve_rows"] and k not in ("sol", "korenie", "korenie_cele", "tekutina") and k not in cfg.get("free_q", ())
+        unq = [k for k in core if k in x["rows"] and not x["rows"][k] and k not in x["serve_rows"] and k not in ("sol", "korenie", "korenie_cele", "tekutina", "vyvar", "voda") and k not in cfg.get("free_q", ())
                and not (stats[k]["med"] is not None and stats[k]["med"] < 1.0)]
         if unq: prob.append("väčšinová bez množstva: " + ", ".join(unq))
         if len(miss) > 1: prob.append("chýba väčšinová: " + ", ".join(miss))
