@@ -23,10 +23,14 @@ export function inCategory(r: Recipe, cat: string | null) {
 }
 
 /* ------------------------------------------------------------------ jednotky */
-const SPOON_UNITS = ["lyzica", "lyzicka", "strucik", "stipka", "hrst"];
+const SPOON_UNITS = ["lyzica", "lyzicka", "strucik", "stipka", "hrst", "hrncek", "bal"];
+/** Množstvo bez čísla („soľ podľa chuti“, „olej na vyprážanie“) – nekupuje sa podľa množstva a vo výžive sa nepočíta. */
+export const isFreeAmount = (unit: string) => unit === "podla_chuti" || unit === "podla_potreby";
 
 /** „600 g“, „2 lyžice“, „1,5 lyžice“, „1 štipka“. */
 export function formatAmount(qty: number, unit: string): string {
+  if (unit === "podla_chuti") return t("rc.unit.toTaste");
+  if (unit === "podla_potreby") return t("rc.unit.asNeeded");
   if (unit === "g" || unit === "ml" || unit === "kg" || unit === "l") return formatQuantity(qty, unit) ?? "";
   if (unit === "ks") return t("rc.unit.ks", { n: formatNumber(qty, { maximumFractionDigits: 1 }) });
   // Pol a štvrť lyžičky sa píše ako „½ lyžičky“ a „¼ lyžičky“, nie „0,5“ či „0,3 lyžičky“.
@@ -47,6 +51,10 @@ export function toGrams(foodKey: string | null, qty: number, unit: string): numb
     case "lyzicka": return qty * food.lyzk;
     case "strucik": return qty * 5;
     case "stipka": return qty * 0.5;
+    // Hrsť: bylinky a koreniny (lyžica do 7 g) 10 g, ostatné 30 g; hrnček 250 ml; balenie = hmotnosť balenia.
+    case "hrst": return qty * (food.lyz <= 7 ? 10 : 30);
+    case "hrncek": return qty * 250 * food.dens;
+    case "bal": return food.g ? qty * food.g : food.pack?.g ? qty * food.pack.g : null;
     default: return null;
   }
 }
@@ -58,7 +66,7 @@ export function roundQty(q: number, unit: string) {
     if (q < 200) return Math.round(q / 5) * 5;
     return Math.round(q / 10) * 10;
   }
-  if (unit === "strucik" || unit === "stipka") return Math.max(1, Math.round(q));
+  if (unit === "strucik" || unit === "stipka" || unit === "bal") return Math.max(1, Math.round(q));
   if (unit === "ks" || unit === "lyzica" || unit === "lyzicka") return Math.max(0.5, Math.round(q * 2) / 2);
   return Math.round(q * 10) / 10;
 }
@@ -66,7 +74,12 @@ export function roundQty(q: number, unit: string) {
 /** Suroviny prepočítané na počet porcií. */
 export function scaleIngredients(r: Recipe, portions: number): Ingredient[] {
   const f = portions / r.portions;
-  return r.ingredients.map((ing) => ({ ...ing, qty: f === 1 ? ing.qty : roundQty(ing.qty * f, ing.unit) }));
+  // Vajcia a žĺtky sa pri prepočte zaokrúhlia na celé kusy.
+  const whole = (ing: Ingredient) => ing.unit === "ks" && (ing.food === "vajce" || ing.food === "zltok");
+  return r.ingredients.map((ing) => ({
+    ...ing,
+    qty: f === 1 ? ing.qty : whole(ing) ? Math.max(1, Math.round(ing.qty * f)) : roundQty(ing.qty * f, ing.unit),
+  }));
 }
 
 /** Text kroku s doplnenými množstvami: {cibula} → „2 ks“. */
@@ -108,7 +121,7 @@ export type Nutrition = {
 };
 
 /** Soľ do vody na cestoviny sa takmer celá vyleje – do výživy ju nepočítame. */
-const skipForNutrition = (ing: Ingredient) => /do vody/.test(ing.note || "");
+const skipForNutrition = (ing: Ingredient) => /do vody/.test(ing.note || "") || isFreeAmount(ing.unit);
 
 export function recipeNutrition(r: Recipe): Nutrition {
   const total = Object.fromEntries(NUTRIENTS.map((n) => [n.id, 0])) as Record<NutrientId, number>;
@@ -206,6 +219,7 @@ export function buyPlan(row: Row): BuyPlan {
   const need = formatAmount(row.qty, row.unit);
   const name = food?.name || row.name;
   const cat = row.cat;
+  if (isFreeAmount(row.unit)) return { name, cat, qty: 1, unit: "ks", detail: need, buyLabel: `${formatAmount(1, "ks")} · ${need}` };
   if (!food) {
     const simple = ["ks", "g", "ml"].includes(row.unit);
     return {

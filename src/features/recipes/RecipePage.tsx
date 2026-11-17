@@ -51,6 +51,12 @@ export function RecipePage() {
   const idx = Math.max(0, ids.indexOf(id));
   const r = recipes.find(id);
   const [por, setPor] = useState(r?.portions ?? 4);
+  // Prepočet porcií podľa receptu: pečenie len celé násobky (forma), varené jedlo ½–2× pôvodného receptu.
+  const lim = !r?.book?.scale
+    ? { min: 1, max: Math.max(12, (r?.portions ?? 4) * 2), step: 1 }
+    : r.book.scale === "whole"
+      ? { min: r.portions, max: r.portions * 3, step: r.portions }
+      : { min: r.book.scale === "piece" ? 1 : Math.max(1, Math.ceil(r.portions / 2)), max: r.portions * 2, step: 1 };
   const [tab, setTab] = useState<"ing" | "steps">("ing");
   const [sheet, setSheet] = useState<null | "add" | "plan" | "nutri" | "del">(null);
   useEffect(() => {
@@ -207,8 +213,9 @@ export function RecipePage() {
             <>
               <div className="portion">
                 <span className="meta">{t("rk.forHowMany")}</span>
-                <Stepper label={tn("rk.portions", por)} minDisabled={por <= 1} onMinus={() => setPor(Math.max(1, por - 1))} onPlus={() => setPor(Math.min(Math.max(12, r.portions * 2), por + 1))} />
+                <Stepper label={tn("rk.portions", por)} minDisabled={por <= lim.min} onMinus={() => setPor(Math.max(lim.min, por - lim.step))} onPlus={() => setPor(Math.min(lim.max, por + lim.step))} />
               </div>
+              {r.book?.scale && <p className="t-xs t-2 bscale">{t(r.book.scale === "whole" ? "kb.scaleWhole" : "kb.scaleFree")}</p>}
               {r.book ? (
                 <BookIngredients r={r} portions={por} rows={rows} est={est} onToggle={(x) => toggle(r.id, x)} />
               ) : (

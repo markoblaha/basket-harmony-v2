@@ -1,5 +1,5 @@
 /** Recept: katalógový (id z katalógu) alebo vlastný z databázy (uuid, mine = true). */
-export type Unit = "g" | "ml" | "ks" | "lyzica" | "lyzicka" | "strucik" | "stipka" | (string & {});
+export type Unit = "g" | "ml" | "ks" | "lyzica" | "lyzicka" | "strucik" | "stipka" | "hrst" | "hrncek" | "bal" | "podla_chuti" | "podla_potreby" | (string & {});
 
 export type Ingredient = {
   /** Kľúč suroviny: z databázy potravín (foods.ts) alebo vlastný – podľa neho sa dopĺňajú množstvá v krokoch {kľúč}. */
@@ -17,6 +17,8 @@ export type Ingredient = {
   ref?: string;
   /** Kniha receptov: zdroje (písmená z book.sources), v ktorých surovina je. */
   src?: string;
+  /** Náhrada spomenutá v postupe („masť alebo olej“) – kontrola surovín ↔ postup ju berie ako túto surovinu. */
+  alt?: string[];
 };
 
 export type Step = {
@@ -38,8 +40,10 @@ export type Step = {
 };
 
 /**
- * Overenie receptu (metóda „kotva“, 15. 11. 2026): základom je jeden skutočný recept (kotva) a každá surovina,
- * množstvo a úkon sa porovná so všetkými zdrojmi. Výpočet a pravidlá: bookCheck v kniha.ts, test v kniha.test.ts.
+ * Overenie receptu: recept je jeden skutočný recept (kotva = najhodnotenejší, ktorý prešiel kontrolou), prevzatý
+ * presne (suroviny, množstvá, postup – len preložený). Každá surovina, množstvo a úkon sa porovná s ostatnými
+ * receptami toho istého variantu (11–20). Prejde, keď: chýba najviac 1 surovina väčšiny, najviac 1 množstvo je mimo
+ * bežného rozpätia a má väčšinu úkonov väčšiny. Výpočet: bookCheck v kniha.ts, test v kniha.test.ts.
  */
 export type BookCheck = {
   /** Písmeno zdroja, ktorého recept je základom. */
@@ -48,6 +52,8 @@ export type BookCheck = {
   portions: Record<string, number>;
   /** Recept na jeden kus (torta): každý zdroj je na celý kus, množstvá sa porovnávajú na celý kus; porcie = kúsky na krájanie. */
   whole?: boolean;
+  /** Pečenie: množstvá sa porovnávajú na 100 g tejto suroviny (riadok foods), lebo formy majú rôznu veľkosť. */
+  base?: string;
   /**
    * Skupina surovín s vlastnými zdrojmi (napr. halušky k paprikášu): písmená jej zdrojov a jej kotva.
    * Riadky a úkony skupiny (group) sa porovnávajú len s jej zdrojmi; hlavné jedlo so zvyšnými.
@@ -68,7 +74,7 @@ export type BookCheck = {
 
 /** Recept z knihy: spojený zo skutočných receptov (zdroje), s fotkami a doplnkami. */
 export type BookInfo = {
-  /** Fotky: hlavná a ďalšie zábery (súbory public/kniha/<id>-<n>.webp, triedy pic-kb_<id>_<n>). */
+  /** Fotky (alebo obrázok šarže): hlavná a ďalšie zábery (súbory public/kniha/<id>-<n>.webp, triedy pic-kb_<id>_<n>). */
   photos: number;
   /** Čas práce v minútách (minutes = celkový čas). */
   active: number;
@@ -77,7 +83,14 @@ export type BookInfo = {
   cuisine: string;
   tools: string[];
   store: string;
-  sources: { k: string; site: string; name: string; url: string }[];
+  sources: { k: string; site: string; name: string; url: string; rating?: number; votes?: number }[];
+  /** Skúšobná šarža (1, 2, …): namiesto fotky obrázok s označením šarže, kým majiteľ recepty neschváli. */
+  batch?: number;
+  /**
+   * Prepočet porcií: „free“ = varené jedlo, ľubovoľne ½–2×; „piece“ = na kusy (palacinky), po jednej porcii;
+   * „whole“ = pečenie, len celé násobky receptu (forma). Časy sa neprepočítavajú, vajcia sa zaokrúhlia na celé.
+   */
+  scale?: "free" | "piece" | "whole";
   /** Overenie metódou „kotva“ (novšie recepty); staršie recepty sú spojené z 3–5 zdrojov bez neho. */
   check?: BookCheck;
 };

@@ -1,3 +1,25 @@
+/* Obrázky receptov z knihy (public/kniha): fotky alebo obrázok skúšobnej šarže. Trieda pic-kb_<id>_<n> ako ostatné obrázky
+ * mockupu (assets.css). Aj „.bhm .pic-…“, inak by podklad dlaždice (.bhm .th) obrázok prekryl (napr. Plán týždňa). */
+.pic-kb_cesnakova_1, .bhm .pic-kb_cesnakova_1 { background-image: url("/kniha/cesnakova-1.webp"); }
+.pic-kb_cesnakova_1s, .bhm .pic-kb_cesnakova_1s { background-image: url("/kniha/cesnakova-1s.webp"); }
+.pic-kb_gulas_1, .bhm .pic-kb_gulas_1 { background-image: url("/kniha/gulas-1.webp"); }
+.pic-kb_gulas_1s, .bhm .pic-kb_gulas_1s { background-image: url("/kniha/gulas-1s.webp"); }
+.pic-kb_segedin_1, .bhm .pic-kb_segedin_1 { background-image: url("/kniha/segedin-1.webp"); }
+.pic-kb_segedin_1s, .bhm .pic-kb_segedin_1s { background-image: url("/kniha/segedin-1s.webp"); }
+.pic-kb_paprikas_1, .bhm .pic-kb_paprikas_1 { background-image: url("/kniha/paprikas-1.webp"); }
+.pic-kb_paprikas_1s, .bhm .pic-kb_paprikas_1s { background-image: url("/kniha/paprikas-1s.webp"); }
+.pic-kb_halusky_1, .bhm .pic-kb_halusky_1 { background-image: url("/kniha/halusky-1.webp"); }
+.pic-kb_halusky_1s, .bhm .pic-kb_halusky_1s { background-image: url("/kniha/halusky-1s.webp"); }
+.pic-kb_carbonara_1, .bhm .pic-kb_carbonara_1 { background-image: url("/kniha/carbonara-1.webp"); }
+.pic-kb_carbonara_1s, .bhm .pic-kb_carbonara_1s { background-image: url("/kniha/carbonara-1s.webp"); }
+.pic-kb_salat_1, .bhm .pic-kb_salat_1 { background-image: url("/kniha/salat-1.webp"); }
+.pic-kb_salat_1s, .bhm .pic-kb_salat_1s { background-image: url("/kniha/salat-1s.webp"); }
+.pic-kb_palacinky_1, .bhm .pic-kb_palacinky_1 { background-image: url("/kniha/palacinky-1.webp"); }
+.pic-kb_palacinky_1s, .bhm .pic-kb_palacinky_1s { background-image: url("/kniha/palacinky-1s.webp"); }
+.pic-kb_babovka_1, .bhm .pic-kb_babovka_1 { background-image: url("/kniha/babovka-1.webp"); }
+.pic-kb_babovka_1s, .bhm .pic-kb_babovka_1s { background-image: url("/kniha/babovka-1s.webp"); }
+.pic-kb_cheesecake_1, .bhm .pic-kb_cheesecake_1 { background-image: url("/kniha/cheesecake-1.webp"); }
+.pic-kb_cheesecake_1s, .bhm .pic-kb_cheesecake_1s { background-image: url("/kniha/cheesecake-1s.webp"); }
 /* Kniha receptov v appke – doplnky k triedam mockupu (gal, bgroups, bsteps, sbx, binfo). */
 .bhm .bopt { font-size: 12px; font-weight: 700; color: var(--ter); margin-left: 6px; }
 .bhm .bsrc { display: flex; flex-direction: column; gap: 6px; }
@@ -138,3 +160,4 @@
 .bhm .cook .stx.xl { font-size: 21px; line-height: 1.3; }
 .w .bhm .cook .stx.lg { font-size: 28px; }
 .w .bhm .cook .stx.xl { font-size: 24px; line-height: 1.28; }
+.bhm .bscale { margin: -2px 4px 12px; }

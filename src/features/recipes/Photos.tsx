@@ -164,7 +164,7 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
       )}
       {!feed && (
         <span className="gal-l">
-          {names[i]} · {t("kb.aiPhoto")}
+          {r.book?.batch ? t("kb.batchPhoto", { n: r.book.batch }) : `${names[i]} · ${t("kb.aiPhoto")}`}
         </span>
       )}
     </div>

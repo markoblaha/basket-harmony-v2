@@ -15,11 +15,11 @@ import type { Recipe } from "./types";
 /** Kategórie knihy (ako v mockupe) – nad kategóriami a druhom mäsa receptov z appky. Obrázok dlaždice = fotka prvého receptu kategórie, inak ikona. */
 export const RCATS: { id: string; e: string; bg: string; test: (r: Recipe) => boolean }[] = [
   { id: "polievky", e: "stew", bg: "peach", test: (r) => r.category === "polievky" },
-  { id: "maso", e: "meat", bg: "rose", test: (r) => (r.meat === "bravcove" || r.meat === "hovadzie") && r.category !== "polievky" && r.category !== "cestoviny" },
+  { id: "maso", e: "meat", bg: "rose", test: (r) => (r.meat === "bravcove" || r.meat === "hovadzie") && r.category !== "polievky" && r.category !== "cestoviny" && r.category !== "salaty" },
   { id: "hydina", e: "poultry", bg: "rose", test: (r) => r.meat === "kuracie" && r.category !== "polievky" },
   { id: "cestoviny", e: "spaghetti", bg: "butter", test: (r) => r.category === "cestoviny" },
   { id: "ryby", e: "fish", bg: "sky", test: (r) => r.meat === "ryby" },
-  { id: "bezmasa", e: "salad", bg: "sage", test: (r) => r.meat === "bez" && r.category !== "sladke" && r.category !== "ranajky" },
+  { id: "bezmasa", e: "salad", bg: "sage", test: (r) => r.category === "salaty" || (r.meat === "bez" && r.category !== "sladke" && r.category !== "ranajky") },
   { id: "sladke", e: "pancakes", bg: "butter", test: (r) => r.category === "sladke" || r.category === "ranajky" },
   { id: "all", e: "books", bg: "peach", test: () => true },
 ];

@@ -1,6 +1,6 @@
 /*
  * Kniha receptov Basket Harmony – pomocné funkcie knihy (fotky, alergény, suroviny pri kroku) a overenie
- * receptov metódou „kotva“ (bookCheck). Samotné recepty sú v kniha-overene.ts. Výživa a alergény sa počítajú
+ * receptu porovnaním s ostatnými receptami toho istého variantu (bookCheck). Samotné recepty sú v kniha-overene.ts. Výživa a alergény sa počítajú
  * zo surovín (foods.ts, USDA), nič sa nepíše ručne. Kontroly sú v kniha.test.ts.
  */
 import { FOODS, type Allergen } from "./foods";
@@ -44,17 +44,19 @@ export function bookPhotos(r: Pick<Recipe, "id" | "book">) {
 /* Ako sa surovina volá v texte postupu (začiatky slov, slovenské tvary). Používa ho kontrolný program
  * (kniha.test.ts: suroviny ↔ postup) aj varenie (suroviny pri kroku). Nová surovina v knihe = nový riadok. */
 export const SAID: Record<string, string> = {
-  pliecko: "mäs", kurca: "kurč|mäs", kuracie_stehna: "steh|mäs", mlete: "mäs", mast: "masť", cibula: "cibu", cesnak: "cesn", rasca: "rasc",
-  paprika_mleta: "papri", sol: "soľ|osoľ|soli", korenie: "koren", vyvar: "vývar", kapusta: "kapust", smotana_sladka: "smotan",
-  smotana: "smotan", kysla_smotana: "smotan", muka: "múk", knedla: "knedľ", olej: "olej", voda: "vod", vajce: "vajc|vajce",
-  maslo: "masl", zemiaky: "zemiak", sampinony: "hub", kopor: "kôpor", ocot: "oct", tuk: "tuk", cukor: "cukr", med: "med(om)?\\b",
-  soda: "sód", kondenz: "kondenz\\S* mliek|karamel", orechy: "orech(y|mi)\\b", olivovy_olej: "olej", mrkva: "mrkv", zeler_stopkovy: "zeler",
-  pasirovane: "paradaj", muskat: "muškát", lasagne: "platn", parmezan: "parmez", mlieko: "mliek",
-  hovadzie: "mäs", udene: "mäs|údené", klobasa: "klobás", huby_susene: "hub|hríb", baklazan: "baklažán", pretlak: "pretlak",
-  paradajky_kraj: "paradaj", fazula: "fazu", paprika: "papri", paprika_cervena: "papri", chilli: "chilli",
-  rimska_rasca: "rímsk\\S* rasc", skorica: "škoric", bobkovy_list: "bobkov", nove_korenie: "nov\\S* koren", korenie_cele: "koren",
-  citron: "citrón", brusnice: "brusn", horcica: "horčic", uhorky_kysle: "uhor", ryza: "ryž", eidam: "syr", oregano: "oregan",
-  majoran: "majorán", slanina: "slanin", parky: "párk|párok", zeler: "zeler", petrzlen: "petržl",
+  pliecko: "mäs", bocik: "bôčik|mäs", kurca: "kurč|mäs", kuracie_stehna: "steh|mäs|kurať|kurac", mlete: "mäs", mast: "masť|mast[ií]", cibula: "cibu", cesnak: "cesn", rasca: "rasc",
+  paprika_mleta: "papri", paprika_udena: "papri", sol: "soľ|osoľ|osol|soli", korenie: "koren|koreň|okoren|okoreň", gulas_korenie: "koren", tekute_korenie: "tekut\\S* koren",
+  vyvar: "vývar", kapusta: "kapust", smotana_sladka: "smotan", smotana: "smotan", kysla_smotana: "smotan", muka: "múk", muka_polohruba: "múk", muka_hruba: "múk",
+  knedla: "knedľ", olej: "olej", voda: "vod", vajce: "vajc|vajce|vajíč|žĺt|bielk", zltok: "žĺt", maslo: "masl", zemiaky: "zemiak", sampinony: "hub", kopor: "kôpor", ocot: "oct",
+  tuk: "tuk", cukor: "cukr|cukor|pocukr", cukor_mly: "cukr|cukor|práškov", cukor_vanil: "vanilk", med: "med(om)?\\b", soda: "sód", kondenz: "kondenz\\S* mliek|karamel",
+  orechy: "orech(y|mi)\\b", olivovy_olej: "olej", mrkva: "mrkv", zeler_stopkovy: "zeler", pasirovane: "paradaj", muskat: "muškát", lasagne: "platn",
+  parmezan: "parmez|syr", pecorino: "pecorin|syr", kremovy_syr: "syr", mlieko: "mliek", hovadzie: "mäs", udene: "mäs|údené", klobasa: "klobás",
+  huby_susene: "hub|hríb", baklazan: "baklažán", pretlak: "paradajk\\S* pretlak|pretlak", paradajky_kraj: "paradaj", fazula: "fazu", paprika: "papri", paprika_cervena: "papri",
+  chilli: "chilli", rimska_rasca: "rímsk\\S* rasc", skorica: "škoric", bobkovy_list: "bobkov", nove_korenie: "nov\\S* koren", korenie_cele: "koren",
+  citron: "citrón", citron_kora: "kôr", vanilka: "vanilk", brusnice: "brusn", horcica: "horčic", uhorky_kysle: "uhor", ryza: "ryž", eidam: "syr", oregano: "oregan",
+  majoran: "majorán", slanina: "slanin|pancett|špek", parky: "párk|párok", zeler: "zeler", petrzlen: "petržl", petrzlenova_vnat: "petržl|vňať",
+  bryndza: "bryndz", spagety: "špaget|cestovin", cestoviny: "kolienk|cestovin", susienky: "sušienk", majoneza: "majonéz", tatarska: "tatársk",
+  kakao: "kaka", prasok: "kypriac", hrasok: "hrášok|hrášk", jablko: "jablk|jabĺk", kapia: "kápi",
 };
 /** Výraz, ktorý nájde surovinu v texte (na začiatku slova). */
 export const said = (food: string) => new RegExp(`(^|[^a-záäčďéíĺľňóôŕšťúýž])(${SAID[food] ?? "\\u0000"})`, "i");
@@ -125,7 +127,8 @@ export type CheckRow = {
   hi: number | null;
   /** Koľko zdrojov uvádza množstvo (porovnáva sa od 4). */
   quantified: number;
-  /** Naše množstvo je v bežnom rozpätí (null = neporovnáva sa). */
+  /** Naše množstvo je v bežnom rozpätí (null = neporovnáva sa). Malé množstvá (koreniny pod 1 g) sa porovnávajú
+   * len hrubo: mimo je až viac ako trojnásobok bežného. */
   typical: boolean | null;
   inRange: boolean | null;
 };
@@ -144,6 +147,12 @@ export type CheckResult = {
   weak: string[];
   /** Úkony väčšiny, ktoré v postupe chýbajú. */
   actsMissing: string[];
+  /** Počet úkonov väčšiny. */
+  actsMajor: number;
+  /** Koľko našich množstiev je mimo bežného rozpätia. */
+  outside: number;
+  /** Prešiel kontrolou: chýba najviac 1 surovina väčšiny, najviac 1 množstvo mimo bežného, väčšina úkonov väčšiny. */
+  ok: boolean;
   /** Zhoda 0–1: priemer (suroviny väčšiny, množstvá v bežnom rozpätí, úkony väčšiny). */
   score: number;
   parts: { ingredients: number; amounts: number; steps: number };
@@ -183,34 +192,46 @@ export function bookCheck(r: Recipe): CheckResult | null {
   const main = src.map((s) => s.k).filter((k) => !inGroup.has(k));
   const of = (g?: string) => (g && c.groups?.[g] ? [...c.groups[g].src] : main);
   const sites = (letters: string[]) => new Set(src.filter((s) => letters.includes(s.k)).map((s) => s.site)).size;
-  const known = main.map((k) => c.portions[k]).filter((p): p is number => !!p);
-  const base = c.whole || !known.length ? r.portions : basePortions(known);
+  const base = c.whole || !c.portions[c.anchor] ? r.portions : c.portions[c.anchor]!;
+  // Množstvo zdroja/naše na porovnanie: na porciu, na celý kus, alebo (pečenie) na 100 g základnej suroviny.
+  const baseRow = c.base ? c.rows.find((x) => x.foods.split("+").includes(c.base!)) : undefined;
+  const ourBase = baseRow ? ourAmount(r, c, baseRow.foods.split("+"), baseRow.unit) : null;
   const rows: CheckRow[] = c.rows.map((row) => {
     const foods = row.foods.split("+");
     const letters = of(row.group);
     const have = Object.keys(row.v).filter((k) => letters.includes(k));
     const per = have
-      .filter((k) => row.v[k]! > 0 && (c.whole || c.portions[k]))
-      .map((k) => (c.whole ? row.v[k]! : (row.v[k]! / c.portions[k]!) * r.portions))
+      .filter((k) => row.v[k]! > 0)
+      .map((k) => {
+        if (baseRow) return baseRow.v[k] ? (row.v[k]! / baseRow.v[k]!) * 100 : NaN;
+        if (c.whole) return row.v[k]!;
+        return c.portions[k] ? (row.v[k]! / c.portions[k]!) * r.portions : NaN;
+      })
+      .filter((x) => Number.isFinite(x))
       .sort((a, b) => a - b);
-    const ours = ourAmount(r, c, foods, row.unit, row.group);
+    const raw = ourAmount(r, c, foods, row.unit, row.group);
+    const ours = raw == null ? null : baseRow ? (ourBase ? (raw / ourBase) * 100 : null) : raw;
     const q = per.length;
     const min = q ? per[0]! : null;
     const max = q ? per[q - 1]! : null;
     const lo = q >= 4 ? pct(per, 0.2) : min;
     const hi = q >= 4 ? pct(per, 0.8) : max;
     const near = (x: number, y: number) => Math.abs(x - y) < 1e-6;
-    const cmp = ours != null && q >= 4;
+    const isBase = row === baseRow;
+    const cmp = ours != null && ours > 0 && q >= 4 && !isBase;
+    // na porciu (alebo na 100 g základu) pod 1 g = korenina: porovnáva sa len hrubo
+    const tiny = cmp && pct(per, 0.5) / (baseRow || c.whole ? 1 : r.portions) < 1;
     return {
       foods, group: row.group, all: letters.length, label: row.label, unit: row.unit, count: have.length, share: have.length / letters.length,
       ours, min, max, lo, hi, quantified: q,
-      typical: cmp ? (ours >= lo! || near(ours, lo!)) && (ours <= hi! || near(ours, hi!)) : null,
-      inRange: cmp ? (ours >= min! || near(ours, min!)) && (ours <= max! || near(ours, max!)) : null,
+      typical: !cmp ? null : tiny ? ours! <= hi! * 3 : (ours! >= lo! || near(ours!, lo!)) && (ours! <= hi! || near(ours!, hi!)),
+      inRange: cmp ? (ours! >= min! || near(ours!, min!)) && (ours! <= max! || near(ours!, max!)) : null,
     };
   });
   const name = (foods: string[]) => foods.map((f) => FOODS[f]?.name ?? f).join(" + ");
   const core = rows.filter((x) => x.share > 0.5);
-  const missing = core.filter((x) => x.ours == null).map((x) => name(x.foods));
+  // soľ a korenie zdroje často v zozname neuvádzajú – ich chýbanie sa nepočíta
+  const missing = core.filter((x) => x.ours == null && !x.foods.every((f) => f === "sol" || f === "korenie")).map((x) => name(x.foods));
   const weak: string[] = [];
   for (const ing of r.ingredients) {
     if (FOODS[ing.food]?.free) continue;
@@ -225,6 +246,7 @@ export function bookCheck(r: Recipe): CheckResult | null {
     amounts: compared.length ? compared.filter((x) => x.typical).length / compared.length : 1,
     steps: majorActs.length ? (majorActs.length - actsMissing.length) / majorActs.length : 1,
   };
+  const outside = rows.filter((x) => x.typical === false).length;
   return {
     sources: main.length,
     sites: sites(main),
@@ -234,6 +256,9 @@ export function bookCheck(r: Recipe): CheckResult | null {
     missing,
     weak,
     actsMissing,
+    actsMajor: majorActs.length,
+    outside,
+    ok: missing.length <= 1 && outside <= 1 && actsMissing.length <= Math.floor(majorActs.length / 2),
     score: (parts.ingredients + parts.amounts + parts.steps) / 3,
     parts,
   };

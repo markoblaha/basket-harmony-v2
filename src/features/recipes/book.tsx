@@ -190,7 +190,7 @@ export function BookInfo({ r }: { r: Recipe }) {
       {b.check && <BookCheckInfo r={r} />}
       <div>
         <div className="bgh">{tn(b.check ? "kb.compared" : "kb.sources", b.sources.length)}</div>
-        <p>{t(b.check ? "kb.comparedHint" : "kb.sourcesHint")}</p>
+        <p>{b.check ? t("kb.comparedHint", { anchor: b.sources.find((s) => s.k === b.check!.anchor)?.name ?? "" }) : t("kb.sourcesHint")}</p>
         <div className="bsrc">
           {b.sources.map((s) => (
             <a key={s.k} href={s.url} target="_blank" rel="noopener noreferrer">
@@ -217,7 +217,7 @@ function BookCheckInfo({ r }: { r: Recipe }) {
   if (!res || !c) return null;
   const anchor = r.book!.sources.find((s) => s.k === c.anchor);
   const rows = res.rows.filter((x) => x.ours != null);
-  const unit = (x: CheckRow) => t(x.unit === "ks" ? "kb.unit.ks" : "kb.unit.g");
+  const unit = (x: CheckRow) => (c.base ? "g" : t(x.unit === "ks" ? "kb.unit.ks" : "kb.unit.g"));
   return (
     <div className="bchk">
       <div className="bgh">{t("kb.check")}</div>
@@ -225,12 +225,29 @@ function BookCheckInfo({ r }: { r: Recipe }) {
         <b>{t("kb.match", { pct: Math.round(res.score * 100) })}</b>
         <span>{t("kb.checkSum", { sources: res.sources, sites: res.sites })}</span>
       </p>
-      {anchor && <p>{t("kb.anchor", { name: anchor.name, site: anchor.site })}</p>}
+      {anchor && (
+        <p>
+          {t("kb.anchor", {
+            name: anchor.name,
+            site: anchor.site,
+            votes: anchor.votes ? t("kb.votes", { rating: formatNumber(anchor.rating ?? 0, { maximumFractionDigits: 1 }), votes: formatNumber(anchor.votes) }) : "",
+          })}
+        </p>
+      )}
+      <p>
+        {res.ok
+          ? t("kb.verdictOk", { missing: res.missing.length, outside: res.outside, acts: `${res.actsMajor - res.actsMissing.length}/${res.actsMajor}` })
+          : t("kb.verdictBad", { missing: res.missing.length, outside: res.outside })}
+      </p>
       {res.groups.map((g) => {
         const a = r.book!.sources.find((s) => s.k === g.anchor);
         return a ? <p key={g.name}>{t("kb.groupAnchor", { group: g.name, name: a.name, site: a.site, sources: g.sources, sites: g.sites })}</p> : null;
       })}
-      <p>{t(c.whole ? "kb.wholeNote" : "kb.portionsNote", { portions: tn("rk.portions", r.portions) })}</p>
+      <p>
+        {c.base
+          ? t("kb.baseNote", { base: FOODS[c.base]?.name ?? c.base })
+          : t(c.whole ? "kb.wholeNote" : "kb.portionsNote", { portions: tn("rk.portions", r.portions) })}
+      </p>
       <div className="bchk-tab" role="table" aria-label={t("kb.check")}>
         <div className="bchk-h" role="row">
           <span role="columnheader">{t("kb.colIng")}</span>
