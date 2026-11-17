@@ -46,6 +46,29 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      book_recipes: {
+        Row: {
+          active_minutes: number | null; batch: number | null; category: string; check_data: Json | null; created_at: string; cuisine: string | null;
+          difficulty: number; dish_id: string; id: string; image_path: string | null; image_status: string; ingredients: Json; meat: string; minutes: number;
+          name: string; portions: number; portions_guess: boolean; scale: string | null; status: string; steps: Json; store: string | null; tags: string[];
+          tools: string[]; updated_at: string; variant_key: string; verification: Json; version: number; wait: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["book_recipes"]["Row"]> & { id: string; dish_id: string; name: string; category: string; minutes: number; portions: number; ingredients: Json; steps: Json };
+        Update: Partial<Database["public"]["Tables"]["book_recipes"]["Row"]>;
+        Relationships: [];
+      };
+      book_sources: {
+        Row: { is_anchor: boolean; k: string; name: string; portions: number | null; rating: number | null; recipe_id: string; site: string; url: string; votes: number | null };
+        Insert: Partial<Database["public"]["Tables"]["book_sources"]["Row"]> & { recipe_id: string; k: string; name: string; site: string; url: string };
+        Update: Partial<Database["public"]["Tables"]["book_sources"]["Row"]>;
+        Relationships: [];
+      };
+      book_dishes: {
+        Row: { category: string; created_at: string; cuisine: string; family: string | null; id: string; name_sk: string; notes: string | null; priority: number; status: string };
+        Insert: Partial<Database["public"]["Tables"]["book_dishes"]["Row"]> & { id: string; name_sk: string; category: string };
+        Update: Partial<Database["public"]["Tables"]["book_dishes"]["Row"]>;
+        Relationships: [];
+      };
       categories: {
         Row: { emoji: string; everyday: boolean; id: string; name: string; sort_order: number };
         Insert: never;

@@ -2,12 +2,16 @@
  * Kontrolný program knihy receptov (bez AI). Beží pri každom `npm run check` – recept s chybou zastaví build.
  * Pravidlá: prototyp/recepty-vyroba-navrh.html („Ako vznikne recept“, „Kvalita“).
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FOODS } from "./foods";
-import { BOOK, SAID, bookCheck, bookPics, recipeAllergens, said, stepFoods } from "./kniha";
+import { SAID, bookCheck, recipeAllergens, said, stepFoods } from "./kniha";
 import { findRef, recipeNutrition, scaleIngredients } from "./logic";
+import fixture from "./__fixtures__/kniha.json";
 import type { Recipe } from "./types";
+
+/** Vzorka receptov z databázy knihy (zdroj pravdy je DB; vzorka slúži len na test kontrol a výpočtov). */
+const BOOK = fixture as unknown as Recipe[];
 
 /** Metóda kotva: písmená zdrojov hlavného jedla alebo skupiny s vlastnými zdrojmi (halušky) a ich kotva. */
 const checkOf = (r: Recipe, g?: string) => {
@@ -17,8 +21,7 @@ const checkOf = (r: Recipe, g?: string) => {
   return { letters: r.book!.sources.map((s) => s.k).filter((k) => !inGroup.includes(k)).join(""), anchor: c.anchor };
 };
 
-// Kniha môže byť dočasne prázdna (čistý začiatok pred šaržou) – kontroly sa vtedy nespúšťajú.
-(BOOK.length ? describe.each(BOOK.map((r) => [r.name, r] as const)) : () => () => undefined)("kniha: %s", (_: string, r: Recipe) => {
+describe.each(BOOK.map((r) => [r.name, r] as const))("kniha: %s", (_, r) => {
   const b = r.book!;
   const foods = new Set(r.ingredients.map((x) => x.food));
 
@@ -126,14 +129,9 @@ const checkOf = (r: Recipe, g?: string) => {
     expect(bookCheck(r)!.ok).toBe(true);
   });
 
-  it("má fotky (alebo obrázok skúšobnej šarže) a malú na karty", () => {
+  it("má obrázok (fotky alebo obrázok skúšobnej šarže) a malý náhľad", () => {
     expect(b.photos).toBeGreaterThanOrEqual(b.batch ? 1 : 3);
-    const css = readFileSync("src/features/recipes/kniha.css", "utf8");
-    for (const p of [...bookPics(r), `kb_${r.id}_1s`]) {
-      expect(css, p).toContain(`.pic-${p} `);
-      const file = `public/kniha/${p.replace(/^kb_/, "").replace(/_(\d)(s?)$/, "-$1$2")}.webp`;
-      expect(existsSync(file), file).toBe(true);
-    }
+    for (const p of [`public/kniha/${r.id}-1.webp`, `public/kniha/${r.id}-1s.webp`]) expect(existsSync(p), p).toBe(true);
   });
 });
 

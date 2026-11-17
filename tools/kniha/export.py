@@ -73,4 +73,4 @@ if __name__ == "__main__":
         lines.append("  },")
         print(d, "kotva", o["anchor"], "zdrojov", len(o["sources"]), "riadkov", len(o["rows"]), "úkony", [(a["a"], len(a["src"]), a.get("step")) for a in o["acts"]], file=sys.stderr)
     lines.append("};")
-    open(Path(__file__).resolve().parents[2] / "src/features/recipes/kniha-porovnanie.ts", "w").write("\n".join(lines) + "\n")
+    open(DATA / "porovnanie.ts", "w").write("\n".join(lines) + "\n")

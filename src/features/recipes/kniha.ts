@@ -6,13 +6,27 @@
 import { FOODS, type Allergen } from "./foods";
 import { findRef, toGrams } from "./logic";
 import type { BookCheck, Ingredient, Recipe, Step } from "./types";
-import { BOOK_CHECKED } from "./kniha-overene";
 
-/** Celá kniha: recepty overené metódou „kotva“ (kniha-overene.ts). */
-export const BOOK: Recipe[] = BOOK_CHECKED;
-
-/** Recept z knihy podľa kľúča. */
-export const bookRecipe = (id: string) => BOOK.find((r) => r.id === id);
+/**
+ * Obrázky receptov z databázy (image_path): pre každý recept sa raz pridá CSS pravidlo pic-kb_<id>_1 (veľký) a _1s (malý náhľad),
+ * ktoré používajú karty, kategórie a celá obrazovka (bookPics). Súbor „-1s“ je malý náhľad vedľa hlavného obrázka.
+ */
+export function injectBookPics(items: { id: string; path: string | null }[]) {
+  if (typeof document === "undefined") return;
+  let el = document.getElementById("book-pics") as HTMLStyleElement | null;
+  if (!el) {
+    el = document.createElement("style");
+    el.id = "book-pics";
+    document.head.appendChild(el);
+  }
+  el.textContent = items
+    .filter((x) => x.path)
+    .map((x) => {
+      const small = x.path!.replace(/-1\.webp$/, "-1s.webp");
+      return `.pic-kb_${x.id}_1, .bhm .pic-kb_${x.id}_1 { background-image: url("${x.path}"); } .pic-kb_${x.id}_1s, .bhm .pic-kb_${x.id}_1s { background-image: url("${small}"); }`;
+    })
+    .join("\n");
+}
 
 /** Triedy fotiek receptu: pic-kb_<id>_<n> (súbory public/kniha/<id>-<n>.webp). */
 export function bookPics(r: Pick<Recipe, "id" | "book">) {

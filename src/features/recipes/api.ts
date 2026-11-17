@@ -10,9 +10,9 @@ import { getLocale } from "@/i18n";
 import { supabase } from "@/lib/supabase";
 import { currentHouseholdId } from "@/features/household/current";
 import type { Json } from "@/lib/database.types";
-import { CATALOG } from "./catalog";
+import { injectBookPics } from "./kniha";
 import { FOODS } from "./foods";
-import type { Ingredient, Meat, QA, Recipe, RecipeCategory, Step } from "./types";
+import type { BookCheck, Ingredient, Meat, QA, Recipe, RecipeCategory, Step } from "./types";
 
 export const recipeKeys = {
   mine: (h: string) => ["recipes", h] as const,
@@ -79,15 +79,72 @@ export function useMyRecipes(householdId: string) {
   });
 }
 
-/** Všetky recepty (vlastné + katalóg) a vyhľadanie podľa id. */
+/**
+ * Kniha receptov z databázy (tabuľky book_*; číta len schválené a zverejnené recepty). Recepty sa do nej dostanú výrobnou
+ * linkou (tools/kniha), nie z kódu aplikácie. Obrázky: image_path (neskôr Gemini), kým nie sú, obrázok šarže.
+ */
+export function useBookRecipes() {
+  return useQuery({
+    queryKey: ["book-recipes"],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const [rec, src] = await Promise.all([
+        supabase.from("book_recipes").select("*").order("batch", { ascending: true }).order("name", { ascending: true }),
+        supabase.from("book_sources").select("*"),
+      ]);
+      if (rec.error) throw rec.error;
+      if (src.error) throw src.error;
+      const by = new Map<string, typeof src.data>();
+      for (const s of src.data) by.set(s.recipe_id, [...(by.get(s.recipe_id) ?? []), s]);
+      const list = rec.data.map((r): Recipe => {
+        const sources = (by.get(r.id) ?? []).sort((a, b) => a.k.length - b.k.length || a.k.localeCompare(b.k));
+        const check = r.check_data ? ({ ...(r.check_data as unknown as BookCheck), changes: [] } as BookCheck) : undefined;
+        return {
+          id: r.id,
+          name: r.name,
+          category: r.category as RecipeCategory,
+          meat: r.meat as Meat,
+          minutes: r.minutes,
+          difficulty: r.difficulty as 1 | 2 | 3,
+          portions: r.portions,
+          hue: 30,
+          icon: "",
+          tags: r.tags,
+          source: "",
+          ingredients: r.ingredients as unknown as Ingredient[],
+          steps: r.steps as unknown as Step[],
+          book: {
+            photos: r.image_path ? 1 : 0,
+            batch: r.image_status === "batch_label" ? (r.batch ?? undefined) : undefined,
+            active: r.active_minutes ?? r.minutes,
+            wait: r.wait ?? undefined,
+            scale: (r.scale ?? undefined) as "free" | "piece" | "whole" | undefined,
+            portionsGuess: r.portions_guess || undefined,
+            cuisine: r.cuisine ?? "",
+            tools: r.tools,
+            store: r.store ?? "",
+            sources: sources.map((s) => ({ k: s.k, site: s.site, name: s.name, url: s.url, ...(s.rating ? { rating: Number(s.rating) } : {}), ...(s.votes ? { votes: s.votes } : {}) })),
+            check,
+          },
+        };
+      });
+      injectBookPics(list.map((r) => ({ id: r.id, path: rec.data.find((x) => x.id === r.id)?.image_path ?? null })));
+      return list;
+    },
+  });
+}
+
+/** Všetky recepty (vlastné + kniha) a vyhľadanie podľa id. */
 export function useRecipes(householdId: string) {
   const mine = useMyRecipes(householdId);
+  const book = useBookRecipes();
   return useMemo(() => {
     const own = mine.data ?? [];
-    const all = [...own, ...CATALOG];
+    const catalog = book.data ?? [];
+    const all = [...own, ...catalog];
     const byId = new Map(all.map((r) => [r.id, r]));
-    return { mine: own, catalog: CATALOG, all, find: (id: string) => byId.get(id), isPending: mine.isPending, error: mine.error };
-  }, [mine.data, mine.isPending, mine.error]);
+    return { mine: own, catalog, all, find: (id: string) => byId.get(id), isPending: mine.isPending || book.isPending, error: mine.error ?? book.error };
+  }, [mine.data, mine.isPending, mine.error, book.data, book.isPending, book.error]);
 }
 
 export type RecipeDraft = Omit<Recipe, "id" | "hue" | "mine">;

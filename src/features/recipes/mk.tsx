@@ -9,7 +9,6 @@ import { eur, recipeArt } from "@/mockup/kit";
 import { useEstimator, type Estimator } from "@/features/lists/estimate";
 import { buyPlan, mergeIngredients, type Row } from "./logic";
 import { STAPLE_KEYS } from "./foods";
-import { bookRecipe } from "./kniha";
 import type { Recipe } from "./types";
 
 /** Kategórie knihy (ako v mockupe) – nad kategóriami a druhom mäsa receptov z appky. Obrázok dlaždice = fotka prvého receptu kategórie, inak ikona. */
@@ -66,9 +65,9 @@ function guessArt(r: Pick<Recipe, "name"> & Partial<Pick<Recipe, "category" | "m
   return c ? { e: c[0], bg: c[1] } : { e: "pot", bg: "peach" };
 }
 
-export function art(r: Pick<Recipe, "id" | "name" | "mine"> & Partial<Pick<Recipe, "category" | "meat">>): { e: string; pic: string | null; bg: string; big?: string } {
+export function art(r: Pick<Recipe, "id" | "name" | "mine"> & Partial<Pick<Recipe, "category" | "meat" | "book">>): { e: string; pic: string | null; bg: string; big?: string } {
   // Recept z knihy: malá fotka na karty, veľká (big) na celú obrazovku.
-  if (!r.mine && bookRecipe(r.id)?.book) return { e: "pot", pic: `kb_${r.id}_1s`, big: `kb_${r.id}_1`, bg: "peach" };
+  if (!r.mine && r.book?.photos) return { e: "pot", pic: `kb_${r.id}_1s`, big: `kb_${r.id}_1`, bg: "peach" };
   const a = r.mine ? null : recipeArt(r.id, r.name);
   if (a && (a.pic || a.e !== "pot")) return a;
   return { ...guessArt(r), pic: null };
