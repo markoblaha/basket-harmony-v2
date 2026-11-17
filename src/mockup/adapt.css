@@ -1,0 +1,514 @@
+/*
+ * Prispôsobenie mockupu skutočnej appke: v mockupe je všetko v ráme telefónu (.app s pevnou výškou
+ * a vlastným posúvaním), v appke sa posúva celé okno. Tu sú len rozdiely; vzhľad je v mockup.css.
+ */
+
+/* Obal prenesených častí: bez rámu, okraje displeja z iPhonu (výrez hore, pásik dole). */
+.bhm {
+  height: auto;
+  width: auto;
+  overflow: visible;
+  background: none;
+  isolation: auto;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: max(12px, calc(env(safe-area-inset-bottom, 0px) - 12px));
+}
+
+/* Miesto pod obsahom pre spodnú lištu (obsah a tlačidlá dole sa držia nad ňou). */
+:root {
+  --tabbar-space: calc(max(12px, calc(env(safe-area-inset-bottom, 0px) - 12px)) + 84px);
+}
+/* Obrazovky bez lišty (zoznam, varenie…): dole len bezpečný okraj. */
+body.no-tabs {
+  --tabbar-space: max(10px, env(safe-area-inset-bottom, 0px));
+}
+
+/* Hlavička: lepí sa hore pri posúvaní okna; sklo a malý nadpis pri posunutí (.sc.scrolled). */
+.bhm-top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.bhm.bhm-top .sc {
+  overflow: visible;
+}
+.bhm.bhm-title .body {
+  padding-bottom: 8px;
+  gap: 12px;
+}
+
+/* Spodná lišta a prechod pod ňou: pevne pri spodku okna, na širokom displeji v stĺpci appky. */
+/* :root zvyšuje prioritu nad pravidlami tém (.w .bhm .tabbar má position: absolute pre rám telefónu). */
+:root .bhm.bhm-tabs .tabbar,
+:root .bhm.bhm-tabs .tabfade {
+  position: fixed;
+}
+:root .bhm.bhm-tabs .tabbar {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+body.kb-typing .bhm-tabs {
+  display: none;
+}
+
+/* Pozadie témy Fotky a sklo: rozmazaná fotka trhu so závojom pod celou appkou. */
+.bhm-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+:root.g body {
+  background: transparent;
+}
+/* Sklo: body je priehľadné (pod ním fotka), iPhone preto berie farbu lišty z <html>. */
+:root.g {
+  background: var(--sbar, var(--bg));
+}
+/* Sklo: vrch fotky v pozadí prechádza z farby lišty (--sbar-t) – lišta na obrazovku plynulo nadväzuje. */
+.bhm-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: calc(var(--sat) + 110px);
+  background: linear-gradient(180deg, var(--sbar-t) 0, var(--sbar-t) var(--sat), transparent);
+}
+/* Detail receptu: fotka siaha pod lištu, jej vrch prechádza z farby lišty. */
+.bhm.bhm-recipe .rhero2::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  height: calc(var(--sat) + 96px);
+  background: linear-gradient(180deg, var(--sbar-t) 0, var(--sbar-t) var(--sat), color-mix(in srgb, var(--sbar-t) 45%, transparent) calc(var(--sat) + 36px), transparent);
+  pointer-events: none;
+}
+/* Ochutnávač, varenie a bloček v Skle (tmavá fotka / fotoaparát cez celú plochu): čierny pás lišty, obraz do neho prechádza. */
+.bhm .taste::after,
+.g .bhm .cook .bgl::after,
+.g .bhm .scan > .cam::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 5;
+  height: calc(var(--sat) + 76px);
+  background: linear-gradient(180deg, #000 0, #000 var(--sat), rgb(0 0 0 / .4) calc(var(--sat) + 30px), transparent);
+  pointer-events: none;
+}
+
+/* Spodné panely (Sheet z mockupu): nad celou appkou, pevne k oknu. */
+:root .bhm.bhm-ovl {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+:root .bhm.bhm-ovl .sheetw {
+  position: absolute;
+  inset: 0;
+}
+:root .bhm.bhm-ovl .sheet {
+  max-height: calc(100dvh - var(--sat) - 12px - var(--kb, 0px));
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+/* Nový zoznam na nízkom displeji (iPhone SE, Safari s lištami): rovnaký vzhľad, menšie medzery – zmestí sa bez rolovania. */
+@media (max-height: 640px) {
+  :root .bhm.bhm-ovl .sheet.nl .grabz { padding: 6px 0 2px; }
+  :root .bhm.bhm-ovl .sheet.nl .sh-head { padding-top: 2px; padding-bottom: 2px; }
+  :root .bhm.bhm-ovl .sheet.nl .sh-head h2 { font-size: 20px; }
+  :root .bhm.bhm-ovl .sheet.nl .sh-body { gap: 10px; }
+  :root .bhm.bhm-ovl .sheet.nl .fl { gap: 4px; }
+  :root .bhm.bhm-ovl .sheet.nl .fl input { height: 44px; }
+  :root .bhm.bhm-ovl .sheet.nl .stb { min-height: 44px; padding: 4px 6px; }
+  :root .bhm.bhm-ovl .sheet.nl .stgrid, :root .bhm.bhm-ovl .sheet.nl .days, :root .bhm.bhm-ovl .sheet.nl .who { margin-top: 4px; }
+  :root .bhm.bhm-ovl .sheet.nl .days .chip { height: 40px; }
+  :root .bhm.bhm-ovl .sheet.nl .whob { min-height: 46px; }
+  :root .bhm.bhm-ovl .sheet.nl .sh-foot { padding-top: 6px; padding-bottom: 8px; }
+  :root .bhm.bhm-ovl .sheet.nl .k small { display: none; }
+}
+
+/* Obrazovka zoznamu: obsah pod hlavičkou, dole miesto pre pole na pridávanie (výška doku sa meria). */
+.bhm.bhm-list .body {
+  padding-top: 4px;
+}
+/* Pole na pridávanie: pevne dole; pri písaní sa drží tesne nad klávesnicou (--kb-top = jej horný okraj). */
+:root .bhm.bhm-dock .dock {
+  position: fixed;
+  bottom: 0;
+  max-width: 40rem;
+  margin: 0 auto;
+  z-index: 40;
+}
+:root .bhm.bhm-dock[style*="--kb-top"] .dock {
+  top: var(--kb-top);
+  bottom: auto;
+  transform: translateY(-100%);
+  padding-bottom: 8px;
+}
+/* Dlhé názvy zoznamov v čipoch (Presunúť do) sa skrátia trojbodkou, nič nepretečie. */
+.bhm .chips.wrap .chip {
+  max-width: 100%;
+}
+.bhm .chip .ell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Celoobrazovkové okná mockupu (nákup, sledovanie, bloček): nad appkou, v stĺpci appky, s vlastným posúvaním. */
+:root .bhm.bhm-full {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+}
+:root .bhm.bhm-full > .scr {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+/* Riadok ceny vnútri iného riadku („1 ks · ~1,09 € Lidl“): pokračuje v ňom, nezačína nový riadok. */
+.bhm .sub-in {
+  display: contents;
+}
+/* Hlasový režim: nad celou appkou (aj nad lištou), v stĺpci appky. */
+:root .bhm.bhm-full.bhm-voice {
+  z-index: 60;
+}
+:root .bhm.bhm-full > .vx {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+/* „Kam pridávať?“ v hlasovom režime: nový zoznam a tlačidlo sú stále dole, posúvajú sa len existujúce zoznamy. */
+:root .bhm .vx-sheet.where {
+  overflow: hidden;
+}
+:root .bhm .vx-sheet.where > * {
+  flex: none;
+}
+:root .bhm .vx-sheet.where > .vx-lists {
+  flex: 0 1 auto;
+  min-height: 132px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
+  margin: -2px;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent);
+  padding-bottom: 18px;
+}
+/* Nízky displej (iPhone SE, mini): rovnaký vzhľad, menšie medzery – tlačidlo dole je vždy celé vidieť. */
+@media (max-height: 760px) {
+  :root .bhm .vx-sheet.where { max-height: calc(100% - var(--sat) - 8px); gap: 7px; padding-top: 6px; }
+  :root .bhm .vx-sheet.where h2 { font-size: 20px; }
+  :root .bhm .vx-sheet.where .k { margin-top: 0; }
+  :root .bhm .vx-sheet.where > .vx-lists { min-height: 104px; }
+  :root .bhm .vx-sheet.where .vx-opt { min-height: 50px; padding: 7px 12px; }
+  :root .bhm .vx-sheet.where .vx-new { gap: 6px; padding: 8px; }
+  :root .bhm .vx-sheet.where .vx-stores button { min-height: 38px; font-size: 14px; }
+  :root .bhm .vx-sheet.where .vx-days button { min-height: 36px; padding: 0 11px; font-size: 14px; }
+  :root .bhm .vx-sheet.where .btn.big { height: 50px; }
+}
+
+/* Detail receptu: hlavička nad fotkou (priehľadná, pri posunutí sklo), dole miesto pre pruh „Kúpiť suroviny“. */
+.bhm.bhm-over .nb.over {
+  margin-bottom: calc(-1 * (var(--sat) + 62px));
+}
+.bhm.bhm-recipe .rhero2 {
+  margin-top: calc(-1 * var(--sat));
+}
+.bhm.bhm-recipe .body.rbody {
+  padding-bottom: 150px;
+}
+:root .bhm.bhm-full > .taste {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+/* Recept bez fotky v Ochutnávači: veľká 3D ikona na farebnom pozadí. */
+.bhm .tst-em {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
+/* Varenie: dlhý krok s radami sa posúva (nič sa nestlačí ani neprekryje). */
+.bhm .cbody {
+  justify-content: safe center;
+}
+.bhm .cbody > *,
+.bhm .cbox > .sbx {
+  flex-shrink: 0;
+}
+/* Podrobnosti kroku (ako na to) – neutrálne, nie varovanie. */
+.bhm .sbx.more {
+  background: var(--card2);
+}
+.bhm .sbx.more .ico {
+  color: var(--sec);
+}
+/* „Hotové je, keď“ (.sbx.ok) – v mockupe ho prebíja všeobecné .ok (zelené koliesko 28 px). */
+.bhm .sbx.ok {
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  display: flex;
+}
+.bhm .sbx.ok .ico {
+  width: 17px;
+  height: 17px;
+  color: var(--acc);
+}
+.bhm .mebtn {
+  position: relative;
+}
+
+/* Uvítanie a nápovedy (src/features/help): cez celú plochu, nad appkou aj nad lištou. */
+:root .bhm.bhm-help {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+}
+:root .bhm.bhm-help > * {
+  pointer-events: auto;
+}
+:root .bhm.bhm-help #tx {
+  pointer-events: none;
+}
+:root .bhm.bhm-help #tx .tx-full,
+:root .bhm.bhm-help #tx .tx-sheet {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+/* Ukážka: mockup v rámčeku cez celú plochu, v bezpečnej oblasti displeja. */
+:root .bhm.bhm-demo {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: var(--bg);
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+:root .bhm.bhm-demo iframe {
+  display: block;
+  width: 100%;
+  max-width: 40rem;
+  height: 100%;
+  margin: 0 auto;
+  border: 0;
+  transition: opacity var(--dur-3);
+}
+:root .bhm .bhm-demo-load {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-weight: 650;
+  color: var(--fg);
+}
+:root .bhm .bhm-demo-load .tx-skip {
+  border: 0;
+  background: none;
+  color: var(--sec);
+  font: inherit;
+  padding: 10px 16px;
+  min-height: 44px;
+}
+/* Hotový riadok Prvých krokov (.tx-fs.ok) – všeobecné .ok (zelené koliesko 28 px) ho nesmie zmenšiť. */
+.bhm .tx-fs.ok {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  display: flex;
+}
+
+/* ------------------------------------------------------------------ plynulosť: nekonečné pulzy bez prekresľovania
+ * Mockup pulzuje tieňom (box-shadow) – telefón ho musí prekresliť v každom snímku, aj počas posúvania a prechodov.
+ * Tu je rovnaký efekt cez priehľadnosť a zväčšenie, ktoré zvládne grafický čip sám. */
+@keyframes bh-blink { 50% { opacity: 0.45; } }
+@keyframes bh-halo { 0% { opacity: 0; transform: scale(0.92); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.04); } }
+@keyframes bh-ring-out { from { opacity: 0.9; } to { opacity: 0; } }
+.bhm .dot,
+.bhm .reqnew i,
+.w .bhm .live .k::before { animation: bh-blink 1.8s ease-in-out infinite; }
+.bhm .lgo.going { position: relative; animation: none; }
+.bhm .lgo.going::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 99px;
+  border: 6px solid color-mix(in srgb, var(--ok) 22%, transparent);
+  pointer-events: none;
+  animation: bh-halo 2s ease-in-out infinite;
+}
+.bhm .co-hole::after { box-shadow: 0 0 0 7px rgb(255 255 255 / 0.4); animation: bh-ring-out 1.8s ease-out 0.3s infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .bhm .dot, .bhm .reqnew i, .w .bhm .live .k::before, .bhm .lgo.going::before, .bhm .co-hole::after { animation: none; }
+}
+/* Nákup alebo sledovanie začaté na otvorenom zozname: okno vyjde zdola (ako v mockupe). */
+:root .bhm.bhm-full.bhm-enter { animation: mk-mdlin var(--dur-4) var(--vt-ease, var(--ease-out)) both; }
+@media (prefers-reduced-motion: reduce) { :root .bhm.bhm-full.bhm-enter { animation: none; } }
+/* Recept: prechod obrazovky už obsah posúva – vlastné vynorenie fotky a textu by ho ukázalo druhýkrát. */
+:root.has-vt .bhm .rhero2,
+:root.has-vt .bhm .rbody { animation: none; }
+
+/* Výdavky: listovanie obdobím (‹ November 2026 ›) a mesiace roka ako ťukateľné riadky – v oboch témach. */
+.bhm .pernav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 2px; }
+.bhm .pernav b { font-size: 17px; font-weight: 750; text-align: center; flex: 1; font-variant-numeric: tabular-nums; }
+.bhm .pernav .ib:disabled { opacity: 0.3; cursor: default; }
+.bhm .wk { display: flex; flex-direction: column; }
+.bhm .wk > div,
+.bhm .wk > .wkrow { display: grid; grid-template-columns: 62px 1fr 64px; gap: 10px; align-items: center; padding: 9px 0; font-size: 15px; font-weight: 650; }
+.bhm .wk > .wkrow { width: 100%; min-height: 44px; border: 0; background: none; color: inherit; font: inherit; font-size: 15px; font-weight: 650; text-align: left; cursor: pointer; }
+.bhm .wk > * + * { border-top: 1px solid var(--line); }
+.bhm .wk .tr { height: 5px; border-radius: 99px; background: var(--line); position: relative; display: block; }
+.bhm .wk .tr i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 99px; background: var(--acc); }
+.g .bhm .wk .tr i { background: linear-gradient(90deg, #ffcf5a, #ff7a3d); }
+.bhm .wk em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Teplá kuchyňa (revízia 3. 11.): šalviový nádych hore. V mockupe je na posúvanom .sc, v appke sa posúva
+ * celé okno – nádych je preto na body (posúva sa s obsahom) a pás pod systémovou lištou má jeho farbu. */
+.w .bhm.bhm-top .sc {
+  background: none;
+}
+:root.w body {
+  /* Farba pod prechodom nie je vidieť (prechod pokrýva celé body) – iPhone z nej farbí lištu (--sbar = nádych).
+   * Finálny vzhľad (11. 11.): teplé svetlo v rohoch (marhuľa vpravo, šalvia vľavo, tokeny --f-glow-* z finish.css);
+   * pás pod lištou iPhonu ostáva čistý nádych, aby lišta plynulo nadväzovala. */
+  background:
+    linear-gradient(180deg, var(--tint) 0, var(--tint) env(safe-area-inset-top, 0px), transparent calc(env(safe-area-inset-top, 0px) + 90px)) no-repeat,
+    radial-gradient(130% 380px at 100% 40px, var(--f-glow-a, transparent), transparent 70%) no-repeat,
+    radial-gradient(110% 340px at 0 0, var(--f-glow-b, transparent), transparent 70%) no-repeat,
+    linear-gradient(180deg, var(--tint) 0, color-mix(in srgb, var(--tint) 40%, var(--bg)) 160px, var(--bg) 320px) no-repeat,
+    var(--sbar, var(--bg));
+}
+/* Hlavička po posunutí: sklo vo farbe lišty iPhonu nad ňou (Teplá: šalviový nádych, Sklo: pozadie). */
+:root .bhm .sc.scrolled > .nb {
+  background: color-mix(in srgb, var(--sbar-t, var(--bg)) 84%, transparent);
+}
+/* Celoobrazovkové okná (varenie, bloček…): rovnaký nádych hore ako ostatné obrazovky, aby lišta iPhonu (--sbar) nadväzovala. */
+.w .bhm.bhm-full > .scr {
+  background: linear-gradient(180deg, var(--tint) 0, color-mix(in srgb, var(--tint) 40%, var(--bg)) 160px, var(--bg) 320px) no-repeat, var(--bg);
+}
+
+/* Obrazovky mimo appky vo vzhľade tém (etapa 3): prihlásenie, nové heslo, prvé spustenie, pozvánka,
+ * zásady. Komponenty v src/features/auth/shell.tsx, triedy mockupu (.lt, .seg, .btn, .fl, .card…). */
+.bhm.auth-pg {
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+}
+.bhm .auth-wrap {
+  width: 100%;
+  max-width: 26rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 32px);
+}
+.bhm .auth-wrap.wide { max-width: 40rem; }
+.bhm .auth-wrap > .lt { margin-top: 6px; }
+.bhm .auth-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bhm .auth-logo { display: flex; align-items: center; gap: 10px; }
+.bhm .auth-logo b { font-size: 17px; font-weight: 750; letter-spacing: -0.3px; }
+.w .bhm .auth-logo b { font-family: var(--serif); font-weight: 560; }
+.bhm .auth-mark { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; background: var(--pri); color: var(--onpri); box-shadow: var(--prish); }
+.bhm .auth-mark .ico { width: 21px; height: 21px; }
+.bhm .auth-lead { font-size: 17px; margin-top: -6px; }
+.bhm .auth-sub { display: flex; flex-direction: column; gap: 4px; }
+.bhm .auth-lang { display: flex; gap: 2px; background: var(--card2); border-radius: 99px; padding: 3px; }
+.bhm .auth-lang button { min-width: 44px; min-height: 36px; border-radius: 99px; font-size: 13px; font-weight: 750; letter-spacing: .06em; color: var(--sec); }
+.bhm .auth-lang button.on { background: var(--segon); color: var(--fg); box-shadow: 0 1px 4px rgb(0 0 0 / .1); }
+.bhm .auth-google { gap: 10px; box-shadow: var(--sh); background: var(--card); }
+.bhm .auth-or { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ter); }
+.bhm .auth-or span { flex: 1; height: 1px; background: var(--line2); }
+.bhm .auth-form { display: flex; flex-direction: column; gap: 14px; }
+.bhm .auth-fl .auth-in { position: relative; display: flex; align-items: center; }
+.bhm .auth-fl input { width: 100%; height: 52px; border-radius: 16px; background: var(--card); padding: 0 16px; font-size: 17px; color: var(--fg); box-shadow: inset 0 0 0 1px var(--line2); }
+.bhm .auth-fl input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--acc); }
+.bhm .auth-fl .auth-in .ib { position: absolute; right: 6px; }
+.bhm .auth-fl .auth-in:has(.ib) input { padding-right: 52px; }
+.bhm .auth-fl small { font-size: 13px; color: var(--sec); }
+.bhm .auth-fl small.err, .bhm .auth-fl.bad > span { color: var(--danger); }
+.bhm .auth-fl.bad input { box-shadow: inset 0 0 0 2px var(--danger); }
+.bhm .auth-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; }
+.bhm .auth-note .ico { width: 20px; height: 20px; flex: none; margin-top: 1px; }
+.bhm .auth-note > div { display: flex; flex-direction: column; gap: 2px; }
+.bhm .auth-note b { font-weight: 700; }
+.bhm .auth-note.danger { background: var(--dangers); color: var(--danger); }
+.bhm .auth-note.ok { background: var(--accs); color: var(--acc); }
+.bhm .auth-note.warn { background: var(--honeys); color: var(--honey); }
+.bhm .auth-card { gap: 14px; }
+.bhm .auth-card-h { display: flex; align-items: center; gap: 12px; font-size: 17px; font-weight: 700; }
+.bhm .auth-hero-ic { width: 64px; height: 64px; border-radius: 22px; display: grid; place-items: center; background: var(--accs); color: var(--acc); }
+.bhm .auth-hero-ic .ico { width: 30px; height: 30px; }
+.bhm .auth-spin { width: 18px; height: 18px; border-radius: 99px; border: 2.5px solid currentColor; border-right-color: transparent; animation: mk-spin .8s linear infinite; }
+@keyframes mk-spin { to { transform: rotate(360deg); } }
+.bhm .lnk.c.dng .ico { width: 16px; height: 16px; }
+.bhm .legal-back { align-self: flex-start; }
+.bhm .legal-intro { font-size: 17px; line-height: 1.45; margin: 4px 0 6px; }
+.bhm .legal-sec { display: flex; flex-direction: column; gap: 10px; }
+.bhm .legal-p, .bhm .legal-ul { margin: 0; font-size: 16px; line-height: 1.5; color: var(--sec); }
+.bhm .legal-ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+
+/* Zvyšné staré obrazovky (výpis z banky, párovanie bločku, hľadanie výrobkov, košík receptov) vo vzhľade tém
+ * (etapa 6): rovnaké karty, zoznamy, nadpisy sekcií a hlavička so Späť ako mockup. Platí len mimo obalu .bhm
+ * (pravidlá mockupu .bhm .card majú vyššiu prioritu). */
+.hdr { background: transparent; min-height: 60px; gap: 10px; }
+.hdr.sticky { background: var(--navbg); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); }
+.hdr.with-back { padding-left: 12px; }
+.hdr.with-back > .ibtn:first-child { width: 44px; height: 44px; border-radius: 99px; background: var(--ibg); box-shadow: var(--ish); color: var(--acc); }
+.hdr .ttl { font-size: 20px; line-height: 1.2; font-weight: 750; letter-spacing: -0.4px; color: var(--fg); }
+.w .hdr .ttl { font-family: var(--serif); font-weight: 560; letter-spacing: -0.3px; }
+.section-title { font-size: 12.5px; line-height: 16px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--sec); padding: 0 4px; }
+.card, .cells { background: var(--card); border-radius: var(--rl, 24px); box-shadow: var(--sh); color: var(--fg); }
+.g .card, .g .cells { background-image: var(--mat-spec); -webkit-backdrop-filter: blur(30px) saturate(1.9); backdrop-filter: blur(30px) saturate(1.9); }
+.cells > * + * { box-shadow: inset 0 1px 0 var(--line); }
+.cell { min-height: 56px; }
+
+/* Finálny vzhľad (11. 11.): načítavanie (Spinner v components/ui.tsx) – tri bodky vo farbe témy.
+ * Objaví sa až po 250 ms, takže rýchle načítanie nič nepreblikne. */
+.bh-load {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 80px 0;
+  color: var(--sec, #6b6f65);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  animation: bh-load-in 320ms ease-out 250ms backwards;
+}
+.bh-dots { display: flex; gap: 7px; }
+.bh-dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 99px;
+  background: var(--acc, #2f6b4f);
+  animation: bh-dot 1.05s ease-in-out infinite;
+}
+.bh-dots i:nth-child(2) { animation-delay: 0.15s; }
+.bh-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bh-dot { 0%, 80%, 100% { transform: scale(0.55); opacity: 0.35; } 40% { transform: scale(1); opacity: 1; } }
+@keyframes bh-load-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .bh-load, .bh-dots i { animation: none; }
+  .bh-dots i { opacity: 0.7; }
+}
+
+/* Plán týždňa → „Bez dňa“: riadok otvorí recept, tlačidlo vpravo určí deň. */
+.bhm .undated .row { display: flex; align-items: center; gap: 10px; }
+.bhm .undated .rmain { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; min-height: 44px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.bhm .undated .rmain .tx { min-width: 0; }
+.bhm .undated .row > .btn { flex: none; }
+
+/* Varenie na nízkom displeji: posúvaný obsah kroku pri okraji jemne zmizne (nie ostrá hrana nad tlačidlami). */
+.bhm .cbody {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 26px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 26px), transparent 100%);
+}

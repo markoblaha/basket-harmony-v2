@@ -20,9 +20,9 @@ export function ImageViewer({ path, onClose }: { path: string | null; onClose: (
   }, [path, onClose]);
   if (!path) return null;
   return (
-    <div role="dialog" aria-modal="true" aria-label={t("viewer.title")} className="fixed inset-0 z-50 flex flex-col bg-black/95">
+    <div role="dialog" aria-modal="true" aria-label={t("viewer.title")} data-theme-scope="dark" className="fixed inset-0 z-50 flex animate-fade flex-col bg-sunken text-text">
       <div className="flex justify-end p-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
-        <IconButton label={t("common.close")} onClick={onClose} className="text-white active:bg-white/15">
+        <IconButton label={t("common.close")} onClick={onClose} className="text-text active:bg-pressed">
           <X className="size-6" />
         </IconButton>
       </div>
@@ -30,7 +30,7 @@ export function ImageViewer({ path, onClose }: { path: string | null; onClose: (
         {image.data ? (
           <img src={image.data} alt={t("viewer.title")} className="mx-auto w-full max-w-3xl" />
         ) : (
-          <div className="flex justify-center py-20 text-white/70">
+          <div className="flex justify-center py-20 text-text-2">
             {image.isError ? t("viewer.failed") : <Loader2 className="size-6 animate-spin" aria-label={t("common.loading")} />}
           </div>
         )}

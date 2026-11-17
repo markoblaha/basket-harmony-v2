@@ -6,6 +6,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
+import { clearCache } from "@/lib/offlineCache";
 import { supabase } from "@/lib/supabase";
 
 type AuthState = {
@@ -36,7 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(next);
       if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
       // Po odhlásení zmažeme všetky údaje z pamäte, aby ich nevidel ďalší používateľ.
-      if (event === "SIGNED_OUT") queryClient.clear();
+      if (event === "SIGNED_OUT") {
+        queryClient.clear();
+        clearCache();
+      }
     });
     return () => {
       active = false;

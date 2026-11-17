@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { ArrowLeft, Check, ChevronDown, ChevronRight, FileUp, Loader2, ShieldCheck } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, FileUp, Loader2, ShieldCheck } from "lucide-react";
 import { Banner, Button, Group, Section, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { CATEGORIES } from "@/lib/categories";
 import { t, tn } from "@/i18n";
+import { Back, MkHeader } from "@/mockup/ui";
 import { readStatement, useImportBankPayments, type StatementMatch, type StatementRow } from "./api";
 import { formatMoney, formatShortDate, readErrorMessage } from "./format";
 
@@ -103,11 +104,11 @@ export function StatementImportPage() {
             aria-label={t("stmt.addAria", { merchant: r.merchant, amount: formatMoney(r.amount) })}
             onClick={() => toggle(r.idx)}
             className={cx(
-              "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border-2",
+              "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-sm border-2",
               on ? "border-primary bg-primary text-on-primary" : "border-line-strong/60",
             )}
           >
-            {on && <Check className="size-4" strokeWidth={3} />}
+            {on && <Check className="size-4" strokeWidth={2.4} />}
           </button>
         ) : null}
         <div className="min-w-0 flex-1">
@@ -124,11 +125,11 @@ export function StatementImportPage() {
               aria-label={t("edit.category")}
               value={categories[r.idx] ?? r.category_id}
               onChange={(e) => setCategories({ ...categories, [r.idx]: e.target.value })}
-              className="mt-2 min-h-9 w-full rounded-[var(--radius-control)] border border-line-strong/50 bg-elevated px-2 text-sm"
+              className="mt-2 min-h-9 w-full rounded-[var(--radius-control)] border border-line-strong/50 bg-surface px-2 text-sm"
             >
               {CATEGORIES.filter((c) => c.id !== "deposit").map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.emoji} {c.name}
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -140,17 +141,12 @@ export function StatementImportPage() {
 
   return (
     <div className="pb-40">
-      <header className="flex items-center gap-1 px-2 pt-3">
-        <Link to="/receipts" aria-label={t("stmt.back")} className="flex size-11 items-center justify-center rounded-full active:bg-pressed">
-          <ArrowLeft className="size-5" />
-        </Link>
-        <h1 className="text-xl font-bold tracking-tight">{t("stmt.title")}</h1>
-      </header>
+      <MkHeader title={t("stmt.title")} back={<Back label={t("nav.receipts")} onClick={() => navigate("/receipts")} />} />
 
-      <div className="mt-2 flex flex-col gap-5">
+      <div className="mt-2 flex flex-col gap-6">
         {!data && !reading && (
           <Section>
-            <div className="rounded-[var(--radius-surface)] bg-elevated p-5 shadow-sm">
+            <div className="rounded-[var(--radius-surface)] bg-surface p-6 shadow-card">
               <p className="font-semibold">{t("stmt.introTitle")}</p>
               <p className="mt-1 text-sm text-text-2">{t("stmt.introText")}</p>
               <Button size="lg" block className="mt-4" onClick={() => input.current?.click()}>
@@ -166,7 +162,7 @@ export function StatementImportPage() {
 
         {reading && (
           <Section>
-            <div className="flex items-center gap-3 rounded-[var(--radius-surface)] bg-elevated p-5 shadow-sm">
+            <div className="flex items-center gap-3 rounded-[var(--radius-surface)] bg-surface p-6 shadow-card">
               <Loader2 className="size-6 shrink-0 animate-spin text-primary" aria-hidden />
               <div>
                 <p className="font-semibold">{t("stmt.reading")}</p>
@@ -274,9 +270,9 @@ export function StatementImportPage() {
       <input ref={input} type="file" accept="application/pdf,image/*,.csv,text/csv,.txt" hidden onChange={onPick} />
 
       {data && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[var(--tabbar-space)] z-30">
           <div className="pointer-events-auto mx-auto max-w-2xl px-4 pb-3">
-            <Button block size="lg" className="shadow-lg" disabled={selected.length === 0} loading={importer.isPending} onClick={doImport}>
+            <Button block size="lg" className="shadow-raised" disabled={selected.length === 0} loading={importer.isPending} onClick={doImport}>
               {selected.length === 0
                 ? t("stmt.nothingSelected")
                 : tn("stmt.addPayments", selected.length, { sum: formatMoney(selectedSum) })}

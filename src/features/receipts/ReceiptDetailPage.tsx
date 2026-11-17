@@ -1,45 +1,43 @@
-import { useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { Link, useNavigate, useParams } from "react-router";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  FileText,
-  Loader2,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
-import { Banner, Button, ErrorState, Group, IconButton, Section, Sheet, Spinner, TextField, cx } from "@/components/ui";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useNavigate, useParams } from "react-router";
+import { FileText, Landmark, PenLine, Trash2 } from "lucide-react";
+import { CatIcon, ConfirmDialog, Empty, ScreenHeader } from "@/components/kit";
+import { Button, ErrorState, Sheet, Spinner, TextField, cx } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useLists } from "@/features/lists/api";
 import { dayLabel } from "@/features/lists/dates";
-import { CATEGORIES, category, categoryOrder } from "@/lib/categories";
+import { CATEGORIES, category } from "@/lib/categories";
 import { formatNumber, t, tn } from "@/i18n";
-import { unitLabel } from "@/lib/parseItem";
+
 import {
   MAX_PAGES,
   useAddReceiptPages,
+  useAttachReceipt,
   useConfirmReceipt,
   useDeleteReceipt,
+  useMatchCandidates,
   useReceipt,
   useReceiptImage,
   useReceiptPages,
   useRereadReceipt,
+  useSaveReceiptItem,
   useUpdateReceipt,
   type Receipt,
   type ReceiptItem,
 } from "./api";
 import { ImageViewer } from "./ImageViewer";
+import { useTheme } from "@/theme/ThemeProvider";
+import { E, I, IB, Back, useScrolled } from "@/mockup/ui";
+import { Sheet as MkSheet } from "@/mockup/Sheet";
+import { Btn, StoreTile, emojiFor, storeKeyOf } from "@/mockup/kit";
 import { ItemSheet } from "./ItemSheet";
-import { StoreAvatar } from "./ReceiptRow";
-import { failureText, formatDate, formatMoney, parseAmount, readErrorMessage, reviewText } from "./format";
+import { failureText, formatDate, formatLongDate, formatMoney, formatShortDate, parseAmount, readErrorMessage, reviewText } from "./format";
 
 type ItemTarget = { item: ReceiptItem | null; price?: number | null; key: number };
+type Ask = { title: string; body: string; label: string; danger?: boolean; run: () => void };
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export function ReceiptDetailPage() {
   const { id } = useParams();
@@ -51,6 +49,7 @@ export function ReceiptDetailPage() {
   const reread = useRereadReceipt();
   const confirm = useConfirmReceipt();
   const remove = useDeleteReceipt();
+  const saveItem = useSaveReceiptItem(id ?? "");
   const pagesQuery = useReceiptPages(id);
   const addPages = useAddReceiptPages();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -58,24 +57,22 @@ export function ReceiptDetailPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openPath, setOpenPath] = useState<string | null>(null);
   const [itemTarget, setItemTarget] = useState<ItemTarget | null>(null);
+  const [ask, setAsk] = useState<Ask | null>(null);
+  const g = useTheme().style === "glass";
+  const scrolled = useScrolled();
 
-  const items = query.data?.items;
-  const groups = useMemo(() => {
-    const byCategory = new Map<string, ReceiptItem[]>();
-    for (const it of items ?? []) byCategory.set(it.category_id, [...(byCategory.get(it.category_id) ?? []), it]);
-    return [...byCategory.entries()].sort((a, b) => categoryOrder(a[0]) - categoryOrder(b[0]));
-  }, [items]);
 
+  const goBack = () => navigate(-1);
   if (query.isPending) return <Spinner />;
   if (query.isError) return <ErrorState error={readErrorMessage(query.error)} onRetry={() => query.refetch()} />;
-  if (!query.data) return <ErrorState error={t("detail.gone")} />;
-  const { receipt: r, items: rows } = query.data;
-  const pageList = pagesQuery.data && pagesQuery.data.length > 0 ? pagesQuery.data.map((p) => p.image_path) : [r.image_path];
-  // Platba z výpisu alebo ručný výdavok: nemá fotku ani položky, má len kategóriu.
-  const isDocument = r.origin === "RECEIPT";
-  const editable = isDocument && (r.status === "OK" || r.status === "NEEDS_REVIEW");
-  const startedAt = new Date(r.updated_at).getTime();
-  const stuck = r.status === "PROCESSING" && Date.now() - startedAt > 3 * 60_000;
+  if (!query.data)
+    return (
+      <div className="stack">
+        <ScreenHeader title={t("match.receipt")} onBack={goBack} />
+        <Empty icon={FileText} title={t("detail.gone")} />
+      </div>
+    );
+  const { receipt: r, items: rows, products } = query.data;
 
   const act = async (fn: () => Promise<unknown>, ok?: string) => {
     try {
@@ -85,6 +82,66 @@ export function ReceiptDetailPage() {
       toast.show(readErrorMessage(err), "error");
     }
   };
+
+  // Ručný výdavok alebo platba z výpisu: nemá bloček ani položky, má len kategóriu (prototyp ManualDetail).
+  if (r.origin !== "RECEIPT") {
+    const askDelete = () =>
+      setAsk({
+        title: t("detail.deleteExpenseTitle"),
+        body: t("detail.deleteExpenseBody", { name: r.store_name ?? "", amount: formatMoney(r.total) }),
+        label: t("common.delete"),
+        danger: true,
+        run: () =>
+          void act(async () => {
+            await remove.mutateAsync(r);
+            navigate("/receipts", { replace: true });
+          }, t("detail.expenseDeleted")),
+      });
+    return (
+      <div className="stack">
+        <ScreenHeader title={r.store_name ?? formatMoney(r.total)} sub={r.origin === "BANK" ? t("detail.bankSub") : t("detail.manualSub")} onBack={goBack} />
+        <div className="stack g-16" style={{ padding: "0 16px" }}>
+          <section className="card stack g-10 anim-rise" style={{ padding: 18 }}>
+            <div className="row g-12">
+              <CatIcon id={r.category_id ?? "other"} />
+              <span className="grow stack" style={{ minWidth: 0 }}>
+                <span className="t-h ellipsis">{r.store_name}</span>
+                <span className="t-sm t-2">
+                  {formatLongDate(r.purchased_on)}
+                  {r.category_id ? ` · ${category(r.category_id).name}` : ""}
+                </span>
+              </span>
+              {r.origin === "BANK" && (
+                <span className="badge b-gray">
+                  <Landmark size={12} /> {t("rpage.bank")}
+                </span>
+              )}
+            </div>
+            <span className="an-big">{formatMoney(r.total)}</span>
+            <span className="t-sm t-2">{t("detail.manualNote")}</span>
+          </section>
+          <button type="button" className="btn btn-soft" onClick={() => setEditing(true)}>
+            <PenLine size={16} /> {t("detail.edit")}
+          </button>
+          <button type="button" className="btn btn-ghost t-red" onClick={askDelete}>
+            <Trash2 size={16} /> {t("detail.deleteExpense")}
+          </button>
+        </div>
+        <div className="tab-space" />
+        <EditSheet key={`${editing}-${r.updated_at}`} open={editing} onClose={() => setEditing(false)} receipt={r} />
+        <AskDialog ask={ask} onClose={() => setAsk(null)} busy={remove.isPending} />
+      </div>
+    );
+  }
+
+  const pageList = pagesQuery.data && pagesQuery.data.length > 0 ? pagesQuery.data.map((p) => p.image_path) : [r.image_path];
+  const editable = r.status === "OK" || r.status === "NEEDS_REVIEW";
+  const startedAt = new Date(r.updated_at).getTime();
+  const stuck = r.status === "PROCESSING" && Date.now() - startedAt > 3 * 60_000;
+  const store = r.store_name ?? t("row.unknownStore");
+  const sum = r.items_sum ?? 0;
+  const diff = r.total != null ? round2(r.total - sum) : 0;
+  const mismatch = r.status === "NEEDS_REVIEW" && r.review_reason === "TOTAL_MISMATCH" && r.total != null && Math.abs(diff) > 0.05;
 
   async function onAddPages(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -96,350 +153,351 @@ export function ReceiptDetailPage() {
     );
   }
 
-  async function onReread() {
+  function onReread() {
     setMenuOpen(false);
-    if (editable && !window.confirm(t("detail.rereadConfirm"))) return;
-    await act(() => reread.mutateAsync(r.id), t("detail.rereadDone"));
+    const run = () => void act(() => reread.mutateAsync(r.id), t("detail.rereadDone"));
+    if (!editable) return run();
+    setAsk({ title: t("detail.rereadTitle"), body: t("detail.rereadConfirm"), label: t("detail.reread"), run });
   }
 
-  async function onDelete() {
+  function onDelete() {
     setMenuOpen(false);
-    if (!window.confirm(t("detail.deleteConfirm"))) return;
-    await act(async () => {
-      await remove.mutateAsync(r);
-      navigate("/receipts", { replace: true });
+    setAsk({
+      title: t("detail.deleteTitle"),
+      body: t("detail.deleteBody", { store, day: formatShortDate(r.purchased_on), amount: formatMoney(r.total) }),
+      label: t("common.delete"),
+      danger: true,
+      run: () =>
+        void act(async () => {
+          await remove.mutateAsync(r);
+          navigate("/receipts", { replace: true });
+        }, t("detail.deleted")),
     });
   }
 
+  // „Pridať chýbajúcu položku“ (prototyp): doplní nerozpoznanú položku s rozdielom, databáza potom prepočíta súčet a stav.
+  const addMissing = () =>
+    act(
+      () => saveItem.mutateAsync({ name: t("detail.unrecognized"), lineTotal: diff, quantity: 1, discount: 0, categoryId: "other" }),
+      t("detail.missingAdded", { diff: formatMoney(diff) }),
+    );
+
   const openItem = (item: ReceiptItem | null, price?: number | null) => setItemTarget({ item, price, key: Date.now() });
 
-  return (
-    <div className="pb-10">
-      <header className="flex items-center justify-between px-2 pt-3">
-        <Link to="/receipts" aria-label={t("detail.backAria")} className="flex size-11 items-center justify-center rounded-full active:bg-pressed">
-          <ArrowLeft className="size-5" />
-        </Link>
-        <IconButton label={t("detail.more")} onClick={() => setMenuOpen(true)}>
-          <MoreHorizontal className="size-6" />
-        </IconButton>
-      </header>
+  const tripList = r.list_id ? lists.data?.find((l) => l.id === r.list_id) : undefined;
 
-      <div className="mt-1 flex flex-col gap-4">
-        <Section>
-          <div className="rounded-[var(--radius-surface)] bg-elevated p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <StoreAvatar name={r.store_name} className="size-12" />
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate text-xl font-bold tracking-tight">{r.store_name ?? t("row.unknownStore")}</h1>
-                <p className="text-sm text-text-2">
-                  {formatDate(r.purchased_on)}
-                  {r.purchased_time ? ` · ${r.purchased_time.slice(0, 5)}` : ""}
-                </p>
-              </div>
-              {r.status !== "PROCESSING" && (
-                <IconButton label={t("detail.editAria")} onClick={() => setEditing(true)} className="-mr-2 -mt-1">
-                  <Pencil className="size-5" />
-                </IconButton>
-              )}
+
+  const items2 = rows.filter((x) => x.category_id !== "deposit");
+  const deposits = rows.filter((x) => x.category_id === "deposit");
+  const sk = storeKeyOf(store);
+  const qtyDec = (n: number) => formatNumber(n, { maximumFractionDigits: 3 });
+  const line = (it: ReceiptItem) => {
+    const name = it.product_id ? (products[it.product_id] ?? it.raw_name) : it.raw_name;
+    const kg = (it.unit ?? "").toLowerCase() === "kg";
+    const up = it.unit_price != null ? Number(it.unit_price) : null;
+    // Pri kontrole bločku ťuk opraví položku; inak otvorí výrobok (cena v čase a v obchodoch).
+    const tap = () => (r.status === "NEEDS_REVIEW" || !it.product_id ? editable && openItem(it) : navigate(`/analytics/product/${it.product_id}`));
+    return (
+      <button type="button" className="row tap" key={it.id} onClick={tap}>
+        <span className="th">
+          <E k={emojiFor(name, it.category_id)} />
+        </span>
+        <div className="tx">
+          <b>{name}</b>
+          <span className="sub">
+            {kg && up != null
+              ? t("sc.perKg", { q: qtyDec(Number(it.quantity)), price: formatMoney(up) })
+              : Number(it.quantity) > 1 && up != null
+                ? t("sc.times", { q: qtyDec(Number(it.quantity)), price: formatMoney(up) })
+                : category(it.category_id).name}
+            {it.discount > 0 ? ` · ${t("rd.discount")}` : ""}
+          </span>
+        </div>
+        <b className="amt">{formatMoney(it.line_total)}</b>
+      </button>
+    );
+  };
+
+  return (
+    <>
+      <div className="bhm bhm-top">
+        <div className={`sc${scrolled ? " scrolled" : ""}`}>
+          <header className="nb">
+            <Back label={t("mn.receipts")} onClick={goBack} />
+            <span className="nbt">{store}</span>
+            <div className="nbr">
+              <IB n="dots-three" label={t("detail.more")} onClick={() => setMenuOpen(true)} />
             </div>
-            <p className="mt-3 text-4xl font-bold tabular-nums">{formatMoney(r.total)}</p>
-            {r.list_id && <TripLink list={lists.data?.find((l) => l.id === r.list_id)} score={r.match_score} />}
-            {editable && <SumCheck receipt={r} count={rows.length} onAdd={(price) => openItem(null, price)} onEdit={() => setEditing(true)} />}
-            {!isDocument && (
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-text-2">
-                <span className="rounded-full bg-surface px-3 py-1">{r.origin === "BANK" ? t("detail.fromBank") : t("detail.manualEntry")}</span>
-                {r.category_id && (
-                  <Link to={`/analytics/category/${r.category_id}`} className="rounded-full bg-surface px-3 py-1 active:bg-pressed">
-                    {category(r.category_id).emoji} {category(r.category_id).name}
-                  </Link>
+          </header>
+        </div>
+      </div>
+      <div className="bhm bhm-list">
+        <div className="body">
+          <div className="lhead">
+            <StoreTile k={sk} n={store} s={60} />
+            <div className="grow">
+              <h1 className="lt">{store}</h1>
+              <div className="meta">
+                {r.purchased_on ? formatShortDate(r.purchased_on) : formatDate(null)} {r.purchased_time?.slice(0, 5) ?? ""} · {tn("rpage.items", items2.length)}
+              </div>
+            </div>
+          </div>
+          {r.status === "PROCESSING" && (
+            <p className="vnote">
+              <I n="clock" />
+              {t("detail.reading2")}
+              {stuck ? ` ${t("detail.stuck")}` : ""}
+            </p>
+          )}
+          {r.status === "FAILED" && (
+            <div className="callout">
+              <I n="warning-circle" />
+              <span className="grow">
+                <b>{t("detail.failedTitle")}</b> {failureText(r.error_text)}
+              </span>
+            </div>
+          )}
+          {r.status === "FAILED" && (
+            <Btn cls="soft" disabled={reread.isPending} onClick={onReread}>
+              <I n="arrow-counter-clockwise" w="bold" />
+              {t("common.retry")}
+            </Btn>
+          )}
+          {r.status === "NEEDS_REVIEW" && (
+            <div className={`card${g ? " glass2" : ""} rcheck`}>
+              <div className="t1">{mismatch ? t("detail.mismatchTitle", { diff: formatMoney(Math.abs(diff)) }) : t("detail.checkTitle")}</div>
+              <p className="meta">
+                {mismatch
+                  ? t(diff > 0 ? "detail.mismatchText" : "detail.mismatchOver", { total: formatMoney(r.total), sum: formatMoney(sum) })
+                  : r.review_reason === "NO_ITEMS"
+                    ? t("detail.fixHint")
+                    : reviewText(r)}
+              </p>
+              <div className="chips wrap">
+                {mismatch && diff > 0 && (
+                  <Btn cls="pri sm" disabled={saveItem.isPending} onClick={() => void addMissing()}>
+                    <I n="plus" w="bold" />
+                    {t("detail.addMissing", { diff: formatMoney(diff) })}
+                  </Btn>
                 )}
+                {r.review_reason === "NO_ITEMS" && (
+                  <Btn cls="pri sm" onClick={() => openItem(null, r.total)}>
+                    <I n="plus" w="bold" />
+                    {t("ritem.addTitle")}
+                  </Btn>
+                )}
+                <Btn cls="soft sm" disabled={confirm.isPending} onClick={() => void act(() => confirm.mutateAsync(r.id), t("detail.confirmed"))}>
+                  {t("detail.confirm")}
+                </Btn>
+                {mismatch && (
+                  <Btn cls="soft sm" onClick={() => setEditing(true)}>
+                    {t("sum.fixTotal")}
+                  </Btn>
+                )}
+              </div>
+            </div>
+          )}
+          <div className={`card match${g ? " mg" : ""}`}>
+            <div>
+              <div className="k">{t("sc.paid")}</div>
+              <div className="price">{formatMoney(r.total)}</div>
+            </div>
+            {r.status === "OK" && Math.abs(diff) > 0.009 && (
+              <div className="ra">
+                <div className="k">{t("rd.diff")}</div>
+                <div className="price mut">{formatMoney(diff)}</div>
+                <div className="meta sm">{t("rd.diffWhy")}</div>
               </div>
             )}
           </div>
-        </Section>
-
-        {r.status === "PROCESSING" && (
-          <Section>
-            <Banner tone="info" title={t("detail.reading")}>
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="size-4 animate-spin" aria-hidden /> {t("detail.readingHint")}
+          {tripList ? (
+            <button type="button" className={`card krow${g ? " glass2" : ""}`} onClick={() => navigate(`/history/${tripList.id}`)}>
+              <span className="kc">
+                <span className="k">{t("an.trip")}</span>
+                <b>
+                  {tripList.name}
+                  {tripList.completed_at ? ` · ${dayLabel(tripList.completed_at)}` : ""}
+                </b>
               </span>
-              {stuck && <p className="mt-1">{t("detail.stuck")}</p>}
-            </Banner>
-          </Section>
-        )}
-
-        {r.status === "FAILED" && (
-          <Section>
-            <Banner
-              tone="danger"
-              title={t("detail.failedTitle")}
-              action={
-                <Button variant="secondary" loading={reread.isPending} onClick={onReread}>
-                  <RefreshCw className="size-4" aria-hidden /> {t("common.retry")}
-                </Button>
-              }
-            >
-              {failureText(r.error_text)}
-            </Banner>
-          </Section>
-        )}
-
-        {r.status === "NEEDS_REVIEW" && (
-          <Section>
-            <Banner
-              tone="warning"
-              title={t("detail.checkTitle")}
-              action={
-                <Button
-                  variant="secondary"
-                  loading={confirm.isPending}
-                  onClick={() => act(() => confirm.mutateAsync(r.id), t("detail.confirmed"))}
-                >
-                  {t("detail.confirm")}
-                </Button>
-              }
-            >
-              {r.review_reason === "TOTAL_MISMATCH" || r.review_reason === "NO_ITEMS"
-                ? t("detail.fixHint")
-                : reviewText(r)}
-            </Banner>
-          </Section>
-        )}
-
-        {isDocument && (
-        <Section title={pageList.length > 1 ? t("detail.pages", { n: pageList.length }) : t("viewer.title")}>
-          <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
+              <span className="meta">{r.match_score != null ? t("trip.autoMatched", { percent: Math.round(Number(r.match_score) * 100) }) : ""}</span>
+              <I n="caret-right" w="bold" cls="chev" />
+            </button>
+          ) : (
+            <AssignTrip receipt={r} />
+          )}
+          {tripList && (
+            <button type="button" className="lnk c" onClick={() => navigate(`/receipts/${r.id}/match`)}>
+              {t("an.changeTrip")}
+            </button>
+          )}
+          {items2.length > 0 && <div className={`lst${g ? " glass2" : ""}`}>{items2.map(line)}</div>}
+          {deposits.length > 0 && (
+            <>
+              <div className="group plain">
+                <span className="gl">{t("rd.deposits")}</span>
+                <span className="cnt">{formatMoney(deposits.reduce((a, x) => a + Number(x.line_total), 0))}</span>
+              </div>
+              <div className={`lst${g ? " glass2" : ""}`}>{deposits.map(line)}</div>
+            </>
+          )}
+          {rows.length > 0 && <p className="hint">{t("rd.hint")}</p>}
+          <div className="h2 sm">{pageList.length > 1 ? t("detail.pages", { n: pageList.length }) : t("viewer.title")}</div>
+          <ul className="rd-pages">
             {pageList.map((path, i) => (
-              <li key={path} className="shrink-0 snap-start">
+              <li key={path}>
                 <PageCard path={path} label={pageList.length > 1 ? `${i + 1} / ${pageList.length}` : null} onOpen={() => setOpenPath(path)} />
               </li>
             ))}
-            {r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
-              <li className="shrink-0 snap-start">
-                <button
-                  type="button"
-                  onClick={() => fileInput.current?.click()}
-                  disabled={addPages.isPending}
-                  className="flex h-48 w-32 flex-col items-center justify-center gap-2 rounded-[var(--radius-surface)] border-2 border-dashed border-line-strong/50 px-2 text-center text-sm font-medium text-text-2 active:bg-pressed disabled:opacity-55"
-                >
-                  {addPages.isPending ? <Loader2 className="size-6 animate-spin" aria-hidden /> : <Plus className="size-6" aria-hidden />}
-                  {t("detail.addPage")}
-                </button>
-              </li>
-            )}
           </ul>
-        </Section>
-        )}
-
-        {rows.length > 0 && (
-          <Section title={t("detail.items", { n: rows.length })}>
-            <div className="flex flex-col gap-3">
-              {groups.map(([categoryId, list]) => {
-                const cat = category(categoryId);
-                const subtotal = list.reduce((sum, it) => sum + it.line_total, 0);
-                return (
-                  <div key={categoryId}>
-                    <div className="mb-1 flex items-center justify-between px-1 text-sm text-text-2">
-                      <span>
-                        <span aria-hidden>{cat.emoji}</span> {cat.name}
-                      </span>
-                      <span className="tabular-nums">{formatMoney(subtotal)}</span>
-                    </div>
-                    <Group>
-                      {list.map((it) => (
-                        <ItemRow key={it.id} item={it} editable={editable} onClick={() => openItem(it)} />
-                      ))}
-                    </Group>
-                  </div>
-                );
-              })}
+          {editable && (
+            <div className="rbtns">
+              <Btn cls="soft grow" onClick={() => setEditing(true)}>
+                <I n="pencil-simple" />
+                {t("detail.edit")}
+              </Btn>
+              <Btn cls="soft grow" onClick={() => openItem(null)}>
+                <I n="plus" w="bold" />
+                {t("ritem.addTitle")}
+              </Btn>
             </div>
-          </Section>
-        )}
-
-        {editable && (
-          <Section>
-            <Button variant="secondary" block onClick={() => openItem(null)}>
-              <Plus className="size-4" aria-hidden /> {t("ritem.addTitle")}
-            </Button>
-          </Section>
-        )}
+          )}
+          <button type="button" className="lnk c dng" onClick={onDelete}>
+            {t("detail.deleteReceipt")}
+          </button>
+        </div>
       </div>
 
       <input ref={fileInput} type="file" accept="image/*,application/pdf" multiple hidden onChange={onAddPages} />
       <EditSheet key={`${editing}-${r.updated_at}`} open={editing} onClose={() => setEditing(false)} receipt={r} />
       <ImageViewer path={openPath} onClose={() => setOpenPath(null)} />
       {itemTarget && (
-        <ItemSheet
-          key={itemTarget.key}
-          receiptId={r.id}
-          item={itemTarget.item}
-          suggestedPrice={itemTarget.price}
-          onClose={() => setItemTarget(null)}
-        />
+        <ItemSheet key={itemTarget.key} receiptId={r.id} item={itemTarget.item} suggestedPrice={itemTarget.price} onClose={() => setItemTarget(null)} />
       )}
+      <AskDialog ask={ask} onClose={() => setAsk(null)} busy={remove.isPending || reread.isPending} />
 
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={t("detail.actions")}>
-        <div className="flex flex-col gap-2">
-          {isDocument && (
-            <MenuAction
-              icon={<RefreshCw className="size-5" aria-hidden />}
-              title={t("detail.reread")}
-              hint={t("detail.rereadHint")}
-              disabled={r.status === "PROCESSING" && !stuck}
-              onClick={onReread}
-            />
-          )}
-          {isDocument && r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
-            <MenuAction
-              icon={<Plus className="size-5" aria-hidden />}
-              title={t("detail.addPage")}
-              hint={tn("detail.addPageHint", pageList.length, { max: MAX_PAGES })}
-              onClick={() => {
-                setMenuOpen(false);
-                fileInput.current?.click();
-              }}
-            />
-          )}
-          <MenuAction
-            icon={<Trash2 className="size-5" aria-hidden />}
-            title={t("detail.deleteReceipt")}
-            hint={isDocument ? t("detail.deleteReceiptHint") : t("detail.deleteExpenseHint")}
-            danger
-            onClick={onDelete}
-          />
+      <MkSheet open={menuOpen} onClose={() => setMenuOpen(false)} label={t("detail.actions")}>
+        <div className="sh-head">
+          <h2>{t("detail.actions")}</h2>
         </div>
-      </Sheet>
-    </div>
-  );
-}
-
-function MenuAction({
-  icon,
-  title,
-  hint,
-  onClick,
-  danger,
-  disabled,
-}: {
-  icon: ReactNode;
-  title: string;
-  hint: string;
-  onClick: () => void;
-  danger?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cx(
-        "flex min-h-16 w-full items-center gap-4 rounded-[var(--radius-surface)] px-4 py-3 text-left disabled:opacity-55",
-        danger ? "bg-danger-soft text-danger" : "bg-surface active:bg-pressed",
-      )}
-    >
-      {icon}
-      <span className="min-w-0">
-        <span className="block font-semibold">{title}</span>
-        <span className={cx("block text-sm", danger ? "opacity-80" : "text-text-2")}>{hint}</span>
-      </span>
-    </button>
-  );
-}
-
-/** Kontrola súčtu: sedí položky s celkovou sumou? Ak nie, ukáže rozdiel a ponúkne doplniť chýbajúcu položku. */
-function SumCheck({
-  receipt: r,
-  count,
-  onAdd,
-  onEdit,
-}: {
-  receipt: Receipt;
-  count: number;
-  onAdd: (price: number | null) => void;
-  onEdit: () => void;
-}) {
-  const base = "mt-3 flex flex-col gap-2 rounded-[var(--radius-control)] p-3 text-sm";
-  if (count === 0) {
-    return (
-      <div className={cx(base, "bg-surface text-text-2")}>
-        <p>{t("sum.noItems")}</p>
-        <Button variant="secondary" onClick={() => onAdd(r.total)}>
-          <Plus className="size-4" aria-hidden /> {t("ritem.addTitle")}
-        </Button>
-      </div>
-    );
-  }
-  if (r.total == null) {
-    return (
-      <div className={cx(base, "bg-warning-soft text-warning")}>
-        <p className="flex items-center gap-2 font-medium">
-          <AlertTriangle className="size-4 shrink-0" aria-hidden /> {t("sum.noTotal", { sum: formatMoney(r.items_sum) })}
-        </p>
-        <Button variant="secondary" onClick={onEdit}>
-          {t("sum.addTotal")}
-        </Button>
-      </div>
-    );
-  }
-  const sum = r.items_sum ?? 0;
-  const diff = Math.round((r.total - sum) * 100) / 100;
-  if (Math.abs(diff) <= 0.05) {
-    return (
-      <p className={cx(base, "flex-row items-center gap-2 bg-success-soft font-medium text-success")}>
-        <CheckCircle2 className="size-4 shrink-0" aria-hidden /> {t("sum.matches")}
-      </p>
-    );
-  }
-  return (
-    <div className={cx(base, "bg-warning-soft text-warning")}>
-      <p className="flex items-start gap-2 font-medium">
-        <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-        <span>
-          {t("sum.mismatch", { sum: formatMoney(sum), total: formatMoney(r.total) })}{" "}
-          {diff > 0 ? t("sum.missing", { diff: formatMoney(diff) }) : t("sum.over", { diff: formatMoney(-diff) })}
-        </span>
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {diff > 0 && (
-          <Button variant="secondary" onClick={() => onAdd(diff)}>
-            <Plus className="size-4" aria-hidden /> {t("sum.addMissing")}
-          </Button>
-        )}
-        <Button variant="secondary" onClick={onEdit}>
-          {t("sum.fixTotal")}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function ItemRow({ item: it, editable, onClick }: { item: ReceiptItem; editable: boolean; onClick: () => void }) {
-  const amount = it.quantity !== 1 || it.unit ? `${formatNumber(it.quantity, { maximumFractionDigits: 3 })} ${it.unit ? unitLabel(it.unit) : ""}`.trim() : null;
-  const meta = [
-    amount && it.unit_price != null ? `${amount} × ${formatMoney(it.unit_price)}` : amount,
-    it.discount > 0 ? t("detail.discount", { amount: formatMoney(it.discount) }) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const content = (
-    <>
-      <div className="min-w-0 flex-1">
-        <p className="break-words">{it.raw_name}</p>
-        {meta && <p className="text-sm text-text-2">{meta}</p>}
-      </div>
-      <span className="font-semibold tabular-nums">{formatMoney(it.line_total)}</span>
-      {editable && <ChevronRight className="size-4 shrink-0 text-text-3" aria-hidden />}
+        <div className="sh-body">
+          <div className="menu">
+            <button type="button" disabled={r.status === "PROCESSING" && !stuck} onClick={onReread}>
+              <I n="arrow-counter-clockwise" />
+              {t("detail.reread")}
+            </button>
+            {r.status !== "PROCESSING" && pageList.length < MAX_PAGES && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  fileInput.current?.click();
+                }}
+              >
+                <I n="plus" />
+                {t("detail.addPage")}
+              </button>
+            )}
+            {editable && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setEditing(true);
+                }}
+              >
+                <I n="pencil-simple" />
+                {t("detail.editReceipt")}
+              </button>
+            )}
+            <button type="button" className="dng" onClick={onDelete}>
+              <I n="trash" />
+              {t("detail.deleteReceipt")}
+            </button>
+          </div>
+        </div>
+      </MkSheet>
     </>
   );
-  return editable ? (
-    <button type="button" onClick={onClick} className="flex min-h-12 w-full items-center gap-3 px-4 py-2.5 text-left active:bg-pressed">
-      {content}
-    </button>
-  ) : (
-    <div className="flex min-h-12 items-center gap-3 px-4 py-2.5">{content}</div>
+}
+
+/** Potvrdenie v strede obrazovky (ako v prototype) – nadpis, vysvetlenie, Zrušiť a potvrdenie. */
+function AskDialog({ ask, onClose, busy }: { ask: Ask | null; onClose: () => void; busy?: boolean }) {
+  return (
+    <ConfirmDialog
+      open={ask !== null}
+      title={ask?.title ?? ""}
+      body={ask?.body}
+      confirmLabel={ask?.label ?? ""}
+      danger={ask?.danger}
+      busy={busy}
+      onCancel={onClose}
+      onConfirm={() => {
+        ask?.run();
+        onClose();
+      }}
+    />
+  );
+}
+
+/** Doklad bez nákupu: „Priradiť k nákupu“ rozbalí nákupy bez dokladu so zhodou (prototyp A6). */
+function AssignTrip({ receipt: r }: { receipt: Receipt }) {
+  const [open, setOpen] = useState(false);
+  const candidates = useMatchCandidates(open ? r.id : undefined);
+  const attach = useAttachReceipt();
+  const toast = useToast();
+  const free = (candidates.data ?? []).filter((c) => !c.attached).slice(0, 5);
+
+  async function pick(listId: string, name: string, day: string) {
+    try {
+      await attach.mutateAsync({ receiptId: r.id, listId });
+      toast.show(t("detail.attachedTo", { name, day }), "success");
+      setOpen(false);
+    } catch (err) {
+      toast.show(readErrorMessage(err), "error");
+    }
+  }
+
+  // Bloček bez nákupu (mockup: riadky .lst) – ťuk ponúkne dokončené nákupy, ku ktorým sa hodí.
+  return (
+    <div className="lst">
+      <button type="button" className="row tap" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <span className="th ic">
+          <I n="link" />
+        </span>
+        <div className="tx">
+          <b>{t("an.assignTrip")}</b>
+          <span className="sub">{t("an.noTripHint")}</span>
+        </div>
+        <I n={open ? "caret-up" : "caret-down"} w="bold" cls="chev" />
+      </button>
+      {open &&
+        (candidates.isPending ? (
+          <div className="row">
+            <span className="sub">{t("common.loading")}</span>
+          </div>
+        ) : candidates.isError ? (
+          <div className="row">
+            <span className="sub">{readErrorMessage(candidates.error)}</span>
+          </div>
+        ) : free.length ? (
+          free.map((c) => (
+            <button key={c.list_id} type="button" className="row tap" disabled={attach.isPending} onClick={() => void pick(c.list_id, c.name, dayLabel(c.completed_at))}>
+              <StoreTile k={storeKeyOf(c.name)} n={c.name} s={34} />
+              <div className="tx">
+                <b>
+                  {c.name} · {dayLabel(c.completed_at)}
+                </b>
+                <span className="sub">{t("detail.tripScore", { pct: Math.round(c.score * 100), items: tn("rpage.items", c.hit.length + c.missing.length) })}</span>
+              </div>
+              <I n="plus" w="bold" cls="chev" />
+            </button>
+          ))
+        ) : (
+          <div className="row">
+            <span className="sub">{t("detail.noFreeTrip")}</span>
+          </div>
+        ))}
+    </div>
   );
 }
 
@@ -447,7 +505,7 @@ function ItemRow({ item: it, editable, onClick }: { item: ReceiptItem; editable:
 function PageCard({ path, label, onOpen }: { path: string; label: string | null; onOpen: () => void }) {
   const image = useReceiptImage(path);
   const pdf = path.toLowerCase().endsWith(".pdf");
-  const box = "relative flex h-48 w-36 items-center justify-center overflow-hidden rounded-[var(--radius-surface)] bg-surface text-text-2";
+  const box = "relative flex h-48 w-36 items-center justify-center overflow-hidden rounded-[var(--radius-surface)] bg-sunken text-text-2";
   if (image.isError) return <div className={cx(box, "p-3 text-center text-sm")}>{t("detail.fileMissing")}</div>;
   if (!image.data) return <div className={cx(box, "animate-pulse")} aria-label={t("common.loading")} />;
   return pdf ? (
@@ -457,7 +515,7 @@ function PageCard({ path, label, onOpen }: { path: string; label: string | null;
   ) : (
     <button type="button" onClick={onOpen} className={box} aria-label={label ? t("detail.openPage", { label }) : t("detail.openPhoto")}>
       <img src={image.data} alt="" className="size-full object-cover object-top" />
-      {label && <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-bold text-white">{label}</span>}
+      {label && <span className="absolute left-2 top-2 rounded-full bg-inverse/85 px-2 py-0.5 text-xs font-strong text-on-inverse">{label}</span>}
     </button>
   );
 }
@@ -502,7 +560,7 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
         <TextField label={t("detail.purchaseDate")} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <TextField label={t("detail.total")} inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} />
         {withCategory && (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <label htmlFor="receipt-category" className="text-sm font-medium text-text-2">
               {t("edit.category")}
             </label>
@@ -510,11 +568,11 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
               id="receipt-category"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+              className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-3 focus:ring-primary/20"
             >
               {CATEGORIES.filter((c) => c.id !== "deposit").map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.emoji} {c.name}
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -525,20 +583,5 @@ function EditSheet({ open, onClose, receipt }: { open: boolean; onClose: () => v
         </Button>
       </form>
     </Sheet>
-  );
-}
-
-/** K akému nákupu doklad patrí (priradený ručne alebo automaticky podľa položiek). */
-function TripLink({ list, score }: { list?: { id: string; name: string; completed_at: string | null }; score: number | null }) {
-  if (!list) return null;
-  return (
-    <Link to={`/lists/${list.id}`} className="mt-3 flex items-center gap-2 rounded-xl bg-surface px-3 py-2 text-sm active:bg-pressed">
-      <span aria-hidden>🛒</span>
-      <span className="min-w-0 flex-1 truncate">
-        {t("trip.tripLabel")} <b>{list.name}</b>
-        {list.completed_at && ` · ${dayLabel(list.completed_at)}`}
-        {score != null && <span className="text-text-2"> · {t("trip.autoMatched", { percent: Math.round(Number(score) * 100) })}</span>}
-      </span>
-    </Link>
   );
 }

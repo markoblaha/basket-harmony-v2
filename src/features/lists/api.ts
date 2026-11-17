@@ -7,6 +7,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Row } from "@/lib/database.types";
 import { guessCategory } from "@/lib/categories";
+import { uploadReceipt } from "@/features/receipts/api";
+import { buildCatalog, type CatProduct, type ItemCatalog } from "./itemCatalog";
 
 export type ShoppingList = Row<"shopping_lists">;
 export type Item = Row<"shopping_list_items">;
@@ -24,6 +26,7 @@ export const listKeys = {
   stats: (hid: string) => ["list-stats", hid] as const,
   hubSessions: (hid: string) => ["hub-sessions", hid] as const,
   favorites: (hid: string) => ["favorites", hid] as const,
+  catalog: (hid: string) => ["item-catalog", hid] as const,
 };
 
 /** Kúpené položky zobrazujeme ešte 7 dní (dajú sa vrátiť do zoznamu). */
@@ -110,6 +113,10 @@ export type AddItemInput = {
   unit?: string | null;
   note?: string | null;
   categoryId?: string | null;
+  /** Vyplní sa samo pri prvom pokuse; pri opakovaní ostane rovnaké. */
+  opId?: string;
+  /** Položka sa v zozname ukáže hneď (dočasne), ešte pred odpoveďou servera – pridávanie ťukaním na bublinu. */
+  optimistic?: boolean;
 };
 export type AddItemResult = { kind: "ITEM" | "REQUEST"; id: string; shopper_id?: string };
 
@@ -125,18 +132,45 @@ export function useAddItem() {
         p_note: input.note ?? undefined,
         p_category_id: input.categoryId ?? undefined,
         p_category_guess: guessCategory(input.name),
-        // Jedinečné ID požiadavky: ak sa odošle dvakrát, server vytvorí len jednu položku.
-        p_client_op_id: crypto.randomUUID(),
+        // Jedinečné ID požiadavky: rovnaké aj pri opakovaní (slabý signál) – server vytvorí len jednu položku.
+        p_client_op_id: (input.opId ??= crypto.randomUUID()),
       });
       if (error) throw error;
       return data as AddItemResult;
     },
-    onSuccess: (_r, input) => {
+    // Bez signálu (alebo na požiadanie) sa položka ukáže hneď (dočasne) a odošle sa po pripojení; potom ju nahradí tá zo servera.
+    onMutate: (input) => {
+      const offline = typeof navigator !== "undefined" && !navigator.onLine;
+      if (!offline && !input.optimistic) return;
+      input.opId ??= crypto.randomUUID();
+      const key = listKeys.items(input.listId);
+      const items = qc.getQueryData<Item[]>(key);
+      if (!items) return;
+      const now = new Date().toISOString();
+      const temp: Item = {
+        id: `tmp-${input.opId}`, list_id: input.listId, household_id: items[0]?.household_id ?? "", name: input.name.trim(),
+        quantity: input.quantity ?? null, unit: input.unit ?? null, note: input.note ?? null, category_id: input.categoryId ?? guessCategory(input.name) ?? "other",
+        status: "OPEN", added_by: null, purchased_at: null, purchased_by: null, client_op_id: input.opId, created_at: now, updated_at: now,
+      };
+      qc.setQueryData<Item[]>(key, [temp, ...items]);
+    },
+    onSettled: (_r, _e, input) => {
       qc.invalidateQueries({ queryKey: listKeys.items(input.listId) });
       qc.invalidateQueries({ queryKey: listKeys.requests(input.listId) });
       qc.invalidateQueries({ queryKey: ["frequent"] });
     },
   });
+}
+
+/** Spoločný kľúč úprav položiek jedného zoznamu (rýchle +1, +1, +1 sa navzájom nevidia ako zmena zvonka). */
+const itemMutationKey = (listId: string) => ["item-mutation", listId];
+
+/**
+ * Po úprave položky načítame zoznam zo servera, ale až po POSLEDNEJ z rýchlo za sebou idúcich úprav.
+ * Inak by odpoveď na prvú úpravu na chvíľu vrátila staré množstvo a číslo by „skákalo“.
+ */
+function settleItems(qc: ReturnType<typeof useQueryClient>, listId: string) {
+  if (qc.isMutating({ mutationKey: itemMutationKey(listId) }) <= 1) return qc.invalidateQueries({ queryKey: listKeys.items(listId) });
 }
 
 type ItemPatch = Partial<Pick<Item, "name" | "quantity" | "unit" | "note" | "category_id" | "status">>;
@@ -146,6 +180,7 @@ export function useUpdateItem(listId: string) {
   const qc = useQueryClient();
   const key = listKeys.items(listId);
   return useMutation({
+    mutationKey: itemMutationKey(listId),
     mutationFn: async ({ id, patch }: { id: string; patch: ItemPatch }) => {
       const { error } = await supabase.from("shopping_list_items").update(patch).eq("id", id);
       if (error) throw error;
@@ -159,7 +194,7 @@ export function useUpdateItem(listId: string) {
             ? {
                 ...it,
                 ...patch,
-                ...(patch.status === "PURCHASED" ? { purchased_at: new Date().toISOString() } : {}),
+                ...(patch.status === "PURCHASED" || patch.status === "UNAVAILABLE" ? { purchased_at: new Date().toISOString() } : {}),
                 ...(patch.status === "OPEN" ? { purchased_at: null, purchased_by: null } : {}),
               }
             : it,
@@ -170,7 +205,7 @@ export function useUpdateItem(listId: string) {
     onError: (_e, _v, ctx) => {
       if (ctx?.previous) qc.setQueryData(key, ctx.previous);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+    onSettled: () => settleItems(qc, listId),
   });
 }
 
@@ -178,6 +213,7 @@ export function useDeleteItem(listId: string) {
   const qc = useQueryClient();
   const key = listKeys.items(listId);
   return useMutation({
+    mutationKey: itemMutationKey(listId),
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("shopping_list_items").delete().eq("id", id);
       if (error) throw error;
@@ -191,11 +227,11 @@ export function useDeleteItem(listId: string) {
     onError: (_e, _v, ctx) => {
       if (ctx?.previous) qc.setQueryData(key, ctx.previous);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+    onSettled: () => settleItems(qc, listId),
   });
 }
 
-export type ListInput = { name: string; isPrivate: boolean; plannedFor: string | null; note: string | null };
+export type ListInput = { name: string; isPrivate: boolean; plannedFor: string | null; plannedTime?: string | null; note: string | null };
 
 export function useCreateList(householdId: string) {
   const qc = useQueryClient();
@@ -203,7 +239,7 @@ export function useCreateList(householdId: string) {
     mutationFn: async (input: ListInput) => {
       const { data, error } = await supabase
         .from("shopping_lists")
-        .insert({ household_id: householdId, name: input.name, is_private: input.isPrivate, planned_for: input.plannedFor, note: input.note })
+        .insert({ household_id: householdId, name: input.name, is_private: input.isPrivate, planned_for: input.plannedFor, planned_time: input.plannedTime ?? null, note: input.note })
         .select("id")
         .single();
       if (error) throw error;
@@ -221,7 +257,7 @@ export function useUpdateList(householdId: string) {
       patch,
     }: {
       id: string;
-      patch: { name?: string; is_archived?: boolean; is_private?: boolean; planned_for?: string | null; note?: string | null };
+      patch: { name?: string; is_archived?: boolean; is_private?: boolean; planned_for?: string | null; planned_time?: string | null; note?: string | null };
     }) => {
       const { error } = await supabase.from("shopping_lists").update(patch).eq("id", id);
       if (error) throw error;
@@ -255,6 +291,47 @@ export function useEndShopping(listId: string) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: listKeys.session(listId) });
       qc.invalidateQueries({ queryKey: listKeys.requests(listId) });
+    },
+  });
+}
+
+/**
+ * Koniec nákupu (databázová funkcia finish_shopping): nekúpené položky buď presunie
+ * do nového zoznamu na zajtra (MOVE), alebo nechá v zozname (KEEP).
+ */
+export function useFinishShopping(householdId: string, listId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sessionId, unbought }: { sessionId: string; unbought: "MOVE" | "KEEP" }) => {
+      const { data, error } = await supabase.rpc("finish_shopping", { p_session_id: sessionId, p_unbought: unbought });
+      if (error) throw error;
+      return data;
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: listKeys.session(listId) });
+      qc.invalidateQueries({ queryKey: listKeys.requests(listId) });
+      qc.invalidateQueries({ queryKey: listKeys.items(listId) });
+      qc.invalidateQueries({ queryKey: listKeys.lists(householdId) });
+      qc.invalidateQueries({ queryKey: listKeys.stats(householdId) });
+      qc.invalidateQueries({ queryKey: listKeys.hubSessions(householdId) });
+    },
+  });
+}
+
+/** „Kúpim inde“ – presun položky do iného zoznamu, alebo do nového zoznamu na zajtra (newName). */
+export function useMoveItem(householdId: string, listId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ itemId, targetListId, newName }: { itemId: string; targetListId?: string; newName?: string }) => {
+      const { data, error } = await supabase.rpc("move_item", { p_item_id: itemId, p_target_list: targetListId, p_new_name: newName });
+      if (error) throw error;
+      return data;
+    },
+    onSettled: (target) => {
+      qc.invalidateQueries({ queryKey: listKeys.items(listId) });
+      if (target) qc.invalidateQueries({ queryKey: listKeys.items(target) });
+      qc.invalidateQueries({ queryKey: listKeys.lists(householdId) });
+      qc.invalidateQueries({ queryKey: listKeys.stats(householdId) });
     },
   });
 }
@@ -302,6 +379,22 @@ export function useFrequentItems(householdId: string) {
       return (data ?? []).map((r) => ({ name: r.name, times: Number(r.times), category_id: r.category_id }));
     },
     staleTime: 60_000,
+  });
+}
+
+/**
+ * „Istý nákup“ – produkty, ktoré domácnosť kupuje pravidelne a sú práve na rade
+ * (výpočet je v databáze, staple_items). Pri krátkej histórii je prázdne – vtedy sa použijú najčastejšie.
+ */
+export function useStapleItems(householdId: string) {
+  return useQuery({
+    queryKey: [...listKeys.frequent(householdId), "staples"],
+    queryFn: async (): Promise<FrequentItem[]> => {
+      const { data, error } = await supabase.rpc("staple_items", { p_household_id: householdId, p_limit: 12 });
+      if (error) throw error;
+      return (data ?? []).map((r) => ({ name: r.name, times: 0, category_id: r.category_id }));
+    },
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -367,7 +460,8 @@ export function useRemoveFavorite(householdId: string) {
 
 // ------------------------------------------------------------------ prehľad nákupov
 
-export type ListStats = { open: number; bought: number; preview: string[] };
+/** adders = kto pridal otvorené položky (ľudia na karte); boughtNames/unavailable/shopper slúžia histórii nákupov (čo sa kúpilo, čo nemali, kto nakupoval). */
+export type ListStats = { open: number; bought: number; preview: string[]; unavailable: number; boughtNames: string[]; shopper: string | null; adders: string[] };
 
 /** Počty položiek a náhľad mien pre karty v prehľade Nákupy (jeden dotaz pre všetky zoznamy). */
 export function useListStats(householdId: string) {
@@ -377,21 +471,33 @@ export function useListStats(householdId: string) {
       const since = new Date(Date.now() - 120 * 86_400_000).toISOString();
       const { data, error } = await supabase
         .from("shopping_list_items")
-        .select("list_id, status, name, created_at")
+        .select("list_id, status, name, created_at, purchased_by, added_by")
         .eq("household_id", householdId)
         .or(`status.eq.OPEN,purchased_at.gte.${since}`)
         .order("created_at", { ascending: false })
         .limit(3000);
       if (error) throw error;
       const map = new Map<string, ListStats>();
+      const buyers = new Map<string, Map<string, number>>();
       for (const row of data) {
-        const st = map.get(row.list_id) ?? { open: 0, bought: 0, preview: [] };
+        const st = map.get(row.list_id) ?? { open: 0, bought: 0, preview: [], unavailable: 0, boughtNames: [], shopper: null, adders: [] };
         if (row.status === "OPEN") {
           st.open++;
           if (st.preview.length < 4) st.preview.push(row.name);
-        } else st.bought++;
+          if (row.added_by && !st.adders.includes(row.added_by)) st.adders.push(row.added_by);
+        } else if (row.status === "PURCHASED") {
+          st.bought++;
+          if (st.boughtNames.length < 4) st.boughtNames.push(row.name);
+          if (row.purchased_by) {
+            const b = buyers.get(row.list_id) ?? new Map<string, number>();
+            b.set(row.purchased_by, (b.get(row.purchased_by) ?? 0) + 1);
+            buyers.set(row.list_id, b);
+          }
+        } else if (row.status === "UNAVAILABLE") st.unavailable++;
         map.set(row.list_id, st);
       }
+      // Kto nakupoval = kto odškrtol najviac položiek.
+      for (const [listId, b] of buyers) map.get(listId)!.shopper = [...b.entries()].sort((x, y) => y[1] - x[1])[0]![0];
       return map;
     },
   });
@@ -423,5 +529,54 @@ export function useSetReceiptLater(householdId: string) {
       if (error) throw error;
     },
     onSettled: () => qc.invalidateQueries({ queryKey: listKeys.lists(householdId) }),
+  });
+}
+
+/** Všetky položky jedného (aj ukončeného) nákupu – pre „Pridať nekúpené“ a „Skopírovať minulý nákup“. */
+export function useTripItems(listId: string | undefined) {
+  return useQuery({
+    queryKey: ["trip-items", listId ?? "none"],
+    enabled: !!listId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Item[]> => {
+      const { data, error } = await supabase.from("shopping_list_items").select("*").eq("list_id", listId!).order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/** Doklad k ukončenému nákupu (z Histórie): nahratie, priradenie k nákupu a čítanie na serveri. */
+export function useUploadTripReceipt(householdId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ listId, files, onRegistered }: { listId: string | null; files: File[]; onRegistered?: (receiptId: string) => void }) =>
+      uploadReceipt(householdId, files, listId, onRegistered),
+    onMutate: () => qc.invalidateQueries({ queryKey: ["receipts"] }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["receipts"] });
+      qc.invalidateQueries({ queryKey: listKeys.lists(householdId) });
+      qc.invalidateQueries({ queryKey: ["trip-items"] });
+    },
+  });
+}
+
+// ------------------------------------------------------------------ katalóg položiek (rozpoznanie a ceny)
+
+/**
+ * Produkty domácnosti s nákupmi z bločkov (item_catalog) – z nich appka rozpozná napísanú položku
+ * (všeobecná / druh / značka) a odhadne cenu. Bez katalógu zoznam funguje ďalej, len bez cien.
+ */
+export function useItemCatalog(householdId: string) {
+  return useQuery({
+    queryKey: listKeys.catalog(householdId),
+    staleTime: 10 * 60_000,
+    retry: false,
+    queryFn: async (): Promise<ItemCatalog> => {
+      const { data, error } = await supabase.rpc("item_catalog", { p_household_id: householdId });
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as CatProduct[];
+      return buildCatalog(rows.map((p) => ({ ...p, buys: p.buys.map((b) => ({ ...b, t: Number(b.t), q: b.q == null ? null : Number(b.q) })) })));
+    },
   });
 }

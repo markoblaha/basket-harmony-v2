@@ -1,0 +1,142 @@
+/* Obrázky receptov z knihy sa pridávajú za behu z databázy (kniha.ts injectBookPics): triedy pic-kb_<id>_1 a _1s. */
+/* Kniha receptov v appke – doplnky k triedam mockupu (gal, bgroups, bsteps, sbx, binfo). */
+.bhm .bopt { font-size: 12px; font-weight: 700; color: var(--ter); margin-left: 6px; }
+.bhm .bsrc { display: flex; flex-direction: column; gap: 6px; }
+.bhm .bsrc a { color: var(--sec); font-size: 14px; text-decoration: none; display: flex; gap: 8px; align-items: baseline; }
+.bhm .bsrc a b { color: var(--acc); font-size: 12px; font-weight: 800; min-width: 14px; }
+.bhm .bsrc a span { text-decoration: underline; text-decoration-color: var(--line, rgb(0 0 0 / .15)); text-underline-offset: 3px; }
+.bhm .bal { display: flex; flex-wrap: wrap; gap: 6px; }
+.bhm .bal span { height: 28px; padding: 0 10px; border-radius: 99px; background: var(--card2); display: inline-flex; align-items: center; font-size: 13.5px; font-weight: 650; }
+
+/* Fotky receptu, ktoré sa listujú do strán (Photos.tsx) – detail receptu aj Ochutnávač. */
+.bhm .phs { position: relative; width: 100%; height: 100%; overflow: hidden; background: #141414; }
+.bhm .phs-s { display: flex; width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; -webkit-tap-highlight-color: transparent; }
+.bhm .phs-s::-webkit-scrollbar { display: none; }
+.bhm .phs-i { position: relative; flex: 0 0 100%; height: 100%; overflow: hidden; scroll-snap-align: center; scroll-snap-stop: always; background-size: cover; background-position: center; background-color: #1c1c1c; }
+.bhm .phs > .phs-i { width: 100%; }
+.bhm .phs-i img { display: block; width: 100%; height: 100%; object-fit: cover; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+.bhm .phs.feed .phs-i.on img { animation: kb-zoom 7s cubic-bezier(.2, .6, .3, 1) forwards; will-change: transform; }
+@keyframes kb-zoom { from { transform: scale(1); } to { transform: scale(1.07); } }
+.bhm .phs-cnt { position: absolute; right: 12px; bottom: 40px; z-index: 3; height: 26px; padding: 0 9px; border-radius: 99px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 750; color: #fff; background: rgb(0 0 0 / .45); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font-variant-numeric: tabular-nums; pointer-events: none; }
+.bhm .phs-nav { position: absolute; top: 50%; z-index: 3; width: 40px; height: 40px; margin-top: -20px; border-radius: 99px; display: none; place-items: center; color: #1d1d1d; background: rgb(255 255 255 / .88); box-shadow: 0 4px 14px rgb(0 0 0 / .22); transition: opacity var(--dur-2, .2s); }
+.bhm .phs-nav .ico { width: 18px; height: 18px; }
+.bhm .phs-nav.prev { left: 12px; }
+.bhm .phs-nav.next { right: 12px; }
+.bhm .phs-nav[disabled] { opacity: 0; pointer-events: none; }
+@media (hover: hover) and (pointer: fine) { .bhm .phs-nav { display: grid; } }
+/* Detail receptu z knihy: väčšia fotka (4:5), aby jedlo bolo vidieť celé. */
+.bhm .rhero2.rbook { height: calc(var(--sat) + min(108vw, 460px)); }
+/* Ochutnávač: pásiky fotiek ako príbeh a počítadlo pod hornou lištou. */
+.bhm .phs-seg { position: absolute; left: 14px; right: 14px; top: calc(var(--sat) + 64px); z-index: 3; display: flex; gap: 4px; pointer-events: none; }
+.bhm .phs-seg i { position: relative; flex: 1; height: 3px; border-radius: 99px; overflow: hidden; background: rgb(255 255 255 / .32); }
+.bhm .phs-seg i.d { background: #fff; }
+.bhm .phs-seg i.c::after { content: ""; position: absolute; inset: 0; background: #fff; transform-origin: left; }
+.bhm .phs-seg i.c.run::after { animation: seg-fill var(--auto, 3.2s) linear forwards; }
+@keyframes seg-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.bhm .phs.feed .phs-cnt { top: calc(var(--sat) + 76px); bottom: auto; right: 14px; }
+.bhm .phs.feed .phs-nav { top: 46%; }
+@media (prefers-reduced-motion: reduce) {
+  .bhm .phs.feed .phs-i.on img, .bhm .phs-seg i.c.run::after { animation: none; }
+}
+
+/* Ochutnávač 2.0 */
+.bhm .tst-card { contain: layout paint; }
+.bhm .tst-ph .phs { position: absolute; inset: 0; }
+.bhm .tst-top .tst-ttl { flex: 1; text-align: center; font-weight: 800; font-size: 16px; letter-spacing: -.2px; text-shadow: 0 1px 8px rgb(0 0 0 / .45); pointer-events: none; }
+.bhm .tst-kind { font-size: 13px; font-weight: 750; letter-spacing: .6px; text-transform: uppercase; color: rgb(255 255 255 / .85); }
+.bhm .tst-ai { font-size: 12px; color: rgb(255 255 255 / .7); }
+.bhm .tst-burst.at { left: var(--x); top: var(--y); }
+.bhm .tst-hint { cursor: pointer; }
+.bhm .tst-hint .tst-hok { margin-top: 6px; align-self: center; }
+/* Ikona v štítku (čas, oheň) nesmie dostať pozadie a odsadenie samotného štítku (span v span). */
+.bhm .tst-meta .ico, .bhm .schips .ico { height: 15px; width: 15px; padding: 0; background: none; border-radius: 0; -webkit-backdrop-filter: none; backdrop-filter: none; flex: none; }
+
+/* Varenie: kroky sa menia ťukom na stranu a ťahom prstom (CookPage). Zvislé posúvanie dlhého kroku ostáva. */
+.bhm .cbody.swipe { touch-action: pan-y; -webkit-user-select: none; user-select: none; cursor: pointer; }
+.bhm .ckst { display: flex; flex-direction: column; gap: 22px; }
+.bhm .ckst.in-next { animation: ck-in-next .26s cubic-bezier(.2, .7, .3, 1); }
+.bhm .ckst.in-prev { animation: ck-in-prev .26s cubic-bezier(.2, .7, .3, 1); }
+@keyframes ck-in-next { from { opacity: 0; transform: translateX(40px); } }
+@keyframes ck-in-prev { from { opacity: 0; transform: translateX(-40px); } }
+.bhm .ck-hint { align-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 99px; background: var(--card2); color: var(--sec); font-size: 14px; font-weight: 650; text-align: center; }
+.bhm .ck-hint .ico { width: 18px; height: 18px; flex: none; }
+.g .bhm .cook:has(.bgl) .ck-hint { background: rgb(255 255 255 / .16); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .bhm .ckst.in-next, .bhm .ckst.in-prev { animation: none; } }
+
+/* Varenie: zostávajúci čas, suroviny pri kroku, kruh časovača a náhľad ďalšieho kroku. */
+.bhm .ck-left { position: relative; z-index: 2; text-align: center; margin-top: 8px; font-size: 13px; font-weight: 650; color: var(--sec); font-variant-numeric: tabular-nums; }
+.bhm .ck-ing { display: flex; flex-wrap: wrap; gap: 8px; }
+.bhm .ck-ing > span { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 4px 12px 4px 6px; border-radius: 99px; background: var(--card2); font-size: 15px; line-height: 1.2; }
+.bhm .ck-ing .em { width: 26px; height: 26px; flex: none; }
+.bhm .ck-ing b { font-weight: 700; }
+.bhm .ck-ing small { font-size: 14px; color: var(--sec); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bhm .timer .tring { grid-row: span 2; display: grid; place-items: center; padding: 3px; border-radius: 99px; background: conic-gradient(var(--acc) calc(var(--p, 0) * 1turn), var(--line2) 0); }
+.bhm .timer .tring .ico { grid-row: auto; }
+.bhm .timer.fin .tring { background: var(--ok); }
+.bhm .ck-peek { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border-radius: 16px; text-align: left; background: transparent; box-shadow: inset 0 0 0 1.5px var(--line2); color: var(--sec); }
+.bhm .ck-peek small { font-size: 12px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--acc); }
+.bhm .ck-peek .pk-tx { font-size: 14.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bhm .ck-peek .ico { width: 16px; height: 16px; }
+.g .bhm .cook:has(.bgl) .ck-ing > span { background: rgb(255 255 255 / .16); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.g .bhm .cook:has(.bgl) .ck-ing small, .g .bhm .cook:has(.bgl) .ck-left, .g .bhm .cook:has(.bgl) .ck-peek { color: rgb(255 255 255 / .82); }
+.g .bhm .cook:has(.bgl) .ck-peek { box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .28); }
+.g .bhm .cook:has(.bgl) .ck-peek small { color: #fff; }
+
+/* Ochutnávač: „Doma máš X z Y“ je tlačidlo s ukazovateľom → rýchly prehľad surovín (HaveSheet). */
+.bhm .tst-havebtn { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px 0 12px; border-radius: 99px; color: #fff; font-size: 14.5px; font-weight: 700; text-shadow: none; background: rgb(0 0 0 / .38); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .18); }
+.bhm .tst-havebtn .ico { width: 14px; height: 14px; opacity: .8; }
+.bhm .hb-bar { width: 32px; height: 6px; border-radius: 99px; overflow: hidden; background: rgb(255 255 255 / .28); flex: none; }
+.bhm .hb-bar i { display: block; height: 100%; border-radius: inherit; background: #7fe0a0; }
+.bhm .hvsh .sh-body { gap: 14px; }
+.bhm .hv-sum { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 18px; background: var(--card2); }
+.bhm .hv-bar { height: 8px; border-radius: 99px; overflow: hidden; background: var(--line2); }
+.bhm .hv-bar i { display: block; height: 100%; border-radius: inherit; background: var(--ok); transition: width var(--dur-3, .3s) ease-out; }
+.bhm .hv-nums { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 14.5px; color: var(--sec); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bhm .hv-nums b { color: var(--fg); font-size: 17px; }
+.bhm .hv-nums .ok { color: var(--ok); font-weight: 750; }
+.bhm .hv-sec { display: flex; flex-direction: column; }
+/* Treba kúpiť: hustá tabuľka (emoji · názov · koľko kúpiť · cena), aby sa zmestila na jeden pohľad. */
+.bhm .hv-tab { list-style: none; margin: 0; padding: 2px 0; border-radius: 18px; background: var(--card); }
+.bhm .hv-tab li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto 66px; align-items: center; gap: 10px; min-height: 44px; padding: 4px 14px; }
+.bhm .hv-tab li + li { box-shadow: inset 0 1px 0 var(--line); }
+.bhm .hv-tab .em { width: 26px; height: 26px; }
+.bhm .hv-tab b { font-size: 15.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bhm .hv-q { font-size: 14px; color: var(--sec); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.bhm .hv-tab.np li { grid-template-columns: 26px minmax(0, 1fr) auto; }
+.bhm .hv-tab.np .hv-price { display: none; }
+.bhm .hv-price { font-size: 14px; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+/* Máš doma: len kartičky – stačí vedieť, že to je. */
+.bhm .hv-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.bhm .hv-chips > span { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 3px 10px 3px 5px; border-radius: 99px; background: var(--card); color: var(--sec); font-size: 14px; font-weight: 600; }
+.bhm .hv-chips .em { width: 22px; height: 22px; flex: none; }
+.bhm .hv-chips .ico { width: 13px; height: 13px; color: var(--ok); flex: none; }
+.bhm .hvsh .sh-foot { box-shadow: 0 -1px 0 var(--line); }
+.bhm .hvsh .sh-act .btn.soft { flex: none; padding-inline: 22px; }
+.bhm .hvsh .sh-act .btn { min-width: 0; }
+.bhm .hv-edit { align-self: center; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 12px; color: var(--acc); font-weight: 700; font-size: 15px; }
+.bhm .hv-edit .ico { width: 14px; height: 14px; }
+
+/* Overenie receptu (metóda „kotva“): zhoda, tabuľka naše množstvo / bežne v zdrojoch, zmeny oproti základu. */
+.bhm .bchk { display: flex; flex-direction: column; gap: 8px; }
+.bhm .bchk-sum { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.bhm .bchk-sum b { color: var(--acc); font-size: 16px; font-weight: 800; }
+.bhm .bchk-sum span { color: var(--sec); font-size: 14px; }
+.bhm .bchk-tab { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: var(--card); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.bhm .bchk-h, .bhm .bchk-r { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; align-items: baseline; padding: 7px 12px; }
+.bhm .bchk-h { font-size: 11.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--sec); background: var(--card2); }
+.bhm .bchk-r + .bchk-r { box-shadow: inset 0 1px 0 var(--line); }
+.bhm .bchk-g { padding: 9px 12px 5px; font-size: 11.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--sec); background: var(--card2); }
+.bhm .bchk-h > span:not(:first-child), .bhm .bchk-r > span:not(:first-child) { text-align: right; white-space: nowrap; }
+.bhm .bchk-r > span:first-child { font-weight: 650; }
+.bhm .bchk-r > span:nth-child(2) { font-weight: 750; }
+.bhm .bchk-r > span:nth-child(3), .bhm .bchk-r > span:nth-child(4) { color: var(--sec); }
+.bhm .bchk-r small { display: block; font-size: 10.5px; font-weight: 700; color: var(--warn, #b7791f); }
+.bhm .bchk-note { font-size: 13px; color: var(--sec); }
+.bhm .bchk-ch { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; color: var(--sec); }
+
+/* Varenie: dlhý krok (podrobný postup pre začiatočníka) menším písmom. */
+.bhm .cook .stx.lg { font-size: 24px; }
+.bhm .cook .stx.xl { font-size: 21px; line-height: 1.3; }
+.w .bhm .cook .stx.lg { font-size: 28px; }
+.w .bhm .cook .stx.xl { font-size: 24px; line-height: 1.28; }
+.bhm .bscale { margin: -2px 4px 12px; }

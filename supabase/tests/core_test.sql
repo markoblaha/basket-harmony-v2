@@ -17,6 +17,7 @@ declare
   s1 public.shopping_sessions; s2 public.shopping_sessions;
   item_id uuid; req_id uuid; n int; n2 int; txt text; err text;
   rc1 uuid; rc2 uuid; rg record; rrec public.receipts; lp uuid; ls uuid; t timestamptz;
+  nl uuid; nl2 uuid; it2 uuid; pid uuid; rid uuid;
   report text := '';
   fails int := 0;
 begin
@@ -566,6 +567,21 @@ begin
   begin perform public.reply_request(req_id, '   '); exception when others then err := sqlerrm; end;
   if err = 'INVALID_INPUT' then report := report || E'ok: prázdna odpoveď sa neuloží\n';
   else report := report || 'FAIL: prázdna odpoveď -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  -- Ochutnávač (migrácia 34): „Chcem“ len za seba
+  insert into public.recipe_likes (household_id, recipe_key) values (h, 'segedin');
+  err := null; begin insert into public.recipe_likes (household_id, user_id, recipe_key) values (h, a, 'x'); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: „Chcem“ sa nedá dať za iného člena\n';
+  else report := report || 'FAIL: recipe_likes za iného -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  -- plán týždňa (migrácia 33): naplánovanie bez zoznamu, na jeden deň jedno jedlo, položky bez zoznamu nie
+  res := public.plan_recipes(h, null, null, '[]', jsonb_build_array(jsonb_build_object('key', 'kari', 'name', 'Kuracie na kari', 'portions', 4, 'day', (current_date + 3)::text)));
+  res := public.plan_recipes(h, null, null, '[]', jsonb_build_array(jsonb_build_object('key', 'rizoto', 'name', 'Kuracie rizoto', 'portions', 4, 'day', (current_date + 3)::text)));
+  select count(*) into n from public.recipe_plans where household_id = h and status = 'PENDING' and planned_on = current_date + 3;
+  select recipe_key into txt from public.recipe_plans where household_id = h and status = 'PENDING' and planned_on = current_date + 3;
+  if res->>'list_id' is null and n = 1 and txt = 'rizoto' then report := report || E'ok: plán týždňa – na deň jedno jedlo, bez zoznamu\n';
+  else report := report || 'FAIL: plán dňa ' || res::text || ' ' || n || ' ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.plan_recipes(h, null, null, '[{"name":"Mlieko"}]', '[]'); exception when others then err := sqlerrm; end;
+  if err = 'INVALID_INPUT' then report := report || E'ok: suroviny bez zoznamu sa odmietnu\n';
+  else report := report || 'FAIL: položky bez zoznamu -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
   perform public.end_shopping(s1.id);
 
   execute 'reset role';
@@ -649,12 +665,175 @@ begin
   select completed_at into t from public.shopping_lists where id = ls;
   if t is null then report := report || E'ok: pridanie položky vráti nákup z histórie\n';
   else report := report || E'FAIL: ostal v histórii\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- Nemali, čas, koniec nákupu, kúpim inde
+  update public.shopping_lists set planned_time = '17:30' where id = ls;
+  select planned_time::text into txt from public.shopping_lists where id = ls;
+  if txt = '17:30:00' then report := report || E'ok: čas nákupu sa dá uložiť\n';
+  else report := report || 'FAIL: čas nákupu -> ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+  perform public.add_item(ls, 'Chlieb');
+  perform public.add_item(ls, 'Maslo');
+  s1 := public.start_shopping(ls);
+  update public.shopping_list_items set status = 'UNAVAILABLE' where list_id = ls and name = 'Chlieb';
+  select count(*) into n from public.shopping_list_items where list_id = ls and name = 'Chlieb' and purchased_by = a and purchased_at is not null;
+  if n = 1 then report := report || E'ok: „Nemali“ zapamätá, kto a kedy položku vybavil\n';
+  else report := report || E'FAIL: Nemali bez záznamu\n'; fails := fails + 1; end if;
+  update public.shopping_list_items set status = 'PURCHASED' where list_id = ls and name = 'Zabudnuté mlieko';
+  nl := public.finish_shopping(s1.id, 'MOVE');
+  select count(*) into n from public.shopping_list_items where list_id = nl and name = 'Maslo' and status = 'OPEN';
+  select completed_at into t from public.shopping_lists where id = ls;
+  if nl is not null and n = 1 and t is not null then report := report || E'ok: koniec nákupu presunie nekúpené na zajtra a nákup ide do histórie\n';
+  else report := report || E'FAIL: finish_shopping MOVE\n'; fails := fails + 1; end if;
+  select count(*) into n from public.shopping_list_items where list_id = ls and name = 'Chlieb' and status = 'UNAVAILABLE';
+  if n = 1 then report := report || E'ok: položka „Nemali“ ostane v histórii nákupu\n';
+  else report := report || E'FAIL: Nemali sa stratilo\n'; fails := fails + 1; end if;
+  select count(*) into n from public.shopping_list_items where list_id = nl and name = 'Chlieb' and status = 'OPEN';
+  if n = 1 then report := report || E'ok: „Nemali“ pokračuje aj v zozname na budúce (migrácia 32)\n';
+  else report := report || E'FAIL: Nemali nie je v pokračujúcom zozname\n'; fails := fails + 1; end if;
+  select id into it2 from public.shopping_list_items where list_id = nl and name = 'Maslo';
+  nl2 := public.move_item(it2, null, 'Na neskôr');
+  select count(*) into n from public.shopping_list_items where id = it2 and list_id = nl2;
+  if nl2 is not null and nl2 <> nl and n = 1 then report := report || E'ok: kúpim inde presunie položku do nového zoznamu\n';
+  else report := report || E'FAIL: move_item nový zoznam\n'; fails := fails + 1; end if;
+  perform public.move_item(it2, nl);
+  select count(*) into n from public.shopping_list_items where id = it2 and list_id = nl;
+  if n = 1 then report := report || E'ok: kúpim inde presunie položku do existujúceho zoznamu\n';
+  else report := report || E'FAIL: move_item existujúci zoznam\n'; fails := fails + 1; end if;
+  err := null; begin perform public.finish_shopping(s1.id, 'DROP'); exception when others then err := sqlerrm; end;
+  if err = 'INVALID_INPUT' then report := report || E'ok: neznáma voľba pri konci nákupu sa odmietne\n';
+  else report := report || 'FAIL: finish_shopping DROP -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  select id into lb from public.shopping_lists where household_id = hb limit 1;  -- zoznam Borisovej domácnosti
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.move_item(it2, lb); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepresunie položku z cudzej domácnosti\n';
+  else report := report || 'FAIL: cudzí move_item -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.move_item(it2, lb); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: položku nejde presunúť do cudzej domácnosti\n';
+  else report := report || 'FAIL: move_item do cudzej -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
   execute 'reset role';
   perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
   execute 'set local role authenticated';
   err := null; begin perform public.attach_receipt_to_list(rc1, ls); exception when others then err := sqlerrm; end;
   if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepriradí doklad k cudziemu nákupu\n';
   else report := report || 'FAIL: cudzí attach -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- párovanie dokladu s nákupom
+  err := null; begin perform public.receipt_match_candidates(rc1); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nevidí kandidátov na párovanie\n';
+  else report := report || 'FAIL: cudzí receipt_match_candidates -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.dismiss_receipt_match(rc1); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nezruší párovanie dokladu\n';
+  else report := report || 'FAIL: cudzí dismiss_receipt_match -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.receipt_match_suggestions(h); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nevidí návrhy párovania\n';
+  else report := report || 'FAIL: cudzí receipt_match_suggestions -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  res := public.receipt_match_candidates(rc1);
+  if res @> jsonb_build_array(jsonb_build_object('list_id', ls, 'attached', true))
+     and exists (select 1 from jsonb_array_elements(res) e where e->>'list_id' = ls::text and e->'hit' ? 'Banány' and e->'extra' @> '[{"name":"PIVO"}]')
+  then report := report || E'ok: párovanie ukáže, čo sedí a čo je na doklade navyše\n';
+  else report := report || 'FAIL: receipt_match_candidates -> ' || coalesce(res::text, 'null') || E'\n'; fails := fails + 1; end if;
+  select * into rg from public.register_receipt(h, repeat('8', 64));
+  rc2 := rg.receipt_id;
+  perform public.dismiss_receipt_match(rc2);
+  select count(*) into n from public.receipts where id = rc2 and match_score = 0;
+  res := public.receipt_match_suggestions(h);
+  if n = 1 and jsonb_typeof(res) = 'array' and not res @> jsonb_build_array(jsonb_build_object('receipt_id', rc2))
+  then report := report || E'ok: „Bez nákupu“ doklad už nenavrhuje\n';
+  else report := report || E'FAIL: dismiss_receipt_match\n'; fails := fails + 1; end if;
+  perform public.dismiss_receipt_match(rc1);
+  select list_id into nl from public.receipts where id = rc1;
+  if nl = ls then report := report || E'ok: „Bez nákupu“ neodpojí už priradený doklad\n';
+  else report := report || E'FAIL: dismiss odpojil doklad\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- recepty (migrácia 27)
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  insert into public.recipes (household_id, name, ingredients, steps)
+  values (h, 'Babkino kuracie', '[{"food":"kuracie_prsia","qty":700,"unit":"g"}]', '[{"text":"Opeč {kuracie_prsia}."}]') returning id into rid;
+  insert into public.recipe_favorites (household_id, recipe_key) values (h, 'segedin');
+  res := public.plan_recipes(h, null, jsonb_build_object('name', 'Lidl', 'planned_for', current_date::text, 'note', 'Segedínsky guláš'),
+    '[{"name":"Bravčové pliecko","quantity":0.6,"unit":"kg","category_id":"meat_fish"},{"name":"Kyslá kapusta","quantity":1,"unit":"ks","note":"potrebné 500 g"}]',
+    jsonb_build_array(jsonb_build_object('key', 'segedin', 'name', 'Segedínsky guláš', 'portions', 4), jsonb_build_object('key', rid::text, 'name', 'Babkino kuracie', 'portions', 2)));
+  select count(*) into n from public.shopping_list_items where list_id = (res->>'list_id')::uuid;
+  select count(*) into n2 from public.recipe_plans where household_id = h and status = 'PENDING';
+  if (res->>'items')::int = 2 and n = 2 and n2 = 2 then report := report || E'ok: suroviny receptov idú do nového zoznamu a recepty čakajú na uvarenie\n';
+  else report := report || 'FAIL: plan_recipes nový ' || res::text || ' ' || n || '/' || n2 || E'\n'; fails := fails + 1; end if;
+  s1 := public.start_shopping(l);
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.recipes where id = rid;
+  if n = 1 then report := report || E'ok: vlastný recept vidí celá domácnosť\n';
+  else report := report || E'FAIL: recept nevidí člen\n'; fails := fails + 1; end if;
+  select count(*) into n from public.recipe_favorites;
+  if n = 0 then report := report || E'ok: obľúbené recepty vidí iba ich majiteľ\n';
+  else report := report || E'FAIL: cudzie obľúbené viditeľné\n'; fails := fails + 1; end if;
+  err := null; begin update public.recipes set created_by = c where id = rid; exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: autora receptu nemožno prepísať\n';
+  else report := report || 'FAIL: zmena autora -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  res := public.plan_recipes(h, l, null, '[{"name":"Smotana","quantity":1,"unit":"ks"}]', '[{"key":"segedin","name":"Segedínsky guláš","portions":6}]');
+  select count(*) into n from public.recipe_plans where household_id = h and recipe_key = 'segedin' and status = 'PENDING';
+  select portions into n2 from public.recipe_plans where household_id = h and recipe_key = 'segedin' and status = 'PENDING';
+  if (res->>'requests')::int = 1 and n = 1 and n2 = 6 then report := report || E'ok: počas nákupu idú suroviny ako žiadosť; ten istý recept nečaká dvakrát\n';
+  else report := report || 'FAIL: plan_recipes existujúci ' || res::text || ' ' || n || '/' || coalesce(n2, -1) || E'\n'; fails := fails + 1; end if;
+  pid := public.cook_recipe(h, 'segedin', 'Segedínsky guláš', 6, 5400);
+  select count(*) into n from public.recipe_plans where id = pid and status = 'COOKED' and cooked_by = c and cook_seconds = 5400;
+  if n = 1 then report := report || E'ok: uvarený recept zmizne z čakajúcich a zapamätá sa čas varenia\n';
+  else report := report || E'FAIL: cook_recipe\n'; fails := fails + 1; end if;
+  pid := public.cook_recipe(h, 'palacinky', 'Palacinky', 4, null);
+  select count(*) into n from public.recipe_plans where id = pid and status = 'COOKED';
+  if n = 1 then report := report || E'ok: uvarenie bez čakajúceho receptu sa zapíše\n';
+  else report := report || E'FAIL: cook_recipe nový\n'; fails := fails + 1; end if;
+  select id into pid from public.recipe_plans where household_id = h and recipe_key = rid::text and status = 'PENDING';
+  perform public.set_recipe_plan_status(pid, 'DISMISSED');
+  perform public.set_recipe_plan_status(pid, 'PENDING');
+  select status::text into txt from public.recipe_plans where id = pid;
+  if txt = 'PENDING' then report := report || E'ok: odobratie z čakajúcich sa dá vrátiť späť\n';
+  else report := report || 'FAIL: set_recipe_plan_status -> ' || coalesce(txt, 'null') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.set_recipe_plan_status(pid, 'COOKED'); exception when others then err := sqlerrm; end;
+  if err = 'INVALID_INPUT' then report := report || E'ok: uvarené sa nedá nastaviť obídením funkcie\n';
+  else report := report || 'FAIL: status COOKED -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin insert into public.recipe_plans (household_id, recipe_key, recipe_name, portions) values (h, 'x', 'x', 1); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: čakajúce recepty sa menia len cez funkcie\n';
+  else report := report || 'FAIL: priamy insert plánu -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  perform public.end_shopping(s1.id);
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.recipes where household_id = h;
+  select count(*) into n2 from public.recipe_plans where household_id = h;
+  if n = 0 and n2 = 0 then report := report || E'ok: cudzí nevidí recepty ani čakajúce recepty inej domácnosti\n';
+  else report := report || E'FAIL: cudzí vidí recepty\n'; fails := fails + 1; end if;
+  err := null; begin perform public.plan_recipes(h, null, '{"name":"X"}', '[]', '[]'); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepridá suroviny do cudzej domácnosti\n';
+  else report := report || 'FAIL: cudzí plan_recipes -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.plan_recipes(hb, l, null, '[]', '[]'); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: suroviny nejdú do zoznamu inej domácnosti\n';
+  else report := report || 'FAIL: plan_recipes cudzí zoznam -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.set_recipe_plan_status(pid, 'DISMISSED'); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí neodoberie cudzí čakajúci recept\n';
+  else report := report || 'FAIL: cudzí set_recipe_plan_status -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin insert into public.recipes (household_id, name) values (h, 'Podvrh'); exception when others then err := sqlerrm; end;
+  if err like 'new row violates row-level security%' then report := report || E'ok: cudzí neuloží recept do cudzej domácnosti\n';
+  else report := report || 'FAIL: cudzí recept -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  update public.recipes set name = 'Ukradnuté' where id = rid;
+  get diagnostics n = row_count;
+  if n = 0 then report := report || E'ok: cudzí nezmení cudzí recept\n';
+  else report := report || E'FAIL: cudzí zmenil recept\n'; fails := fails + 1; end if;
+  select count(*) into n from public.staple_items(h, 20);
+  if n = 0 then report := report || E'ok: cudzí nevidí istý nákup inej domácnosti\n';
+  else report := report || E'FAIL: cudzí vidí staple_items\n'; fails := fails + 1; end if;
 
   -- ---------------------------------------------------------------- fronta čítania dokladov
   -- (Boris je stále prihlásený.) Cudzí nezaradí cudzí doklad ani si ho „nezoberie“.
@@ -708,6 +887,80 @@ begin
     report := report || E'ok: po 3 neúspešných pokusoch sa doklad označí ako chyba\n';
   else report := report || 'FAIL: zaseknutý doklad -> ' || rrec.status || E'\n'; fails := fails + 1; end if;
 
+  -- ---------------------------------------------------------------- poistka AI (migrácia 30)
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nepoužije AI na účet inej domácnosti\n';
+  else report := report || 'FAIL: cudzí ai_allow -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public._receipt_list_score(rc1, ls); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: vnútorné skóre párovania nie je dostupné z prehliadača\n';
+  else report := report || 'FAIL: _receipt_list_score z prehliadača -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public._auto_match_receipt(rc1); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: vnútorné párovanie nie je dostupné z prehliadača\n';
+  else report := report || 'FAIL: _auto_match_receipt z prehliadača -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
+  if err is null then report := report || E'ok: člen domácnosti môže použiť AI\n';
+  else report := report || 'FAIL: člen ai_allow -> ' || err || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.ai_allow(h, 'iná-funkcia'); exception when others then err := sqlerrm; end;
+  if err = 'INVALID_INPUT' then report := report || E'ok: neznáma AI funkcia sa nepovolí\n';
+  else report := report || 'FAIL: ai_allow neznáma -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  insert into public.ai_usage (household_id, fn, model) select h, 'recipe-ai', 'test' from generate_series(1, 40);
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.ai_allow(h, 'recipe-ai'); exception when others then err := sqlerrm; end;
+  if err = 'AI_LIMIT' then report := report || E'ok: po 40 receptoch za hodinu AI počká (limit)\n';
+  else report := report || 'FAIL: limit recipe-ai -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
+  if err is null then report := report || E'ok: limit receptov neblokuje hlas\n';
+  else report := report || 'FAIL: hlas po limite receptov -> ' || err || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- katalóg položiek (migrácia 31)
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; txt := null;
+  begin txt := public.item_catalog(h)::text; exception when others then err := sqlerrm; end;
+  if err is null and left(txt, 1) = '[' then report := report || E'ok: člen vidí katalóg položiek svojej domácnosti\n';
+  else report := report || 'FAIL: item_catalog člen -> ' || coalesce(err, txt, 'null') || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.item_catalog(h); exception when others then err := sqlerrm; end;
+  if err = 'NOT_FOUND' then report := report || E'ok: cudzí nevidí katalóg a ceny inej domácnosti\n';
+  else report := report || 'FAIL: cudzí item_catalog -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
+  -- ---------------------------------------------------------------- limity AI a bločkov (etapa 2, 3. 11. 2026)
+  execute 'reset role';
+  insert into public.ai_usage (household_id, fn, model, cost_usd) select h, 'parse-voice', 'gemini-3.6-flash', 0 from generate_series(1, 120);
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
+  if err = 'AI_LIMIT' then report := report || E'ok: 120 hlasových viet za hodinu = limit\n';
+  else report := report || 'FAIL: limit hlasu -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.ai_allow(h, 'recipe-ai'); exception when others then err := sqlerrm; end;
+  if err is null then report := report || E'ok: limit hlasu nezastaví recepty\n';
+  else report := report || 'FAIL: recepty po limite hlasu -> ' || err || E'\n'; fails := fails + 1; end if;
+  execute 'reset role';
+  insert into public.ai_usage (household_id, fn, model, cost_usd) values (h, 'extract-receipt', 'gemini-3.8-flash', 5);
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  err := null; begin perform public.ai_allow(h, 'recipe-ai'); exception when others then err := sqlerrm; end;
+  if err = 'AI_LIMIT' then report := report || E'ok: mesačný strop 5 $ zastaví AI\n';
+  else report := report || 'FAIL: mesačný strop AI -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public.register_receipt(h, repeat('b', 64), 'jpg', 'APP'); exception when others then err := sqlerrm; end;
+  if err = 'RECEIPT_LIMIT' then report := report || E'ok: mesačný strop zastaví aj nové bločky\n';
+  else report := report || 'FAIL: strop bločkov -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null; begin perform public._ai_month_cost(h); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: vnútorný súčet nákladov AI nie je verejný\n';
+  else report := report || 'FAIL: _ai_month_cost -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+
   -- ---------------------------------------------------------------- anonym
   execute 'reset role';
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
@@ -720,6 +973,18 @@ begin
   begin perform public.create_household('x'); exception when others then err := sqlerrm; end;
   if err like 'permission denied%' then report := report || E'ok: neprihlásený nevolá funkcie\n';
   else report := report || 'FAIL: anonym funkcia -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.ai_allow(h, 'parse-voice'); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: neprihlásený nepoužije AI\n';
+  else report := report || 'FAIL: anonym ai_allow -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.item_catalog(h); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: neprihlásený nevidí katalóg položiek\n';
+  else report := report || 'FAIL: anonym item_catalog -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
+  err := null;
+  begin perform public.prepare_account_deletion(); exception when others then err := sqlerrm; end;
+  if err like 'permission denied%' then report := report || E'ok: neprihlásený nespustí zmazanie účtu\n';
+  else report := report || 'FAIL: anonym prepare_account_deletion -> ' || coalesce(err, 'prešlo') || E'\n'; fails := fails + 1; end if;
 
   execute 'reset role';
   raise exception E'TEST_REPORT fails=%\n%', fails, report;

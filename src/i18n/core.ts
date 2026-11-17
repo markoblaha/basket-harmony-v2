@@ -11,7 +11,6 @@
  * Zhodu anglických textov (rovnaké kľúče aj parametre) stráži test i18n.test.ts.
  */
 import { sk } from "./sk";
-import { en } from "./en";
 
 export type Locale = "sk" | "en";
 export const LOCALES: readonly Locale[] = ["sk", "en"];
@@ -31,7 +30,13 @@ type Args<K extends Key> = K extends Key
 /** "plural.items" ak existuje kľúč "plural.items.other" */
 export type PluralBase = { [K in Key]: K extends `${infer B}.other` ? B : never }[Key];
 
-const DICTS: Record<Locale, Record<string, string>> = { sk, en };
+// Angličtina sa stiahne až keď ju niekto používa (loadLocale) – slovenský štart je o ~40 kB menší.
+const DICTS: Partial<Record<Locale, Record<string, string>>> & { sk: Record<string, string> } = { sk };
+
+/** Pripraví slovník jazyka (anglický sa stiahne zvlášť). Pri chybe ostane slovenčina. */
+export async function loadLocale(locale: Locale): Promise<void> {
+  if (locale === "en" && !DICTS.en) DICTS.en = (await import("./en")).en;
+}
 const STORAGE_KEY = "bh.locale";
 
 /** Jazyk, v ktorom sa práve vykresľuje (nastavuje ho I18nProvider). */
@@ -59,7 +64,7 @@ export function setActiveLocale(locale: Locale) {
 }
 
 function lookup(key: string, locale: Locale = current): string {
-  return DICTS[locale][key] ?? DICTS.sk[key] ?? key;
+  return DICTS[locale]?.[key] ?? DICTS.sk[key] ?? key;
 }
 
 function interpolate(text: string, params?: Record<string, string | number>): string {
@@ -89,7 +94,7 @@ function pluralCategory(n: number): Intl.LDMLPluralRule {
  * chýbajúci tvar spadne na `.other`. V texte je počet ako {n}.
  */
 export function tn(base: PluralBase, n: number, params?: Record<string, string | number>): string {
-  const dict = DICTS[current];
+  const dict = DICTS[current] ?? DICTS.sk;
   const specific = `${base}.${pluralCategory(n)}`;
   const key = specific in dict ? specific : `${base}.other`;
   return interpolate(lookup(key), { n: formatNumber(n), ...params });
@@ -99,8 +104,25 @@ export function tn(base: PluralBase, n: number, params?: Record<string, string |
 /** Štandard čísel a dátumov: slovenčina "1 234,50 €", angličtina v európskej podobe "€1,234.50". */
 export const intlTag = () => (current === "sk" ? "sk-SK" : "en-GB");
 
+// Formátovače si pamätáme: toLocaleString(…) vytvára nový pri každom volaní a v zozname so stovkami
+// čísel a dátumov to na telefóne citeľne brzdí každé prekreslenie.
+const numberFormats = new Map<string, Intl.NumberFormat>();
+const dateFormats = new Map<string, Intl.DateTimeFormat>();
+function numberFormat(options?: Intl.NumberFormatOptions) {
+  const key = intlTag() + JSON.stringify(options ?? {});
+  let f = numberFormats.get(key);
+  if (!f) numberFormats.set(key, (f = new Intl.NumberFormat(intlTag(), options)));
+  return f;
+}
+function dateFormat(options: Intl.DateTimeFormatOptions) {
+  const key = intlTag() + JSON.stringify(options);
+  let f = dateFormats.get(key);
+  if (!f) dateFormats.set(key, (f = new Intl.DateTimeFormat(intlTag(), options)));
+  return f;
+}
+
 export function formatNumber(n: number, options?: Intl.NumberFormatOptions): string {
-  return n.toLocaleString(intlTag(), options);
+  return numberFormat(options).format(n);
 }
 
 const moneyFormats = new Map<string, Intl.NumberFormat>();
@@ -113,11 +135,11 @@ export function formatEuro(n: number): string {
 
 /** Dátum alebo čas z `Date`/ISO reťazca s plným časom (v časovom pásme zariadenia). */
 export function formatDateTime(value: Date | string | number, options: Intl.DateTimeFormatOptions): string {
-  return new Date(value).toLocaleString(intlTag(), options);
+  return dateFormat(options).format(new Date(value));
 }
 
 /** Čistý dátum "2026-09-13" bez posunu časového pásma. */
 export function formatCalendarDate(iso: string, options: Intl.DateTimeFormatOptions): string {
   const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(intlTag(), { ...options, timeZone: "UTC" });
+  return dateFormat({ ...options, timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
 }

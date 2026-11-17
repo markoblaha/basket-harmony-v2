@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f1ede5" />
+    <meta name="theme-color" content="#e5ece1" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -14,29 +14,42 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>Basket Harmony</title>
     <!--
-      Farebný režim a jazyk sa nastavia ešte pred prvým vykreslením, aby pri tmavom
+      Vzhľad (téma × režim) a jazyk sa nastavia ešte pred prvým vykreslením, aby pri tmavom
       režime nebliklo svetlé pozadie. Rovnakú logiku má aj src/theme/ThemeProvider.tsx
-      (voľba "bh.theme": light | dark | system) a src/i18n/core.ts (voľba "bh.locale").
+      ("bh.style": warm | glass, "bh.theme": light | dark | system) a src/i18n/core.ts ("bh.locale").
     -->
     <script>
       (function () {
         var root = document.documentElement;
         var theme = null;
+        var style = null;
         var locale = null;
         try {
           theme = localStorage.getItem("bh.theme");
+          style = localStorage.getItem("bh.style");
           locale = localStorage.getItem("bh.locale");
         } catch (e) {}
-        var dark = theme === "dark" || (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        var dark = theme === "dark" || (theme !== "light" && theme !== "color" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        var glass = style === "glass";
         root.dataset.theme = dark ? "dark" : "light";
+        root.dataset.style = glass ? "glass" : "warm";
+        root.classList.add(glass ? "g" : "w");
+        if (dark) root.classList.add("t-d");
         root.style.colorScheme = dark ? "dark" : "light";
         root.lang = locale === "en" ? "en" : "sk";
+        // Systémová lišta iPhonu (hodiny, batéria) vo farbe vrchu obrazovky – rovnaké farby ako BAR
+        // v src/theme/statusBar.ts (pás #sbar nižšie, pozadie stránky a theme-color pre Android).
+        var sbar = glass ? (dark ? "#050506" : "#f3f2f0") : dark ? "#152019" : "#e5ece1";
+        root.style.setProperty("--sbar", sbar);
+        root.style.setProperty("--sbar-t", sbar);
         var bar = document.querySelector('meta[name="theme-color"]');
-        if (bar) bar.setAttribute("content", dark ? "#121110" : "#f1ede5");
+        if (bar) bar.setAttribute("content", sbar);
       })();
     </script>
   </head>
   <body>
+    <!-- Pás pod systémovou lištou iPhonu; iOS 26 podľa neho farbí lištu (src/theme/statusBar.ts). -->
+    <div id="sbar" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,0 +1,501 @@
+import { useApp, useState, useEffect, useRef, useLayoutEffect, I, Sheet, safeInsets, nbsp } from './ui.jsx';
+import { initialState } from './store.js';
+import { PANTRY } from './data.js';
+/* icons: hand-pointing hand-tap house link lock-simple play pause x check arrow-right lightbulb question timer caret-right check-circle arrow-counter-clockwise user-plus note-pencil microphone basket receipt cooking-pot wallet sparkle */
+
+// ===================== Ukážka a sprievodca =====================
+// Prvé spustenie: Vitaj (ukážka / naprázdno / pozvánka).
+// Ukážka beží na ukážkových údajoch (kópia); vlastné údaje sa pri spustení z „?“ odložia a potom vrátia.
+// Kapitola = niekoľko krokov. Krok „info“ má Ďalej, krok „task“ postúpi, až keď človek urobí, čo treba.
+// Ťuknúť sa dá len do zvýrazneného miesta; vedľa = jemná rada. „Ukáž mi to“ urobí krok za človeka pred očami.
+
+const q = (root, sel) => (typeof sel === 'function' ? sel(root) : root && root.querySelector(sel));
+const byText = (sel, txt) => (root) => [...root.querySelectorAll(sel)].find((e) => e.textContent.includes(txt));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const listOf = (S, id) => S.lists.find((l) => l.id === id);
+const sig = (x) => JSON.stringify(x || null);
+
+export const CHAPTERS = [
+  { n: 'Čo je na Domove', short: 'Domov', ic: 'house', time: '30 s', learn: ['Kde vidíš, čo sa deje dnes', 'Ako sledovať, čo kupuje Lucia', 'Kde je pomoc, keď si nevieš rady'], steps: [
+    { kind: 'info', go: (c) => c.jump('home'), at: 'home', sel: '.scr.top .hsec[aria-label="Nákupy"]', t: 'Toto je Domov', x: 'Tu vidíš, čo sa deje dnes: kto práve nakupuje a najbližší nákup. Nižšie sú recepty, ktoré čakajú na uvarenie.' },
+    { kind: 'task', at: 'home', sel: '.scr.top .hrow[aria-label="Luciin nákup"]', hand: [.35, .55], t: 'Lucia práve nakupuje', x: 'Čo už má v košíku, vidíš naživo. Ťukni na riadok s Luciou.',
+      done: (S, w) => w.scr === 'm-follow', ok: 'Toto je Luciin nákup. Čo v obchode odškrtne, uvidíš hneď aj ty.' },
+    { kind: 'info', go: (c) => { c.closeModal(); c.jump('home'); }, at: 'home', sel: '.tabbar', t: 'Štyri časti appky', x: 'Domov, Nákupy, Recepty a Výdavky. V strede je mikrofón – nákup môžeš aj nadiktovať.' },
+    { kind: 'info', at: 'home', sel: '.scr.top .nb .helpb', t: 'Pomoc je vždy tu', x: 'Keď si nebudeš vedieť rady, ťukni na otáznik vpravo hore. Ukáže tipy k obrazovke alebo časť tejto ukážky.' },
+  ] },
+  { n: 'Pridať položku', short: 'Písanie', ic: 'note-pencil', time: '50 s', learn: ['Ako napísať, čo treba kúpiť', 'Appka spozná produkt a odhadne cenu', 'Preklep sama neprepíše, len sa opýta'], steps: [
+    { kind: 'task', go: (c) => { c.closeModal(); c.jump('home'); }, at: 'home', sel: '.tabbar > button:nth-child(2)', hand: [.5, .45], t: 'Otvor Nákupy', x: 'Všetky nákupné zoznamy domácnosti sú v časti Nákupy. Ťukni na ňu dole.',
+      done: (S, w) => w.scr === 'lists' },
+    { kind: 'task', go: (c) => { c.closeModal(); c.jump('lists'); }, at: 'lists', sel: '.scr.top .lcard', hand: [.3, .4], t: 'Otvor zoznam', x: 'Ťukni na zoznam „Veľký nákup“ do Kauflandu.',
+      done: (S, w) => w.scr === 'list' },
+    { kind: 'task', go: (c) => { c.closeModal(); c.jump('lists', 'list', { id: 'l1' }); }, at: 'list', sel: '.scr.top .dock .field', hand: [.25, .5], t: 'Napíš, čo treba kúpiť', x: 'Ťukni do poľa a napíš „maslo“. Potom ťukni na šípku alebo Enter.',
+      base: (S) => sig(listOf(S, 'l1') && listOf(S, 'l1').items.map((i) => i.id + i.q)), done: (S, w, b) => sig(listOf(S, 'l1') && listOf(S, 'l1').items.map((i) => i.id + i.q)) !== b,
+      ok: 'Maslo je v zozname. Appka spoznala produkt a doplnila odhad ceny z bločkov.',
+      auto: async (h) => { const inp = h.el('.scr.top .dock input'); await h.tapEl(inp); await h.type(inp, 'maslo'); await sleep(500); await h.tapEl(h.el('.scr.top .dock .field button[type="submit"], .scr.top .dock .field .send') || inp, () => h.submit(inp)); } },
+    { kind: 'task', at: 'list', sel: '.scr.top .dock', pos: 'top', t: 'Preklep? Nevadí', x: 'Napíš „zemaky“. Appka slovo sama neprepíše – nad poľom ponúkne bublinu „Zemiaky?“. Ťukni na ňu.',
+      base: (S) => sig(listOf(S, 'l1') && listOf(S, 'l1').items.map((i) => i.id + i.q)), done: (S, w, b) => !!(listOf(S, 'l1') && listOf(S, 'l1').items.some((i) => i.pid === 'zemiaky')),
+      ok: 'Zemiaky sú v zozname. Keď appka slovo nespozná, nič nemení sama – len ponúkne opravu.',
+      auto: async (h) => { const inp = h.el('.scr.top .dock input'); await h.tapEl(inp); await h.type(inp, 'zemaky'); await sleep(700); await h.tapEl(h.el('.scr.top .dock .bb.typo .bb-m')); } },
+  ] },
+  { n: 'Pridať hlasom', short: 'Hlas', ic: 'microphone', time: '30 s', learn: ['Povedať viac vecí naraz', 'Appka pochopí množstvo aj obchod', 'Opraviť hlasom: „radšej kilo“, „zmaž pivo“'], steps: [
+    { kind: 'task', go: (c) => { c.closeModal(); c.jump('home'); }, at: 'home', sel: '.tabbar .tmic', hand: [.5, .5], t: 'Ťukni na mikrofón', x: 'Mikrofón je v strede spodnej lišty. Funguje z každej obrazovky.',
+      done: (S, w) => w.scr === 'm-voice' },
+    { kind: 'task', go: (c) => c.voice(), at: 'm-voice', sel: '.mdl .vx-ex', hand: [.5, .2], pos: 'top', t: 'Povedz, čo treba', x: 'Napríklad „dve mlieka a chlieb“. V ukážke stačí ťuknúť na jednu z viet – appka ju „začuje“.',
+      done: (S) => !!(S.voiceDraft && S.voiceDraft.items && S.voiceDraft.items.length), okDelay: 1600,
+      ok: 'Appka rozumie: položky, množstvo aj obchod. Hore vidíš, do ktorého zoznamu pôjdu – ťuknutím ho zmeníš. Keď niečo nesedí, stačí povedať „radšej kilo“.',
+      auto: async (h) => { await h.tapEl(h.el('.mdl .vx-ex button')); } },
+    { kind: 'task', at: 'm-voice', sel: '.mdl .vx-done', hand: [.5, .5], pos: 'top', t: 'Ulož do zoznamu', x: 'Ťukni na Hotovo. Položky sa pridajú do zoznamu.',
+      done: (S, w) => w.scr !== 'm-voice' && !S.voiceDraft, ok: 'Položky sú v zozname. Kto z domácnosti nakupuje, uvidí ich hneď.' },
+  ] },
+  { n: 'Nakupovať', short: 'Nákup', ic: 'basket', time: '40 s', learn: ['Odškrtávať v obchode', 'Žiadosti od domácnosti naživo', 'Ukončiť nákup'], steps: [
+    { kind: 'task', go: (c) => { c.closeModal(); c.closeSheet(); c.jump('lists'); }, at: 'lists', sel: '.scr.top .lcard .lgo', hand: [.5, .5], t: 'Choď nakupovať', x: 'Si v obchode? Ťukni na košík pri zozname „Veľký nákup“.',
+      done: (S, w) => w.scr === 'm-shop' },
+    { kind: 'task', go: (c) => c.modal('shop', { listId: 'l1' }), at: 'm-shop', sel: '.mdl .lst.big .row', hand: [.3, .5], t: 'Je to v košíku?', x: 'Ťukni na prvú položku. Odškrtne sa a pásik hore ukáže, koľko ešte zostáva. Omyl vrátiš v časti „V košíku“.',
+      base: (S) => (listOf(S, 'l1') || { items: [] }).items.filter((i) => i.done).length, done: (S, w, b) => (listOf(S, 'l1') || { items: [] }).items.filter((i) => i.done).length > b },
+    { kind: 'task', at: 'm-shop', sel: '.mdl .req', hand: [.85, .5], t: 'Lucia ti niečo poslala', x: 'Kým nakupuješ, domácnosť ťa môže o niečo požiadať. Ťukni „Pridať“.',
+      setup: (c) => c.act((s) => (s.requests.some((r) => r.listId === 'l1') ? { ...s, shopping: { ...(s.shopping || {}), req: true } } : { ...s, requests: [...s.requests, { id: 'tour-rq', ts: Date.now(), from: 'l', pid: 'smotana', q: 2, listId: 'l1', note: 'na kari' }], shopping: { ...(s.shopping || {}), req: true } })),
+      done: (S) => !S.requests.some((r) => r.listId === 'l1'), ok: 'Smotana je v zozname a Lucia dostane potvrdenie, že ju kúpiš.',
+      auto: async (h) => { await h.tapEl(h.el('.mdl .req .btn')); } },
+    { kind: 'task', at: 'm-shop', sel: '.mdl .lst.big', t: 'Dokonči nákup', x: 'Odškrtni zvyšok. Alebo ťukni „Ukáž mi to“ a appka to urobí za teba.',
+      done: (S, w) => w.sheet === 'finish',
+      auto: async (h) => { const r = h.el('.mdl .lst.big .row'); await h.tapEl(r, () => h.act((s) => ({ ...s, lists: s.lists.map((l) => (l.id === 'l1' ? { ...l, items: l.items.map((i) => ({ ...i, done: true })) } : l)) }))); } },
+  ] },
+  { n: 'Odfotiť bloček', short: 'Bloček', ic: 'receipt', time: '30 s', learn: ['Skutočné ceny k položkám', 'Výdavky sa spočítajú samé', 'Chýbajúci bloček si appka zapamätá'], steps: [
+    { kind: 'task', go: (c, S) => { c.closeSheet(); c.modal('scan', { listId: (S.history || [])[0] ? S.history[0].id : 'l1' }); }, at: 's-finish', sel: byText('.sheet .btn', 'Odfotiť'), hand: [.5, .5], pos: 'top', t: 'Nákup je hotový', x: 'Odfoť bloček a skutočné ceny sa zapíšu samé. V ukážke použijeme pripravenú fotku.',
+      done: (S, w) => w.scr === 'm-scan' },
+    { kind: 'task', at: 'm-scan', sel: '.mdl .capfoot .btn.pri', hand: [.5, .5], pos: 'top', t: 'Odfoť bloček', x: 'V ukážke sa fotoaparát nezapne – appka použije pripravenú fotku bločku z Kauflandu.',
+      done: (S, w, b, app) => !!app.querySelector('.mdl .scan.res') },
+    { kind: 'task', at: 'm-scan', sel: byText('.mdl .scan.res .btn', 'Uložiť'), hand: [.5, .5], pos: 'top', t: 'Skontroluj a ulož', x: 'Pri každej položke je skutočná cena z bločku. Ťukni „Uložiť“.',
+      done: (S, w) => w.scr !== 'm-scan', ok: 'Bloček je uložený, ceny sú pri položkách a výdavky sa spočítali samé. Keď v obchode ťukneš „Teraz nie“, appka si chýbajúci bloček zapamätá.' },
+  ] },
+  { n: 'Recept do nákupu', short: 'Recept', ic: 'cooking-pot', time: '40 s', learn: ['Naplánované recepty na Domove', 'Označiť, čo máš doma', 'Suroviny jedným ťuknutím do nákupu'], steps: [
+    { kind: 'task', go: (c) => { c.closeModal(); c.closeSheet(); c.jump('home'); }, at: 'home', sel: '.scr.top .hsec[aria-label="Naplánované recepty"] .hrow', hand: [.35, .5], t: 'Recept, ktorý čaká', x: 'V Naplánovaných receptoch je jedlo naplánované na tento týždeň. Ťukni naň.',
+      done: (S, w) => w.scr === 'recipe' },
+    { kind: 'task', go: (c, S) => { c.closeModal(); c.jump('recipes', 'recipe', { id: S.week[Object.keys(S.week).sort()[0]] || 'rizoto' }); }, at: 'recipe', sel: '.scr.top .ings .ing[role="button"]:not(.home)', hand: [.25, .5], pos: 'top', t: 'Čo máš doma?', x: 'Zelená fajka znamená „mám doma“. Ťukni na surovinu, ktorú máš – do nákupu pôjde len to, čo chýba.',
+      base: (S) => sig(S.recipeHave), done: (S, w, b) => sig(S.recipeHave) !== b },
+    { kind: 'task', at: 'recipe', sel: '.scr.top .dock .btn.pri', hand: [.5, .5], pos: 'top', t: 'Suroviny do nákupu', x: 'Ťukni „Pridať“. Appka sa opýta, do ktorého zoznamu.',
+      done: (S, w) => w.sheet === 'addRecipe' },
+    { kind: 'task', at: 's-addRecipe', sel: (r) => [...r.querySelectorAll('.sheet .btn.pri')].pop(), hand: [.5, .5], pos: 'top', t: 'Potvrď', x: 'Predvolene vznikne nový zoznam „Nákup k receptu“. Ťukni na tlačidlo dole.',
+      base: (S) => sig(S.lists.map((l) => l.items.length)), done: (S, w, b) => !w.sheet && sig(S.lists.map((l) => l.items.length)) !== b,
+      ok: 'Suroviny sú v nákupe. Na karte zoznamu vidno, ku ktorému receptu patria.' },
+  ] },
+  { n: 'Koľko míňaš', short: 'Výdavky', ic: 'wallet', time: '30 s', learn: ['Súčet za mesiac', 'Kategórie a obchody', 'Kde je čo najlacnejšie'], steps: [
+    { kind: 'task', go: (c) => { c.closeModal(); c.closeSheet(); c.jump('home'); }, at: 'home', sel: '.tabbar > button:nth-child(5)', hand: [.5, .45], t: 'Otvor Výdavky', x: 'Všetko, čo domácnosť minula, je v časti Výdavky. Ťukni na ňu dole.',
+      done: (S, w) => w.scr === 'money' },
+    { kind: 'info', go: (c) => c.jump('money'), at: 'money', sel: '.scr.top .wx, .scr.top .card.sum', t: 'Koľko sa minulo', x: 'Súčet za mesiac zo všetkých bločkov domácnosti a porovnanie s minulým mesiacom.' },
+    { kind: 'task', at: 'money', sel: '.scr.top .card.insight', hand: [.4, .5], t: 'Kde je čo najlacnejšie', x: 'Appka porovnáva ceny z tvojich bločkov. Ťukni na tip.',
+      done: (S, w) => w.scr === 'product', ok: 'Tu vidíš, v ktorom obchode je výrobok najlacnejší a ako sa menila cena.' },
+  ] },
+  { n: 'Pozvať partnera', short: 'Domácnosť', ic: 'user-plus', time: '20 s', learn: ['Kde sú členovia domácnosti', 'Ako poslať pozvánku'], steps: [
+    { kind: 'task', go: (c) => { c.closeModal(); c.closeSheet(); c.jump('home'); }, at: 'home', sel: '.scr.top .mebtn', hand: [.5, .6], t: 'Tvoja domácnosť', x: 'Ťukni na svoj avatar vľavo hore. Sú tam upozornenia, členovia domácnosti a nastavenia.',
+      done: (S, w) => w.scr === 'more' },
+    { kind: 'task', go: (c) => { c.jump('home'); setTimeout(() => c.push('more'), 300); }, at: 'more', sel: byText('.scr.top button.row', 'Pozvať'), hand: [.4, .5], t: 'Pozvi partnera', x: 'Ťukni na „Pozvať do domácnosti“.',
+      done: (S, w, b, app) => !!app.querySelector('.scr.top .invite') },
+    { kind: 'info', at: 'more', sel: '.scr.top .invite', pos: 'top', t: 'Pozvánka odkazom', x: 'Pozvánku pošleš ako odkaz – SMS-kou, WhatsAppom alebo e-mailom. Partner ho otvorí, potvrdí pridanie a uvidíš rovnaké zoznamy. V ukážke sa nič neodošle.', next: 'Dokončiť ukážku' },
+  ] },
+];
+// Prvé spustenie: „Základy“ – 3 kapitoly poskladané z hlavných krokov (asi 2 min). Zvyšok sa ponúkne na konci a v „?“.
+const S_ = (ci, si) => CHAPTERS[ci].steps[si];
+export const BASICS = [
+  { n: 'Tvoj zoznam', short: 'Zoznam', ic: 'note-pencil', time: '30 s', learn: ['Čo nájdeš na Domove', 'Ako otvoriť nákupný zoznam', 'Ako pridať položku – appka spozná produkt aj cenu'], steps: [S_(0, 0), S_(1, 0), S_(1, 1), S_(1, 2)], marks: [1] },
+  { n: 'Nákup a bloček', short: 'Nákup', ic: 'basket', time: '50 s', learn: ['Odškrtávať v obchode', 'Ukončiť nákup', 'Odfotiť bloček – ceny sa zapíšu samé'], steps: [S_(3, 0), S_(3, 1), S_(3, 3), S_(4, 0), S_(4, 1), S_(4, 2)], marks: [3, 4] },
+  { n: 'Recept do nákupu', short: 'Recept', ic: 'cooking-pot', time: '40 s', learn: CHAPTERS[5].learn, steps: CHAPTERS[5].steps, marks: [5] },
+];
+export const REST = ['c0', 'c2', 'c6', 'c7'];
+const ALL = CHAPTERS.map((_, i) => 'c' + i);
+export const chapterOf = (id) => (id[0] === 'b' ? BASICS[+id.slice(1)] : CHAPTERS[+id.slice(1)]);
+const marksOf = (id) => (id[0] === 'b' ? BASICS[+id.slice(1)].marks : [+id.slice(1)]);
+const listOfT = (T) => (T && T.list) || ALL;
+const kap = (n) => (n === 1 ? '1 kapitola' : n < 5 ? `${n} kapitoly` : `${n} kapitol`);
+export const CH_FOR = { home: 0, lists: 1, list: 1, history: 3, histlist: 3, recipes: 5, recipe: 5, rcol: 5, money: 6, receipts: 4, receipt: 4, category: 6, product: 6, store: 6, kind: 6, more: 7, 'm-shop': 3, 'm-follow': 0, 'm-voice': 2, 'm-cook': 5, 'm-taste': 5, 'm-scan': 4 };
+
+// ---------- údaje ----------
+const KEEP = ['theme', 'mode', 'coach', 'onb', 'tour', 'v'];
+const strip = (s) => Object.fromEntries(Object.entries(s).filter(([k]) => !KEEP.includes(k)));
+export function demoData(s) { const d = initialState(); return { ...strip(d), noReal: false, solo: false, first: null }; }
+export function emptyData() {
+  return { lists: [], history: [], missingReceipts: [], week: {}, requests: [], sentRequests: [], shopping: null, live: null, receipts: [], priceLog: {}, favorites: [], aiRecipes: [], cooked: {}, recipeHave: {}, voiceDraft: null,
+    have: [...PANTRY], budget: 1000, noReal: true, solo: true, first: { invited: false } };
+}
+// Ukážka vložená do skutočnej appky: …/prototyp/?ukazka=zaklady|vsetko|k0…k7&tema=w|g&vzhlad=light|dark[&z=pomoc]
+// Beží len v pamäti (nič sa neukladá ani neposiela); koniec ukážky oznámi appke správou „bh-demo-end“.
+export const EMBED = (() => {
+  try {
+    const q = new URLSearchParams(location.search); const u = q.get('ukazka');
+    return u ? { list: u, theme: q.get('tema') === 'g' ? 'g' : 'w', mode: q.get('vzhlad') === 'dark' ? 'dark' : 'light', help: q.get('z') === 'pomoc' } : null;
+  } catch (e) { return null; }
+})();
+export function embedState() {
+  const E = EMBED; const base = initialState();
+  const only = /^k[0-7]$/.test(E.list) ? +E.list.slice(1) : null;
+  const list = only != null ? ['c' + only] : E.list === 'zaklady' ? ['b0', 'b1', 'b2'] : ALL;
+  return { ...base, ...demoData(base), theme: E.theme, mode: E.mode, onb: { started: true }, coach: { welcomed: true, off: true, v: 2 },
+    tour: { on: true, list, basics: E.list === 'zaklady', ch: 0, st: 0, phase: only != null ? 'step' : 'chapter', only: only != null ? only : undefined, backup: null, fromHelp: E.help, k: Date.now() } };
+}
+const embedEnd = () => { try { window.parent.postMessage({ type: 'bh-demo-end' }, location.origin); } catch (e) { /* mimo appky */ } };
+
+export const startTour = (act, nav, o = {}) => act((s) => {
+  const backup = o.fromHelp ? strip(s) : null;
+  const list = o.only != null ? ['c' + o.only] : o.list || ALL;
+  return { ...s, ...demoData(s), tour: { on: true, list, ch: 0, st: 0, phase: o.only != null ? 'step' : 'chapter', only: o.only, backup, fromHelp: !!o.fromHelp, k: Date.now() } };
+});
+
+// ---------- vrstva sprievodcu ----------
+const PAD = 6;
+export function Tour({ appRef, where }) {
+  const ctx = useApp();
+  const { S, act, jump, closeModal, closeSheet, sheet, toast } = ctx;
+  const T = S.tour;
+  const [box, setBox] = useState(null);
+  const [okS, setOkS] = useState(null); // 'ok' | 'flash'
+  const [nudge, setNudge] = useState(0);
+  const [play, setPlay] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [resume, setResume] = useState(() => !EMBED && !!(S.tour && S.tour.on && S.tour.phase === 'step'));
+  const [cleaning, setCleaning] = useState(false);
+  const [waited, setWaited] = useState(false);
+  const cardRef = useRef(null);
+  const baseRef = useRef(null);
+  const stopRef = useRef(false);
+  const handRef = useRef(null);
+  const tapRef = useRef(null);
+  const offAt = useRef(0);
+
+  const L = listOfT(T).map(chapterOf);
+  const C = T && L[T.ch];
+  const step = T && T.phase === 'step' && C ? C.steps[T.st] : null;
+  const set = (o) => act((s) => (s.tour ? { ...s, tour: { ...s.tour, ...o } } : s));
+
+  const app = () => appRef.current;
+  const rootEl = () => app();
+  const measure = (el) => { const a = app(); const A = a.getBoundingClientRect(); const s = A.width / a.offsetWidth || 1; const r = el.getBoundingClientRect(); return { x: (r.left - A.left) / s, y: (r.top - A.top) / s, w: r.width / s, h: r.height / s, W: a.offsetWidth, H: a.offsetHeight, rad: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 14 }; };
+  const findEl = () => step && app() && q(app(), step.sel);
+
+  // vstup do kroku: obrazovka, príprava, východiskový stav
+  useEffect(() => {
+    if (!step) return;
+    setOkS(null); setNudge(0); setBox(null); stopRef.current = true; setPlay(false); setWaited(false);
+    const tw = setTimeout(() => setWaited(true), 1200);
+    if (step.go && where.scr !== step.at && !(step.at && step.at.startsWith('s-') && where.sheet === step.at.slice(2))) step.go(ctx, S);
+    if (step.setup) step.setup(ctx);
+    baseRef.current = step.base ? step.base(S) : null;
+    return () => clearTimeout(tw);
+  }, [T && T.k, T && T.ch, T && T.st, T && T.phase]);
+
+  // splnenie úlohy – kontroluje sa pri každej zmene aj priebežne (niektoré obrazovky menia len svoj vnútorný stav)
+  const live = useRef({}); live.current = { S, where };
+  const fired = useRef(0);
+  useEffect(() => {
+    if (!step || okS || step.kind !== 'task') return;
+    const k = T.k;
+    const check = () => {
+      if (!app() || fired.current === k) return;
+      if (step.done(live.current.S, live.current.where, baseRef.current, app())) {
+        fired.current = k; stopRef.current = true; setPlay(false);
+        if (step.ok) setTimeout(() => setOkS('ok'), step.okDelay || 350); else { setOkS('flash'); setTimeout(() => nextRef.current(), 650); }
+      }
+    };
+    check(); const id = setInterval(check, 350);
+    return () => clearInterval(id);
+  });
+  const nextRef = useRef(null);
+  // zablúdil (Späť, iné okno) – sprievodca ho vráti
+  useEffect(() => {
+    if (!step || okS || !step.go || play) return;
+    const here = step.at && (step.at.startsWith('s-') ? where.sheet === step.at.slice(2) : where.scr === step.at);
+    if (here) { offAt.current = 0; return; }
+    const t = setTimeout(() => { if (!findEl()) step.go(ctx, S); }, 1400);
+    return () => clearTimeout(t);
+  }, [where.scr, where.sheet, step, okS, play]);
+
+  // poloha zvýrazneného miesta
+  useEffect(() => {
+    if (!step || okS === 'ok') { setBox(null); return; }
+    let alive = true; let scrolled = false;
+    const tick = () => {
+      if (!alive) return; const el = findEl();
+      if (!el) { setBox(null); return; }
+      const m = measure(el);
+      if (!scrolled && (m.y < 60 || m.y + Math.min(m.h, 200) > m.H - 90) && !el.closest('.tabbar') && !el.closest('.dock') && !el.closest('.nb')) { scrolled = true; el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      setBox((b) => (!b || Math.abs(b.x - m.x) + Math.abs(b.y - m.y) + Math.abs(b.w - m.w) + Math.abs(b.h - m.h) > 1 ? m : b));
+    };
+    const t0 = setTimeout(tick, 120); const id = setInterval(tick, 250);
+    return () => { alive = false; clearTimeout(t0); clearInterval(id); };
+  }, [step, okS, T && T.k]);
+
+  const [chh, setChh] = useState(220);
+  useEffect(() => { const a = app(); if (a) a.classList.toggle('cleaning', cleaning); }, [cleaning]);
+  useLayoutEffect(() => { if (cardRef.current) { const h = cardRef.current.offsetHeight; if (Math.abs(h - chh) > 2) setChh(h); } });
+
+  if (!T || !T.on) return null;
+
+  // ---------- pomocník „Ukáž mi to“ ----------
+  const hand = (x, y, show = true) => { const h = handRef.current; if (!h) return; h.style.opacity = show ? '1' : '0'; h.style.left = x - 14 + 'px'; h.style.top = y - 4 + 'px'; };
+  const H = {
+    el: (sel) => q(app(), sel),
+    act,
+    stopped: () => stopRef.current,
+    tapEl: async (el, alt, wait = 520) => {
+      if (!el || stopRef.current) return; const m = measure(el); hand(m.x + m.w * .5, m.y + m.h * .5); await sleep(wait);
+      if (stopRef.current) return; const hh = handRef.current; if (hh) { hh.classList.remove('tap'); void hh.offsetWidth; hh.classList.add('tap'); }
+      await sleep(160); if (stopRef.current) return; if (alt) alt(); else { el.focus && el.focus(); el.click(); }
+    },
+    type: async (inp, text) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      for (let i = 1; i <= text.length; i++) { if (stopRef.current) return; setter.call(inp, text.slice(0, i)); inp.dispatchEvent(new Event('input', { bubbles: true })); await sleep(125); }
+    },
+    submit: (inp) => { const f = inp.closest('form'); if (f) f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); },
+  };
+  const showMe = async () => {
+    if (!step) return; stopRef.current = false; setPlay(true); setNudge(0);
+    try {
+      if (step.auto) await step.auto(H);
+      else { const el = findEl(); await H.tapEl(el); }
+    } finally { setTimeout(() => { setPlay(false); hand(0, 0, false); }, 300); }
+  };
+  const stopShow = () => { stopRef.current = true; setPlay(false); hand(0, 0, false); };
+
+  // ---------- pohyb v ukážke ----------
+  nextRef.current = () => next();
+  function next() {
+    setOkS(null); setNudge(0);
+    if (!C) return;
+    if (T.st + 1 < C.steps.length) { set({ st: T.st + 1, k: Date.now() }); return; }
+    // kapitola hotová
+    const doneCh = { ...((S.onb && S.onb.ch) || {}), ...Object.fromEntries(marksOf(listOfT(T)[T.ch]).map((x) => [x, true])) };
+    act((s) => ({ ...s, onb: { ...(s.onb || {}), ch: doneCh } }));
+    if (EMBED) { try { window.parent.postMessage({ type: 'bh-demo-ch', ch: marksOf(listOfT(T)[T.ch]) }, location.origin); } catch (e) { /* mimo appky */ } }
+    if (T.only != null) { finish(false); return; }
+    if (T.ch + 1 < L.length) set({ phase: 'done', k: Date.now() }); else set({ phase: 'end', k: Date.now() });
+  }
+  const skipStep = () => { stopShow(); next(); };
+  const startChapter = (i) => { set({ ch: i, st: 0, phase: 'step', k: Date.now() }); };
+  // koniec ukážky: z „?“ sa vrátia vlastné údaje, po prvom spustení prázdna appka
+  function finish(fromEnd) {
+    stopShow();
+    if (EMBED) { embedEnd(); return; }
+    const T0 = S.tour;
+    if (T0.fromHelp && T0.backup) {
+      act((s) => ({ ...s, ...T0.backup, tour: null, onb: { ...(s.onb || {}), started: true } }));
+      closeModal(); closeSheet(); jump('home');
+      setTimeout(() => toast('Ukážka skončila – tvoje údaje sú späť', { icon: 'check-circle' }), 300);
+      return;
+    }
+    setCleaning(true); closeModal(); closeSheet(); jump('home');
+    setTimeout(() => {
+      act((s) => ({ ...s, ...emptyData(), tour: null, onb: { ...(s.onb || {}), started: true, tourDone: !!fromEnd }, coach: { ...(s.coach || {}), welcomed: true, off: true, v: 2} }));
+      setCleaning(false);
+    }, 1300);
+  }
+
+
+  // ---------- rozloženie ----------
+  const W = app() ? app().offsetWidth : 393, Hh = app() ? app().offsetHeight : 852;
+  const tb = app() && app().querySelector('.tabbar');
+  const tbY = tb ? measure(tb).y : Hh;
+  let hole = null;
+  if (box && step) hole = { left: Math.max(3, box.x - PAD), top: Math.max(3, box.y - PAD), width: Math.min(W - 6, box.w + PAD * 2), height: box.h + PAD * 2, r: Math.min((box.h + PAD * 2) / 2, box.rad + PAD) };
+  const SA = safeInsets(app());
+  const topMin = Math.max(58, SA.t + 14);
+  // nad spodnou lištou; keď lišta nie je (zoznam, okná), nad pásikom displeja
+  const botOff = !tb || Hh - tbY + 10 > Hh * .5 ? 16 + SA.b : Hh - tbY + 10;
+  let cardTop = Hh - botOff - chh;
+  if (hole && (step.pos === 'top' || hole.top + hole.height > cardTop - 10)) {
+    cardTop = hole.top > Hh * .45 ? Math.max(topMin, hole.top - chh - 16) : hole.top + hole.height + 16;
+    if (step.pos === 'top' && hole.top > chh + topMin + 22) cardTop = topMin;
+  }
+  cardTop = Math.max(topMin, Math.min(Hh - chh - 12 - SA.b, cardTop));
+  const taskOpen = step && step.kind === 'task' && !okS;
+  const blockClick = (e) => { e.stopPropagation(); e.preventDefault(); if (taskOpen) { setNudge((n) => n + 1); } };
+  const blockers = hole && taskOpen && !play
+    ? [{ left: 0, top: 0, width: W, height: hole.top }, { left: 0, top: hole.top + hole.height, width: W, height: Hh - hole.top - hole.height }, { left: 0, top: hole.top, width: hole.left, height: hole.height }, { left: hole.left + hole.width, top: hole.top, width: W - hole.left - hole.width, height: hole.height }]
+    : [{ left: 0, top: 0, width: W, height: Hh }];
+  const prog = (chI, part) => <div className="tx-prog" style={{ gridTemplateColumns: `repeat(${L.length}, 1fr)` }}>{L.map((_, i) => <i key={i} className={i < chI ? 'd' : i === chI ? 'c' : ''} style={{ '--p': part + '%' }} />)}</div>;
+  const rich = (s) => nbsp(s).split(/(„[^“]+“)/).map((p, i) => (p.startsWith('„') ? <q key={i}>{p.slice(1, -1)}</q> : p));
+  const exitBtn = <button type="button" className="tx-x" onClick={() => setConfirm(true)} aria-label="Ukončiť ukážku">Ukážka<I n="x" w="bold" /></button>;
+
+  // ---------- obrazovky mimo krokov ----------
+  if (cleaning) return <div id="tx" className="tx-lay"><div className="tx-label"><span className="tx-spin" /><span>Upratujem ukážku…</span><small>Zoznamy, bločky a recepty Kováčovcov odchádzajú. Tvoja appka začína od nuly.</small></div></div>;
+  if (resume) return (
+    <div id="tx" className="tx-lay"><div className="tx-frame" /><div className="tx-scrim" />
+      <div className="tx-dlg" role="dialog" aria-modal="true" aria-labelledby="tx-rt">
+        <span className="tx-logo sm"><I n="hand-tap" /></span><h2 className="tx-h2" id="tx-rt">Pokračovať v ukážke?</h2>
+        <p className="tx-lede">Minule ukážka skončila pri kapitole {T.ch + 1} – {L[T.ch].n}.</p>
+        <div className="tx-st">{prog(T.ch, 0)}</div>
+        <button type="button" className="tx-wide p" onClick={() => { setResume(false); set({ st: 0, k: Date.now() }); }}>Pokračovať od kapitoly {T.ch + 1}</button>
+        <button type="button" className="tx-wide s" onClick={() => { setResume(false); finish(false); }}>Ukončiť ukážku</button>
+        <button type="button" className="tx-skip" onClick={() => { setResume(false); set({ ch: 0, st: 0, phase: 'chapter', k: Date.now() }); }}>Začať odznova</button>
+      </div></div>
+  );
+  const confirmDlg = confirm && (
+    <><div className="tx-scrim" onClick={() => setConfirm(false)} /><div className="tx-dlg" role="dialog" aria-modal="true" aria-labelledby="tx-ct">
+      <h2 className="tx-h2" id="tx-ct">Ukončiť ukážku?</h2>
+      <p className="tx-lede">{T.fromHelp ? 'Vrátiš sa k svojim údajom. Ukážku si môžeš pustiť znova cez otáznik.' : 'Ukážkové údaje zmiznú a začneš s prázdnou appkou. Ukážku nájdeš vo Viac → Pomoc a ukážka.'}</p>
+      <button type="button" className="tx-wide p" onClick={() => { setConfirm(false); finish(false); }}>Ukončiť ukážku</button>
+      <button type="button" className="tx-wide s" onClick={() => setConfirm(false)}>Pokračovať v ukážke</button>
+    </div></>
+  );
+
+  if (T.phase === 'paused') return (
+    <div id="tx" className="tx-lay free"><div className="tx-frame" />
+      <div className="tx-paused"><span className="dot" />{T.endFree ? 'Ukážka' : 'Ukážka · prestávka'}
+        {T.endFree ? <button type="button" className="go" onClick={() => set({ phase: 'end', k: Date.now() })}>Ukončiť<I n="arrow-right" w="bold" /></button>
+          : <button type="button" className="go" onClick={() => startChapter(T.ch + 1 < L.length ? T.ch + 1 : T.ch)}><I n="play" />Pokračovať</button>}
+      </div>{confirmDlg}</div>
+  );
+
+  if (T.phase === 'chapter' || T.phase === 'done') {
+    const nI = T.phase === 'done' ? T.ch + 1 : T.ch; const N = L[nI]; const D = T.phase === 'done' ? L[T.ch] : null;
+    return (
+      <div id="tx" className="tx-lay"><div className="tx-frame" /><div className="tx-dim" />
+        <div className="tx-chcard" role="dialog" aria-modal="true" aria-labelledby="tx-cht" key={T.k}>
+          <div className="tx-top">{D ? <span className="tx-chap ok"><span className="n"><I n="check" w="bold" /></span>Hotovo</span> : <span className="tx-chap">{T.basics ? 'Základy' : 'Ukážka'} · {kap(L.length)}</span>}{exitBtn}</div>
+          {D && <p className="tx-done">Kapitola {T.ch + 1} „{D.n}“ je za tebou · {T.ch + 1} z {L.length}</p>}
+          {prog(T.phase === 'done' ? T.ch + 1 : T.ch, 0)}
+          <div className="tx-big"><span className="num"><I n={N.ic} /></span><span><small>Kapitola {nI + 1} z {L.length} · {N.time}</small><h2 className="tx-h2" id="tx-cht">{N.n}</h2></span></div>
+          <div className="tx-learn">{N.learn.map((l) => <div key={l}><I n="check-circle" />{nbsp(l)}</div>)}</div>
+          <button type="button" className="tx-wide p" onClick={() => startChapter(nI)} autoFocus>{D ? 'Pokračovať' : 'Začať kapitolu'}<I n="arrow-right" w="bold" /></button>
+          <div className="tx-row2">
+            <button type="button" className="tx-skip" onClick={() => (nI + 1 < L.length ? set({ ch: nI, phase: 'done', k: Date.now() }) : set({ phase: 'end', k: Date.now() }))}>Preskočiť kapitolu</button>
+            {D && <button type="button" className="tx-skip" onClick={() => set({ phase: 'paused', k: Date.now() })}>Prestávka</button>}
+          </div>
+        </div>{confirmDlg}</div>
+    );
+  }
+
+  if (T.phase === 'end') {
+    const conf = Array.from({ length: 28 }, (_, i) => <i key={i} className="tx-confetti" style={{ left: (i * 53) % 370 + 8, animationDelay: (i % 7) * 70 + 'ms', background: ['#ff8a52', '#2fb36a', '#5b8db8', '#e8b85c', '#e07a5f'][i % 5], '--r': (i * 47) % 360 + 'deg', '--x': ((i % 5) - 2) * 14 + 'px' }} />);
+    return (
+      <div id="tx" className="tx-lay"><div className="tx-full end" role="dialog" aria-modal="true" aria-labelledby="tx-et">
+        <div className="tx-conf" aria-hidden="true">{conf}</div>
+        <span className="tx-logo ok"><I n="check" w="bold" /></span>
+        <h1 className="tx-h1" id="tx-et">{T.basics ? 'Základy máš!' : T.fromHelp ? 'Hotovo!' : 'Hotovo! Teraz tvoja appka'}</h1>
+        <p className="tx-lede">{T.basics ? 'Vieš pridať položku, nakúpiť s bločkom a pridať recept do nákupu. Zvyšok – hlas, výdavky, pozývanie a živý nákup s Luciou – si pozrieš teraz alebo kedykoľvek cez „?“.' : T.fromHelp ? 'Ukážka je za tebou. Teraz sa vrátiš k svojim údajom.' : 'Ukážka je za tebou. Ukážkovú domácnosť teraz upracem a pripravím appku pre teba.'}</p>
+        <div className="tx-chl">{L.map((c, i) => { const ok = (c.marks || [CHAPTERS.indexOf(c)]).every((x) => S.onb && S.onb.ch && S.onb.ch[x]); return <div key={i}><span className={'n' + (ok ? ' ok' : '')}>{ok ? <I n="check" w="bold" /> : i + 1}</span>{c.n}</div>; })}</div>
+        <div className="tx-note"><I n="question" /><span>Keď niečo zabudneš, ťukni na <b>?</b> vpravo hore. Celá ukážka je vo Viac → Pomoc a ukážka.</span></div>
+        <div className="tx-endb"><button type="button" className="tx-wide p" onClick={() => finish(true)} autoFocus>{T.fromHelp ? 'Späť k mojim údajom' : 'Pripraviť moju appku'}</button>
+          {T.basics ? <button type="button" className="tx-wide s" onClick={() => set({ list: REST, basics: false, ch: 0, st: 0, phase: 'chapter', k: Date.now() })}>Ukáž mi aj zvyšok · 2 min</button> : null}
+          <button type="button" className={T.basics ? 'tx-skip' : 'tx-wide s'} onClick={() => set({ phase: 'paused', endFree: true, k: Date.now() })}>Ešte sa tu porozhliadnem</button></div>
+      </div></div>
+    );
+  }
+
+  if (!step) return null;
+  const nSteps = C.steps.length;
+  const part = Math.round(((T.st + (okS ? 1 : 0)) / nSteps) * 100);
+  const hx = box && step.hand ? box.x + box.w * step.hand[0] : 0, hy = box && step.hand ? box.y + box.h * step.hand[1] : 0;
+  return (
+    <div id="tx" className={'tx-lay' + (play ? ' playing' : '')}>
+      <div className="tx-frame" />
+      {blockers.map((b, i) => <div key={i} className="tx-blk" style={b} onClick={blockClick} onPointerDown={(e) => e.stopPropagation()} />)}
+      {okS === 'ok' ? <div className="tx-dim soft" /> : hole ? <><div className={'tx-hole' + (okS === 'flash' ? ' fl' : '')} style={{ left: hole.left, top: hole.top, width: hole.width, height: hole.height, borderRadius: hole.r }} /><div className="tx-ring" style={{ left: hole.left - 6, top: hole.top - 6, width: hole.width + 12, height: hole.height + 12, borderRadius: hole.r + 6 }} /></> : <div className="tx-dim" />}
+      {hole && step.hand && !okS && !play && <span className="tx-hand idle" style={{ left: hx - 14, top: hy - 4 }} aria-hidden="true"><I n="hand-pointing" /></span>}
+      <span ref={handRef} className="tx-hand" style={{ opacity: 0 }} aria-hidden="true"><I n="hand-pointing" /></span>
+      <div ref={cardRef} className={'tx-card' + (nudge ? ' nudged' : '') + (!box && !waited && okS !== 'ok' ? ' wait' : '')} key={nudge ? 'n' + nudge : 'c'} style={{ top: okS === 'ok' ? Math.max(topMin, Hh - botOff - chh) : cardTop }} role="dialog" aria-live="polite" aria-labelledby="tx-t">
+        <div className="tx-top"><span className="tx-chap"><span className="n">{T.ch + 1}</span>{C.short}<span className="k">· krok {T.st + 1}/{nSteps}</span></span>{exitBtn}</div>
+        {okS === 'ok' ? <b className="t" id="tx-t"><span className="tx-okic"><I n="check" w="bold" /></span>Výborne!</b> : <b className="t" id="tx-t">{okS === 'flash' && <span className="tx-okic"><I n="check" w="bold" /></span>}{nbsp(step.t)}</b>}
+        <p>{rich(okS === 'ok' ? step.ok : step.x)}</p>
+        {nudge > 0 && !okS && <div className="tx-nudge"><I n="hand-tap" />{nudge > 1 ? 'Ťukni na zvýraznené miesto – alebo nechaj appku, nech to ukáže.' : 'Ťukni na zvýraznené miesto.'}</div>}
+        {play ? <div className="tx-act"><span className="tx-play"><span className="bars"><i /><i /><i /><i /></span><span>Prehrávam…</span></span><button type="button" className="tx-ghost" onClick={stopShow}><I n="pause" />Zastaviť</button></div>
+          : okS === 'ok' || step.kind === 'info' ? <div className="tx-act"><span /><button type="button" className="tx-ok" onClick={() => { if (step.next) { set({ phase: 'end', k: Date.now() }); act((s) => ({ ...s, onb: { ...(s.onb || {}), ch: { ...((s.onb && s.onb.ch) || {}), [T.ch]: true } } })); if (EMBED) { try { window.parent.postMessage({ type: 'bh-demo-ch', ch: marksOf(listOfT(T)[T.ch]) }, location.origin); } catch (e) { /* mimo appky */ } } } else next(); }} autoFocus>{step.next || 'Ďalej'}{!step.next && <I n="arrow-right" w="bold" />}</button></div>
+          : okS === 'flash' ? <div className="tx-act"><span /></div>
+          : <div className="tx-act"><button type="button" className="tx-skip" onClick={skipStep}>Preskočiť</button><button type="button" className={'tx-ghost' + (nudge > 1 ? ' hot' : '')} onClick={showMe} disabled={!box}><I n="play" />Ukáž mi to</button></div>}
+        {prog(T.ch, part)}
+      </div>
+      {confirmDlg}
+    </div>
+  );
+}
+
+// ---------- Vitaj (prvé spustenie) ----------
+export function Welcome() {
+  const { S, act, jump } = useApp();
+  const [v, setV] = useState('main'); // main | intro
+  if (!S.theme || (S.onb && S.onb.started) || (S.tour && S.tour.on)) return null;
+  const startEmpty = () => { act((s) => ({ ...s, ...emptyData(), onb: { ...(s.onb || {}), started: true, path: 'empty' }, coach: { ...(s.coach || {}), welcomed: true, off: true, v: 2, replay: { screen: 'home', k: Date.now() } } })); jump('home'); };
+  const startDemo = () => { act((s) => ({ ...s, ...demoData(s), onb: { ...(s.onb || {}), started: true, path: 'tour' }, coach: { ...(s.coach || {}), welcomed: true, off: true, v: 2 }, tour: { on: true, list: ['b0', 'b1', 'b2'], basics: true, ch: 0, st: 0, phase: 'chapter', k: Date.now() } })); jump('home'); };
+  if (v === 'intro') return (
+    <div id="tx" className="tx-lay"><div className="tx-scrim" />
+      <div className="tx-sheet" role="dialog" aria-modal="true" aria-labelledby="tx-it"><span className="tx-grab" />
+        <h2 className="tx-h2" id="tx-it">Zoznám sa s domácnosťou</h2>
+        <div className="tx-fam"><div><span className="tx-av m">M</span><span><b>Marek</b><small>to si ty</small></span></div><div><span className="tx-av l">L</span><span><b>Lucia</b><small>práve v Lidli</small></span></div></div>
+        <p className="tx-lede">Ukážem ti základy v 3 krátkych kapitolách, asi 2 minúty. V každej si to vyskúšaš – ťukneš, napíšeš, odškrtneš. Zvyšok si pozrieš, kedy budeš chcieť.</p>
+        <div className="tx-chl one">{BASICS.map((c, i) => <div key={i}><span className="n">{i + 1}</span>{c.n} <em>· {c.time}</em></div>)}</div>
+        <div className="tx-note"><I n="lock-simple" /><span>Je to ukážka: nič sa neuloží ani nikomu neodošle. Kedykoľvek môžeš skončiť.</span></div>
+        <button type="button" className="tx-wide p" onClick={startDemo} autoFocus><I n="play" />Začať prehliadku</button>
+        <button type="button" className="tx-wide s" onClick={() => setV('main')}>Späť</button>
+      </div></div>
+  );
+  return (
+    <div id="tx" className="tx-lay"><div className="tx-full" role="dialog" aria-modal="true" aria-labelledby="tx-wt">
+      <span className="tx-logo"><I n="basket" /></span>
+      <h1 className="tx-h1" id="tx-wt">Vitaj v Basket Harmony</h1>
+      <p className="tx-lede">Spoločný nákupný zoznam, recepty a výdavky pre celú domácnosť.</p>
+      <div className="tx-opts">
+        <button type="button" className="tx-opt rec" onClick={() => setV('intro')} autoFocus><span className="oi"><I n="hand-tap" /></span><span className="ot"><span className="badge">Odporúčame · 2 min</span><b>Prezrieť si ukážku</b><span>Vyskúšaš si appku na domácnosti, ktorá ju už používa. Nič sa neuloží.</span></span><I n="caret-right" w="bold" cls="chev" /></button>
+        <button type="button" className="tx-opt" onClick={startEmpty}><span className="oi"><I n="house" /></span><span className="ot"><b>Začať naprázdno</b><span>Hneď si vytvoríš vlastnú domácnosť. Ukážem len pár tipov na úvod.</span></span><I n="caret-right" w="bold" cls="chev" /></button>
+      </div>
+      <p className="tx-foot">Ukážku si môžeš pustiť aj neskôr: Viac → Pomoc a ukážka</p>
+    </div></div>
+  );
+}
+
+// ---------- „?“ – ponuka pomoci ----------
+const SCR_NAME = { home: 'Domov', lists: 'Nákupy', list: 'Zoznam', recipes: 'Recepty', recipe: 'Recept', money: 'Výdavky', more: 'Viac', history: 'História', 'm-shop': 'Nákup', 'm-follow': 'Sledovanie', 'm-voice': 'Hlas', 'm-cook': 'Varenie', 'm-taste': 'Ochutnávač' };
+export function HelpSheet({ open, close, screen }) {
+  const { act, jump, closeModal } = useApp();
+  const ci = CH_FOR[screen] != null ? CH_FOR[screen] : 0; const c = CHAPTERS[ci];
+  const run = (o) => { close(); setTimeout(() => { closeModal(); jump('home'); startTour(act, null, { fromHelp: true, ...o }); }, 280); };
+  return (
+    <Sheet open={open} onClose={close} label="Pomoc" cls="helpsh">
+      <div className="sh-head"><div className="grow"><h2>Pomoc · {SCR_NAME[screen] || 'appka'}</h2><div className="meta">Vyber, koľko chceš vidieť</div></div></div>
+      <div className="sh-body tx-help">
+        <button type="button" className="tx-hrow" onClick={() => { close(); act((s) => ({ ...s, coach: { ...(s.coach || {}), welcomed: true, replay: { screen, k: Date.now() } } })); }}><span className="oi"><I n="lightbulb" /></span><span className="ot"><b>Nápovedy na tejto obrazovke</b><span>krátke tipy priamo tu, na tvojich údajoch</span></span><I n="caret-right" w="bold" cls="chev" /></button>
+        <button type="button" className="tx-hrow" onClick={() => run({ ch: ci, only: ci })}><span className="oi"><I n="play" /></span><span className="ot"><b>Kapitola: {c.n}</b><span>asi {c.time} v ukážke · tvoje údaje sa nezmenia</span></span><I n="caret-right" w="bold" cls="chev" /></button>
+        <button type="button" className="tx-hrow" onClick={() => run({})}><span className="oi"><I n="hand-tap" /></span><span className="ot"><b>Celá ukážka</b><span>8 kapitol · asi 4 minúty</span></span><I n="caret-right" w="bold" cls="chev" /></button>
+      </div>
+    </Sheet>
+  );
+}
+
+// ---------- Viac → Pomoc a ukážka ----------
+export function HelpSection({ g }) {
+  const { S, act, toast, jump } = useApp();
+  const done = (S.onb && S.onb.ch) || {};
+  const n = Object.keys(done).length;
+  const off = S.coach && S.coach.off;
+  return (
+    <>
+      <div className="h2 sm">Pomoc a ukážka</div>
+      <div className={'lst' + (g ? ' glass2' : '')}>
+        <button type="button" className="row tap" onClick={() => { jump('home'); startTour(act, null, { fromHelp: true }); }}><span className="th ic"><I n="hand-tap" /></span><div className="tx"><b>Spustiť ukážku</b><span className="sub">8 kapitol · {n ? `${n} z 8 prejdené` : 'asi 4 minúty'} · tvoje údaje sa nezmenia</span></div><I n="caret-right" w="bold" cls="chev" /></button>
+        <div className="tx-chl inl">{CHAPTERS.map((c, i) => <button type="button" key={i} onClick={() => { jump('home'); startTour(act, null, { fromHelp: true, ch: i, only: i }); }}><span className={'n' + (done[i] ? ' ok' : '')}>{done[i] ? <I n="check" w="bold" /> : i + 1}</span>{c.n}</button>)}</div>
+        <button type="button" className="row tap" onClick={() => act((s) => ({ ...s, coach: { ...(s.coach || {}), off: !off, welcomed: true, v: 2 } }))} role="switch" aria-checked={!off}><span className="th ic"><I n="lightbulb" /></span><div className="tx"><b>Nápovedy na obrazovkách</b><span className="sub">{off ? 'vypnuté – ukážu sa len cez otáznik „?“' : 'zapnuté – tipy pri prvej návšteve obrazovky'}</span></div><span className={'tx-sw' + (off ? '' : ' on')}><i /></span></button>
+        <button type="button" className="row tap" onClick={() => { act((s) => ({ ...s, coach: { seen: {}, off: false, welcomed: true, v: 2 }, tips: {} })); toast('Nápovedy sa ukážu pri ďalšej návšteve každej obrazovky', { icon: 'lightbulb' }); }}><span className="th ic"><I n="arrow-counter-clockwise" /></span><div className="tx"><b>Ukázať nápovedy znova</b><span className="sub">všetky, ako pri prvom spustení</span></div></button>
+      </div>
+    </>
+  );
+}
+
+// ---------- Prvé kroky na prázdnom Domove ----------
+export function FirstSteps({ g }) {
+  const { S, act, sheet, push, modal } = useApp();
+  const F = S.first; if (!F) return null;
+  const st = [
+    { k: 'list', ok: S.lists.length > 0, t: 'Vytvor prvý zoznam', d: 'napríklad „Veľký nákup“ na sobotu', b: 'Vytvoriť', fn: () => sheet('newList') },
+    { k: 'inv', ok: !!F.invited, t: 'Pozvi domácnosť', d: 'pošleš odkaz, partner ho len potvrdí', b: 'Pozvať', fn: () => push('more', { invite: true }) },
+    { k: 'rc', ok: (S.receipts || []).length > 0, t: 'Odfoť prvý bloček', d: 'výdavky sa začnú počítať samé', b: 'Odfotiť', fn: () => modal('scan', {}) },
+  ];
+  const n = st.filter((x) => x.ok).length;
+  if (n === st.length) return null;
+  const firstOpen = st.findIndex((x) => !x.ok);
+  return (
+    <section className="hsec" aria-label="Prvé kroky">
+      <div className={'card tx-first' + (g ? ' glass2' : '')}>
+        <div className="hd"><b>Prvé kroky</b><span>{n} z {st.length}</span></div>
+        {st.map((x, i) => <div key={x.k} className={'tx-fs' + (x.ok ? ' ok' : '')}><span className="c">{x.ok ? <I n="check" w="bold" /> : i + 1}</span><span className="ot"><b>{x.t}</b><small>{x.d}</small></span>{!x.ok && <button type="button" className={'go' + (i === firstOpen ? '' : ' s')} onClick={x.fn}>{x.b}</button>}</div>)}
+        <button type="button" className="tx-hide" onClick={() => act((s) => ({ ...s, first: null }))}>Skryť</button>
+      </div>
+    </section>
+  );
+}

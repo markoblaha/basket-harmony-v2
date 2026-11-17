@@ -1,7 +1,9 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { en, enModules } from "./en";
 import { sk, skModules } from "./sk";
-import { formatEuro, formatNumber, getLocale, hasKey, setActiveLocale, t, tn } from "./core";
+import { formatEuro, formatNumber, getLocale, hasKey, loadLocale, setActiveLocale, t, tn } from "./core";
+
+beforeAll(() => loadLocale("en"));
 
 const skEntries = Object.entries(sk) as [string, string][];
 const params = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!).sort();

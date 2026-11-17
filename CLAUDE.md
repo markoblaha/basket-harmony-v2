@@ -1,5 +1,8 @@
 # Pokyny pre AI asistentov
 
+**Na začiatku každej relácie si prečítaj `docs/STAV-PROJEKTU.md`** – čo je hotové, čo beží kde,
+rozhodnutia majiteľa a čo treba spraviť pred zlúčením do `main`. Na konci väčšej práce ho aktualizuj.
+
 Majiteľ projektu nie je programátor. Komunikuj po slovensky, vysvetľuj príčiny,
 a pri krokoch, ktoré musí urobiť on, píš presne kam kliknúť a prečo.
 
@@ -28,6 +31,9 @@ a pri krokoch, ktoré musí urobiť on, píš presne kam kliknúť a prečo.
 ## Databáza
 
 - Supabase projekt: `kjadeylctafnmgembgev` (basket-harmony-v2, eu-central-1).
+- Testovací projekt: `esftqxrdrlldvpmwirrx` (basket-harmony-v2-test). Používa ho každá vetva okrem
+  `main` (`.env.staging`, režim „staging“ vo `vite.config.ts`). Novú migráciu nasaď najprv sem,
+  vyskúšaj v testovacej appke a do ostrého projektu až pri zlúčení do `main`.
 - Zmena databázy = nový súbor v `supabase/migrations/` (YYYYMMDDHHMMSS_nazov.sql)
   a jeho nasadenie. Staré migrácie neprepisuj.
 - Po zmene funkcií/pravidiel spusti `supabase/tests/core_test.sql` (blok vždy skončí

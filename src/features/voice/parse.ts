@@ -68,7 +68,7 @@ function tokens(text: string): Tok[] {
     .filter((t) => t.raw);
 }
 
-function numberOf(key: string): number | null {
+export function numberOf(key: string): number | null {
   if (/^\d+([.,]\d+)?$/.test(key)) {
     const n = Number(key.replace(",", "."));
     return Number.isFinite(n) && n > 0 && n < 100_000 ? n : null;
@@ -268,4 +268,53 @@ export function matchStore(text: string, stores: string[]): string | null {
   }
   const m = text.match(/(?:idem|ideme|pôjdem|pojdem|nákup|nakup|going|heading|shopping)\s+(?:do|v|na|to|at)\s+(.+)$/i);
   return m ? cap(m[1]!.replace(/[.!?]+$/, "")) : null;
+}
+
+const GO_WORDS = new Set(["idem", "ideme", "pojdem", "pojdeme", "nakupujem", "nakupujeme", "do", "v", "vo", "na", "going", "heading", "go", "im", "to", "at", "shopping"]);
+
+/**
+ * Oddelí z vety predajňu („idem do Lidla, mlieko a rožky“ → Lidl + „mlieko a rožky“).
+ * Známe predajne spozná aj v inom páde („do Kauflandu“); neznámu len za „idem do …“.
+ */
+export function splitStore(text: string, stores: string[]): { store: string | null; rest: string } {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const keys = words.map((w) => normalizeName(w).replace(/[^a-z0-9]/g, ""));
+  const cut = (from: number, to: number) => {
+    let a = from;
+    while (a > 0 && GO_WORDS.has(keys[a - 1]!)) a--;
+    const rest = [...words.slice(0, a), ...words.slice(to)].join(" ").replace(/^[\s,.;:–-]+|[\s,;:–-]+$/g, "");
+    return rest;
+  };
+  for (const s of stores) {
+    const parts = normalizeName(s).split(/\s+/);
+    const head = parts[0] ?? "";
+    if (!head) continue;
+    const stem = head.length > 5 ? head.slice(0, head.length - 1) : head.length >= 4 ? head : null;
+    const i = keys.findIndex((k) => (stem ? k.startsWith(stem) : k === head));
+    if (i < 0) continue;
+    // Viacslovný názov („Coop Jednota“) – zhltne aj ďalšie slová názvu, ak zazneli.
+    let j = i + 1;
+    for (const p of parts.slice(1)) if (keys[j]?.startsWith(p.slice(0, 4))) j++;
+    return { store: s, rest: cut(i, j) };
+  }
+  const m = /^(?:idem|ideme|pôjdem|pojdem|going|heading)\s+(?:do|vo|v|na|to)\s+(\S+)(.*)$/i.exec(text.trim());
+  if (m) return { store: cap(m[1]!.replace(/[.,!?]+$/, "")), rest: m[2]!.replace(/^[\s,.;:–-]+/, "").trim() };
+  return { store: null, rest: text.trim() };
+}
+
+/**
+ * Pravidlo „appka nič nedomýšľa“ pre výsledok AI: z navrhnutého názvu ostanú len slová, ktoré naozaj zazneli
+ * („dve mlieka“ → nie „Mlieko plnotučné“, ale „Mlieko“). Keď nezaznelo žiadne slovo názvu (napr. „plzeň“ →
+ * „Pilsner Urquell“), názov sa nechá – to je preklad značky, nie domýšľanie.
+ */
+export function keepSaidWords(name: string, said: string): string {
+  const heard = normalizeName(said).split(/[^a-z0-9]+/).filter(Boolean);
+  const stem = (w: string) => w.slice(0, Math.max(3, Math.min(w.length - 1, 5)));
+  const was = (w: string) => heard.some((h) => h === w || (w.length >= 4 && h.length >= 4 && h.startsWith(stem(w))));
+  const parts = name.split(/\s+/).filter(Boolean);
+  const words = parts.map((p) => normalizeName(p).replace(/[^a-z0-9]/g, ""));
+  const keep = parts.filter((_, i) => !words[i] || /^\d/.test(words[i]!) || words[i]!.length < 3 || was(words[i]!));
+  if (!parts.some((_, i) => words[i]!.length >= 3 && !/^\d/.test(words[i]!) && was(words[i]!))) return name;
+  const out = keep.join(" ").trim();
+  return out ? out.charAt(0).toUpperCase() + out.slice(1) : name;
 }

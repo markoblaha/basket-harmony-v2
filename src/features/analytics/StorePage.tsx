@@ -1,160 +1,191 @@
-import { Link, useParams } from "react-router";
-import { ChevronRight } from "lucide-react";
-import { ErrorState, Group, Section, Spinner, cx } from "@/components/ui";
+/**
+ * Obchod vo Výdavkoch – z mockupu (money.jsx StoreScreen): spolu a počet nákupov, čo tu kupujete (kategórie)
+ * a bločky z tohto obchodu za obdobie.
+ */
+import { useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router";
+import { ErrorState, Spinner } from "@/components/ui";
 import { useHousehold } from "@/features/household/HouseholdProvider";
-import { StoreAvatar } from "@/features/receipts/ReceiptRow";
-import { formatMoney, formatShortDate, readErrorMessage } from "@/features/receipts/format";
-import { formatCalendarDate, t, tn } from "@/i18n";
-import { useStoreDetail } from "./api";
-import { BackHeader, PeriodBar } from "./AnalyticsLayout";
-import { BarChart, ShareBar } from "./charts";
-import { Card, Delta, EmojiBadge, SectionTitle, ShareRow, Stat, categoryInfo, storeLabel } from "./bits";
-import { monthShort, usePeriod } from "./period";
+import { readErrorMessage } from "@/features/receipts/format";
+import { formatDateTime, t, tn } from "@/i18n";
+import { useTheme } from "@/theme/ThemeProvider";
+import { E, I, Back, useScrolled } from "@/mockup/ui";
+import { StoreTile, eur, storeKeyOf } from "@/mockup/kit";
+import { usePriceStore, useStoreDetail } from "./api";
+import { cat, usePer } from "./money";
+import { perUnit } from "./bits";
+import { Timeline } from "./charts";
+import { useTimeline } from "./timeline";
+import { Seg } from "@/mockup/ui";
+import { emojiFor, storeName } from "@/mockup/kit";
 
-/** Skratky dní pondelok–nedeľa podľa jazyka rozhrania (2024-01-01 bol pondelok). */
-const weekdayShort = (i: number) => formatCalendarDate(`2024-01-0${i + 1}`, { weekday: "short" });
-
-/** Detail obchodu: koľko, ako často, v ktoré dni, čo tam kupujete a zoznam nákupov. */
 export function StorePage() {
   const { key = "_none" } = useParams();
   const storeKey = decodeURIComponent(key);
   const { household } = useHousehold();
-  const { period, search, setMonth, setRange } = usePeriod();
-  const detail = useStoreDetail(household.id, storeKey, period);
-  const d = detail.data;
-
+  const navigate = useNavigate();
+  const g = useTheme().style === "glass";
+  const scrolled = useScrolled();
+  const { per, off, show, period, qs, title } = usePer();
+  const [params] = useSearchParams();
+  const hl = params.get("kind");
+  const q = useStoreDetail(household.id, storeKey, period);
+  const [tab, setTab] = useState<"kinds" | "cats" | "rcpt">("kinds");
+  const prices = usePriceStore(household.id, storeKey, tab === "kinds");
+  const tl = useTimeline(household.id, per, off, show, { store: storeKey });
+  const gl = g ? " glass2" : "";
+  const rows = prices.data ?? [];
+  // porovnávajú sa len produkty, ktoré kupuješ aj v inom obchode
+  const cmp = rows.filter((r) => r.stores > 1);
+  const win = cmp.filter((r) => r.best_key === storeKey).length;
+  const d = q.data;
+  // pekný názov siete („LIDL“ → „Lidl“), inak tak, ako je na bločku
+  const name = storeName(storeKeyOf(d?.name ?? storeKey)) ?? d?.name ?? storeKey;
+  const cats = (d?.categories ?? []).filter((c) => c.amount > 0 && !c.id.startsWith("_")).sort((a, b) => b.amount - a.amount);
+  const max = Math.max(1, ...cats.map((c) => c.amount));
   return (
-    <div className="pb-10">
-      <BackHeader fallback={`/analytics/stores${search}`} title={t("tab.stores")} />
-      <Section className="mt-1">
-        <div className="flex items-center gap-3">
-          <StoreAvatar name={storeKey === "_none" ? null : (d?.name ?? null)} className="!size-12" />
-          <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">{d ? storeLabel(d.name) : t("sp.fallbackName")}</h1>
+    <>
+      <div className="bhm bhm-top">
+        <div className={`sc${scrolled ? " scrolled" : ""}`}>
+          <header className="nb">
+            <Back label={t("mn.title")} onClick={() => navigate(-1)} />
+            <span className="nbt">{name}</span>
+            <span className="ibs" />
+          </header>
         </div>
-      </Section>
-      <PeriodBar />
-
-      {detail.isPending ? (
-        <Spinner />
-      ) : detail.isError || !d ? (
-        <ErrorState error={readErrorMessage(detail.error)} onRetry={() => detail.refetch()} />
-      ) : (
-        <div className={cx("mt-2 flex flex-col gap-5", detail.isPlaceholderData && "opacity-60")}>
-          <Section>
-            <Card>
-              <div className="grid grid-cols-3 gap-3">
-                <Stat label={t("sp.spent")} value={formatMoney(d.amount)} />
-                <Stat label={t("sp.purchases")} value={d.receipts} />
-                <Stat label={t("sp.avgPurchase")} value={formatMoney(d.receipts ? d.amount / d.receipts : 0)} />
+      </div>
+      <div className="bhm bhm-list">
+        <div className="body">
+          <div className="lhead">
+            <StoreTile k={storeKeyOf(name)} n={name} s={60} />
+            <div className="grow">
+              <h1 className="lt">{name}</h1>
+              <div className="meta">{title}</div>
+            </div>
+          </div>
+          {q.isPending ? (
+            <Spinner />
+          ) : q.isError || !d ? (
+            <ErrorState error={readErrorMessage(q.error)} onRetry={() => q.refetch()} />
+          ) : (
+            <>
+              <div className={`card match${g ? " mg" : ""}`}>
+                <div>
+                  <div className="k">{t("mn.total")}</div>
+                  <div className="price">{eur(d.amount)}</div>
+                </div>
+                <div className="ra">
+                  <div className="k">{t("mn.trips2")}</div>
+                  <div className="price mut">{d.receipts}</div>
+                  <div className="meta sm">{t("mn.avgPer", { avg: eur(d.amount / Math.max(1, d.receipts)) })}</div>
+                </div>
               </div>
-              {d.prev_amount > 0 && (
-                <p className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-text-3">
-                  <Delta now={d.amount} before={d.prev_amount} />{" "}
-                  {period.current ? t("ov.vsSameDay", { label: period.prevLabel }) : t("ov.vsPeriod", { label: period.prevLabel })} ({d.prev_receipts}×)
-                </p>
+              {tl.items.length > 0 && <Timeline title={per === "week" ? t("mn.tlWeeks") : t("mn.tlMonths")} items={tl.items} legendTap={per === "year" ? t("mn.tlTap") : undefined} />}
+              <Seg<"kinds" | "cats" | "rcpt">
+                items={[
+                  ["kinds", t("mn.storeProducts")],
+                  ["cats", t("mn.lensCats")],
+                  ["rcpt", t("mn.receipts")],
+                ]}
+                value={tab}
+                onChange={setTab}
+              />
+              {tab === "kinds" && (
+                <div key="k" className="an-z an-fade">
+                  {prices.isPending ? (
+                    <Spinner />
+                  ) : rows.length === 0 ? (
+                    <p className="vnote">
+                      <I n="info" />
+                      {t("mn.storeNoPrices")}
+                    </p>
+                  ) : (
+                    <>
+                      <div className={`card insight${gl}`}>
+                        <span className="tile">
+                          <E k={win * 2 >= cmp.length ? "moneybag" : "coin"} />
+                        </span>
+                        <div className="grow">
+                          <div className="ib-t">{cmp.length ? t("mn.storeWins", { n: win, total: cmp.length }) : t("mn.storeOnlyHere")}</div>
+                          <div className="meta">{cmp.length ? t("mn.storeWinsD") : t("mn.storeOnlyHereD")}</div>
+                        </div>
+                      </div>
+                      <div className={`lst${gl}`}>
+                        {rows.map((r) => {
+                          const cheaper = r.best_key && r.best_key !== storeKey && r.best_unit != null && r.best_unit < r.unit * 0.98;
+                          return (
+                            <button type="button" key={r.kind_key} className={`row tap${hl && hl.toLowerCase() === r.name.toLowerCase() ? " hl" : ""}`} onClick={() => navigate(`/analytics/kind/${encodeURIComponent(r.name)}`)}>
+                              <span className="th">
+                                <E k={emojiFor(r.name, r.category_id)} />
+                              </span>
+                              <div className="tx">
+                                <b>{r.name}</b>
+                                <span className="sub">{r.promo ? t("mn.onlyPromo") : cat(r.category_id).name}</span>
+                              </div>
+                              <div className="an-r">
+                                <b className="amt">{perUnit(r.unit, r.basis)}</b>
+                                {cheaper ? <span className="an-tag up">{t("mn.cheaperAt", { store: r.best_store ?? "", pct: Math.max(1, Math.round((1 - r.best_unit! / r.unit) * 100)) })}</span> : null}
+                              </div>
+                              <I n="caret-right" w="bold" cls="chev" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="src-note">{t("mn.storePricesNote")}</p>
+                    </>
+                  )}
+                </div>
               )}
-              <div className="mt-4">
-                <BarChart
-                  label={t("sp.monthsAria", { name: storeLabel(d.name) })}
-                  height={100}
-                  data={d.months.map((m) => ({ key: m.month, label: monthShort(Number(m.month.slice(5))), value: m.amount }))}
-                  activeKey={period.range === "month" ? period.month : null}
-                  onSelect={(k) => {
-                    setRange("month");
-                    setMonth(k);
-                  }}
-                />
-              </div>
-            </Card>
-          </Section>
-
-          {d.weekdays.some((n) => n > 0) && (
-            <Section>
-              <SectionTitle title={t("sp.weekdaysTitle")} />
-              <Card>
-                <BarChart
-                  label={t("sp.weekdaysAria")}
-                  height={70}
-                  data={d.weekdays.map((n, i) => ({ key: String(i), label: weekdayShort(i), value: n }))}
-                  activeKey={String(d.weekdays.indexOf(Math.max(...d.weekdays)))}
-                  formatValue={(v) => tn("rpage.purchases", v)}
-                />
-              </Card>
-            </Section>
-          )}
-
-          {d.categories.length > 0 && (
-            <Section>
-              <SectionTitle title={t("sp.buyHere")} />
-              <Card className="p-0">
-                <div className="px-4 pb-1 pt-4">
-                  <ShareBar
-                    label={t("sp.categoriesAria")}
-                    segments={d.categories.map((c) => ({ id: c.id, value: c.amount, color: categoryInfo(c.id).color }))}
-                  />
+              {tab === "cats" && cats.length > 0 && (
+                <div key="c" className="an-z an-fade">
+                  <div className={`card cats${gl}`}>
+                    {cats.map((x) => {
+                      const c = cat(x.id);
+                      return (
+                        <button type="button" key={x.id} className="cat" onClick={() => navigate(`/analytics/category/${x.id}${qs}`)}>
+                          <span className="tile" style={{ "--tc": c.col } as React.CSSProperties}>
+                            <E k={c.e} />
+                          </span>
+                          <div className="g1">
+                            <div className="cr">
+                              <span>{c.name}</span>
+                              <em>{eur(x.amount)}</em>
+                            </div>
+                            <div className="ln">
+                              <i style={{ width: `${(x.amount / max) * 100}%`, background: c.col }} />
+                            </div>
+                          </div>
+                          <I n="caret-right" w="bold" cls="chev" />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="divide-y divide-line">
-                  {d.categories.slice(0, 6).map((c) => {
-                    const info = categoryInfo(c.id);
-                    return (
-                      <ShareRow
-                        key={c.id}
-                        to={`/analytics/category/${c.id}${search}`}
-                        icon={<EmojiBadge emoji={info.emoji} color={info.color} />}
-                        title={info.name}
-                        amount={c.amount}
-                        share={c.amount / (d.categories[0]!.amount || 1)}
-                        color={info.color}
-                      />
-                    );
-                  })}
+              )}
+              {tab === "rcpt" && (
+                <div key="r" className={`lst an-fade${gl}`}>
+                  {d.receipt_list.map((r) => (
+                    <button type="button" key={r.receipt_id} className="row tap" onClick={() => navigate(`/receipts/${r.receipt_id}`)}>
+                      <span className="th">
+                        <E k="receipt" />
+                      </span>
+                      <div className="tx">
+                        <b>
+                          {formatDateTime(new Date(`${r.date}T00:00`), { day: "numeric", month: "numeric" })} {r.time?.slice(0, 5) ?? ""}
+                        </b>
+                        {r.status === "NEEDS_REVIEW" && <span className="sub">{t("mn.toCheck")}</span>}
+                      </div>
+                      <b className="amt">{eur(r.amount)}</b>
+                      <I n="caret-right" w="bold" cls="chev" />
+                    </button>
+                  ))}
+                  {!d.receipt_list.length && <p className="meta pad">{tn("mn.trips", 0)}</p>}
                 </div>
-              </Card>
-            </Section>
-          )}
-
-          {d.products.length > 0 && (
-            <Section>
-              <SectionTitle title={t("sp.topProducts")} />
-              <Group>
-                {d.products.slice(0, 10).map((p) => (
-                  <Link
-                    key={p.product_id ?? p.name}
-                    to={p.product_id ? `/analytics/product/${p.product_id}${search}` : "#"}
-                    className="flex items-center gap-3 px-4 py-2.5 active:bg-pressed"
-                  >
-                    <p className="min-w-0 flex-1 truncate">{p.name}</p>
-                    <span className="text-sm text-text-3">{p.count}×</span>
-                    <span className="w-20 text-right font-semibold tabular-nums">{formatMoney(p.amount)}</span>
-                    <ChevronRight className="size-4 text-text-3" aria-hidden />
-                  </Link>
-                ))}
-              </Group>
-            </Section>
-          )}
-
-          {d.receipt_list.length > 0 && (
-            <Section>
-              <SectionTitle title={t("sp.purchases")} />
-              <Group>
-                {d.receipt_list.map((r) => (
-                  <Link key={r.receipt_id} to={`/receipts/${r.receipt_id}`} className="flex items-center gap-3 px-4 py-3 active:bg-pressed">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">{formatShortDate(r.date)}</p>
-                      <p className="text-xs text-text-3">
-                        {r.time ? r.time.slice(0, 5) : ""}
-                        {r.status === "NEEDS_REVIEW" ? `${r.time ? " · " : ""}${t("sp.needsReview")}` : ""}
-                      </p>
-                    </div>
-                    <span className="font-semibold tabular-nums">{formatMoney(r.amount)}</span>
-                    <ChevronRight className="size-4 text-text-3" aria-hidden />
-                  </Link>
-                ))}
-              </Group>
-            </Section>
+              )}
+            </>
           )}
         </div>
-      )}
-    </div>
+      </div>
+    </>
   );
 }

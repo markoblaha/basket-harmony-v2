@@ -13,6 +13,16 @@ describe("parseItemInput", () => {
     ["  syr   eidam  ", { name: "syr eidam", quantity: null, unit: null }],
     ["Coca cola 0", { name: "Coca cola 0", quantity: null, unit: null }],
     ["7up", { name: "7up", quantity: null, unit: null }],
+    ["pivo6", { name: "pivo", quantity: 6, unit: null }],
+    ["pivo 6", { name: "pivo", quantity: 6, unit: null }],
+    ["pivo 6ks", { name: "pivo", quantity: 6, unit: "ks" }],
+    ["pivo6ks", { name: "pivo", quantity: 6, unit: "ks" }],
+    ["pivo x6", { name: "pivo", quantity: 6, unit: null }],
+    ["pivo ×6", { name: "pivo", quantity: 6, unit: null }],
+    ["6x pivo", { name: "pivo", quantity: 6, unit: null }],
+    ["6 ks pivo", { name: "pivo", quantity: 6, unit: "ks" }],
+    ["rozky 3", { name: "rozky", quantity: 3, unit: null }],
+    ["Coca-Cola 0,5l", { name: "Coca-Cola", quantity: 0.5, unit: "l" }],
   ])("%s", (input, expected) => {
     expect(parseItemInput(input)).toEqual(expected);
   });

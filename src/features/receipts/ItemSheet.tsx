@@ -83,7 +83,7 @@ export function ItemSheet({
           <TextField label={t("edit.quantity")} inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
           <TextField label={t("ritem.discount")} inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value)} />
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <label htmlFor="item-category" className="text-sm font-medium text-text-2">
             {t("edit.category")}
           </label>
@@ -94,11 +94,11 @@ export function ItemSheet({
               setCategoryId(e.target.value);
               setCategoryTouched(true);
             }}
-            className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+            className="min-h-12 rounded-[var(--radius-control)] border border-line-strong/60 bg-elevated px-3 text-base text-text outline-none focus:border-primary focus:ring-3 focus:ring-primary/20"
           >
             {CATEGORIES.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.emoji} {c.name}
+                {c.name}
               </option>
             ))}
           </select>

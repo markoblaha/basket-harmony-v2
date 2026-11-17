@@ -45,6 +45,20 @@ export function parseItemInput(input: string): ParsedItem {
     if (quantity !== null) return { name: trail[1]!.trim(), quantity, unit: normalizeUnit(trail[3]) };
   }
 
+  // Na konci s „x“: "pivo x6", "pivo ×6", "pivo x 6"
+  const times = text.match(/^(.+?)\s*[x×]\s*(\d+(?:[.,]\d+)?)$/i);
+  if (times) {
+    const quantity = toNumber(times[2]!);
+    if (quantity !== null) return { name: times[1]!.trim(), quantity, unit: null };
+  }
+
+  // Bez medzery: "pivo6", "pivo6ks", "mlieko2l" (číslo na konci, nie „7up“)
+  const glued = text.match(new RegExp(`^(.*[^\\d\\s.,x×])(\\d+(?:[.,]\\d+)?)(${UNIT_RE})?\\.?$`, "i"));
+  if (glued) {
+    const quantity = toNumber(glued[2]!);
+    if (quantity !== null) return { name: glued[1]!.trim(), quantity, unit: normalizeUnit(glued[3]) };
+  }
+
   return { name: text, quantity: null, unit: null };
 }
 

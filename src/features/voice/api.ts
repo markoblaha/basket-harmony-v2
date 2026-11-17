@@ -4,9 +4,11 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { currentHouseholdId } from "@/features/household/current";
 import { guessCategory, normalizeName } from "@/lib/categories";
 import { listKeys } from "@/features/lists/api";
 import { countOf, isCountable, qtyLabel, sameProduct } from "@/features/lists/qty";
+import type { RecipeDraft } from "@/features/recipes/api";
 import { VOICE_UNITS, type VoiceOp, type VoiceUnit } from "./parse";
 
 /** Položka rozdiktovaného zoznamu (žije v prehliadači, kým nedáš Hotovo). */
@@ -18,6 +20,10 @@ export type DraftItem = {
   categoryId: string | null;
   status: "ok" | "needs_qty" | "unclear";
   suggestions: string[];
+  /** Poznámka k položke v zozname (napr. „Na recept: Hovädzí guláš“). */
+  note?: string;
+  /** Surovina z receptu, ktorý sa v hlasovom režime vybral (id karty receptu). */
+  recipeCard?: string;
 };
 
 const DEFAULT_STORES = ["Lidl", "Kaufland", "Billa", "Tesco", "Terno", "Coop Jednota"];
@@ -90,29 +96,43 @@ function fromServer(ops: ServerOp[]): VoiceOp[] {
   return out;
 }
 
+/** Výsledok AI: operácie so zoznamom, jedlá, ktoré chce človek uvariť, a obchod, ak ho povedal. */
+export type Interpretation = { transcript: string; ops: VoiceOp[]; cook: string[]; store: string | null };
+
+const draftItems = (items: DraftItem[]) => items.map((i) => ({ name: i.name, qty: i.quantity ? qtyLabel(i.quantity, i.unit) : "-" }));
+
+async function callParse(body: Record<string, unknown>, ms: number): Promise<Interpretation | null> {
+  try {
+    const call = supabase.functions.invoke("parse-voice", { body: { ...body, household_id: currentHouseholdId() } });
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), ms));
+    const { data, error } = await Promise.race([call, timeout]);
+    if (error || !Array.isArray(data?.ops)) return null;
+    return {
+      transcript: typeof data.transcript === "string" ? data.transcript.trim() : "",
+      ops: fromServer(data.ops as ServerOp[]),
+      cook: (Array.isArray(data.cook) ? data.cook : []).filter((x: unknown): x is string => typeof x === "string" && !!x.trim()).slice(0, 3),
+      store: typeof data.store === "string" && data.store.trim() ? data.store.trim() : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Veta → operácie od AI (rozumie skloňovaniu, delí vety bez čiarok, pozná tovar na váhu).
  * Vráti null, ak neodpovie do 6 s alebo zlyhá – vtedy ostane okamžitý lokálny rozbor.
  */
-export async function interpretAI(
-  householdId: string,
-  text: string,
-  items: DraftItem[],
-  target: string | null,
-): Promise<VoiceOp[] | null> {
-  try {
-    const call = supabase.functions.invoke("parse-voice", {
-      // household_id slúži len na meranie nákladov (ai_usage); server ho overí.
-      body: { household_id: householdId, text, target, items: items.map((i) => ({ name: i.name, qty: i.quantity ? qtyLabel(i.quantity, i.unit) : "-" })) },
-    });
-    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), 6000));
-    const { data, error } = await Promise.race([call, timeout]);
-    if (error || !Array.isArray(data?.ops)) return null;
-    const ops = fromServer(data.ops as ServerOp[]);
-    return ops.length ? ops : null;
-  } catch {
-    return null;
-  }
+export function interpretAI(text: string, items: DraftItem[], target: string | null, vocab: string[] = []) {
+  return callParse({ text, target, items: draftItems(items), vocab: vocab.slice(0, 120) }, 6000);
+}
+
+/**
+ * Nahrávka → prepis aj operácie naraz (iPhone a appka z plochy, kde prehliadač reč nerozpozná).
+ * null = nepodarilo sa (bez internetu, chyba) – obrazovka to ukáže.
+ */
+export function interpretAudio(audio: { mime: string; data: string }, items: DraftItem[], target: string | null, vocab: string[] = []) {
+  // vocab = čo domácnosť často kupuje – podľa toho AI rozhodne nejasne vyslovené slovo.
+  return callParse({ audio, target, items: draftItems(items), vocab: vocab.slice(0, 120) }, 15000);
 }
 
 export type SaveResult = { listId: string; added: number; merged: number; requests: number; created: boolean };
@@ -126,21 +146,37 @@ export type SaveResult = { listId: string; added: number; merged: number; reques
 export function useSaveVoiceList(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ store, items }: { store: string; items: DraftItem[] }): Promise<SaveResult> => {
-      // Použije sa rozpracovaný nákup v tej istej predajni; nákup z Histórie sa neotvára – vznikne nový.
-      const lists = await supabase
-        .from("shopping_lists")
-        .select("id, name, completed_at")
-        .eq("household_id", householdId)
-        .eq("is_archived", false)
-        .is("completed_at", null);
-      if (lists.error) throw lists.error;
-      let listId = lists.data.find((l) => normalizeName(l.name) === normalizeName(store))?.id;
+    mutationFn: async ({
+      store,
+      listId: target,
+      date,
+      items,
+      isPrivate = false,
+    }: {
+      store: string;
+      listId: string | null;
+      date: string;
+      items: DraftItem[];
+      /** Nový zoznam len pre mňa („Iba ja“). */
+      isPrivate?: boolean;
+    }): Promise<SaveResult> => {
+      let listId = target ?? undefined;
+      if (!listId) {
+        // Rozpracovaný nákup v tej istej predajni na ten istý deň (s rovnakou viditeľnosťou) sa použije, inak vznikne nový zoznam.
+        const lists = await supabase
+          .from("shopping_lists")
+          .select("id, name, planned_for, is_private")
+          .eq("household_id", householdId)
+          .eq("is_archived", false)
+          .is("completed_at", null);
+        if (lists.error) throw lists.error;
+        listId = lists.data.find(
+          (l) => normalizeName(l.name) === normalizeName(store) && (l.planned_for ?? "").slice(0, 10) === date && l.is_private === isPrivate,
+        )?.id;
+      }
       const created = !listId;
       if (!listId) {
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-        const ins = await supabase.from("shopping_lists").insert({ household_id: householdId, name: store, planned_for: today }).select("id").single();
+        const ins = await supabase.from("shopping_lists").insert({ household_id: householdId, name: store, planned_for: date, is_private: isPrivate }).select("id").single();
         if (ins.error) throw ins.error;
         listId = ins.data.id;
       }
@@ -150,7 +186,8 @@ export function useSaveVoiceList(householdId: string) {
       let added = 0;
       let merged = 0;
       let requests = 0;
-      for (const it of items) {
+      // Najstaršia nadiktovaná položka ide do zoznamu prvá (na obrazovke je navrchu najnovšia).
+      for (const it of [...items].reverse()) {
         const existing = open.data.find((o) => sameProduct(o.name, it.name) && isCountable(o.unit) && isCountable(it.unit));
         if (existing) {
           const quantity = countOf(existing.quantity) + countOf(it.quantity);
@@ -166,6 +203,7 @@ export function useSaveVoiceList(householdId: string) {
           p_quantity: it.quantity ?? undefined,
           p_unit: it.unit ?? undefined,
           p_category_guess: it.categoryId ?? guessCategory(it.name),
+          p_note: it.note || undefined,
           // ID rozdiktovanej položky: keby sa ukladanie opakovalo, položka nevznikne dvakrát.
           p_client_op_id: it.id,
         });
@@ -178,6 +216,7 @@ export function useSaveVoiceList(householdId: string) {
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: listKeys.lists(householdId) });
       qc.invalidateQueries({ queryKey: listKeys.items(r.listId) });
+      qc.invalidateQueries({ queryKey: listKeys.stats(householdId) });
       qc.invalidateQueries({ queryKey: ["frequent"] });
     },
   });
@@ -185,7 +224,11 @@ export function useSaveVoiceList(householdId: string) {
 
 // ------------------------------------------------------------------ rozpracovaný zoznam
 
-export type Draft = { store: string; items: DraftItem[]; savedAt: number };
+/** store "" = bez obchodu; targetListId = pridávanie do existujúceho zoznamu; date = YYYY-MM-DD. */
+export type Draft = { store: string; date: string; targetListId: string | null; items: DraftItem[]; recipes?: VoicePlan[]; savedAt: number };
+
+/** Recept vybraný v hlasovom režime: po uložení zoznamu čaká v Receptoch na uvarenie. */
+export type VoicePlan = { card: string; key: string | null; name: string; portions: number; draft: RecipeDraft | null };
 const draftKey = (hid: string) => `bh.voiceDraft.${hid}`;
 
 /** Rozdiktovaný zoznam prežije zatvorenie obrazovky aj obnovenie stránky (24 h). */
@@ -195,7 +238,7 @@ export function loadDraft(hid: string): Draft | null {
     if (!raw) return null;
     const d = JSON.parse(raw) as Draft;
     if (!d.items?.length || Date.now() - d.savedAt > 86_400_000) return null;
-    return d;
+    return { ...d, store: d.store ?? "", date: d.date ?? "", targetListId: d.targetListId ?? null, recipes: d.recipes ?? [] };
   } catch {
     return null;
   }

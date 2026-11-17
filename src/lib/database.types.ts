@@ -46,6 +46,29 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      book_recipes: {
+        Row: {
+          active_minutes: number | null; batch: number | null; category: string; check_data: Json | null; created_at: string; cuisine: string | null;
+          difficulty: number; dish_id: string; id: string; image_path: string | null; image_status: string; ingredients: Json; meat: string; minutes: number;
+          name: string; portions: number; portions_guess: boolean; scale: string | null; status: string; steps: Json; store: string | null; tags: string[];
+          tools: string[]; updated_at: string; variant_key: string; verification: Json; version: number; wait: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["book_recipes"]["Row"]> & { id: string; dish_id: string; name: string; category: string; minutes: number; portions: number; ingredients: Json; steps: Json };
+        Update: Partial<Database["public"]["Tables"]["book_recipes"]["Row"]>;
+        Relationships: [];
+      };
+      book_sources: {
+        Row: { is_anchor: boolean; k: string; name: string; portions: number | null; rating: number | null; recipe_id: string; site: string; url: string; votes: number | null };
+        Insert: Partial<Database["public"]["Tables"]["book_sources"]["Row"]> & { recipe_id: string; k: string; name: string; site: string; url: string };
+        Update: Partial<Database["public"]["Tables"]["book_sources"]["Row"]>;
+        Relationships: [];
+      };
+      book_dishes: {
+        Row: { category: string; created_at: string; cuisine: string; family: string | null; id: string; name_sk: string; notes: string | null; priority: number; status: string };
+        Insert: Partial<Database["public"]["Tables"]["book_dishes"]["Row"]> & { id: string; name_sk: string; category: string };
+        Update: Partial<Database["public"]["Tables"]["book_dishes"]["Row"]>;
+        Relationships: [];
+      };
       categories: {
         Row: { emoji: string; everyday: boolean; id: string; name: string; sort_order: number };
         Insert: never;
@@ -54,6 +77,95 @@ export type Database = {
       };
       category_memory: {
         Row: { category_id: string; household_id: string; name_key: string; updated_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      recipes: {
+        Row: {
+          ai: boolean;
+          category: string;
+          created_at: string;
+          created_by: string | null;
+          difficulty: number;
+          household_id: string;
+          icon: string | null;
+          id: string;
+          ingredients: Json;
+          meat: string;
+          minutes: number;
+          name: string;
+          portions: number;
+          qa: Json;
+          source: string | null;
+          source_url: string | null;
+          steps: Json;
+          tags: string[];
+          updated_at: string;
+        };
+        Insert: {
+          ai?: boolean;
+          category?: string;
+          difficulty?: number;
+          household_id: string;
+          icon?: string | null;
+          ingredients?: Json;
+          meat?: string;
+          minutes?: number;
+          name: string;
+          portions?: number;
+          qa?: Json;
+          source?: string | null;
+          source_url?: string | null;
+          steps?: Json;
+          tags?: string[];
+        };
+        Update: {
+          category?: string;
+          difficulty?: number;
+          icon?: string | null;
+          ingredients?: Json;
+          meat?: string;
+          minutes?: number;
+          name?: string;
+          portions?: number;
+          qa?: Json;
+          source?: string | null;
+          source_url?: string | null;
+          steps?: Json;
+          tags?: string[];
+        };
+        Relationships: [];
+      };
+      recipe_favorites: {
+        Row: { created_at: string; household_id: string; recipe_key: string; user_id: string };
+        Insert: { household_id: string; recipe_key: string };
+        Update: never;
+        Relationships: [];
+      };
+      recipe_likes: {
+        Row: { household_id: string; user_id: string; recipe_key: string; created_at: string };
+        Insert: { household_id: string; recipe_key: string };
+        Update: never;
+        Relationships: [];
+      };
+      recipe_plans: {
+        Row: {
+          cook_seconds: number | null;
+          /** Deň v pláne týždňa (nepovinný). */
+          planned_on: string | null;
+          cooked_at: string | null;
+          cooked_by: string | null;
+          created_at: string;
+          created_by: string | null;
+          household_id: string;
+          id: string;
+          list_id: string | null;
+          portions: number;
+          recipe_key: string;
+          recipe_name: string;
+          status: Database["public"]["Enums"]["recipe_plan_status"];
+        };
         Insert: never;
         Update: never;
         Relationships: [];
@@ -139,6 +251,8 @@ export type Database = {
           created_at: string;
           household_id: string;
           id: string;
+          kind: string | null;
+          kind_manual: boolean;
           merged_into: string | null;
           name: string;
           normalized: boolean;
@@ -271,12 +385,14 @@ export type Database = {
           name: string;
           note: string | null;
           planned_for: string | null;
+          /** Čas nákupu „17:30:00“ (nepovinný). */
+          planned_time: string | null;
           receipt_id: string | null;
           receipt_state: "NONE" | "LATER" | "ATTACHED";
           updated_at: string;
         };
-        Insert: { household_id: string; name: string; is_private?: boolean; planned_for?: string | null; note?: string | null };
-        Update: { is_archived?: boolean; name?: string; is_private?: boolean; planned_for?: string | null; note?: string | null };
+        Insert: { household_id: string; name: string; is_private?: boolean; planned_for?: string | null; planned_time?: string | null; note?: string | null };
+        Update: { is_archived?: boolean; name?: string; is_private?: boolean; planned_for?: string | null; planned_time?: string | null; note?: string | null };
         Relationships: [];
       };
       shopping_sessions: {
@@ -302,6 +418,12 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
       accept_request: { Args: { p_request_id: string }; Returns: Json };
+      ai_allow: { Args: { p_household_id: string; p_fn: string }; Returns: undefined };
+      item_catalog: { Args: { p_household_id: string }; Returns: Json };
+      prepare_account_deletion: { Args: Record<PropertyKey, never>; Returns: Json };
+      save_push_subscription: { Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_locale: string; p_prefs: Json }; Returns: undefined };
+      remove_push_subscription: { Args: { p_endpoint: string }; Returns: undefined };
+      set_push_prefs: { Args: { p_prefs: Json; p_locale: string }; Returns: undefined };
       add_item: {
         Args: {
           p_category_guess?: string;
@@ -319,6 +441,8 @@ export type Database = {
       create_household: { Args: { p_name: string }; Returns: string };
       create_invitation: { Args: { p_household_id: string }; Returns: Json };
       end_shopping: { Args: { p_session_id: string }; Returns: SessionRow };
+      finish_shopping: { Args: { p_session_id: string; p_unbought?: "MOVE" | "KEEP" }; Returns: string | null };
+      move_item: { Args: { p_item_id: string; p_target_list?: string; p_new_name?: string }; Returns: string };
       invitation_preview: { Args: { p_token: string }; Returns: Json };
       leave_household: { Args: { p_household_id: string }; Returns: undefined };
       analytics_overview: {
@@ -333,6 +457,17 @@ export type Database = {
         Args: { p_from: string; p_household_id: string; p_prev_from: string; p_prev_to: string; p_store_key: string; p_to: string };
         Returns: Json;
       };
+      analytics_kind: {
+        Args: { p_from: string; p_household_id: string; p_kind_key: string; p_prev_from: string; p_prev_to: string; p_to: string };
+        Returns: Json;
+      };
+      set_product_kind: { Args: { p_kind: string; p_product_id: string }; Returns: Database["public"]["Tables"]["products"]["Row"] };
+      analytics_price_kind: { Args: { p_household_id: string; p_kind_key: string }; Returns: Json };
+      analytics_price_product: { Args: { p_product_id: string }; Returns: Json };
+      analytics_price_store: { Args: { p_household_id: string; p_store_key: string }; Returns: Json };
+      analytics_missing_sizes: { Args: { p_household_id: string }; Returns: Json };
+      analytics_daily: { Args: { p_household_id: string; p_from: string; p_to: string; p_category_id?: string | null; p_store_key?: string | null }; Returns: Json };
+      set_product_size: { Args: { p_product_id: string; p_size_unit: string; p_size_value: number }; Returns: Database["public"]["Tables"]["products"]["Row"] };
       analytics_products: { Args: { p_household_id: string }; Returns: Json };
       analytics_product: { Args: { p_product_id: string }; Returns: Json };
       list_price_hints: { Args: { p_list_id: string }; Returns: Json };
@@ -384,10 +519,26 @@ export type Database = {
       reject_request: { Args: { p_request_id: string }; Returns: Json };
       set_receipt_later: { Args: { p_later?: boolean; p_list_id: string }; Returns: undefined };
       attach_receipt_to_list: { Args: { p_list_id: string; p_receipt_id: string }; Returns: undefined };
+      receipt_match_candidates: { Args: { p_receipt_id: string }; Returns: Json };
+      receipt_match_suggestions: { Args: { p_household_id: string }; Returns: Json };
+      dismiss_receipt_match: { Args: { p_receipt_id: string }; Returns: undefined };
+      plan_recipes: {
+        Args: { p_household_id: string; p_list_id?: string | null; p_new_list?: Json | null; p_items: Json; p_recipes: Json };
+        Returns: Json;
+      };
+      cook_recipe: {
+        Args: { p_household_id: string; p_recipe_key: string; p_recipe_name: string; p_portions: number; p_seconds?: number | null };
+        Returns: string;
+      };
+      set_recipe_plan_status: { Args: { p_plan_id: string; p_status: string }; Returns: undefined };
       reply_request: { Args: { p_message: string; p_request_id: string }; Returns: undefined };
       frequent_items: {
         Args: { p_household_id: string; p_limit?: number };
         Returns: { category_id: string; name: string; times: number }[];
+      };
+      staple_items: {
+        Args: { p_household_id: string; p_limit?: number };
+        Returns: { name: string; category_id: string; score: number; share: number; due: number }[];
       };
       remove_member: { Args: { p_household_id: string; p_user_id: string }; Returns: undefined };
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };
@@ -395,9 +546,10 @@ export type Database = {
     };
     Enums: {
       invitation_status: "PENDING" | "ACCEPTED" | "REVOKED";
-      item_status: "OPEN" | "PURCHASED";
+      item_status: "OPEN" | "PURCHASED" | "UNAVAILABLE";
       member_role: "OWNER" | "MEMBER";
       receipt_status: "PROCESSING" | "OK" | "NEEDS_REVIEW" | "FAILED";
+      recipe_plan_status: "PENDING" | "COOKED" | "DISMISSED";
       request_status: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
       session_status: "ACTIVE" | "ENDED" | "EXPIRED";
     };

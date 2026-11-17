@@ -1,288 +1,618 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Keyboard, Mic, MicOff, X } from "lucide-react";
-import { cx } from "@/components/ui";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { haptic } from "@/components/kit";
 import { useToast } from "@/components/toast";
+import { useFlip } from "@/components/motion";
 import { useHousehold } from "@/features/household/HouseholdProvider";
+import { useFrequentItems, useLists, useListStats, type ShoppingList } from "@/features/lists/api";
+import { useEstimator } from "@/features/lists/estimate";
+import { fmtQty } from "@/features/lists/ListParts";
+import { useTheme } from "@/theme/ThemeProvider";
+import { E, I, IB } from "@/mockup/ui";
+import { HelpBtn } from "@/features/help/Help";
+import { useKeyboardHeight } from "@/mockup/Sheet";
+import { Btn, StoreTile, eur, storeKeyOf } from "@/mockup/kit";
+import { addDays, dayLabel, isoDay } from "@/features/lists/dates";
+import { usePlanRecipes, useSaveRecipe } from "@/features/recipes/api";
+import { guessCategory, normalizeName } from "@/lib/categories";
 import { t, tn } from "@/i18n";
 import { errorMessage } from "@/lib/errors";
-import { interpretAI, loadDraft, saveDraft, useKnownStores, useSaveVoiceList, type DraftItem, type SaveResult } from "./api";
-import { matchStore, parseLocal } from "./parse";
-import { applyOps, diff, reconcile, stepOf } from "./engine";
-import { buzz, useSpeech } from "./useSpeech";
-import { VoiceRow, type RowAnim } from "./VoiceRow";
+import { getSetting } from "@/lib/settings";
+import {
+  interpretAI,
+  interpretAudio,
+  loadDraft,
+  saveDraft,
+  useKnownStores,
+  useSaveVoiceList,
+  type DraftItem,
+  type Interpretation,
+  type SaveResult,
+  type VoicePlan,
+} from "./api";
+import { keepSaidWords, matchStore, parseLocal, splitStore, type VoiceOp } from "./parse";
 
-/** Vlna hlasu – tri periodické krivky; posun o 390 px nadväzuje bez skoku. */
-function wavePath(fn: (x: number) => number) {
-  let d = "M0 32";
-  for (let x = 5; x <= 780; x += 5) d += ` L${x} ${(32 + fn(x)).toFixed(1)}`;
-  return d;
-}
-const W1 = wavePath((x) => Math.sin((x / 130) * Math.PI * 2) * 22 * (0.55 + 0.45 * Math.sin((x / 390) * Math.PI * 2)));
-const W2 = wavePath((x) => Math.sin((x / 195) * Math.PI * 2 + 1) * 15);
-const W3 = wavePath((x) => Math.sin((x / 78) * Math.PI * 2 + 2) * 12 * Math.abs(Math.sin((x / 390) * Math.PI * 2)));
+/** Názvy od AI zúžené na to, čo zaznelo (pravidlo „appka nič nedomýšľa“). */
+const asSaid = (ops: VoiceOp[], text: string): VoiceOp[] => (text ? ops.map((o) => (o.op === "add" ? { ...o, name: keepSaidWords(o.name, text) } : o)) : ops);
+import { applyOps, diff, findItem, reconcile, type Effect } from "./engine";
+import { recipeCommand, splitCook } from "./recipeVoice";
+import { useSpeech } from "./useSpeech";
+import { recorderSupported, useRecorder, type StreamSink } from "./useRecorder";
+import { LiveTranscriber } from "./live";
+import { PlanRow, RecipeCardView, cardItems, cardPlan, cardRows, toggled, useRecipeCards, type Card } from "./VoiceRecipe";
+
+
+
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const hasSpeech = () => {
+  const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+  return !!(w.SpeechRecognition ?? w.webkitSpeechRecognition);
+};
 
 /**
- * Hlasový nákup. Otvorí sa tlačidlom v strede navigácie s už zapnutým mikrofónom:
- *  1. Kam ideš? – predajňa ťuknutím, napísaním alebo hlasom („idem do Lidla“).
- *  2. Diktovanie – každá veta ide na rozbor (AI, záloha lokálne), položky padajú zhora.
- *  3. Hotovo – zoznam sa uloží do Nákupu ako bežný zoznam s názvom predajne.
- * Rozdiktovaný zoznam sa priebežne ukladá v prehliadači, takže sa nestratí.
+ * Ako počúvame: rozpoznávanie reči v prehliadači (Chrome, Android – živý prepis),
+ * alebo nahrávanie po vetách s prepisom cez AI (iPhone, appka z plochy, kde prehliadač
+ * reč nerozpozná alebo sa pýta pri každej vete).
  */
-export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSaved: (store: string, r: SaveResult) => void }) {
+type Engine = "speech" | "rec" | "none";
+// Prednostne nahrávanie – rozpoznávanie reči v prehliadači pri každom spustení a zastavení pípne.
+const firstEngine = (): Engine => (recorderSupported() ? "rec" : hasSpeech() ? "speech" : "none");
+
+type Modal = "where" | "store" | "unsure" | "recipes" | null;
+
+/**
+ * Hlasový nákup. Otvorí sa stredným tlačidlom lišty a hneď počúva:
+ *  - položky padajú do zoznamu (každá veta sa hneď rozoberie lokálne a o chvíľu spresní cez AI),
+ *    upravujú sa hlasom („nie, tri“, „zmaž maslo“) aj ťukom/potiahnutím,
+ *  - „chcem uvariť hovädzí guláš“ ukáže až 4 recepty; vybraný recept ponúkne suroviny,
+ *    ktoré sa jedným ťuknutím (alebo „pridaj“) pridajú medzi položky,
+ *  - Hotovo → „Kam to dať?“ (obchod, deň alebo existujúci zoznam). Ak obchod zaznel, nepýta sa.
+ * Rozdiktovaný zoznam sa priebežne ukladá v zariadení a po otvorení pokračuje.
+ */
+export function VoiceSession({ onClose, onSaved, listId }: { onClose: () => void; onSaved: (store: string, r: SaveResult) => void; /** Otvorené zo zoznamu – položky pôjdu doň. */ listId?: string }) {
   const { household } = useHousehold();
   const stores = useKnownStores(household.id).data ?? [];
+  // Čo domácnosť často kupuje – AI podľa toho rozhodne nejasne vyslovené slovo.
+  const frequent = useFrequentItems(household.id).data;
+  const vocabRef = useRef<string[]>([]);
+  vocabRef.current = (frequent ?? []).map((f) => f.name);
+  const lists = useLists(household.id).data ?? [];
   const save = useSaveVoiceList(household.id);
+  const saveRecipe = useSaveRecipe(household.id);
+  const planRecipes = usePlanRecipes(household.id);
+  const cards = useRecipeCards(household.id);
   const toast = useToast();
+  const today = isoDay(new Date());
+  const estimator = useEstimator(household.id);
+  const estRef = useRef(estimator);
+  estRef.current = estimator;
+  const g = useTheme().style === "glass";
 
-  const [phase, setPhase] = useState<"pick" | "dict">("pick");
-  const [leaving, setLeaving] = useState(false);
-  const [closing, setClosing] = useState(false);
-  const [store, setStore] = useState("");
-  const [custom, setCustom] = useState("");
-  const [items, setItems] = useState<DraftItem[]>([]);
-  const [anims, setAnims] = useState<Record<string, Partial<RowAnim>>>({});
-  const [lastId, setLastId] = useState<string | null>(null);
-  const [pushKey, setPushKey] = useState<"a" | "b">("a");
-  const [shake, setShake] = useState<"a" | "b" | null>(null);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [goneId, setGoneId] = useState<string | null>(null);
-  const [said, setSaid] = useState("");
-  const [paused, setPaused] = useState(false);
+  const [draft] = useState(() => loadDraft(household.id));
+  const [restored, setRestored] = useState(!!draft);
+  const [store, setStore] = useState(draft?.store ?? "");
+  const [date, setDate] = useState(draft?.date || today);
+  const [targetListId, setTargetListId] = useState<string | null>(listId ?? draft?.targetListId ?? null);
+  const [items, setItems] = useState<DraftItem[]>(draft?.items ?? []);
+  const [plans, setPlans] = useState<VoicePlan[]>(draft?.recipes ?? []);
+  const [flash, setFlash] = useState<Record<string, number>>({});
+  /** Viditeľná oprava na 3 s („~~plzeň~~ → Pilsner Urquell“, „~~1 ks~~ → 6 ks“). */
+  const [fixes, setFixes] = useState<Record<string, { from: string; to: string; at: number }>>({});
+  const [selected, setSelected] = useState<string | null>(null);
+  const [modal, setModal] = useState<Modal>(null);
   const [typing, setTyping] = useState(false);
-  const [typed, setTyped] = useState("");
-  const [hint, setHint] = useState<{ text: string; k: number; ms: number } | null>(null);
-  const [unclearWarned, setUnclearWarned] = useState(false);
-  const [draft, setDraft] = useState(() => loadDraft(household.id));
+  const [, setDoneHint] = useState(false);
+  // Mikrofón sa po otvorení zapne sám, ak to nastavenie (Viac → Nastavenia) nevypne.
+  const [listening, setListening] = useState(() => getSetting("micAutostart"));
+  const [said, setSaid] = useState("");
+  const [refining, setRefining] = useState(0);
+  /** Nahrávky na serveri, ktoré ešte nemajú výsledok – v zozname ich ukazuje karta „Spracúvam…“. */
+  const [pendingAudio, setPendingAudio] = useState(0);
+  const [busy, setBusy] = useState(false);
+  /** Nový zoznam „Iba ja“ (vybrané v „Kam pridávať?“). */
+  const [priv, setPriv] = useState(false);
+  const [engine, setEngine] = useState<Engine>(firstEngine);
 
   const itemsRef = useRef(items);
   itemsRef.current = items;
+  const plansRef = useRef(plans);
+  plansRef.current = plans;
+  const selRef = useRef(selected);
+  selRef.current = selected;
+  const modalRef = useRef(modal);
+  modalRef.current = modal;
+  const seq = useRef(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const later = useCallback((fn: () => void, ms: number) => {
-    timers.current.push(setTimeout(fn, ms));
-  }, []);
+  // Nové karty „dopadnú“ samé (anim-drop); ostatné sa k novému miestu plynulo dokĺžu.
+  const cardsBox = useRef<HTMLDivElement>(null);
+  useFlip(cardsBox, { enter: false });
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const showHint = useCallback((text: string, ms = 4000) => {
-    setHint((h) => ({ text, k: (h?.k ?? 0) + 1, ms }));
-    later(() => setHint((h) => (h?.text === text ? null : h)), ms);
-  }, [later]);
-
-  // iPhone: Safari sa na mikrofón pýta pri každom otvorení stránky, kým ho pre ňu natrvalo nepovolíš.
+  const openLists = useMemo(
+    () => lists.filter((l) => !l.completed_at).sort((a, b) => (a.planned_for ?? "9999").localeCompare(b.planned_for ?? "9999")),
+    [lists],
+  );
+  // Predvolený cieľ ako v mockupe: najbližší otvorený zoznam (ak nič iné nie je zvolené ani rozdiktované).
+  const defaulted = useRef(!!(listId || draft?.targetListId || draft?.store));
   useEffect(() => {
-    if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) return;
-    let n = 0;
-    try {
-      n = Number(localStorage.getItem("bh.voiceIosTip") ?? 0);
-      localStorage.setItem("bh.voiceIosTip", String(n + 1));
-    } catch {
-      /* nevadí */
-    }
-    if (n < 3) later(() => showHint(t("voice.iosTip"), 7000), 1200);
-  }, [later, showHint]);
+    if (defaulted.current || !openLists.length) return;
+    defaulted.current = true;
+    if (!store) setTargetListId(openLists[0]!.id);
+  }, [openLists, store]);
+  const target = targetListId ? (lists.find((l) => l.id === targetListId) ?? null) : null;
+  const storeName = target ? target.name : store;
 
-  // Rozdiktovaný zoznam priebežne ukladáme, aby ho nič nezmazalo.
+  // Rozdiktovaný zoznam priebežne ukladáme, aby ho nič nezmazalo (ani obnovenie stránky).
   useEffect(() => {
-    if (phase === "dict") saveDraft(household.id, { store, items, savedAt: Date.now() });
-  }, [phase, store, items, household.id]);
+    saveDraft(household.id, { store, date, targetListId, items, recipes: plans, savedAt: Date.now() });
+  }, [store, date, targetListId, items, plans, household.id]);
 
-  // ---------------------------------------------------------------- animácie
+  // ---------------------------------------------------------------- zmeny zoznamu
 
-  const listRef = useRef<HTMLDivElement>(null);
-  const seq = useRef(0);
-  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
-  const [ghosts, setGhosts] = useState<{ item: DraftItem; index: number }[]>([]);
-  const [refining, setRefining] = useState(0);
-  const [discardArmed, setDiscardArmed] = useState(false);
-
-  const flash = useCallback((ids: string[]) => {
-    setAnims((a) => {
-      const n = { ...a };
-      for (const id of ids) {
-        const p = n[id] ?? {};
-        n[id] = { ...p, bump: p.bump === "a" ? "b" : "a", glow: p.glow === "a" ? "b" : "a" };
-      }
-      return n;
-    });
-  }, []);
-
-  /**
-   * Prechod na nový stav zoznamu: nové položky padajú po jednej (najnovšia dopadne hore),
-   * odstránené odídu doľava, zmenené bliknú. Dáta sa menia hneď – animácia len dobieha.
-   */
+  /** Nový stav zoznamu: zmenené karty znova „dopadnú“ (ako v prototype), nové pribudnú hore. */
   const present = useCallback((next: DraftItem[]) => {
-    const d = diff(itemsRef.current, next);
+    const before = itemsRef.current;
+    const d = diff(before, next);
+    const now = Date.now();
+    const fx: Record<string, { from: string; to: string; at: number }> = {};
+    const label = (c: DraftItem) => estRef.current.resolve(c.name)?.label ?? c.name;
+    for (const id of d.changed) {
+      const o = before.find((x) => x.id === id)!;
+      const n = next.find((x) => x.id === id)!;
+      if (label(o) !== label(n)) fx[id] = { from: label(o), to: label(n), at: now };
+      else if (o.quantity !== n.quantity || o.unit !== n.unit) fx[id] = { from: fmtQty(o.quantity, o.unit), to: fmtQty(n.quantity, n.unit), at: now };
+    }
+    for (const id of d.added) {
+      const n = next.find((x) => x.id === id)!;
+      if (normalizeName(label(n)) !== normalizeName(n.name)) fx[id] = { from: n.name.toLowerCase(), to: label(n), at: now };
+    }
+    if (Object.keys(fx).length) {
+      setFixes((f) => ({ ...f, ...fx }));
+      timers.current.push(setTimeout(() => setFixes((f) => ({ ...f })), 3100));
+    }
     itemsRef.current = next;
     setItems(next);
-    if (d.removed.length) {
-      setGhosts((g) => [...g, ...d.removed]);
-      later(() => setGhosts((g) => g.filter((x) => !d.removed.some((r) => r.item.id === x.item.id))), 300);
-    }
     if (d.changed.length) {
-      flash(d.changed);
-      buzz(10);
+      setFlash((f) => {
+        const n = { ...f };
+        for (const id of d.changed) n[id] = (n[id] ?? 0) + 1;
+        return n;
+      });
     }
-    if (!d.added.length) return;
-    setLastId(null);
-    const order = [...d.added].reverse();
-    setHidden((h) => new Set([...h, ...order]));
-    order.forEach((id, k) =>
-      later(() => {
-        setHidden((h) => {
-          const n = new Set(h);
-          n.delete(id);
-          return n;
+  }, []);
+
+  const patch = useCallback(
+    (id: string, p: Partial<DraftItem>) => present(itemsRef.current.map((i) => (i.id === id ? { ...i, ...p } : i))),
+    [present],
+  );
+
+  const removeCard = useCallback(
+    (id: string) => {
+      const base = itemsRef.current;
+      const idx = base.findIndex((c) => c.id === id);
+      const c = base[idx];
+      if (!c) return;
+      present(base.filter((x) => x.id !== id));
+      if (selRef.current === id) setSelected(null);
+      toast.show(t("voice.removed", { name: c.name }), "info", {
+        undo: () => {
+          const n = [...itemsRef.current];
+          n.splice(Math.min(idx, n.length), 0, c);
+          present(n);
+        },
+      });
+    },
+    [present, toast],
+  );
+
+
+  const showRemoved = useCallback(
+    (eff: Effect) => {
+      for (const r of eff.removed) {
+        toast.show(t("voice.removed", { name: r.item.name }), "info", {
+          undo: () => {
+            const n = [...itemsRef.current];
+            n.splice(Math.min(r.index, n.length), 0, r.item);
+            present(n);
+          },
         });
-        setLastId(id);
-        setPushKey((p) => (p === "a" ? "b" : "a"));
-        const el = listRef.current;
-        // Keď si posunutý nižšie (kontroluješ zoznam), nepreskakujeme – len jemne upozorníme.
-        if (el && el.scrollTop < 140) el.scrollTo({ top: 0, behavior: "smooth" });
-        else if (k === 0) showHint(t("voice.newOnTop"));
-        later(() => {
-          setShake((s) => (s === "a" ? "b" : "a"));
-          const it = itemsRef.current.find((i) => i.id === id);
-          buzz(it && it.status !== "ok" ? [16, 50, 16] : 14);
-        }, 420);
-      }, k * 320),
-    );
-    if (itemsRef.current.length === d.added.length) later(() => showHint(t("voice.swipeHint")), 900 + order.length * 320);
-  }, [later, showHint, flash]);
+      }
+    },
+    [present, toast],
+  );
 
-  const patch = useCallback((id: string, p: Partial<DraftItem>) => {
-    present(itemsRef.current.map((i) => (i.id === id ? { ...i, ...p } : i)));
-  }, [present]);
+  // ---------------------------------------------------------------- recepty
 
-  const remove = useCallback((id: string) => {
-    setConfirmId(null);
-    setGoneId(id);
-    buzz([10, 30, 26]);
-    later(() => {
-      const next = itemsRef.current.filter((i) => i.id !== id);
-      itemsRef.current = next;
-      setItems(next);
-      setGoneId(null);
-      setLastId(null);
-      setEditId((e) => (e === id ? null : e));
-    }, 300);
-  }, [later]);
+  /** Suroviny vybraného receptu → položky (hore), recept čaká na uloženie. */
+  const addRecipe = useCallback(
+    (card: Card) => {
+      const add = cardItems(card);
+      const plan = cardPlan(card);
+      if (!add.length || !plan) return;
+      present([...add, ...itemsRef.current.filter((i) => i.recipeCard !== card.id)]);
+      setPlans((p) => [...p.filter((x) => x.card !== card.id), plan]);
+      cards.update(card.id, (c) => ({ ...c, status: "added" }));
+      haptic(16);
+      toast.show(tn("voice.rc.added", add.length, { name: plan.name }), "success", {
+        undo: () => {
+          present(itemsRef.current.filter((i) => i.recipeCard !== card.id));
+          setPlans((p) => p.filter((x) => x.card !== card.id));
+          cards.update(card.id, (c) => ({ ...c, status: "ready" }));
+        },
+      });
+    },
+    [present, cards, toast],
+  );
 
-  const askDelete = useCallback((id: string) => {
-    buzz(22);
-    setConfirmId(id);
-    later(() => setConfirmId((c) => (c === id ? null : c)), 3000);
-  }, [later]);
+  /** Zmeniť výber: suroviny z receptu sa vrátia späť a karta sa znova otvorí. */
+  const editRecipe = useCallback(
+    (cardId: string) => {
+      present(itemsRef.current.filter((i) => i.recipeCard !== cardId));
+      setPlans((p) => p.filter((x) => x.card !== cardId));
+      cards.update(cardId, (c) => ({ ...c, status: "ready" }));
+    },
+    [present, cards],
+  );
 
-  const step = useCallback((id: string, dir: 1 | -1) => {
-    const it = itemsRef.current.find((i) => i.id === id);
-    if (!it) return;
-    const st = stepOf(it.unit);
-    if (it.quantity == null) {
-      if (dir > 0) patch(id, it.status === "needs_qty" ? { quantity: 250, unit: "g", status: "ok" } : { quantity: 1, unit: it.unit ?? "ks" });
-      else askDelete(id);
-      return;
+  const dropRecipe = useCallback(
+    (cardId: string) => {
+      present(itemsRef.current.filter((i) => i.recipeCard !== cardId));
+      setPlans((p) => p.filter((x) => x.card !== cardId));
+      cards.remove(cardId);
+    },
+    [present, cards],
+  );
+
+  const activeCard = () => cards.ref.current.find((c) => c.status !== "added" && c.status !== "error");
+
+  /** Povely ku karte receptu („ten druhý“, „na šesť porcií“, „bez cibule“, „pridaj“). */
+  const runCommand = useCallback(
+    (text: string): boolean => {
+      const card = activeCard();
+      if (!card) return false;
+      const rows = cardRows(card);
+      const cmd = recipeCommand(
+        text,
+        card.options.map((o) => o.name),
+        rows.map((r) => r.buy.name),
+      );
+      if (!cmd) return false;
+      haptic(10);
+      if (cmd.kind === "pick") cards.pick(card.id, cmd.index);
+      else if (cmd.kind === "portions") cards.update(card.id, (c) => ({ ...c, portions: cmd.n }));
+      else if (cmd.kind === "without" || cmd.kind === "with") {
+        const key = rows[cmd.index]!.key;
+        cards.update(card.id, (c) => ({ ...c, off: toggled(c, key, cmd.kind === "without") }));
+      } else if (cmd.kind === "add") {
+        if (card.sel == null) toast.show(t("voice.rc.pickFirst"));
+        else addRecipe(card);
+      } else if (cmd.kind === "cancel") dropRecipe(card.id);
+      return true;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cards, addRecipe, dropRecipe, toast],
+  );
+
+  // ---------------------------------------------------------------- uloženie
+
+  async function finish(o: { store?: string; listId?: string | null; date?: string; isPrivate?: boolean } = {}) {
+    const all = itemsRef.current;
+    if (!all.length || busy) return;
+    const listId = o.listId !== undefined ? o.listId : (target?.id ?? null);
+    const name = listId ? (lists.find((l) => l.id === listId)?.name ?? storeName) : (o.store ?? store) || t("voice.defaultListName");
+    setModal(null);
+    setBusy(true);
+    try {
+      // Recepty od AI sa uložia medzi Moje recepty – v Receptoch potom čakajú na uvarenie.
+      let ps = plansRef.current;
+      for (const p of ps) {
+        if (p.key || !p.draft) continue;
+        const id = await saveRecipe.mutateAsync(p.draft);
+        ps = ps.map((x) => (x.card === p.card ? { ...x, key: id, draft: null } : x));
+        plansRef.current = ps;
+        setPlans(ps);
+      }
+      // Názvy podľa pravidla „appka nič nedomýšľa“ (plzeň → Pilsner Urquell), kategória z katalógu.
+      const named = all.map((c) => {
+        const r = estRef.current.resolve(c.name);
+        return r ? { ...c, name: r.label, categoryId: r.category } : c;
+      });
+      const r = await save.mutateAsync({ store: name, listId, date: o.date ?? date, items: named, isPrivate: o.isPrivate ?? priv });
+      const recipes = ps.filter((p) => p.key).map((p) => ({ key: p.key!, name: p.name, portions: p.portions }));
+      if (recipes.length) {
+        // Položky už sú v zozname; ak by sa nepodarilo zapísať plán receptu, povieme to, ale zoznam ostane.
+        await planRecipes.mutateAsync({ listId: r.listId, newList: null, items: [], recipes }).catch((e) => toast.show(errorMessage(e), "error"));
+      }
+      saveDraft(household.id, null);
+      haptic(22);
+      onSaved(name, r);
+    } catch (err) {
+      setBusy(false);
+      toast.show(errorMessage(err), "error");
     }
-    const next = Math.round((it.quantity + dir * st) * 1000) / 1000;
-    if (next < st) askDelete(id);
-    else patch(id, { quantity: next });
-  }, [patch, askDelete]);
+  }
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
 
-  const finishRef = useRef<() => void>(() => {});
+  function create(force: "" | "recipes" | "unsure" = "") {
+    if (!items.length || busy) return;
+    const pendingRecipe = cards.cards.some((c) => c.status !== "added" && c.sel != null);
+    if (pendingRecipe && !force) return setModal("recipes");
+    if (items.some((c) => c.status === "unclear") && force !== "unsure") return setModal("unsure");
+    if (!target && !store) return setModal("where");
+    void finish();
+  }
+  const createRef = useRef(create);
+  createRef.current = create;
 
   // ---------------------------------------------------------------- vety
 
-  const pickStore = useCallback((name: string) => {
-    const s = name.trim();
-    if (!s || leaving) return;
-    buzz(12);
-    setStore(s);
-    setLeaving(true);
-    later(() => {
-      setPhase("dict");
-      setLeaving(false);
-    }, 380);
-  }, [leaving, later]);
-
-  /**
-   * Jedna veta: okamžite lokálny rozbor (položky padnú bez čakania), súčasne AI.
-   * Keď AI odpovie (zvyčajne do 1,5 s), lokálny výsledok vety nahradí presnejším –
-   * napr. rozdelí „banány 3 rožky maslo“ správne alebo opraví tvar slova.
-   */
-  const handleSentence = useCallback((text: string, typedByHand = false) => {
-    if (phase === "pick") {
-      // Napísaný text je rovno názov predajne; povedaný hľadáme vo vete („idem do Lidla“).
-      const s = matchStore(text, stores) ?? (typedByHand ? text : null);
-      if (s) pickStore(s);
-      else showHint(t("voice.storeHint", { text }));
-      return;
-    }
-    const target = editId ? (itemsRef.current.find((i) => i.id === editId)?.name ?? null) : null;
-    if (target) setEditId(null);
-    const before = itemsRef.current;
-    const local = applyOps(before, parseLocal(text, target));
-    if (local.done && !local.added.length && !local.merged.length) {
-      finishRef.current();
-      return;
-    }
-    if (local.understood) present(local.items);
-    const mergedName = !target && local.merged.length ? itemsRef.current.find((i) => i.id === local.merged[0])?.name : null;
-    if (mergedName) showHint(t("voice.dupe", { name: mergedName }));
-
-    const mine = ++seq.current;
-    setSaid(text);
-    setRefining((r) => r + 1);
-    void interpretAI(household.id, text, before, target).then((ops) => {
-      setRefining((r) => r - 1);
-      if (seq.current === mine) setSaid("");
-      if (!ops) {
-        if (!local.understood) showHint("Nerozumel som — skús to povedať inak");
+  /** Text (prehliadač alebo napísaný): hneď lokálny rozbor, súčasne AI, ktorá výsledok spresní. */
+  const apply = useCallback(
+    (text: string) => {
+      const sp = splitStore(text, stores);
+      if (modalRef.current === "where") {
+        const s = sp.store ?? matchStore(text, stores);
+        if (s) void finishRef.current({ store: s });
+        else toast.show(t("voice.storeNotUnderstood"));
         return;
       }
-      const r = reconcile(itemsRef.current, local, ops);
-      present(r.items);
-      if (r.done) finishRef.current();
-      else if (!r.understood && !local.understood) showHint("Nerozumel som — skús to povedať inak");
-    });
-  }, [phase, stores, pickStore, showHint, editId, present]);
+      if (sp.store && !targetListId) setStore(sp.store);
+      if (!sp.rest) {
+        if (sp.store) haptic(10);
+        return;
+      }
+      if (runCommand(sp.rest)) return;
+      const mine = ++seq.current;
+      const cook = splitCook(sp.rest);
+      for (const dish of cook.cook) cards.addQuery(dish, mine);
+      let rest = cook.rest;
 
-  function discard() {
-    if (!discardArmed) {
-      buzz(16);
-      setDiscardArmed(true);
-      later(() => setDiscardArmed(false), 3000);
-      return;
+      // „nie, tri“ / „nie 250 g“ = oprava vybranej alebo poslednej (najvyššej) karty.
+      const correction = /^nie\b[\s,]*/i.exec(rest);
+      if (correction) rest = rest.slice(correction[0].length);
+      const before = itemsRef.current;
+      const sel = selRef.current ? before.find((c) => c.id === selRef.current) : undefined;
+      // „ešte jedno mlieko“ pridáva (navýši rovnakú položku), aj keď je nejaká karta vybraná.
+      const more = /^(este|ešte)\s+(jeden|jedno|jednu|jedna|jedny)\s+\S/i.test(rest);
+      let target = more ? null : (sel?.name ?? (correction ? (before[0]?.name ?? null) : null));
+      let ops: VoiceOp[] = rest ? parseLocal(rest, target) : [];
+      // samotné množstvo („250 g“, „tri“) → oprava poslednej karty
+      if (rest && !target && !ops.length && before[0] && !cook.cook.length) {
+        target = before[0].name;
+        ops = parseLocal(rest, target);
+      }
+      const missing = ops.filter((o): o is Extract<VoiceOp, { op: "remove" }> => o.op === "remove" && !findItem(before, o.target));
+      for (const m of missing) toast.show(t("voice.notInList", { name: m.target }));
+      const local = applyOps(before, ops);
+      if (local.done) setDoneHint(true);
+      // Miestny rozbor sa ukáže hneď len vtedy, keď každú novú položku pozná katalóg domácnosti.
+      // Inak („pol kila mletého mäsa“ → „Mletého“, „Mäsa“) sa počká na AI (~1 s) – žiadne preblikávanie zlých položiek.
+      const sure = ops.every((o) => o.op !== "add" || (!!estRef.current.resolve(o.name) && o.name.trim().split(/\s+/).length <= 3));
+      const held = local.understood && !sure;
+      if (local.understood && !held) {
+        present(local.items);
+        haptic(10);
+      }
+      if (held) setPendingAudio((p) => p + 1);
+      showRemoved(local);
+      if (sel && target && local.understood) setSelected(null);
+      if (local.done && !local.added.length && !local.merged.length && !local.removed.length) return;
+      // Len jedlo bez položiek – AI netreba, recepty sa už načítavajú.
+      if (!rest && cook.cook.length) return;
+
+      setRefining((r) => r + 1);
+      // Zoznam „často kupujete“ (pokyn „podobne znejúce slovo = ten produkt“) patrí len k nahrávke, kde sa
+      // slovo môže zle počuť. Pri texte sa nič zle počuť nedá – inak AI zmenila „chlieb“ na „Rožky“.
+      void interpretAI(sp.rest, before, target, []).then((ai) => {
+        setRefining((r) => r - 1);
+        if (held) setPendingAudio((p) => p - 1);
+        if (!ai) {
+          // AI neodpovedala: zadržaný miestny rozbor sa ukáže aspoň takto.
+          if (held) present(applyOps(itemsRef.current, ops).items);
+          if (!local.understood && !cook.cook.length && seq.current === mine) toast.show(t("voice.notUnderstood"));
+          return;
+        }
+        if (ai.store && !targetListId) setStore((s) => s || ai.store!);
+        cards.confirmCook(mine, ai.cook);
+        if (held) {
+          const eff = applyOps(itemsRef.current, asSaid(ai.ops.length ? ai.ops : ops, sp.rest));
+          present(eff.items);
+          haptic(10);
+          if (eff.done) setDoneHint(true);
+          return;
+        }
+        if (!ai.ops.length && local.understood) return;
+        const r = reconcile(itemsRef.current, local, asSaid(ai.ops, sp.rest));
+        present(r.items);
+        if (r.done) setDoneHint(true);
+      });
+    },
+    [stores, targetListId, present, toast, runCommand, cards, showRemoved],
+  );
+
+  /** Nahrávka (iPhone): prepis aj rozbor prišiel naraz z AI. */
+  const applyAudio = useCallback(
+    (res: Interpretation, target: string | null) => {
+      if (res.transcript) setSaid(res.transcript);
+      if (modalRef.current === "where") {
+        const s = res.store ?? matchStore(res.transcript, stores);
+        if (s) void finishRef.current({ store: s });
+        else toast.show(t("voice.storeNotUnderstood"));
+        return;
+      }
+      if (res.store && !targetListId) setStore(res.store);
+      if (res.transcript && runCommand(splitStore(res.transcript, stores).rest || res.transcript)) return;
+      const mine = ++seq.current;
+      for (const dish of res.cook) cards.addQuery(dish, mine);
+      if (!res.ops.length) {
+        if (!res.cook.length && !res.store && res.transcript) toast.show(t("voice.notUnderstood"));
+        return;
+      }
+      const eff = applyOps(itemsRef.current, asSaid(res.ops, res.transcript));
+      if (eff.done) setDoneHint(true);
+      if (eff.understood) {
+        present(eff.items);
+        haptic(10);
+      }
+      showRemoved(eff);
+      if (target && eff.understood) setSelected(null);
+    },
+    [stores, targetListId, runCommand, cards, present, showRemoved, toast],
+  );
+
+  // Úseky nahrávky idú na server hneď (súbežne), výsledky sa však použijú v poradí, ako zazneli.
+  // Po jednom by každá ďalšia veta čakala aj na všetky predchádzajúce.
+  const chain = useRef<Promise<void>>(Promise.resolve());
+  const audioRef = useRef(applyAudio);
+  audioRef.current = applyAudio;
+  const onSegment = useCallback(
+    (wav: string) => {
+      setRefining((r) => r + 1);
+      setPendingAudio((p) => p + 1);
+      const before = itemsRef.current;
+      const sel = selRef.current ? (before.find((c) => c.id === selRef.current)?.name ?? null) : null;
+      const answer = interpretAudio({ mime: "audio/wav", data: wav }, before, sel, vocabRef.current);
+      chain.current = chain.current.then(async () => {
+        const res = await answer;
+        setRefining((r) => r - 1);
+        setPendingAudio((p) => p - 1);
+        if (!res) return toast.show(t("voice.audioFailed"));
+        if (!res.transcript && !res.ops.length && !res.cook.length) return;
+        audioRef.current(res, sel);
+      });
+    },
+    [toast],
+  );
+
+  const onFinal = useCallback(
+    (text: string) => {
+      setSaid(text);
+      apply(text);
+    },
+    [apply],
+  );
+
+  const speech = useSpeech(onFinal);
+
+  // Živý prepis (Gemini Live): reč ide priebežne na server, text sa ukazuje počas hovorenia a hotová veta
+  // prejde rovnakým rozborom ako písaný text. Keď sa spojenie nepodarí, nahrávanie posiela vety po kúskoch.
+  const [liveText, setLiveText] = useState("");
+  const [liveOk, setLiveOk] = useState(true);
+  const finalRef = useRef(onFinal);
+  finalRef.current = onFinal;
+  const lt = useRef<LiveTranscriber | null>(null);
+  const segRef = useRef(onSegment);
+  segRef.current = onSegment;
+  // Vety odoslané živo, na ktorých prepis ešte čakáme: pri výpadku spojenia pôjdu ako nahrávka (nič sa nestratí).
+  const waiting = useRef<{ at: number; wav: () => string }[]>([]);
+  if (!lt.current)
+    lt.current = new LiveTranscriber({
+      onInterim: (x) => setLiveText(x),
+      onFinal: (x) => {
+        setLiveText("");
+        waiting.current.shift();
+        finalRef.current(x);
+      },
+      onDown: () => {
+        setLiveText("");
+        const lost = waiting.current.filter((w) => Date.now() - w.at < 8000);
+        waiting.current = [];
+        for (const w of lost) {
+          const wav = w.wav();
+          if (wav) segRef.current(wav);
+        }
+      },
+    });
+  const sink = useRef<StreamSink | null>(null);
+  sink.current = liveOk
+    ? {
+        active: () => !!lt.current?.open,
+        push: (d, r) => lt.current?.push(d, r),
+        end: (wav) => {
+          lt.current?.end();
+          // Šum bez slov server neprepíše – staré čakajúce vety (bez prepisu do 8 s) sa zahodia.
+          waiting.current = [...waiting.current.filter((w) => Date.now() - w.at < 8000), { at: Date.now(), wav }];
+        },
+      }
+    : null;
+  const rec = useRecorder(onSegment, sink);
+
+  // Prehliadač reč zakázal (napr. appka z plochy) → prepneme na nahrávanie, ak sa dá.
+  useEffect(() => {
+    if (engine === "speech" && speech.error === "denied") setEngine(recorderSupported() ? "rec" : "none");
+    if (engine === "speech" && speech.error === "unavailable" && recorderSupported()) setEngine("rec");
+  }, [engine, speech.error]);
+
+  const blocked = engine === "none" || (engine === "rec" && !!rec.error) || (engine === "speech" && speech.error === "denied");
+
+  // Mikrofón počúva, kým nie je pozastavený (a kým sa neukladá).
+  useEffect(() => {
+    const on = listening && !busy && !blocked;
+    if (engine === "speech") {
+      rec.stop();
+      if (on) speech.start();
+      else speech.stop();
+    } else if (engine === "rec") {
+      speech.stop();
+      if (on) {
+        rec.start();
+        if (liveOk)
+          lt.current?.connect().catch(() => {
+            // Bez živého prepisu ďalej (pôvodné posielanie viet) – hlas nesmie prestať fungovať.
+            setLiveOk(false);
+          });
+      } else {
+        rec.stop();
+        lt.current?.close();
+        setLiveText("");
+      }
     }
-    buzz([10, 30, 26]);
-    saveDraft(household.id, null);
-    itemsRef.current = [];
-    setItems([]);
-    close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, listening, busy, blocked]);
+
+  useEffect(() => {
+    if (blocked) setTyping(true);
+  }, [blocked]);
+
+  // Medzi vetami: spojenie sa obnoví (token platí 6 minút, po výpadku signálu sa pripojí znova).
+  useEffect(() => {
+    if (engine !== "rec" || !liveOk || !listening || busy || rec.hearing) return;
+    lt.current?.connect().catch(() => undefined);
+  }, [engine, liveOk, listening, busy, rec.hearing]);
+  useEffect(() => () => lt.current?.close(), []);
+
+  // ---------------------------------------------------------------- zatvorenie, zahodenie
+
+  function close() {
+    speech.stop();
+    rec.stop();
+    lt.current?.close();
+    if (itemsRef.current.length) toast.show(t("voice.draftSaved"));
+    onClose();
   }
 
-  const speech = useSpeech(handleSentence);
+  function reset() {
+    present([]);
+    setPlans([]);
+    for (const c of cards.ref.current) cards.remove(c.id);
+    setStore("");
+    setTargetListId(null);
+    setDate(today);
+    setPriv(false);
+    setRestored(false);
+    setDoneHint(false);
+    setSaid("");
+  }
 
-  // Mikrofón je zapnutý hneď po otvorení (pokiaľ ho prehliadač má a nie je pauza).
-  useEffect(() => {
-    if (!speech.supported) {
-      setTyping(true);
-      return;
-    }
-    if (!paused && !closing) speech.start();
-    else speech.stop();
-  }, [paused, closing, speech.supported]);
 
-  useEffect(() => {
-    if (speech.error === "denied") {
-      setTyping(true);
-      showHint(t("voice.micDenied"));
-    }
-  }, [speech.error, showHint]);
 
   useEffect(() => {
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key !== "Escape") return;
+      if (modal) setModal(null);
+      else close();
     };
     document.addEventListener("keydown", onKey);
     return () => {
@@ -291,350 +621,541 @@ export function VoiceSession({ onClose, onSaved }: { onClose: () => void; onSave
     };
   });
 
-  function close() {
-    if (closing) return;
-    speech.stop();
-    setClosing(true);
-    setTimeout(onClose, 420);
-  }
-
-  async function finish() {
-    const all = itemsRef.current;
-    if (!all.length) {
-      close();
-      return;
-    }
-    const unclear = all.filter((i) => i.status === "unclear");
-    if (unclear.length && !unclearWarned) {
-      setUnclearWarned(true);
-      buzz([16, 50, 16]);
-      showHint(tn("voice.unclear", unclear.length));
-      return;
-    }
-    speech.stop();
-    try {
-      const r = await save.mutateAsync({ store, items: all.filter((i) => i.status !== "unclear") });
-      saveDraft(household.id, null);
-      buzz([10, 40, 10, 40, 22]);
-      setClosing(true);
-      setTimeout(() => onSaved(store, r), 420);
-    } catch (err) {
-      toast.show(errorMessage(err), "error");
-      if (!paused) speech.start();
-    }
-  }
-  finishRef.current = () => void finish();
-
-  function sendTyped(e: FormEvent) {
-    e.preventDefault();
-    const line = typed.trim();
-    if (!line) return;
-    setTyped("");
-    handleSentence(line, true);
-  }
-
-  function resumeDraft() {
-    if (!draft) return;
-    setItems(draft.items);
-    setStore(draft.store);
-    setDraft(null);
-    setLeaving(true);
-    later(() => {
-      setPhase("dict");
-      setLeaving(false);
-    }, 380);
-  }
-
-  // ---------------------------------------------------------------- zobrazenie
+  // ---------------------------------------------------------------- zobrazenie (mockup voicetalk.jsx)
 
   const n = items.length;
-  const pending = items.filter((i) => i.status !== "ok").length;
-  const editName = editId ? items.find((i) => i.id === editId)?.name : null;
-  const live = speech.interim || said;
-  const thinking = refining > 0 && !speech.interim;
-  const talk = speech.hearing || !!speech.interim;
-  const waveState = paused || (!speech.listening && !typing) ? "off" : thinking ? "think" : talk ? "talk" : "idle";
-  const status = paused
-    ? t("voice.st.paused")
-    : thinking
-      ? t("voice.st.refining")
-      : talk
-        ? t("voice.st.listening")
-        : editName
-          ? t("voice.st.editing", { name: editName })
-          : !speech.supported || speech.error
-            ? t("voice.st.typing")
-            : phase === "pick"
-              ? t("voice.st.pick")
-              : t("voice.st.listening");
-  const ghost = paused
-    ? t("voice.ghost.paused")
-    : editName
-      ? t("voice.ghost.edit")
-      : phase === "pick"
-        ? t("voice.ghost.pick")
-        : n === 0
-          ? t("voice.ghost.first")
-          : t("voice.ghost.next");
-  // Zobrazené riadky: bez tých, čo ešte len padnú, a s odchádzajúcimi na pôvodnom mieste.
-  const rows: { it: DraftItem; leaving: boolean }[] = items.filter((i) => !hidden.has(i.id)).map((it) => ({ it, leaving: goneId === it.id }));
-  for (const g of ghosts) rows.splice(Math.min(g.index, rows.length), 0, { it: g.item, leaving: true });
-  const meta = useMemo(
-    () =>
-      n === 0
-        ? t("voice.meta.empty")
-        : t(pending ? "voice.meta.pending" : "voice.meta.clear", { count: tn("shop.itemCount", n), n: pending }),
-    [n, pending],
-  );
+  const unsureCount = items.filter((c) => c.status === "unclear").length;
+  const active = activeCard();
+  const openCards = cards.cards.filter((c) => c.status !== "added");
+  const orphanPlans = plans.filter((p) => !cards.cards.some((c) => c.id === p.card && c.status !== "added"));
+  const empty = n === 0 && !openCards.length && !plans.length && !pendingAudio;
+  const pendingRecipes = cards.cards.filter((c) => c.status !== "added" && c.sel != null);
+
+  const hearing = engine === "rec" ? rec.hearing : !!speech.interim;
+  const live = engine === "speech" ? speech.interim : liveText;
+  // iPhone mikrofón zapol, ale zvuk appky pustí až po ťuknutí – ťuk kamkoľvek ho rozbehne.
+  const stalled = engine === "rec" && listening && rec.stalled;
+  const kb = useKeyboardHeight(true);
+  const shown = (c: DraftItem) => estimator.resolve(c.name)?.label ?? c.name;
+  const tStore = storeKeyOf(target ? target.name : store);
+  const tLabel = target ? target.name : store ? `${store} · ${dayLabel(date)}` : null;
+  const selItem = selected ? items.find((c) => c.id === selected) : undefined;
+  const now = Date.now();
+  const [txt, setTxt] = useState("");
+  const inp = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (typing) inp.current?.focus();
+  }, [typing]);
+  const send = (e: FormEvent) => {
+    e.preventDefault();
+    const v = txt.trim();
+    if (!v) return;
+    setTxt("");
+    setSaid(v);
+    setRestored(false);
+    apply(v);
+  };
+  const micOn = listening && !blocked;
+  // Prstenec mikrofónu dýcha podľa skutočnej hlasitosti (premenná --lvl priamo na prvku, bez prekresľovania).
+  const orb = useRef<HTMLButtonElement>(null);
+  const level = rec.level;
+  useEffect(() => {
+    const el = orb.current;
+    if (!el) return;
+    if (!micOn || engine !== "rec" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.style.setProperty("--lvl", "0");
+      return;
+    }
+    let raf = 0;
+    let v = 0;
+    const tick = () => {
+      v = v * 0.7 + level.current * 0.3;
+      el.style.setProperty("--lvl", v.toFixed(3));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [micOn, engine, level]);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("voice.open")}
-      className={cx("fixed inset-0 z-50 flex flex-col overflow-hidden bg-bg pt-safe", closing ? "vo-out" : "animate-sheet")}
-    >
-      <div className={cx("mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col", shake && `vo-shake-${shake}`)}>
-        {phase === "pick" ? (
-          <section className={cx("flex min-h-0 flex-1 flex-col px-5 pt-2", leaving && "vo-leave")}>
-            <div className="flex items-center justify-between">
-              <button type="button" onClick={close} aria-label={t("common.close")} className="-ml-2.5 grid size-11 place-items-center rounded-full text-text active:bg-pressed">
-                <X className="size-[22px]" />
-              </button>
-              <HouseholdChip name={household.name} />
-              <span className="size-11" />
+    <div className="bhm bhm-full bhm-voice" style={{ "--kb": `${kb}px` } as CSSProperties}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("voice.open")}
+        className={`vx${g ? " g2" : ""}`}
+        onClickCapture={() => {
+          if (stalled) rec.wake();
+        }}
+      >
+        {g && (
+          <div className="bgl">
+            <div className="bgb pic-kari_p" />
+            <div className="veil" />
+            <div className="veil" />
+          </div>
+        )}
+        <div className="vx-top">
+          <IB n="x" cls="vx-ib" label={t("voice.closeKeep")} onClick={close} />
+          <button type="button" className="vx-target" onClick={() => setModal("store")} aria-label={t("vx.whereAria")}>
+            {t("vx.to")} {tLabel ? <b>{tLabel}</b> : <em>{t("vx.newList")}</em>}
+            <I n="caret-down" w="bold" />
+          </button>
+          <HelpBtn screen="m-voice" cls="vx-ib" />
+        </div>
+        {restored && n > 0 && (
+          <div className="vx-rest">
+            <I n="arrow-counter-clockwise" w="bold" />
+            <span className="grow">{t("vx.restored", { n })}</span>
+            <button type="button" onClick={reset}>
+              {t("voice.startOver")}
+            </button>
+          </div>
+        )}
+        <div
+          className="vx-list"
+          ref={cardsBox}
+          aria-live="polite"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelected(null);
+          }}
+        >
+          {empty ? (
+            <div className="vx-empty">
+              <b>{t("vx.emptyT")}</b>
+              <span>{t("vx.emptyS")}</span>
+              {/* Príklady sú len text – ťuk na ne nič nepridá (predtým sa omylom pridávali do zoznamu). */}
+              <div className="vx-exl">
+                <small>{t("vx.tryLabel")}</small>
+                {[t("vx.ex1"), t("vx.ex2"), t("vx.ex3")].map((x) => (
+                  <p key={x}>„{x}“</p>
+                ))}
+              </div>
             </div>
-            <p className="mt-9 text-[0.8125rem] text-text-2">{t("voice.newTrip")}</p>
-            <h1 className="mt-1 text-[2.75rem] font-bold leading-none tracking-[-0.04em]">{t("voice.where")}</h1>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {stores.map((s) => (
+          ) : (
+            <>
+              {n > 0 && <div className="vx-cnt">{t("vx.cnt", { items: tn("li.items", n) })}</div>}
+              {pendingAudio > 0 && (
+                <div className="vxi" role="status">
+                  <span className="th">
+                    <span className="think-l">
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  </span>
+                  <div className="grow">
+                    <b>{tn("voice.pending", pendingAudio)}</b>
+                    <small>{t("voice.pendingSub")}</small>
+                  </div>
+                </div>
+              )}
+              {openCards.map((c) => (
+                <RecipeCardView
+                  key={c.id}
+                  card={c}
+                  active={c.id === active?.id}
+                  onPick={(i) => cards.pick(c.id, i)}
+                  onPortions={(p) => cards.update(c.id, (x) => ({ ...x, portions: p }))}
+                  onToggle={(key) => cards.update(c.id, (x) => ({ ...x, off: toggled(x, key) }))}
+                  onAdd={() => addRecipe(c)}
+                  onClose={() => dropRecipe(c.id)}
+                  onRetry={() => cards.retry(c.id)}
+                  onRetryDetail={(o) => cards.retryDetail(c.id, o)}
+                />
+              ))}
+              {orphanPlans.map((p) => (
+                <PlanRow
+                  key={p.card}
+                  plan={p}
+                  count={items.filter((i) => i.recipeCard === p.card).length}
+                  onEdit={cards.cards.some((c) => c.id === p.card) ? () => editRecipe(p.card) : undefined}
+                  onRemove={() => dropRecipe(p.card)}
+                />
+              ))}
+              {items.map((c) => {
+                const name = shown(c);
+                const e = estimator.est({ name, quantity: c.quantity, unit: c.unit }, tStore);
+                const unsure = c.status === "unclear" && c.suggestions.length > 0;
+                const fx = fixes[c.id] && now - fixes[c.id]!.at < 3000 ? fixes[c.id] : null;
+                const bump = flash[c.id] ?? 0;
+                return (
+                  <div
+                    key={c.id}
+                    role="button"
+                    tabIndex={0}
+                    className={`vxi${selected === c.id ? " sel" : ""}${unsure ? " unsure" : ""}`}
+                    style={bump ? { animation: `${bump % 2 ? "mk-vxbumpA" : "mk-vxbumpB"} .55s cubic-bezier(.3,1.5,.5,1)` } : undefined}
+                    onClick={() => setSelected((x) => (x === c.id ? null : c.id))}
+                    onKeyDown={(ev) => ev.key === "Enter" && setSelected((x) => (x === c.id ? null : c.id))}
+                  >
+                    <span className="th">
+                      <E k={estimator.emoji(name, c.categoryId)} />
+                    </span>
+                    <div className="grow">
+                      <b>{unsure ? t("vx.unsure", { name }) : name}</b>
+                      {unsure ? (
+                        <div className="vx-opts">
+                          {c.suggestions.map((sg) => (
+                            <button
+                              type="button"
+                              key={sg}
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                patch(c.id, { name: sg, categoryId: guessCategory(sg), status: "ok", suggestions: [] });
+                                haptic(10);
+                              }}
+                            >
+                              {sg}
+                            </button>
+                          ))}
+                        </div>
+                      ) : fx ? (
+                        <small key={fx.at} className="vx-fix">
+                          <s>{fx.from}</s> → {fx.to}
+                        </small>
+                      ) : e ? (
+                        <small>~{eur(e.v)}</small>
+                      ) : null}
+                    </div>
+                    <span className="q">{fmtQty(c.quantity, c.unit)}</span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+        <div className="vx-bot">
+          {selItem && (
+            <div className="vx-qq">
+              {(selItem.unit === "kg" ? [0.25, 0.5, 1, 2] : selItem.unit === "l" ? [0.5, 1, 2, 3] : [1, 2, 3, 6]).map((q) => (
                 <button
-                  key={s}
                   type="button"
-                  onClick={() => pickStore(s)}
-                  className={cx(
-                    "h-[3.125rem] rounded-full px-5 text-[1.0625rem] font-semibold transition-[background-color,color,transform] duration-300 active:scale-[0.97]",
-                    store === s ? "scale-[1.04] bg-primary text-on-primary" : "bg-elevated text-text",
-                  )}
+                  key={q}
+                  className={Math.abs((selItem.quantity ?? 1) - q) < 0.001 ? "on" : ""}
+                  onClick={() => {
+                    patch(selItem.id, { quantity: q, unit: selItem.unit ?? "ks", status: "ok" });
+                    setSelected(null);
+                  }}
                 >
-                  {s}
+                  {fmtQty(q, selItem.unit ?? "ks")}
                 </button>
               ))}
             </div>
-            <form
-              className="mt-3 flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                pickStore(custom);
-              }}
-            >
-              <label className="flex min-w-0 flex-1">
-                <span className="sr-only">{t("voice.otherStore")}</span>
-                <input
-                  value={custom}
-                  onChange={(e) => setCustom(e.target.value)}
-                  placeholder={t("voice.otherStorePlaceholder")}
-                  maxLength={60}
-                  className="h-[3.25rem] min-w-0 flex-1 rounded-2xl border border-transparent bg-elevated px-4 text-base outline-none placeholder:text-text-3 focus:border-primary"
-                />
-              </label>
-              {custom.trim() && (
-                <button type="submit" className="h-[3.25rem] animate-drop rounded-2xl bg-primary px-5 font-semibold text-on-primary">
-                  {t("voice.next")}
-                </button>
-              )}
-            </form>
-            {draft && (
-              <div className="mt-6 animate-rise rounded-[1.375rem] bg-elevated p-4">
-                <p className="text-[0.8125rem] text-text-2">{t("voice.draftLabel")}</p>
-                <p className="mt-0.5 text-lg font-bold tracking-[-0.02em]">
-                  {t("voice.draftTitle", { store: draft.store, count: tn("shop.itemCount", draft.items.length) })}
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <button type="button" onClick={resumeDraft} className="h-11 rounded-full bg-primary px-5 text-sm font-semibold text-on-primary">
-                    {t("voice.resume")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      saveDraft(household.id, null);
-                      setDraft(null);
-                    }}
-                    className="h-11 rounded-full px-4 text-sm font-semibold text-text-2 active:bg-pressed"
-                  >
-                    {t("voice.discard")}
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
-        ) : (
-          <section className="flex min-h-0 flex-1 flex-col">
-            <div className="flex items-center justify-between px-4 pt-2">
-              <button type="button" onClick={close} aria-label={t("voice.closeKeep")} className="-ml-1 grid size-11 place-items-center rounded-full text-text active:bg-pressed">
-                <X className="size-[22px]" />
-              </button>
-              <HouseholdChip name={household.name} />
-              {n > 0 ? (
-                <button
-                  type="button"
-                  onClick={discard}
-                  className={cx(
-                    "-mr-1 h-9 rounded-full px-3 text-[0.8rem] font-semibold transition-colors",
-                    discardArmed ? "animate-drop bg-danger text-on-primary" : "text-text-2 active:bg-pressed",
-                  )}
-                >
-                  {discardArmed ? t("voice.discardConfirm") : t("voice.discard")}
-                </button>
-              ) : (
-                <span className="size-11" />
-              )}
-            </div>
-            {/* Celý obsah (názov + zoznam) sa dá posúvať aj počas počúvania. */}
-            <div ref={listRef} className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
-              <div className="px-6 pt-4">
-                <h1 className="animate-rise truncate text-[3.5rem] font-bold leading-[0.95] tracking-[-0.045em]">{store}</h1>
-                <p className="mt-2.5 text-[0.8125rem] text-text-2">{meta}</p>
-              </div>
-              <ul className="relative z-[2] px-3.5 pb-8 pt-4" aria-live="polite">
-                {n === 0 && <li className="list-none animate-fade px-2.5 pt-2 text-[1.0625rem] text-text-3">{t("voice.emptyHint")}</li>}
-                {rows.map(({ it, leaving: out }, i) => (
-                  <VoiceRow
-                    key={it.id}
-                    item={it}
-                    anim={{
-                      fall: i === 0 && it.id === lastId,
-                      push: lastId && i > 0 ? pushKey : null,
-                      bump: anims[it.id]?.bump ?? null,
-                      glow: anims[it.id]?.glow ?? null,
-                    }}
-                    editing={editId === it.id}
-                    confirming={confirmId === it.id}
-                    leaving={out}
-                    onStep={(d) => step(it.id, d)}
-                    onAskDelete={() => askDelete(it.id)}
-                    onDelete={() => remove(it.id)}
-                    onTap={() => {
-                      buzz(10);
-                      setEditId((e) => (e === it.id ? null : it.id));
-                    }}
-                    onResolve={(p) => {
-                      if (p === "remove") remove(it.id);
-                      else if (p === "voice") setEditId(it.id);
-                      else patch(it.id, p);
-                    }}
-                  />
-                ))}
-              </ul>
-            </div>
-          </section>
-        )}
-
-        <div className="relative z-[3] rounded-t-[1.875rem] bg-elevated px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3">
-          <div className="flex min-h-[1.375rem] items-center justify-center">
-            {hint && (
-              <p key={hint.k} className="vo-hint text-center text-[0.8rem] leading-snug text-text-3" style={{ animationDuration: `${hint.ms}ms` }}>
-                {hint.text}
-              </p>
-            )}
-          </div>
-
-          {typing ? (
-            <form onSubmit={sendTyped} className="mt-1 flex gap-2">
-              <label className="flex min-w-0 flex-1">
-                <span className="sr-only">{t("voice.typeAria")}</span>
-                <input
-                  autoFocus
-                  value={typed}
-                  onChange={(e) => setTyped(e.target.value)}
-                  placeholder={phase === "pick" ? t("voice.storePlaceholder") : t("voice.itemsPlaceholder")}
-                  maxLength={300}
-                  enterKeyHint="send"
-                  className="h-12 min-w-0 flex-1 rounded-2xl bg-bg px-4 text-base outline-none placeholder:text-text-3"
-                />
-              </label>
-              <button type="submit" disabled={!typed.trim()} className="h-12 rounded-2xl bg-primary px-4 font-semibold text-on-primary disabled:opacity-40">
-                {t("voice.add")}
-              </button>
-            </form>
-          ) : (
-            <p
-              className={cx(
-                "flex min-h-[3.4rem] items-center justify-center px-2 text-center text-xl font-semibold leading-tight tracking-[-0.01em] transition-[opacity,transform] duration-300",
-                !live && "text-text-3/70",
-                thinking && "vo-think -translate-y-1.5 scale-[0.97]",
-              )}
-            >
-              {live || ghost}
-            </p>
           )}
-
-          <svg className={cx("vo-wave mt-1 block h-16 w-full", waveState)} viewBox="0 0 390 64" preserveAspectRatio="none" aria-hidden>
-            <g className="g2"><path className="w2" d={W2} /></g>
-            <g className="g3"><path className="w3" d={W3} /></g>
-            <g className="g1"><path className="w1" d={W1} /></g>
-          </svg>
-
-          <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
-            <span className="flex justify-start">
-              {speech.supported && !speech.error && (
-                <button
-                  type="button"
-                  onClick={() => setTyping((on) => !on)}
-                  className="inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-text-2 active:bg-pressed"
-                >
-                  {typing ? <Mic className="size-4" aria-hidden /> : <Keyboard className="size-4" aria-hidden />}
-                  {typing ? t("voice.speak") : t("voice.type")}
-                </button>
-              )}
-            </span>
-            <span className="flex flex-col items-center gap-1.5 px-2">
-              <button
-                type="button"
-                disabled={!speech.supported || speech.error === "denied"}
-                onClick={() => {
-                  buzz(8);
-                  setPaused((p) => !p);
-                }}
-                aria-label={paused ? t("voice.resumeAria") : t("voice.pauseAria")}
-                className={cx(
-                  "grid size-16 place-items-center rounded-full transition-[background-color,color,box-shadow,transform] duration-300 active:scale-[0.94] disabled:opacity-40",
-                  paused ? "bg-elevated text-text shadow-[inset_0_0_0_1.5px_var(--text)]" : talk || thinking ? "bg-accent text-on-accent" : "bg-primary text-on-primary",
-                )}
-              >
-                {paused ? <MicOff className="size-6" aria-hidden /> : <Mic className="size-6" aria-hidden />}
-              </button>
-              <span className="whitespace-nowrap text-xs text-text-2">{status}</span>
-            </span>
-            <span className="flex justify-end">
-              {phase === "dict" ? (
-                <button
-                  type="button"
-                  onClick={() => void finish()}
-                  disabled={save.isPending}
-                  className="h-11 animate-drop rounded-full bg-accent px-5 text-sm font-bold text-on-accent disabled:opacity-60"
-                >
-                  {save.isPending ? t("voice.saving") : t("voice.done")}
-                </button>
-              ) : (
-                <button type="button" onClick={close} className="h-11 rounded-full px-3 text-sm font-semibold text-text-2 active:bg-pressed">
-                  {t("common.cancel")}
-                </button>
-              )}
-            </span>
+          <div className={`vx-heard${selItem ? " edit" : ""} st-${selItem ? "edit" : live || hearing ? "hear" : refining > 0 ? "think" : micOn ? "listen" : "pause"}`} aria-live="polite">
+            <small>
+              {selItem
+                ? t("vx.editing", { name: shown(selItem) })
+                : live || hearing
+                  ? t("vx.hearing")
+                  : refining > 0
+                    ? t("vx.thinking")
+                    : micOn
+                      ? t("vx.listening")
+                      : t("vx.paused")}
+            </small>
+            {blocked ? (
+              <p className="vx-note">
+                <I n="warning-circle" />
+                {engine === "none" ? t("voice.unsupportedText") : isIOS() ? t("voice.blockedTextIos") : t("voice.blockedText")}
+              </p>
+            ) : stalled ? (
+              <span className="dim">{t("voice.tapToStart")}</span>
+            ) : live ? (
+              <span>
+                {live}
+                <i>…</i>
+              </span>
+            ) : selItem ? (
+              <span className="dim">{t("vx.editHint")}</span>
+            ) : hearing || (micOn && !said) ? (
+              <span className="wave">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
+            ) : said ? (
+              <span>{said}</span>
+            ) : (
+              <span className="dim">{t("vx.pausedHint")}</span>
+            )}
           </div>
+          {engine === "rec" && import.meta.env.MODE === "staging" && showDiag() && <MicDiag diag={rec.diag} />}
+          {typing && (
+            <form className="vx-kbd" onSubmit={send}>
+              <input
+                ref={inp}
+                value={txt}
+                onChange={(e) => setTxt(e.target.value)}
+                placeholder={selItem ? t("vx.kbdPhEdit") : t("vx.kbdPh")}
+                autoComplete="off"
+                enterKeyHint="send"
+                maxLength={300}
+                aria-label={t("vx.kbdAria")}
+              />
+              <button type="submit" disabled={!txt.trim()} aria-label={t("vx.add")}>
+                <I n="arrow-up" w="bold" />
+              </button>
+            </form>
+          )}
+          <div className="vx-ctrl">
+            {selItem ? (
+              <button type="button" className="vx-side" onClick={() => setSelected(null)}>
+                {t("vx.cancelEdit")}
+              </button>
+            ) : (
+              <button type="button" className={`vx-side${typing ? " on" : ""}`} onClick={() => setTyping((x) => !x)}>
+                <I n="keyboard" />
+                {t("vx.type")}
+              </button>
+            )}
+            <button
+              type="button"
+              ref={orb}
+              className={`vx-orb${micOn ? " on" : ""}${selItem ? " edit" : ""}${hearing ? " hear" : ""}`}
+              disabled={blocked}
+              onClick={() => {
+                if (blocked || stalled) return;
+                haptic(8);
+                setListening((l) => !l);
+              }}
+              aria-label={listening ? t("vx.pause") : t("vx.listen")}
+              aria-pressed={micOn}
+            >
+              <I n={micOn ? "microphone" : "pause"} />
+            </button>
+            {selItem ? (
+              <button type="button" className="vx-side dng" onClick={() => removeCard(selItem.id)}>
+                <I n="trash" />
+                {t("vx.del")}
+              </button>
+            ) : (
+              <button type="button" className="vx-done" onClick={() => create()} disabled={!n || busy}>
+                {busy ? t("voice.saving") : n ? t("vx.doneN", { n }) : t("vx.done")}
+              </button>
+            )}
+          </div>
+          {!blocked && <p className="vx-cap">{selItem ? t("vx.capEdit") : micOn ? (n ? t("vx.capOnItems") : t("vx.capOn")) : t("vx.capOff")}</p>}
         </div>
+
+        {(modal === "where" || modal === "store") && (
+          <WherePanel
+            done={modal === "where"}
+            n={n}
+            lists={openLists}
+            stores={stores}
+            targetListId={targetListId}
+            store={store}
+            date={date}
+            priv={priv}
+            householdName={household.name}
+            busy={busy}
+            onClose={() => setModal(null)}
+            onPick={(c) => {
+              setModal(null);
+              if (c.listId !== null) {
+                setTargetListId(c.listId);
+              } else {
+                setTargetListId(null);
+                setStore(c.store);
+                setDate(c.date);
+                setPriv(c.isPrivate);
+              }
+            }}
+            onCommit={(c) => {
+              if (c.listId !== null) void finish({ listId: c.listId });
+              else {
+                setTargetListId(null);
+                setStore(c.store);
+                setDate(c.date);
+                void finish({ store: c.store, listId: null, date: c.date, isPrivate: c.isPrivate });
+              }
+            }}
+          />
+        )}
+        {(modal === "recipes" || modal === "unsure") && (
+          <div className="vx-panel" role="dialog" aria-modal="true">
+            <div className="vx-scrim" onClick={() => setModal(null)} />
+            <div className="vx-sheet">
+              <span className="grab" onClick={() => setModal(null)} />
+              {modal === "recipes" ? (
+                <>
+                  <h2>{t("voice.rc.pendingTitle")}</h2>
+                  <p className="meta">{t("voice.rc.pendingText", { names: pendingRecipes.map((c) => c.options[c.sel!]?.name ?? c.query).join(", ") })}</p>
+                  <Btn cls="pri full big" onClick={() => {
+                    for (const c of pendingRecipes) addRecipe(c);
+                    setModal(null);
+                    timers.current.push(setTimeout(() => createRef.current("recipes")));
+                  }}>
+                    {t("voice.rc.addThem")}
+                  </Btn>
+                  <Btn cls="soft full" onClick={() => create("recipes")}>
+                    {t("voice.rc.withoutThem")}
+                  </Btn>
+                </>
+              ) : (
+                <>
+                  <h2>{tn("voice.unsureTitle", unsureCount)}</h2>
+                  <p className="meta">{t("voice.unsureText")}</p>
+                  <Btn cls="pri full big" onClick={() => create("unsure")}>
+                    {t("voice.createAnyway")}
+                  </Btn>
+                  <Btn
+                    cls="soft full"
+                    onClick={() => {
+                      setModal(null);
+                      setSelected(items.find((c) => c.status === "unclear")?.id ?? null);
+                    }}
+                  >
+                    {t("voice.refine")}
+                  </Btn>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function HouseholdChip({ name }: { name: string }) {
+type Choice = { listId: string } | { listId: null; store: string; date: string; isPrivate: boolean };
+
+/** „Kam pridať?“ – existujúce zoznamy navrchu, pod nimi nový zoznam (obchod, deň, kto ho uvidí). */
+function WherePanel({
+  done,
+  n,
+  lists,
+  stores,
+  targetListId,
+  store,
+  date,
+  priv,
+  householdName,
+  busy,
+  onClose,
+  onPick,
+  onCommit,
+}: {
+  done: boolean;
+  n: number;
+  lists: ShoppingList[];
+  stores: string[];
+  targetListId: string | null;
+  store: string;
+  date: string;
+  priv: boolean;
+  householdName: string;
+  busy: boolean;
+  onClose: () => void;
+  onPick: (c: Choice) => void;
+  onCommit: (c: Choice) => void;
+}) {
+  const stats = useListStats(lists[0]?.household_id ?? "").data;
+  const days = [0, 1, 2].map((d) => isoDay(addDays(new Date(), d)));
+  const [c, setC] = useState<Choice>(() =>
+    targetListId ? { listId: targetListId } : store ? { listId: null, store, date, isPrivate: priv } : lists[0] ? { listId: lists[0].id } : { listId: null, store: "", date: days[1]!, isPrivate: false },
+  );
+  const isNew = c.listId === null;
+  const nc = (p: Partial<{ store: string; date: string; isPrivate: boolean }>) =>
+    setC((x) => ({ listId: null, store: x.listId === null ? x.store : "", date: x.listId === null ? x.date : days[1]!, isPrivate: x.listId === null ? x.isPrivate : false, ...p }));
+  const L = !isNew ? lists.find((l) => l.id === c.listId) : undefined;
+  const tiles = (store && !stores.includes(store) ? [store, ...stores] : stores).slice(0, 6);
+  const name = c.listId === null ? c.store || t("voice.defaultListName") : (L?.name ?? "");
+  const label = !done ? t("vx.sheetDone") : isNew ? t("vx.createAdd", { name }) : t("vx.addTo", { name });
+  const dayNames = [t("date.today"), t("date.tomorrow"), t("nl.dayAfter")].map((x) => x.charAt(0).toUpperCase() + x.slice(1));
   return (
-    <span className="inline-flex h-8 max-w-[60%] items-center gap-2 rounded-full bg-elevated px-3 text-[0.8rem] font-semibold">
-      <span aria-hidden className="size-1.5 rounded-full bg-person" />
-      <span className="truncate">{name}</span>
-    </span>
+    <div className="vx-panel" role="dialog" aria-label={t("vx.wherePick")}>
+      <div className="vx-scrim" onClick={onClose} />
+      <div className="vx-sheet where">
+        <span className="grab" onClick={onClose} />
+        <h2>{done ? tn("vx.whereN", n) : t("vx.wherePick")}</h2>
+        {lists.length > 0 && (
+          <>
+            <span className="k">{t("vx.existing")}</span>
+            <div
+              className="vx-lists"
+              ref={(el) => {
+                // vybraný zoznam je hneď vidieť (aj keď je nižšie v zozname)
+                if (el && !el.dataset.shown) {
+                  el.dataset.shown = "1";
+                  el.querySelector(".vx-opt.on")?.scrollIntoView({ block: "nearest" });
+                }
+              }}
+            >
+              {lists.map((l) => (
+                <button type="button" key={l.id} className={`vx-opt${!isNew && c.listId === l.id ? " on" : ""}`} onClick={() => setC({ listId: l.id })}>
+                  <span className="grow">
+                    <b>{l.name}</b>
+                    <small>
+                      {l.planned_for ? dayLabel(l.planned_for) : t("trip.noDay")} · {tn("li.items", stats?.get(l.id)?.open ?? 0)}
+                    </small>
+                  </span>
+                  {!isNew && c.listId === l.id && <I n="check-circle" />}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        <span className="k">{t("vx.orNew")}</span>
+        <div className={`vx-new${isNew ? " on" : ""}`}>
+          <div className="vx-stores">
+            {tiles.map((s) => (
+              <button type="button" key={s} className={c.listId === null && c.store === s ? "on" : ""} onClick={() => nc({ store: c.listId === null && c.store === s ? "" : s })}>
+                <StoreTile k={storeKeyOf(s)} n={s} s={22} />
+                {s}
+              </button>
+            ))}
+          </div>
+          <div className="vx-days">
+            {days.map((d, i) => (
+              <button type="button" key={d} className={c.listId === null && c.date === d ? "on" : ""} onClick={() => nc({ date: d })}>
+                {dayNames[i]}
+              </button>
+            ))}
+          </div>
+          <div className="vx-days">
+            <span className="vx-who">{t("vx.who")}</span>
+            <button type="button" className={c.listId === null && !c.isPrivate ? "on" : ""} onClick={() => nc({ isPrivate: false })}>
+              {householdName}
+            </button>
+            <button type="button" className={c.listId === null && c.isPrivate ? "on" : ""} onClick={() => nc({ isPrivate: true })}>
+              {t("nl.onlyMe")}
+            </button>
+          </div>
+        </div>
+        <Btn cls="pri full big" disabled={busy || (!isNew && !L)} onClick={() => (done ? onCommit(c) : onPick(c))}>
+          {label}
+        </Btn>
+      </div>
+    </div>
   );
 }
 
+/** Len v testovacej appke: čo mikrofón naozaj dáva (hlasitosť vs. prah reči) – na odhalenie tichého mikrofónu. */
+/**
+ * Kontrolný riadok mikrofónu (len testovacia appka a len na požiadanie): zapne ho adresa s ?diag=1,
+ * vypne ?diag=0 – voľba sa pamätá v zariadení (bh.diag), aby fungovala aj v appke z plochy.
+ */
+function showDiag(): boolean {
+  try {
+    const q = new URLSearchParams(location.search).get("diag");
+    if (q === "1") localStorage.setItem("bh.diag", "1");
+    if (q === "0") localStorage.removeItem("bh.diag");
+    return localStorage.getItem("bh.diag") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function MicDiag({ diag }: { diag: { current: string } }) {
+  const [text, setText] = useState("");
+  useEffect(() => {
+    const id = setInterval(() => setText(diag.current), 400);
+    return () => clearInterval(id);
+  }, [diag]);
+  return text ? <div className="v-diag">{text}</div> : null;
+}

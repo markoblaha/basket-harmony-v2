@@ -39,16 +39,46 @@ export function useReceipt(id: string | undefined) {
   return useQuery({
     queryKey: receiptKeys.one(id ?? "none"),
     enabled: !!id,
-    queryFn: async (): Promise<{ receipt: Receipt; items: ReceiptItem[] } | null> => {
+    queryFn: async (): Promise<{ receipt: Receipt; items: ReceiptItem[]; products: Record<string, string> } | null> => {
       const [r, i] = await Promise.all([
         supabase.from("receipts").select("*").eq("id", id!).maybeSingle(),
         supabase.from("receipt_items").select("*").eq("receipt_id", id!).order("position"),
       ]);
       if (r.error) throw r.error;
       if (i.error) throw i.error;
-      return r.data ? { receipt: r.data, items: i.data } : null;
+      if (!r.data) return null;
+      // Pekné názvy produktov (napr. „Mlieko polotučné 1,5 %“) k riadkom z bločku.
+      const ids = [...new Set(i.data.map((x) => x.product_id).filter((x): x is string => !!x))];
+      const products: Record<string, string> = {};
+      if (ids.length > 0) {
+        const p = await supabase.from("products").select("id, name").in("id", ids);
+        if (p.error) throw p.error;
+        for (const x of p.data ?? []) products[x.id] = x.name;
+      }
+      return { receipt: r.data, items: i.data, products };
     },
     refetchInterval: (q) => (q.state.data?.receipt.status === "PROCESSING" ? 4_000 : false),
+  });
+}
+
+/** Počet položiek a ich názvy ku každému dokladu domácnosti – pre riadky zoznamu a hľadanie podľa položky. */
+export type ItemIndex = Map<string, { count: number; names: string[] }>;
+export function useReceiptItemIndex(householdId: string) {
+  return useQuery({
+    queryKey: ["receipts", householdId, "item-index"],
+    queryFn: async (): Promise<ItemIndex> => {
+      const { data, error } = await supabase.from("receipt_items").select("receipt_id, raw_name").eq("household_id", householdId);
+      if (error) throw error;
+      const map: ItemIndex = new Map();
+      for (const it of data ?? []) {
+        const e = map.get(it.receipt_id) ?? { count: 0, names: [] };
+        e.count++;
+        e.names.push(it.raw_name);
+        map.set(it.receipt_id, e);
+      }
+      return map;
+    },
+    staleTime: 60_000,
   });
 }
 
@@ -178,7 +208,8 @@ export async function queueReceipt(receiptId: string): Promise<void> {
  * Po návrate z tejto funkcie môže človek aplikáciu zavrieť – čítanie beží na serveri.
  * Strana, ktorá v domácnosti už je, sa preskočí.
  */
-export async function uploadReceipt(householdId: string, files: File[], listId?: string | null): Promise<UploadOutcome> {
+/** onRegistered: id dokladu hneď po zaevidovaní (aj pri duplicite) – obrazovka bločku podľa neho sleduje čítanie. */
+export async function uploadReceipt(householdId: string, files: File[], listId?: string | null, onRegistered?: (receiptId: string) => void): Promise<UploadOutcome> {
   const first = files[0];
   if (!first) throw new Error("VALIDATION");
   if (files.length > MAX_PAGES) throw new Error("TOO_MANY_PAGES");
@@ -191,6 +222,7 @@ export async function uploadReceipt(householdId: string, files: File[], listId?:
   });
   if (error) throw error;
   const reg = data[0]!;
+  onRegistered?.(reg.receipt_id);
   if (reg.already_exists) return "DUPLICATE";
 
   const uploaded: string[] = [];
@@ -503,5 +535,80 @@ export function useAddManualExpense(householdId: string) {
       qc.invalidateQueries({ queryKey: ["receipts"] });
       qc.invalidateQueries({ queryKey: ["analytics"] });
     },
+  });
+}
+
+// ------------------------------------------------------------------ párovanie s nákupom
+
+export type MatchCandidate = {
+  list_id: string;
+  name: string;
+  completed_at: string;
+  receipt_state: "NONE" | "LATER" | "ATTACHED";
+  attached: boolean;
+  score: number;
+  store_match: boolean;
+  days: number;
+  hit: string[];
+  missing: string[];
+  extra: { name: string; line_total: number }[];
+};
+export type MatchSuggestion = { receipt_id: string; list_id: string; score: number };
+
+/** Doklady bez nákupu, ku ktorým databáza našla pravdepodobný nákup (časť „Na vybavenie“). */
+export function useMatchSuggestions(householdId: string) {
+  return useQuery({
+    queryKey: ["receipt-match", householdId],
+    queryFn: async (): Promise<MatchSuggestion[]> => {
+      const { data, error } = await supabase.rpc("receipt_match_suggestions", { p_household_id: householdId });
+      if (error) throw error;
+      return (data as MatchSuggestion[]).map((s) => ({ ...s, score: Number(s.score) }));
+    },
+    // Bez nasadenej funkcie Doklady fungujú ďalej, len bez návrhov.
+    retry: false,
+  });
+}
+
+/** Nákupy, ku ktorým môže doklad patriť – so zhodou a porovnaním položiek. */
+export function useMatchCandidates(receiptId: string | undefined) {
+  return useQuery({
+    queryKey: ["receipt-candidates", receiptId ?? "none"],
+    enabled: !!receiptId,
+    queryFn: async (): Promise<MatchCandidate[]> => {
+      const { data, error } = await supabase.rpc("receipt_match_candidates", { p_receipt_id: receiptId! });
+      if (error) throw error;
+      return (data as MatchCandidate[]).map((c) => ({ ...c, score: Number(c.score) }));
+    },
+  });
+}
+
+function invalidateMatch(qc: ReturnType<typeof useQueryClient>) {
+  invalidateReceipts(qc);
+  qc.invalidateQueries({ queryKey: ["receipt-match"] });
+  qc.invalidateQueries({ queryKey: ["receipt-candidates"] });
+  qc.invalidateQueries({ queryKey: ["lists"] });
+}
+
+/** Priradí doklad k nákupu (databáza odpojí doklad od predchádzajúceho nákupu). */
+export function useAttachReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ receiptId, listId }: { receiptId: string; listId: string }) => {
+      const { error } = await supabase.rpc("attach_receipt_to_list", { p_receipt_id: receiptId, p_list_id: listId });
+      if (error) throw error;
+    },
+    onSettled: () => invalidateMatch(qc),
+  });
+}
+
+/** „Bez nákupu“ – doklad sa už nebude navrhovať k nákupu. */
+export function useDismissMatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (receiptId: string) => {
+      const { error } = await supabase.rpc("dismiss_receipt_match", { p_receipt_id: receiptId });
+      if (error) throw error;
+    },
+    onSettled: () => invalidateMatch(qc),
   });
 }
