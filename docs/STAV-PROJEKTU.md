@@ -784,7 +784,14 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     **Fotky:** až po naplnení knihy, dávkovo cez Gemini (kredit musí byť dobitý); dovtedy obrázok šarže (`image_status = batch_label`).
     **Zostáva:** dopĺňať potraviny (nové suroviny dostávajú kľúč `x_…` bez výživy), údaje 20 receptov šarží 1–2 sú plné (porovnanie),
     nové z linky „light“ (bez tabuľky porovnania), kategórie a Ochutnávač čítajú z DB.
-    **Čaká na majiteľa:** prejsť recepty (28) v testovacej appke a povedať, čo zmeniť; potom ďalšie dávky z predplatného.
+    **Kniha naprázdno (19. 11. 2026, pokyn a súhlas majiteľa):** v TESTOVACEJ DB zmazané všetky recepty knihy (29 jedál,
+    29 receptov, 497 zdrojov, 3 behy linky) a 1 plán varenia; recepty domácností, obľúbené a „páči sa mi“ boli už prázdne.
+    Zmazal majiteľ sám v SQL Editore – potvrdenie mazania z konektora Supabase sa v jeho appke nezobrazuje (4 pokusy
+    skončili po 60 s bez odpovede), preto mazanie v DB vždy rovno cez SQL Editor majiteľa. Z kódu preč 58 obrázkov šarží
+    (`public/kniha`, vetva `claude/bold-fermat-3easmm` – do testovacej vetvy ešte nezlúčené). Ostala len testovacia vzorka
+    `__fixtures__/kniha.json` (appka ju neukazuje) a vymyslené recepty v ukážke. Overené preklikaním testovacej adresy
+    (Domov, Recepty, Ochutnávač, recept, varenie × 4 vzhľady): 0 chýb; pri prázdnej knihe ostávajú prázdne nadpisy
+    „Kategórie“ a „Rýchly výber“ (zmiznú po naplnení). Ďalej: oprava načítania knihy a nová linka, potom prvá dávka.
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
     recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):
     **Vaření.cz** 47 794 receptov, víťaz pri 13/13 jedál, medián 146 hodnotení, 91 % surovín s množstvom, ~130 slov postupu,
