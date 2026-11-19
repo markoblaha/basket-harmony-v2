@@ -1,6 +1,6 @@
 # Stav projektu (odovzdanie pre ďalšiu reláciu)
 
-Aktualizované 17. 11. 2026 (kniha receptov: skúšobná šarža 1). Pred prácou si prečítaj celé – je to krátke.
+Aktualizované 19. 11. 2026 (kniha receptov: rozhodnutie o presnom kopírovaní, meranie webov). Pred prácou si prečítaj celé – je to krátke.
 
 ## Kde čo beží
 
@@ -289,6 +289,12 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   označené „vypočítané zo surovín“. Cieľ asi 3 000 receptov (míľniky 20 / 250 / 1 000 / 3 000), prevažne SK/CZ + asi
   300 u nás bežne varených zahraničných; ďalšie krajiny neskôr (recept má kuchyňu a jazyk). Ochutnávač ukazuje recept
   až s fotkami; kategórie sa rozšíria (prílohy, šaláty, pečivo, koláče, torty, sviatočné).
+- **Recepty sa kopírujú presne (19. 11. 2026, rozhodnutie majiteľa):** z jedného najlepšieho receptu sa prevezmú suroviny,
+  množstvá, údaje aj postup bez zmien – nič sa nespája, nepíše vlastnými slovami ani nedopĺňa. Český recept = verný preklad
+  vety po vete (čísla kontroluje program), slovenský sa skopíruje doslova. Právo a licencie si rieši majiteľ sám pred
+  vydaním appky – v návrhoch ich neriešiť. Napĺňanie postupne cez predplatné Claude (20 €), nie cez platené API.
+  Návrh ChatGPT „Recipe Platform V3“ (17. 11.: 17 tabuliek catalog_*, etapy F0–F8, AI „obohatenie“) je zamietnutý –
+  vychádzal zo starého ZIP-u (recepty ešte v kóde) a prerábal by hotovú knihu v DB.
 
 ## Otvorené (návrhy čakajú na rozhodnutie majiteľa)
 
@@ -779,6 +785,24 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     **Zostáva:** dopĺňať potraviny (nové suroviny dostávajú kľúč `x_…` bez výživy), údaje 20 receptov šarží 1–2 sú plné (porovnanie),
     nové z linky „light“ (bez tabuľky porovnania), kategórie a Ochutnávač čítajú z DB.
     **Čaká na majiteľa:** prejsť recepty (28) v testovacej appke a povedať, čo zmeniť; potom ďalšie dávky z predplatného.
+    **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
+    recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):
+    **Vaření.cz** 47 794 receptov, víťaz pri 13/13 jedál, medián 146 hodnotení, 91 % surovín s množstvom, ~130 slov postupu,
+    kroky zvlášť; **Apetitonline.cz** 12 152 (redakčné), 11/13, medián 204 hodnotení, najdlhšie postupy (do 254 slov), málo
+    dlhých odsekov; **Toprecepty.cz** 78 171, 12/13, medián 40; **Recepty.cz** 32 472, 8/13, medián 550 hodnotení, ale krátke
+    postupy (~90 slov, často jeden odsek). Slovenské (bez prekladu): **Kuchyňa Lidla** 2 980 (kuchári, uvádza aj náradie;
+    suroviny v JSON-LD ako jeden text → treba upraviť čítanie, hodnotenie 0–100 a málo hlasov, server občas vráti 500),
+    **Varecha** (najdlhšie postupy, medián 210 slov, ale žiadne hodnotenia v dátach; robots.txt zakazuje ClaudeBot/GPTBot,
+    Claude-User povoľuje), **Receptár.sk** 12 712 (mikrodáta, hodnotenia nesedia, ~84 slov), **recepty.aktuality.sk**
+    (pekne štruktúrované, ale bez sitemap a hľadanie je cez JS – adresy len z kategórií, málo hlasov). Len s vlastnou
+    čítačkou HTML: Víkendové pečení (581, JSON-LD bez surovín), Kuchařka pro dceru (505), Bonviváni (bez dát a sitemap).
+    Nepoužiteľné: Labužník (medián 1 hodnotenie), Cooky.cz (12/15 bez receptu v dátach), fitrecepty.sk (403), kuchynelidla.cz
+    (nedostupné). **Zoznam jedál zo sitemap:** 184 tis. adries zo 6 webov → 873 názvov jedál na ≥4 weboch, 3 310 na ≥3
+    (treba zlúčiť CZ/SK názvy a obmeny, napr. jablkový/jablečný koláč). Skripty merania boli len v scratchpade.
+    **Pred hromadným napĺňaním opraviť:** appka sťahuje celú knihu naraz (`useBookRecipes`: všetky recepty aj zdroje;
+    `book_sources` má 497 riadkov pre 29 receptov a Supabase vráti najviac 1 000 → okolo 60 receptov sa zdroje stratia) –
+    zoznam bez surovín/krokov + detail po otvorení; `light.py` berie z každého webu len 5 najkratších adries a víťaza len
+    podľa počtu hlasov; kategórie receptov sú natvrdo v `previest.py` (`META`).
 - **Recepty 2.0 (31. 10. 2026):** AI dnes recepty vymýšľa (rýchly model, bez opravy textu, fotka podľa slov v názve) –
   preto zlé výsledky („paprikas“). Plán verzia 2: jedna kniha bez delenia na krajiny, ~1 000 receptov (prvá várka 500),
   vyrobená raz výrobnou linkou (silný model píše → kritik porovná so zdrojmi → majiteľ schvaľuje), fotky od AI
