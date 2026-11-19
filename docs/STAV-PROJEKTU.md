@@ -792,6 +792,13 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     `__fixtures__/kniha.json` (appka ju neukazuje) a vymyslené recepty v ukážke. Overené preklikaním testovacej adresy
     (Domov, Recepty, Ochutnávač, recept, varenie × 4 vzhľady): 0 chýb; pri prázdnej knihe ostávajú prázdne nadpisy
     „Kategórie“ a „Rýchly výber“ (zmiznú po naplnení). Ďalej: oprava načítania knihy a nová linka, potom prvá dávka.
+    **Návrh systému knihy (19. 11. 2026, čaká na 7 rozhodnutí majiteľa):** dokument „Kniha receptov – návrh systému“
+    https://claude.ai/artifact/3SiahzC5pTB7pMZVWcXz5q (Claude Docs). Jadro: rodina → jedlo (karta, jeden chod) → spôsob
+    prípravy (max 6, kľúč `jedlo__spôsob`); test jedlo/spôsob (iný chod / iná hlavná surovina / vlastné meno = iné jedlo,
+    zmena chuti či techniky = spôsob, prívlastok = nič); prílohy a základy sú samostatné jedlá s väzbou „podáva sa s“;
+    „kuracie“ je filter. Linka v 9 krokoch, AI len preklad; skóre dôvery (hlasy × hviezdy + 20 × 4,3) / (hlasy + 20).
+    Mapa knihy = zoznam jedál s cieľmi po 15 chodoch (spolu 3 000) + skóre „oplatí sa“ (weby, hlasy, dopyt v appke, medzera,
+    sezóna). Prehľad knihy pre správcu vo Viac. Nové: `book_terms`, `book_signals`, preklady/trhy až s DE/AT. Fázy 1–6 s bránami.
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
     recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):
     **Vaření.cz** 47 794 receptov, víťaz pri 13/13 jedál, medián 146 hodnotení, 91 % surovín s množstvom, ~130 slov postupu,
