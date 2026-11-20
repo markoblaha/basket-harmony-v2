@@ -187,14 +187,19 @@ export function BookInfo({ r }: { r: Recipe }) {
         {unknown.length > 0 && <p>{t("kb.algUnknown", { names: unknown.map(metric).join(", ") })}</p>}
         {check.length > 0 && <p>{t("kb.checkPack", { names: check.join(", ") })}</p>}
       </div>
-      <div>
-        <div className="bgh">{t("kb.tools")}</div>
-        <p>{b.tools.join(" · ")}</p>
-      </div>
-      <div>
-        <div className="bgh">{t("kb.store")}</div>
-        <p>{b.store}</p>
-      </div>
+      {/* Náradie a skladovanie len keď ich zdroj uvádza – prázdny nadpis nie. */}
+      {b.tools.length > 0 && (
+        <div>
+          <div className="bgh">{t("kb.tools")}</div>
+          <p>{b.tools.join(" · ")}</p>
+        </div>
+      )}
+      {b.store && (
+        <div>
+          <div className="bgh">{t("kb.store")}</div>
+          <p>{b.store}</p>
+        </div>
+      )}
       {b.check && <BookCheckInfo r={r} />}
       <div>
         <div className="bgh">{tn(b.check ? "kb.compared" : "kb.sources", b.sources.length)}</div>

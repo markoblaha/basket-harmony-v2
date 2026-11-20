@@ -52,7 +52,8 @@ z prerušeného behu na začiatku ukončí (`end_shopping`).
    `20261113000040_price_store_count`, `…041_price_comparable` (v testovacej DB ako 3 kroky: price_comparable,
    price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
    (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
-   Kniha receptov: `20261117000043_recipe_book` a `20261120000044_book_recipe_lang` (jazyk receptu `lang`, cs/sk).
+   Kniha receptov: `20261117000043_recipe_book`, `20261120000044_book_recipe_lang` (jazyk receptu `lang`, cs/sk) a
+   `20261120000045_book_recipe_images` (počet fotiek, stav 'source').
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
    Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v5,
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
@@ -843,6 +844,16 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     („Hovädzí guláš“, `gulas_p`) – `recipeArt` v `src/mockup/kit.tsx` priraďoval fotky mockupu skutočným receptom podľa
     podobného názvu. Už nie: recept má len vlastné fotky knihy (`book.photos`, zatiaľ žiadne), inak emoji. Testovacia DB
     overená: len šarža 4 (18 receptov, 18 jedál, 18 zdrojov), žiadne recepty domácností, plány, obľúbené ani „páči sa mi“.
+    **Slovenčina + originálne fotky (20. 11., pokyn majiteľa):** 15 českých receptov preložených do slovenčiny v relácii
+    (názov, riadky surovín `orig` a `label`, kroky, nadpisy častí, Pozor/Tip), `lang = 'sk'`; český originál je celý vo
+    `verification.original` (lang, name, ingredients, steps). Kontrola: čísla v 304 riadkoch/krokoch = originál, žiadne ř/ě/ů.
+    Opravené priradenie 11 surovín (x_bravcove_pliecko → pliecko, baklažán, sóda, knedľa, kondenzované mlieko, lasagne,
+    med, muškát, párky, krájané paradajky). Prázdne „Náradie“/„Skladovanie“ sa neukazujú.
+    Fotky: dočasné originály zo stránok zdrojov v `public/kniha/<id>-<n>.webp` (+ `-1s` náhľad), 39 fotiek, ručne vybrané
+    (`tools/kniha/sarza4/fotky18.py`, výber `vyber_fotiek18.txt`) – len fotky toho istého receptu (hlavná + fotky čitateľov),
+    nie náhľady iných receptov; Lidl, Toprecepty a pri Apetite stránka viac fotiek receptu nemá (1–2). Migrácia
+    `20261120000045_book_recipe_images` (TESTOVACIA DB): `image_count`, `image_status = 'source'` (= predloha, neskôr Gemini
+    a originály zmazať). Ochutnávač sa tým vrátil (ukazuje recepty s fotkami).
     Recepty.cz zamietnuté a nahradené (buchty bez teploty a času, plnené knedle bez množstiev plnky). Hodnotenia
     Víkendového pečenia a Lidla majú málo hlasov (8–20, laskonky 7). Časy pri Lidli a Víkendovom pečení odhadnuté z krokov
     (`verification.time_estimated`). Mapovanie potravín: `parse.py` zle priradil 26 surovín (napr. „olej na vymastenie plechu“

@@ -1,0 +1,20 @@
+# Ručný výber dočasných originálnych fotiek (20. 11.): len fotky toho istého receptu zo stránky zdroja (hlavná + fotky
+# čitateľov pri Vaření/Recepty.cz), nie náhľady iných receptov. Lidl, Toprecepty: na stránke je len 1 fotka receptu.
+cheesecake_s_ovocnou_penou c1 c3 c6
+hovadzi_gulas c1 c8 c3
+karamelove_veterniky c8 c1
+konfitovana_kacica l1
+kulajda c1 c3 c4
+lasagne c2
+laskonky c1
+makove_torticky_s_mangom c1 c3 c9
+medovnik c8 c1
+moravsky_vrabec c1 c4 c3
+pecena_kacica c1 c2 c7
+recka_musaka c2
+segedinsky_gulas c2
+spanielsky_vtacik c10 c12 c8
+svieckova c1 c6 c10
+tekvicove_rezy c1 c8 c9
+vianocka c8 c1
+vianocna_kapustnica c1

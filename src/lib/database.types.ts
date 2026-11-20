@@ -51,7 +51,7 @@ export type Database = {
           active_minutes: number | null; batch: number | null; category: string; check_data: Json | null; created_at: string; cuisine: string | null;
           difficulty: number; dish_id: string; id: string; image_path: string | null; image_status: string; ingredients: Json; meat: string; minutes: number;
           name: string; portions: number; portions_guess: boolean; scale: string | null; status: string; steps: Json; store: string | null; tags: string[];
-          tools: string[]; updated_at: string; variant_key: string; verification: Json; version: number; wait: string | null; lang: string;
+          tools: string[]; updated_at: string; variant_key: string; verification: Json; version: number; wait: string | null; lang: string; image_count: number;
         };
         Insert: Partial<Database["public"]["Tables"]["book_recipes"]["Row"]> & { id: string; dish_id: string; name: string; category: string; minutes: number; portions: number; ingredients: Json; steps: Json };
         Update: Partial<Database["public"]["Tables"]["book_recipes"]["Row"]>;

@@ -11,7 +11,7 @@ import type { BookCheck, Ingredient, Recipe, Step } from "./types";
  * Obrázky receptov z databázy (image_path): pre každý recept sa raz pridá CSS pravidlo pic-kb_<id>_1 (veľký) a _1s (malý náhľad),
  * ktoré používajú karty, kategórie a celá obrazovka (bookPics). Súbor „-1s“ je malý náhľad vedľa hlavného obrázka.
  */
-export function injectBookPics(items: { id: string; path: string | null }[]) {
+export function injectBookPics(items: { id: string; path: string | null; n?: number }[]) {
   if (typeof document === "undefined") return;
   let el = document.getElementById("book-pics") as HTMLStyleElement | null;
   if (!el) {
@@ -23,7 +23,12 @@ export function injectBookPics(items: { id: string; path: string | null }[]) {
     .filter((x) => x.path)
     .map((x) => {
       const small = x.path!.replace(/-1\.webp$/, "-1s.webp");
-      return `.pic-kb_${x.id}_1, .bhm .pic-kb_${x.id}_1 { background-image: url("${x.path}"); } .pic-kb_${x.id}_1s, .bhm .pic-kb_${x.id}_1s { background-image: url("${small}"); }`;
+      // Ďalšie fotky (_2, _3 …) ležia vedľa hlavnej: <id>-2.webp, <id>-3.webp.
+      const more = Array.from({ length: Math.max(0, (x.n ?? 1) - 1) }, (_, k) => {
+        const url = x.path!.replace(/-1\.webp$/, `-${k + 2}.webp`);
+        return `.pic-kb_${x.id}_${k + 2}, .bhm .pic-kb_${x.id}_${k + 2} { background-image: url("${url}"); }`;
+      });
+      return [`.pic-kb_${x.id}_1, .bhm .pic-kb_${x.id}_1 { background-image: url("${x.path}"); } .pic-kb_${x.id}_1s, .bhm .pic-kb_${x.id}_1s { background-image: url("${small}"); }`, ...more].join(" ");
     })
     .join("\n");
 }

@@ -114,7 +114,7 @@ export function useBookRecipes() {
           ingredients: r.ingredients as unknown as Ingredient[],
           steps: r.steps as unknown as Step[],
           book: {
-            photos: r.image_path ? 1 : 0,
+            photos: r.image_path ? Math.max(1, r.image_count ?? 1) : 0,
             batch: r.image_status === "batch_label" ? (r.batch ?? undefined) : undefined,
             active: r.active_minutes ?? r.minutes,
             wait: r.wait ?? undefined,
@@ -128,7 +128,7 @@ export function useBookRecipes() {
           },
         };
       });
-      injectBookPics(list.map((r) => ({ id: r.id, path: rec.data.find((x) => x.id === r.id)?.image_path ?? null })));
+      injectBookPics(list.map((r) => ({ id: r.id, path: rec.data.find((x) => x.id === r.id)?.image_path ?? null, n: r.book?.photos ?? 0 })));
       return list;
     },
   });
