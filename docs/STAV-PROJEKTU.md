@@ -835,6 +835,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     hrnčeky v zátvorke za množstvom v ml (musaka „(0,25 hrnku)“) vynechá; desatinná bodka zdroja → čiarka. Platí pre suroviny,
     text krokov (aj „ĎALEJ“ vo varení), Pozor/Tip a názvy pri kroku. Originál v DB ostáva nezmenený, takže to platí aj pre
     ďalšie recepty. V šarži 4: sviečková 20 dkg slaniny → 200 g, veterníky 3,5 dl vody → 350 ml, musaka bez hrnčekov.
+    **Fotky (20. 11.):** „Hovězí guláš v tlakáči“ (a cez neho dlaždice Mäso a Všetky recepty) mal ukážkovú fotku z mockupu
+    („Hovädzí guláš“, `gulas_p`) – `recipeArt` v `src/mockup/kit.tsx` priraďoval fotky mockupu skutočným receptom podľa
+    podobného názvu. Už nie: recept má len vlastné fotky knihy (`book.photos`, zatiaľ žiadne), inak emoji. Testovacia DB
+    overená: len šarža 4 (18 receptov, 18 jedál, 18 zdrojov), žiadne recepty domácností, plány, obľúbené ani „páči sa mi“.
     Recepty.cz zamietnuté a nahradené (buchty bez teploty a času, plnené knedle bez množstiev plnky). Hodnotenia
     Víkendového pečenia a Lidla majú málo hlasov (8–20, laskonky 7). Časy pri Lidli a Víkendovom pečení odhadnuté z krokov
     (`verification.time_estimated`). Mapovanie potravín: `parse.py` zle priradil 26 surovín (napr. „olej na vymastenie plechu“

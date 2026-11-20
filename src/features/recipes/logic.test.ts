@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buyPlan, formatAmount, interpretQuery, matchesFilters, mergeIngredients, metric, recipeNutrition, renderStep, rowKey, scaleIngredients, scaleOrig } from "./logic";
+import { recipeArt } from "@/mockup/kit";
 import type { Ingredient, Recipe } from "./types";
 
 /* Skúšobné recepty len pre tento test (logika nesmie závisieť od obsahu knihy, ktorá sa mení po šaržiach). */
@@ -78,6 +79,13 @@ describe("recepty", () => {
     expect(nu.perPortion.kcal).toBeGreaterThan(400);
     expect(nu.perPortion.kcal).toBeLessThan(1200);
     expect(nu.skipped).toContain("Soľ");
+  });
+});
+
+describe("recipeArt – obrázok receptu", () => {
+  it("skutočný recept nedostane ukážkovú fotku z mockupu podľa podobného názvu", () => {
+    expect(recipeArt("hovadzi_gulas", "Hovězí guláš v tlakáči").pic).toBeNull();
+    expect(recipeArt("gulas", "Hovädzí guláš").pic).toBeNull();
   });
 });
 

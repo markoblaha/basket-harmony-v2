@@ -137,11 +137,14 @@ export function relDay(value: string | Date): string {
 export const eur0 = (v: number) => formatNumber(Math.round(v), { style: "currency", currency: "EUR", maximumFractionDigits: 0, minimumFractionDigits: 0 });
 export const eur = (v: number) => formatEuro(v);
 
-/** Recept z mockupu (3D emoji, fotka) podľa kľúča alebo názvu receptu v appke. */
+/**
+ * 3D emoji a farba podľa kľúča alebo názvu receptu (z mockupu). Bez fotky: ukážkové fotky mockupu (napr. „Hovädzí guláš“)
+ * nepatria skutočným receptom – recept má len vlastné fotky z knihy (book.photos), inak emoji (pokyn majiteľa 20. 11.).
+ */
 export function recipeArt(key: string, name: string): { e: string; pic: string | null; bg: string } {
   const n = norm(name);
   const r = RECIPES.find((x) => x.id === key) ?? RECIPES.find((x) => norm(x.n) === n) ?? RECIPES.find((x) => n.includes(norm(x.n).split(" ").pop()!));
-  return r ? { e: r.e, pic: r.pic, bg: r.bg } : { e: "pot", pic: null, bg: "peach" };
+  return r ? { e: r.e, pic: null, bg: r.bg } : { e: "pot", pic: null, bg: "peach" };
 }
 
 /** Avatar jedného člena (mockup Av). */
