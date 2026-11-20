@@ -9,7 +9,7 @@ import { t, tn, type Key } from "@/i18n";
 import { E, Back, MkHeader, Seg } from "@/mockup/ui";
 import { eur } from "@/mockup/kit";
 import { useFavorites, useRecipes } from "./api";
-import { CHEAP, RCATS, RCOLS, RCard, useRecipeFacts } from "./mk";
+import { CHEAP, RCATS, RCOLS, RCard, SUBCATS, useRecipeFacts } from "./mk";
 import type { Recipe } from "./types";
 
 type Sort = "rec" | "fast" | "cheap";
@@ -22,6 +22,7 @@ export function CollectionPage() {
   const favs = useFavorites(household.id).data ?? new Set<string>();
   const { facts } = useRecipeFacts(household.id, recipes.all, recipes.find);
   const [sort, setSort] = useState<Sort>("rec");
+  const [subSel, setSubSel] = useState<string | null>(null);
 
   let title = "";
   let sub = "";
@@ -39,6 +40,9 @@ export function CollectionPage() {
     title = id;
     list = recipes.mine.filter((r) => (r.source || t("rk.srcMine")) === id);
   }
+  // Podkategórie kategórie, ktoré majú aspoň jeden recept – filtre nad zoznamom.
+  const subs = kind === "cat" ? (SUBCATS[id] ?? []).map((s) => ({ s, n: list.filter((r) => r.sub === s).length })).filter((x) => x.n > 0) : [];
+  if (subSel && subs.some((x) => x.s === subSel)) list = list.filter((r) => r.sub === subSel);
   const f = (r: Recipe) => facts.get(r.id);
   const ratio = (r: Recipe) => (f(r) ? f(r)!.have / Math.max(1, f(r)!.all) : 0);
   const sorted = [...list].sort(
@@ -61,6 +65,19 @@ export function CollectionPage() {
           value={sort}
           onChange={setSort}
         />
+        {subs.length > 1 && (
+          <div className="chips">
+            <button type="button" className={`chip${subSel ? "" : " on"}`} aria-pressed={!subSel} onClick={() => setSubSel(null)}>
+              {t("rk.subAll")}
+            </button>
+            {subs.map(({ s, n }) => (
+              <button type="button" key={s} className={`chip${subSel === s ? " on" : ""}`} aria-pressed={subSel === s} onClick={() => setSubSel(subSel === s ? null : s)}>
+                {t(`rk.sub.${s}` as Key)}
+                <span className="cn">{n}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </MkHeader>
       <div className="bhm bhm-list">
         <div className="body">

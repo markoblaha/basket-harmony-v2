@@ -53,7 +53,7 @@ z prerušeného behu na začiatku ukončí (`end_shopping`).
    price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
    (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
    Kniha receptov: `20261117000043_recipe_book`, `20261120000044_book_recipe_lang` (jazyk receptu `lang`, cs/sk) a
-   `20261120000045_book_recipe_images` (počet fotiek, stav 'source').
+   `20261120000045_book_recipe_images` (počet fotiek, stav 'source') a `20261120000046_book_recipe_subcategory_yield`.
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
    Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v5,
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
@@ -300,6 +300,15 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   inak vôbec – radšej nič ako zlé číslo (pokyn 20. 11.: kačica nemôže stáť 25 centov). Alergény ukazuje recept z knihy vždy
   (hore pri čase), pri surovine mimo databázy potravín „a možno ďalšie“ + v Info „nevieme určiť pri …“ (`fullCost` v `mk.tsx`,
   `recipeAllergens` v `kniha.ts`).
+  **Kategórie (20. 11., podľa Vaření, Varecha, Apetit):** dlaždice Polievky, Mäso, Kuracie a hydina, Cestoviny/ryža/pizza,
+  Ryby, Bez mäsa a šaláty, **Raňajky** (samostatne) a **Koláče a dezerty**; podkategórie `SUBCATS` v `mk.tsx` (stĺpec
+  `book_recipes.subcategory`, na stránke kategórie filtre): sladké = torty, cheesecaky, koláče a rezy, kysnuté pečivo,
+  zákusky a drobné pečivo, dezerty a krémy, sladké jedlá; polievky = vývary, krémové, zeleninové, mäsové a kapustové;
+  mäso = hovädzie, bravčové, jahňacie a zverina; hydina = kuracie, kačica a hus, morka; cestoviny = zapekané, s omáčkou,
+  ryža, pizza; bez mäsa = zeleninové, zo syra a vajec, strukoviny, šaláty; raňajky = sladké, slané, kaše.
+  **Koláče bez porcií:** `book_recipes.yield_text` = výťažok zo zdroja („1 cheesecake (forma Ø 20 cm)“); pri `scale = whole`
+  appka ukáže „Koľko upiecť: 1× recept“ + „Recept na: …“, kusové pečivo (`piece` + výťažok) po polovici receptu v kusoch
+  (laskonky 10/20/30/40 ks). Migrácia `20261120000046_book_recipe_subcategory_yield` (TESTOVACIA DB).
   **Čo sa z receptu NEberie (pokyn 20. 11., spresnenie „presnej kópie“):** berie sa podrobný postup, tipy a rady k vareniu
   a naše upozornenia; vynechajú sa výzvy autora (komentáre, hodnotenie, sledovanie), odkazy na obchody a iné články,
   reklama na výrobky (napr. Tescoma, „kúpite ich tu“), značky obchodu v surovinách (Lidl: Alesto, Belbake, Pilos, Kania,

@@ -113,6 +113,7 @@ export function useBookRecipes() {
           source: "",
           ingredients: r.ingredients as unknown as Ingredient[],
           steps: r.steps as unknown as Step[],
+          sub: r.subcategory ?? undefined,
           book: {
             photos: r.image_path ? Math.max(1, r.image_count ?? 1) : 0,
             photoBase: r.image_path ? r.image_path.replace(/-1\.webp$/, "") : undefined,
@@ -121,6 +122,7 @@ export function useBookRecipes() {
             wait: r.wait ?? undefined,
             scale: (r.scale ?? undefined) as "free" | "piece" | "whole" | undefined,
             portionsGuess: r.portions_guess || undefined,
+            yield: r.yield_text ?? undefined,
             cuisine: r.cuisine ?? "",
             tools: r.tools,
             store: r.store ?? "",

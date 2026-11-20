@@ -18,10 +18,26 @@ export const RCATS: { id: string; e: string; bg: string; test: (r: Recipe) => bo
   { id: "hydina", e: "poultry", bg: "rose", test: (r) => r.meat === "kuracie" && r.category !== "polievky" },
   { id: "cestoviny", e: "spaghetti", bg: "butter", test: (r) => r.category === "cestoviny" },
   { id: "ryby", e: "fish", bg: "sky", test: (r) => r.meat === "ryby" },
-  { id: "bezmasa", e: "salad", bg: "sage", test: (r) => r.category === "salaty" || (r.meat === "bez" && r.category !== "sladke" && r.category !== "ranajky") },
-  { id: "sladke", e: "pancakes", bg: "butter", test: (r) => r.category === "sladke" || r.category === "ranajky" },
+  { id: "bezmasa", e: "salad", bg: "sage", test: (r) => r.category === "salaty" || (r.meat === "bez" && !["sladke", "ranajky", "polievky"].includes(r.category)) },
+  { id: "ranajky", e: "pancakes", bg: "butter", test: (r) => r.category === "ranajky" },
+  { id: "sladke", e: "cake", bg: "rose", test: (r) => r.category === "sladke" },
   { id: "all", e: "books", bg: "peach", test: () => true },
 ];
+/**
+ * Podkategórie hlavných kategórií (podľa veľkých receptových webov – Vaření, Varecha, Apetit). Recept má podkategóriu
+ * v databáze (book_recipes.subcategory); na stránke kategórie sú to filtre. Text: rk.sub.<id>.
+ */
+export const SUBCATS: Record<string, string[]> = {
+  polievky: ["vyvary", "kremove", "zeleninove", "masove"],
+  maso: ["hovadzie", "bravcove", "jahnacie_zverina"],
+  hydina: ["kuracie", "kacica_hus", "morka"],
+  ryby: ["ryby", "morske"],
+  cestoviny: ["zapekane", "omacky", "ryza", "pizza"],
+  bezmasa: ["zeleninove_jedla", "syr_vajcia", "strukoviny", "salaty"],
+  ranajky: ["sladke_ranajky", "slane_ranajky", "kase"],
+  sladke: ["torty", "cheesecaky", "kolace_rezy", "kysnute", "zakusky", "dezerty", "sladke_jedla"],
+};
+
 /** Do koľko € na porciu je jedlo „lacné“. */
 export const CHEAP = 1.2;
 export const RCOLS: { id: string; e: string; test: ((r: Recipe) => boolean) | null }[] = [

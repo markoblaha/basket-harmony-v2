@@ -107,6 +107,8 @@ export type BookInfo = {
   scale?: "free" | "piece" | "whole";
   /** Pôvodný recept počet porcií neuvádza – porcie sú odhad (napr. knedle, štrúdľa na krájanie). */
   portionsGuess?: boolean;
+  /** Výťažok receptu zo zdroja („1 cheesecake (forma Ø 20 cm)“, „20 laskoniek“) – pri koláčoch namiesto porcií. */
+  yield?: string;
   /** Overenie metódou „kotva“ (novšie recepty); staršie recepty sú spojené z 3–5 zdrojov bez neho. */
   check?: BookCheck;
 };
@@ -135,4 +137,6 @@ export type Recipe = {
   mine?: boolean;
   ai?: boolean;
   book?: BookInfo;
+  /** Podkategória (SUBCATS v mk.tsx), napr. torty, cheesecaky, hovadzie. */
+  sub?: string;
 };

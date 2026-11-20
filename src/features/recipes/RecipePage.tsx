@@ -57,7 +57,13 @@ export function RecipePage() {
     ? { min: 1, max: Math.max(12, (r?.portions ?? 4) * 2), step: 1 }
     : r.book.scale === "whole"
       ? { min: r.portions, max: r.portions * 3, step: r.portions }
-      : { min: r.book.scale === "piece" ? 1 : Math.max(1, Math.ceil(r.portions / 2)), max: r.portions * 2, step: 1 };
+      : r.book.scale === "piece" && r.book.yield
+        ? // Kusové pečivo (laskonky, veterníky): po polovici receptu, ak to ide (20 → 10, 20, 30, 40 ks).
+          { min: r.portions % 2 ? r.portions : r.portions / 2, max: r.portions * 2, step: r.portions % 2 ? r.portions : r.portions / 2 }
+        : { min: r.book.scale === "piece" ? 1 : Math.max(1, Math.ceil(r.portions / 2)), max: r.portions * 2, step: 1 };
+  // Koláče a torty: namiesto „1 porcia“ výťažok zo zdroja („Recept na: 1 cheesecake (forma Ø 20 cm)“).
+  const yieldWhole = !!r?.book?.yield && r.book.scale === "whole";
+  const porLabel = !r ? "" : yieldWhole ? t("kb.times", { n: por / r.portions }) : r.book?.yield && r.book.scale === "piece" ? tn("kb.pcs", por) : tn("rk.portions", por);
   const [tab, setTab] = useState<"ing" | "steps">("ing");
   const [sheet, setSheet] = useState<null | "add" | "plan" | "nutri" | "del">(null);
   useEffect(() => {
@@ -154,7 +160,8 @@ export function RecipePage() {
         {r.book ? (
           <div key={r.id} className="rhero2 rgal rbook">
             <PhotoSwiper r={r} />
-            {ids.length > 1 && (
+            {/* Pri galérii fotiek je vpravo hore počítadlo fotiek – počítadlo receptov by sa s ním prekrývalo. */}
+            {ids.length > 1 && !r.book.photos && (
               <span className="rpos">
                 {idx + 1} / {ids.length}
               </span>
@@ -229,12 +236,17 @@ export function RecipePage() {
           {tab === "ing" ? (
             <>
               <div className="portion">
-                <span className="meta">{t("rk.forHowMany")}</span>
-                <Stepper label={tn("rk.portions", por)} minDisabled={por <= lim.min} onMinus={() => setPor(Math.max(lim.min, por - lim.step))} onPlus={() => setPor(Math.min(lim.max, por + lim.step))} />
+                <span className="meta">{t(r.book?.yield ? "rk.howMuch" : "rk.forHowMany")}</span>
+                <Stepper label={porLabel} minDisabled={por <= lim.min} onMinus={() => setPor(Math.max(lim.min, por - lim.step))} onPlus={() => setPor(Math.min(lim.max, por + lim.step))} />
               </div>
+              {r.book?.yield && (
+                <p className="t-xs t-2 bscale">
+                  {por === r.portions || !yieldWhole ? t("kb.yield", { y: r.book.yield }) : t("kb.yieldTimes", { y: r.book.yield, n: por / r.portions })}
+                </p>
+              )}
               {r.book?.scale && (
                 <p className="t-xs t-2 bscale">
-                  {t(r.book.scale === "whole" ? "kb.scaleWhole" : "kb.scaleFree")}
+                  {t(r.book.scale === "whole" ? "kb.scaleWhole" : r.book.scale === "piece" && r.book.yield ? "kb.scalePieces" : "kb.scaleFree")}
                   {r.book.portionsGuess && ` ${t("kb.portionsGuess")}`}
                 </p>
               )}
