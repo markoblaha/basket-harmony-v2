@@ -8,7 +8,7 @@ import { useToast } from "@/components/toast";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useEstimator } from "@/features/lists/estimate";
 import { errorMessage } from "@/lib/errors";
-import { t, tn, type Key } from "@/i18n";
+import { formatNumber, t, tn, type Key } from "@/i18n";
 import { useTheme } from "@/theme/ThemeProvider";
 import { E, I, IB, Back, Seg, Stepper, useScrolled } from "@/mockup/ui";
 import { HelpBtn } from "@/features/help/Help";
@@ -202,7 +202,7 @@ export function RecipePage() {
             {kcal > 0 && (
               <span role={nutritionOn ? "button" : undefined} onClick={() => nutritionOn && setSheet("nutri")}>
                 <I n="flame" />
-                {kcal} kcal
+                {yieldWhole ? t("kb.kcalWhole", { kcal: formatNumber(kcal) }) : `${kcal} kcal`}
               </span>
             )}
             {perPortion > 0 && <span className="gr">{t("rk.perPortion", { price: eur(perPortion) })}</span>}

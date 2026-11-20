@@ -409,6 +409,7 @@ export const enRecipes: Record<keyof typeof skRecipes, string> = {
   "rk.sub.dezerty": "Desserts and creams",
   "rk.sub.sladke_jedla": "Sweet dishes",
   "rk.subAll": "All",
+  "kb.kcalWhole": "{kcal} kcal whole recipe",
   "kb.times": "{n}× recipe",
   "kb.yield": "Recipe makes: {y}",
   "kb.yieldTimes": "Recipe makes: {y} · {n}× in total",

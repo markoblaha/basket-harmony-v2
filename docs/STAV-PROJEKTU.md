@@ -888,6 +888,18 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Verzia 2 overená: `npm run check`, preklikanie lokálneho buildu `--mode staging` (testovacia DB) – Recepty, sviečková,
     laskonky, makové tortičky + varenie, 4 vzhľady: 0 nálezov; text surovín a postupu v appke prezretý.
     `testy/preklikanie.cjs` berie recept z `RECEPT=` (predvolene svieckova).
+    **Šarža 5 – 25 cheesecakov (20. 11., pokyn majiteľa):** meranie 571 cheesecakov zo 6 webov (`tools/kniha/sarza4/
+    cheesecake_meranie.py`): kvalitných 115 (Apetit 90, Vaření 13, Recepty.cz 8, Lidl 4; Víkendové pečení a Lidl čakajú na
+    čítačku surovín z HTML). Vybraných 25 rôznych druhov (klasický, New York, baskický, japonský, čokoládový, nepečené, Lotus,
+    karamelové, ovocné, brownies, tiramisu, pistáciový, mrkvový…), `cheesecake25.py` stiahne, `parse.py` priradí potraviny
+    (opravené ručne: krémový syr, sušienky, mascarpone `x_`). Preložené do slovenčiny v relácii, zapísané cez execute_sql
+    s pomocnými funkciami `pg_temp.ings/sts/add` (book_dishes rodina `cheesecake`, book_recipes batch 5, book_sources),
+    podkategória cheesecaky, výťažok („1 cheesecake (forma Ø 24 cm)“), skupiny surovín a krokov (Korpus, Náplň, Poleva…),
+    tipy zo zdroja pri kroku, bez výziev („Dobrou chuť“, „Recept převzat z…“, odkazy na obrázky v časopise). Kontrola čísel:
+    24/25 zhodných, pri jablkovom chýbajú len odkazy „(obr. 3a/3b)“. Fotky: 43 (Apetit má len 1 vlastnú fotku receptu –
+    doplnené fotky iných receptov toho istého druhu, zdroj každej v `fotky_zdroje_cheesecake25.json`), `public/kniha/v2/`.
+    Pri koláčoch sa kalórie ukazujú „celý recept“. Chýbajúce potraviny v databáze (mascarpone, čokoláda, želatína, ovocie…)
+    = alergény „a možno ďalšie“ a bez kalórií – doplniť do `foods.ts` s USDA hodnotami.
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
     recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):
     **Vaření.cz** 47 794 receptov, víťaz pri 13/13 jedál, medián 146 hodnotení, 91 % surovín s množstvom, ~130 slov postupu,

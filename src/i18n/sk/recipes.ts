@@ -420,6 +420,7 @@ export const skRecipes = {
   "rk.sub.dezerty": "Dezerty a krémy",
   "rk.sub.sladke_jedla": "Sladké jedlá",
   "rk.subAll": "Všetky",
+  "kb.kcalWhole": "{kcal} kcal celý recept",
   "kb.times": "{n}× recept",
   "kb.yield": "Recept na: {y}",
   "kb.yieldTimes": "Recept na: {y} · spolu {n}×",
