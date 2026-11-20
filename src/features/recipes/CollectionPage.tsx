@@ -3,7 +3,7 @@
  * triedenie Z toho, čo mám / Najrýchlejšie / Najlacnejšie.
  */
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useHousehold } from "@/features/household/HouseholdProvider";
 import { t, tn, type Key } from "@/i18n";
 import { E, Back, MkHeader, Seg } from "@/mockup/ui";
@@ -22,7 +22,10 @@ export function CollectionPage() {
   const favs = useFavorites(household.id).data ?? new Set<string>();
   const { facts } = useRecipeFacts(household.id, recipes.all, recipes.find);
   const [sort, setSort] = useState<Sort>("rec");
-  const [subSel, setSubSel] = useState<string | null>(null);
+  // Vybraná podkategória je v adrese (?sub=cheesecaky), aby sa po návrate z receptu obnovila.
+  const [params, setParams] = useSearchParams();
+  const subSel = params.get("sub");
+  const setSubSel = (s: string | null) => setParams(s ? { sub: s } : {}, { replace: true });
 
   let title = "";
   let sub = "";

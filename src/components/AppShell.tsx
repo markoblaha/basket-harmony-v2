@@ -224,10 +224,12 @@ function EdgeBack({ screen, enabled }: { screen: RefObject<HTMLDivElement | null
         dim.current.style.opacity = x ? "1" : "0";
       }
     };
+    let from = "";
     const down = (e: TouchEvent) => {
       const p = e.touches[0];
       if (!p || p.clientX > 20 || e.touches.length > 1) return;
       start = { x: p.clientX, y: p.clientY, t: Date.now() };
+      from = window.location.href;
       dx = 0;
       active = false;
     };
@@ -263,7 +265,9 @@ function EdgeBack({ screen, enabled }: { screen: RefObject<HTMLDivElement | null
             unpin();
             if (dim.current) { dim.current.style.transition = "none"; dim.current.style.opacity = "0"; }
           });
-          navigate(-1);
+          // Poistka: ak sa medzitým vrátil aj systém (gesto späť v iPhone), druhý krok späť nerobíme – inak by
+          // appka skočila o dve obrazovky (recept → kategória → Recepty).
+          if (window.location.href === from) navigate(-1);
         }, 230);
       } else {
         paint(0, true);
