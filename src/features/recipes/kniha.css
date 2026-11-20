@@ -140,3 +140,14 @@
 .w .bhm .cook .stx.lg { font-size: 28px; }
 .w .bhm .cook .stx.xl { font-size: 24px; line-height: 1.28; }
 .bhm .bscale { margin: -2px 4px 12px; }
+
+/* Postup prípravy suroviny (podrecept, napr. tekvicové pyré): rozbaľovací blok pri surovine a „Vopred priprav“ v postupe. */
+.bhm .bprep { margin-top: 8px; border-radius: 12px; background: var(--card2); font-size: 15px; line-height: 1.42; }
+.bhm .bprep summary { display: flex; gap: 8px; align-items: center; padding: 9px 11px; cursor: pointer; font-weight: 600; color: var(--acc); list-style: none; }
+.bhm .bprep summary::-webkit-details-marker { display: none; }
+.bhm .bprep summary .ico { width: 17px; height: 17px; flex: none; }
+.bhm .bprep ol { margin: 0; padding: 0 12px 4px 30px; }
+.bhm .bprep li { margin: 0 0 6px; }
+.bhm .bprep a { display: block; padding: 0 12px 10px; font-size: 13px; color: var(--sec); }
+.bhm .bsteps + .bprep, .bhm .bprep + .bsteps { margin-top: 12px; }
+.bhm .bprep .bprep-ing { margin: 0; padding: 0 12px 6px; font-weight: 600; }

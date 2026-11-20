@@ -300,6 +300,13 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   inak vôbec – radšej nič ako zlé číslo (pokyn 20. 11.: kačica nemôže stáť 25 centov). Alergény ukazuje recept z knihy vždy
   (hore pri čase), pri surovine mimo databázy potravín „a možno ďalšie“ + v Info „nevieme určiť pri …“ (`fullCost` v `mk.tsx`,
   `recipeAllergens` v `kniha.ts`).
+  **Polotovary s postupom (pokyn 20. 11.):** pri preberaní receptu vždy posúdiť, či bežný človek surovinu vie pripraviť
+  (pyré z tekvice, zápražka, domáci fondán, karamel, odpaľované cesto, vývar…). Ak nie, pridať k surovine postup prípravy
+  `ingredients[].how` = { title, ingredients?, steps, url, orig } – z odkazu v zdroji („jak připravit“), inak z kvalitného
+  receptu s hodnoteniami; text doslovne preložený. Appka: „Ako pripraviť“ pri surovine, „Vopred priprav: …“ nad postupom
+  a pri 1. kroku varenia (`PrepBox`, `prepsOf` v `book.tsx`). Kupované polotovary (karamelizované kondenzované mlieko,
+  mangové pyré) postup nepotrebujú. Zatiaľ: tekvicové rezy (tekvicové pyré, zo zdroja), hovädzí guláš (zápražka,
+  Toprecepty „Jíška do zásoby“ 4,7/18).
   Rady, tipy a upozornenia zdroja (bloky „Nejčastější chyby“, „Tipy“, „Tip:“) patria ku kroku, ktorého
   sa týkajú – políčko Pozor (`steps[].warn`) alebo Tip (`steps[].tip`), doslovne; nie ako samostatné kroky na konci
   (pokyn 20. 11.). Právo a licencie si rieši majiteľ sám pred

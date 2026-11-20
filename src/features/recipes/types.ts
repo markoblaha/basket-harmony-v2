@@ -21,7 +21,15 @@ export type Ingredient = {
   alt?: string[];
   /** Kniha receptov: pôvodný riadok suroviny zo zdroja („0,5 kg celer“) – appka ho ukáže presne, pri inom počte porcií prepočíta číslo. */
   orig?: string;
+  /**
+   * Kniha receptov: ako túto surovinu pripraviť, keď ju treba najprv urobiť (tekvicové pyré, zápražka, fondán…) –
+   * z odkazu v zdroji („jak připravit“) alebo z kvalitného zdroja. Appka ju ukáže pri surovine aj ako „Vopred priprav“ v postupe.
+   */
+  how?: PrepHow;
 };
+
+/** Malý postup prípravy suroviny (podrecept). */
+export type PrepHow = { title: string; ingredients?: string[]; steps: string[]; url?: string; /** pôvodný text zdroja */ orig?: string };
 
 export type Step = {
   text: string;

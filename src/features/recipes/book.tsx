@@ -11,7 +11,7 @@ import { FOODS } from "./foods";
 import { bookCheck, recipeAllergens, type CheckRow } from "./kniha";
 import { formatAmount, ingName, metric, renderStep, roundQty, rowKey, scaleIngredients, scaleOrig, toGrams } from "./logic";
 import type { IngRow } from "./mk";
-import type { Ingredient, Recipe, Step } from "./types";
+import type { Ingredient, PrepHow, Recipe, Step } from "./types";
 
 /** „2 h 30 min“ / „45 min“. */
 export function duration(min: number) {
@@ -31,6 +31,32 @@ export function bookAmount(ing: Ingredient) {
   const g = toGrams(ing.food, ing.qty, ing.unit);
   return g && g >= 1 ? `${base} (${formatNumber(roundQty(g, "g"))} g)` : base;
 }
+
+/** Postup prípravy suroviny (podrecept) ako rozbaľovací blok – pri surovine, v postupe aj vo varení. */
+export function PrepBox({ how, first }: { how: PrepHow; first?: boolean }) {
+  return (
+    <details className="bprep" onClick={(e) => e.stopPropagation()}>
+      <summary>
+        <I n="cooking-pot" />
+        <span>{first ? t("kb.prepFirst", { name: how.title }) : t("kb.howTo")}</span>
+      </summary>
+      {how.ingredients?.length ? <p className="bprep-ing">{how.ingredients.map(metric).join(" · ")}</p> : null}
+      <ol>
+        {how.steps.map((x) => (
+          <li key={x}>{metric(x)}</li>
+        ))}
+      </ol>
+      {how.url && (
+        <a href={how.url} target="_blank" rel="noopener noreferrer">
+          {t("kb.prepSource")}
+        </a>
+      )}
+    </details>
+  );
+}
+
+/** Suroviny, ktoré treba vopred pripraviť (majú postup prípravy). */
+export const prepsOf = (r: Recipe) => r.ingredients.filter((x): x is Ingredient & { how: PrepHow } => !!x.how);
 
 /** Suroviny v skupinách; ťuk prepne „mám doma“ (rovnako ako pri ostatných receptoch). */
 export function BookIngredients({ r, portions, rows, est, onToggle }: { r: Recipe; portions: number; rows: IngRow[]; est: Estimator; onToggle: (row: IngRow) => void }) {
@@ -75,6 +101,7 @@ export function BookIngredients({ r, portions, rows, est, onToggle }: { r: Recip
                         {ing.note ? `${ing.orig ? "" : " · "}${metric(ing.note)}` : ""}
                         {state}
                       </span>
+                      {ing.how && <PrepBox how={ing.how} />}
                     </div>
                     {row ? (
                       <span className={`cbx${home ? " on" : ""}`} aria-hidden="true">
@@ -150,7 +177,12 @@ export function StepChips({ st }: { st: Pick<Step, "timerMin" | "heat"> }) {
 
 export function BookSteps({ r, portions }: { r: Recipe; portions: number }) {
   const scaled = scaleIngredients(r, portions);
+  const preps = prepsOf(r);
   return (
+    <>
+    {preps.map((x) => (
+      <PrepBox key={x.how.title} how={x.how} first />
+    ))}
     <ol className="bsteps">
       {r.steps.map((st, i) => (
         <li key={i}>
@@ -164,6 +196,7 @@ export function BookSteps({ r, portions }: { r: Recipe; portions: number }) {
         </li>
       ))}
     </ol>
+    </>
   );
 }
 

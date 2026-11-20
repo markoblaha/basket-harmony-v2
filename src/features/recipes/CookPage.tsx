@@ -13,7 +13,7 @@ import { HelpBtn } from "@/features/help/Help";
 import { Btn } from "@/mockup/kit";
 import { haptic } from "@/components/kit";
 import { useCookRecipe, useRecipes } from "./api";
-import { StepChips, boxLines } from "./book";
+import { PrepBox, StepChips, boxLines, prepsOf } from "./book";
 import type { Step } from "./types";
 import { formatAmount, ingName, metric, renderStep, scaleIngredients, stepIngredients } from "./logic";
 import { bookAmount, duration } from "./book";
@@ -303,6 +303,8 @@ export function CookPage() {
             <div key={i} ref={stepEl} className={`ckst${dir > 0 ? " in-next" : dir < 0 ? " in-prev" : ""}`}>
               <span className="stn">{i + 1}</span>
               {st.group && <div className="bgh">{st.group}</div>}
+              {/* Pri prvom kroku: čo treba pripraviť vopred (napr. tekvicové pyré). */}
+              {i === 0 && prepsOf(r).map((x) => <PrepBox key={x.how.title} how={x.how} first />)}
               {/* Dlhší, podrobne rozpísaný krok má menšie písmo, aby sa zmestil na obrazovku. */}
               <p className={`stx${st.text.length > 260 ? " xl" : st.text.length > 170 ? " lg" : ""}`}>{renderStep(st.text, scaled)}</p>
               {st.heat && <StepChips st={{ heat: st.heat }} />}
