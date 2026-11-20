@@ -15,7 +15,7 @@ import { haptic } from "@/components/kit";
 import { useCookRecipe, useRecipes } from "./api";
 import { StepChips, boxLines } from "./book";
 import type { Step } from "./types";
-import { formatAmount, ingName, renderStep, scaleIngredients, stepIngredients } from "./logic";
+import { formatAmount, ingName, metric, renderStep, scaleIngredients, stepIngredients } from "./logic";
 import { bookAmount, duration } from "./book";
 import { stepFoods } from "./kniha";
 import { FOODS } from "./foods";
@@ -309,7 +309,7 @@ export function CookPage() {
               {stepIngs.length > 0 && (
                 <div className="ck-ing" aria-label={t("ck.forStep")}>
                   {stepIngs.map((x, k) => {
-                    const name = x.label || ingName(x);
+                    const name = metric(x.label || ingName(x));
                     return (
                       <span key={`${x.ref ?? x.food}${k}`}>
                         <E k={FOODS[x.food]?.free ? "water" : est.emoji(FOODS[x.food]?.name ?? name, FOODS[x.food]?.cat)} />

@@ -81,12 +81,48 @@ const numOf = (s: string) => {
   return fr ? Number(fr[1]) / Number(fr[2]) : Number(s.replace(",", "."));
 };
 
-/** Pôvodný riadok suroviny („0,5 kg celer“, „1-2 lžičky papriky“) s množstvom na začiatku prepočítaným na porcie (f = nové / pôvodné). */
+const fmt2 = (n: number) => formatNumber(Math.round(n * 100) / 100, { maximumFractionDigits: 2 });
+
+/** Jednotky, ktoré appka neukazuje, a ich prepočet: dekagramy → g, decilitre a centilitre → ml, hrnček/šálka (250 ml) → ml. */
+const CUP = String.raw`hrnek|hrnk\p{L}*|hrnč\p{L}*|šál\p{L}*`;
+const ODD = String.raw`dkg|dag|dl|cl|${CUP}`;
+const oddFactor = (u: string): [number, "g" | "ml"] => {
+  const x = u.toLowerCase();
+  return x === "dkg" || x === "dag" ? [10, "g"] : x === "dl" ? [100, "ml"] : x === "cl" ? [10, "ml"] : [250, "ml"];
+};
+const CUP_PAREN = new RegExp(String.raw`\s*\(\s*(?:cca\.?\s*)?(?:${NUM_RE})(?:\s*[-–]\s*(?:${NUM_RE}))?\s*(?:${CUP})\s*\)`, "giu");
+const ODD_AMOUNT = new RegExp(String.raw`(?<![\d.,/])(${NUM_RE})(?:(\s*[-–]\s*)(${NUM_RE}))?\s*(${ODD})(?!\p{L})`, "giu");
+
+/**
+ * Text receptu len s gramami, kilami, mililitrami a litrami (pokyn majiteľa): „20 dkg“ → „200 g“, „3,5 dl“ → „350 ml“,
+ * „1 hrnek“ → „250 ml“, nad 1000 g/ml kilá/litre. Hrnčeky v zátvorke („60 ml protlaku (0,25 hrnku)“) sú len iné vyjadrenie
+ * toho istého množstva – vynechajú sa. Originál v databáze ostáva nezmenený, prepočíta sa len pri zobrazení.
+ */
+export function metric(s: string): string {
+  return s.replace(CUP_PAREN, "").replace(ODD_AMOUNT, (_m, a: string, dash: string | undefined, b: string | undefined, u: string) => {
+    const [k, unit] = oddFactor(u);
+    let x = numOf(a) * k;
+    let y = b ? numOf(b) * k : null;
+    let out: string = unit;
+    if (x >= 1000 && (y == null || y >= 1000)) {
+      x /= 1000;
+      y = y == null ? null : y / 1000;
+      out = unit === "g" ? "kg" : "l";
+    }
+    return `${fmt2(x)}${dash && y != null ? dash + fmt2(y) : ""} ${out}`;
+  });
+}
+
+/**
+ * Pôvodný riadok suroviny („0,5 kg celer“, „1-2 lžičky papriky“) s množstvom na začiatku prepočítaným na porcie (f = nové / pôvodné).
+ * Desatinná bodka zdroja („0.5 kg“) sa ukáže po slovensky („0,5 kg“), jednotky cez metric().
+ */
 export function scaleOrig(orig: string, f: number): string {
-  if (f === 1) return orig;
-  const fmt = (s: string) => formatNumber(Math.round(numOf(s) * f * 100) / 100, { maximumFractionDigits: 2 });
   const re = new RegExp(String.raw`^(\s*)(${NUM_RE})(?:(\s*[-–]\s*)(${NUM_RE}))?`);
-  return orig.replace(re, (_m, sp: string, a: string, dash?: string, b?: string) => `${sp}${fmt(a)}${dash && b ? dash + fmt(b) : ""}`);
+  const lead = orig.replace(re, (m: string, sp: string, a: string, dash?: string, b?: string) =>
+    f === 1 && !m.includes(".") ? m : `${sp}${fmt2(numOf(a) * f)}${dash && b ? dash + fmt2(numOf(b) * f) : ""}`,
+  );
+  return metric(lead);
 }
 
 /** Suroviny prepočítané na počet porcií. */
@@ -102,10 +138,12 @@ export function scaleIngredients(r: Recipe, portions: number): Ingredient[] {
 
 /** Text kroku s doplnenými množstvami: {cibula} → „2 ks“. */
 export function renderStep(text: string, scaled: Ingredient[]) {
-  return text.replace(/\{([^}]+)\}/g, (_, k: string) => {
-    const ing = findRef(scaled, k);
-    return ing ? formatAmount(ing.qty, ing.unit) : "";
-  });
+  return metric(
+    text.replace(/\{([^}]+)\}/g, (_, k: string) => {
+      const ing = findRef(scaled, k);
+      return ing ? formatAmount(ing.qty, ing.unit) : "";
+    }),
+  );
 }
 /** Surovina podľa kľúča v kroku: {ref} (napr. muka_h) alebo {potravina} bez vlastného ref. */
 export const findRef = (scaled: Ingredient[], k: string) => scaled.find((x) => x.ref === k) ?? scaled.find((x) => x.food === k && !x.ref);

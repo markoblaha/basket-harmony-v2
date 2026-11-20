@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buyPlan, formatAmount, interpretQuery, matchesFilters, mergeIngredients, recipeNutrition, renderStep, rowKey, scaleIngredients, scaleOrig } from "./logic";
+import { buyPlan, formatAmount, interpretQuery, matchesFilters, mergeIngredients, metric, recipeNutrition, renderStep, rowKey, scaleIngredients, scaleOrig } from "./logic";
 import type { Ingredient, Recipe } from "./types";
 
 /* Skúšobné recepty len pre tento test (logika nesmie závisieť od obsahu knihy, ktorá sa mení po šaržiach). */
@@ -78,6 +78,21 @@ describe("recepty", () => {
     expect(nu.perPortion.kcal).toBeGreaterThan(400);
     expect(nu.perPortion.kcal).toBeLessThan(1200);
     expect(nu.skipped).toContain("Soľ");
+  });
+});
+
+describe("metric – len g, kg, ml a l", () => {
+  it("dekagramy, decilitre a hrnčeky prepočíta, ostatné nechá", () => {
+    expect(scaleOrig("20 dkg slanina", 1)).toBe("200 g slanina");
+    expect(scaleOrig("20 dkg slanina", 6)).toBe("1,2 kg slanina");
+    expect(scaleOrig("60 ml rajčatového protlaku (0,25 hrnku)", 1)).toBe("60 ml rajčatového protlaku");
+    expect(scaleOrig("350 ml mléka (1,5 hrnku)", 2)).toBe("700 ml mléka");
+    expect(scaleOrig("0.5 lžička kmín", 1)).toBe("0,5 lžička kmín");
+    expect(scaleOrig("1/2 lžičky mletého zázvoru", 1)).toBe("1/2 lžičky mletého zázvoru");
+    expect(metric("s necelými 3,5 dl studené vody")).toBe("s necelými 350 ml studené vody");
+    expect(metric("1 hrnek mouky, 10-15 dkg cukru")).toBe("250 ml mouky, 100-150 g cukru");
+    expect(metric("2 dlouhé prameny, 4x4 cm, 2 litre vody")).toBe("2 dlouhé prameny, 4x4 cm, 2 litre vody");
+    expect(renderStep("Přilijte 2 dl mléka.", [])).toBe("Přilijte 200 ml mléka.");
   });
 });
 

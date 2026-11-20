@@ -294,7 +294,8 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   množstvá, údaje aj postup bez zmien – nič sa nespája, nepíše vlastnými slovami ani nedopĺňa. **Spresnené 20. 11.:**
   recept sa uloží presne v jazyku a znení zdroja (český po česky, slovenský po slovensky, aj so značkami, tipmi a výzvami
   autora, aj s chybami zdroja); stĺpec `book_recipes.lang`. Preklad cs→sk a sk→cs bude neskôr samostatná vrstva, originál
-  sa neprepisuje. Rady, tipy a upozornenia zdroja (bloky „Nejčastější chyby“, „Tipy“, „Tip:“) patria ku kroku, ktorého
+  sa neprepisuje. Jednotky sa ukazujú len g, kg, ml, l (dkg, dl, hrnčeky appka prepočíta pri zobrazení – `metric()`).
+  Rady, tipy a upozornenia zdroja (bloky „Nejčastější chyby“, „Tipy“, „Tip:“) patria ku kroku, ktorého
   sa týkajú – políčko Pozor (`steps[].warn`) alebo Tip (`steps[].tip`), doslovne; nie ako samostatné kroky na konci
   (pokyn 20. 11.). Právo a licencie si rieši majiteľ sám pred
   vydaním appky – v návrhoch ich neriešiť. Napĺňanie postupne cez predplatné Claude (20 €), nie cez platené API.
@@ -793,7 +794,7 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     29 receptov, 497 zdrojov, 3 behy linky) a 1 plán varenia; recepty domácností, obľúbené a „páči sa mi“ boli už prázdne.
     Zmazal majiteľ sám v SQL Editore – potvrdenie mazania z konektora Supabase sa v jeho appke nezobrazuje (4 pokusy
     skončili po 60 s bez odpovede), preto mazanie v DB vždy rovno cez SQL Editor majiteľa. Z kódu preč 58 obrázkov šarží
-    (`public/kniha`, vetva `claude/bold-fermat-3easmm` – do testovacej vetvy ešte nezlúčené). Ostala len testovacia vzorka
+    (`public/kniha`; zlúčené do testovacej vetvy 20. 11.). Ostala len testovacia vzorka
     `__fixtures__/kniha.json` (appka ju neukazuje) a vymyslené recepty v ukážke. Overené preklikaním testovacej adresy
     (Domov, Recepty, Ochutnávač, recept, varenie × 4 vzhľady): 0 chýb; pri prázdnej knihe ostávajú prázdne nadpisy
     „Kategórie“ a „Rýchly výber“ (zmiznú po naplnení). Ďalej: oprava načítania knihy a nová linka, potom prvá dávka.
@@ -819,8 +820,8 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     pri Lidli (zdroj ich uvádza), inde prázdne. Kontrola `tools/kniha/sarza4/orig18.py`: pri všetkých 18 riadky surovín =
     zdroj a text krokov = text zdroja; zápis do DB overený odtlačkom (md5) každého receptu – 18/18 zhodných. Zdroj je jeden
     riadok v `book_sources` (A, kotva), detaily vo `verification`. Migrácia `20261120000044_book_recipe_lang` je v TESTOVACEJ
-    DB. Nové zobrazenie (orig, nadpisy častí) je v kóde vetvy `claude/bold-fermat-3easmm` – nasadená testovacia appka ho ukáže
-    až po zlúčení do `design/v2-mobile-redesign` (dovtedy ukazuje český názov suroviny + množstvo zvlášť). Oprava: suroviny
+    DB. Nové zobrazenie (orig, nadpisy častí) je od 20. 11. aj v testovacej vetve `design/v2-mobile-redesign` (zlúčené
+    z `claude/bold-fermat-3easmm`). Oprava: suroviny
     mimo databázy potravín (`x_…`, napr. mangové pyré, tymián) ukazovali „netreba kupovať“ – recept teraz hľadá riadok nákupu
     rovnakým kľúčom ako nákup (`rowKey` v `logic.ts`).
     **Verzia 3 (20. 11., pokyn „tipy a rady v postupe tam, kam patria, nie na koniec“):** v 9 receptoch presunuté rady
@@ -828,7 +829,12 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     mäsa → 2, rozvarenie + majoránka, zápražka, odležanie → 3), kulajda, moravský vrabec, sviečková, pečená kačica (sadlo),
     veterníky (domáci fondán), laskonky, cheesecake, makové dortíky. Text rád bez zmeny (SQL ich berie priamo z textu v DB),
     zahodené len nadpisy blokov a „!“; zápis overený odtlačkom 9/9. Viac rád pri kroku = nový riadok v `tip`/`warn`, appka
-    (`boxLines`) ukáže každú v samostatnom políčku – nasadená testovacia appka ich do zlúčenia ukáže v jednom políčku.
+    (`boxLines`) ukáže každú v samostatnom políčku.
+    **Jednotky (20. 11., pokyn „gramy, kilá, litre, mililitre, žiadne dkg a podobne“):** appka ukazuje len g, kg, ml, l –
+    `metric()` v `logic.ts` pri zobrazení prepočíta dkg/dag → g, dl/cl → ml, hrnček/šálka → ml (250 ml), nad 1000 na kg/l;
+    hrnčeky v zátvorke za množstvom v ml (musaka „(0,25 hrnku)“) vynechá; desatinná bodka zdroja → čiarka. Platí pre suroviny,
+    text krokov (aj „ĎALEJ“ vo varení), Pozor/Tip a názvy pri kroku. Originál v DB ostáva nezmenený, takže to platí aj pre
+    ďalšie recepty. V šarži 4: sviečková 20 dkg slaniny → 200 g, veterníky 3,5 dl vody → 350 ml, musaka bez hrnčekov.
     Recepty.cz zamietnuté a nahradené (buchty bez teploty a času, plnené knedle bez množstiev plnky). Hodnotenia
     Víkendového pečenia a Lidla majú málo hlasov (8–20, laskonky 7). Časy pri Lidli a Víkendovom pečení odhadnuté z krokov
     (`verification.time_estimated`). Mapovanie potravín: `parse.py` zle priradil 26 surovín (napr. „olej na vymastenie plechu“

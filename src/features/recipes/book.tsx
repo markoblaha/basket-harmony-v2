@@ -9,7 +9,7 @@ import { E, I } from "@/mockup/ui";
 import type { Estimator } from "@/features/lists/estimate";
 import { FOODS } from "./foods";
 import { bookCheck, recipeAllergens, type CheckRow } from "./kniha";
-import { formatAmount, ingName, renderStep, roundQty, rowKey, scaleIngredients, scaleOrig, toGrams } from "./logic";
+import { formatAmount, ingName, metric, renderStep, roundQty, rowKey, scaleIngredients, scaleOrig, toGrams } from "./logic";
 import type { IngRow } from "./mk";
 import type { Ingredient, Recipe, Step } from "./types";
 
@@ -52,7 +52,7 @@ export function BookIngredients({ r, portions, rows, est, onToggle }: { r: Recip
                 const row = free ? undefined : rows.find((x) => x.key === key || x.key.startsWith(`${key}|`));
                 const home = !!row?.home;
                 // Riadok zo zdroja sa ukáže presne (množstvo je jeho súčasťou), inak názov + množstvo zvlášť.
-                const name = ing.orig ? scaleOrig(ing.orig, portions / r.portions) : ing.label || ingName(ing);
+                const name = ing.orig ? scaleOrig(ing.orig, portions / r.portions) : metric(ing.label || ingName(ing));
                 const state = free ? "" : home ? ` · ${t("rk.haveHome")}` : row?.staple ? ` · ${t("rk.noHome")}` : "";
                 return (
                   <div
@@ -72,7 +72,7 @@ export function BookIngredients({ r, portions, rows, est, onToggle }: { r: Recip
                       </b>
                       <span className="sub">
                         {ing.orig ? "" : bookAmount(ing)}
-                        {ing.note ? `${ing.orig ? "" : " · "}${ing.note}` : ""}
+                        {ing.note ? `${ing.orig ? "" : " · "}${metric(ing.note)}` : ""}
                         {state}
                       </span>
                     </div>
@@ -94,7 +94,7 @@ export function BookIngredients({ r, portions, rows, est, onToggle }: { r: Recip
 }
 
 /** Viac rád pri jednom kroku je v jednom texte, každá na novom riadku – appka ukáže každú v samostatnom políčku. */
-export const boxLines = (s?: string) => (s ? s.split("\n").filter((x) => x.trim()) : []);
+export const boxLines = (s?: string) => (s ? s.split("\n").filter((x) => x.trim()).map(metric) : []);
 
 /** „Hotové je, keď“, „Pozor“ a „Tip“ pri kroku (aj v režime varenia). */
 export function StepBoxes({ st }: { st: Pick<Step, "done" | "warn" | "tip"> }) {
