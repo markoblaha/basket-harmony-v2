@@ -799,6 +799,24 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     „kuracie“ je filter. Linka v 9 krokoch, AI len preklad; skóre dôvery (hlasy × hviezdy + 20 × 4,3) / (hlasy + 20).
     Mapa knihy = zoznam jedál s cieľmi po 15 chodoch (spolu 3 000) + skóre „oplatí sa“ (weby, hlasy, dopyt v appke, medzera,
     sezóna). Prehľad knihy pre správcu vo Viac. Nové: `book_terms`, `book_signals`, preklady/trhy až s DE/AT. Fázy 1–6 s bránami.
+    **Šarža 4 (20. 11. 2026, pokyn majiteľa „po 3 komplikované recepty zo všetkých stránok z dokumentu“):** v TESTOVACEJ DB
+    18 receptov (batch 4, published, bez fotiek – appka ukáže emoji): Vaření – sviečková po našom, pečená kačica, španielsky
+    vtáčik po česky; Apetit – vianočka, medovník, karamelové veterníky; Toprecepty – grécka musaka, segedínsky guláš, lasagne;
+    Recepty.cz – hovädzí guláš v tlakovom hrnci, kulajda, moravský vrabec; Kuchyňa Lidla – laskonky, vianočná kapustnica,
+    konfitovaná kačica; Víkendové pečení – makové tortičky s mangom, tekvicové rezy, cheesecake s ovocnou penou. Český text
+    preložený vetu po vete v relácii (nie pomocníkmi), Lidl doslovná kópia; program (`tools/kniha/sarza4/build18.py`) overil
+    pri všetkých 18: zoznam surovín = zdroj, množstvá (cez `parse.py`), všetky čísla v postupe, žiadne ř/ě/ů. Pri každej
+    surovine je pôvodný riadok (`orig`), zdroj je jeden riadok v `book_sources` (A, kotva), detaily vo `verification`.
+    Odchýlky: sviečková – zdroj má v postupe 100 g masla, ktoré v zozname chýba → doplnené s poznámkou (`verification.added`);
+    vynechané len reklamy a výzvy blogu (Víkendové pečení: odkazy na obchod, Tescoma, „napíšte do komentára“) a z Lidla značky
+    v názvoch surovín (pôvodný riadok so značkou ostal v `orig`); Lidl nadpisy sekcií a „Tip:“ ostali ako text krokov, náradie
+    v `tools`. Recepty.cz zamietnuté a nahradené (buchty bez teploty a času, plnené knedle bez množstiev plnky). Hodnotenia
+    Víkendového pečenia a Lidla majú málo hlasov (8–20, laskonky 7). Časy pri Lidli a Víkendovom pečení odhadnuté z krokov
+    (`verification.time_estimated`). Mapovanie potravín: `parse.py` zle priradil 26 surovín (napr. „olej na vymastenie plechu“
+    → bravčové stehno, „sušená bazalka“ → sušienky) – opravené ručne v `sql18.py`; 41 surovín bez výživy (`x_…`), appka aj tak
+    ukazuje kcal (výživa „neúplná“ je až vo fáze 1). Zápis do DB cez execute_sql (INSERT nežiada potvrdenie, len DELETE).
+    Overené preklikaním testovacej adresy (Recepty, sviečková, laskonky, makové tortičky + varenie, 4 vzhľady): 0 nálezov.
+    `testy/preklikanie.cjs` berie recept z `RECEPT=` (predvolene svieckova).
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
     recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):
     **Vaření.cz** 47 794 receptov, víťaz pri 13/13 jedál, medián 146 hodnotení, 91 % surovín s množstvom, ~130 slov postupu,
