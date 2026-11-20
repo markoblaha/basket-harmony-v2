@@ -19,6 +19,8 @@ export type Ingredient = {
   src?: string;
   /** Náhrada spomenutá v postupe („masť alebo olej“) – kontrola surovín ↔ postup ju berie ako túto surovinu. */
   alt?: string[];
+  /** Kniha receptov: pôvodný riadok suroviny zo zdroja („0,5 kg celer“) – appka ho ukáže presne, pri inom počte porcií prepočíta číslo. */
+  orig?: string;
 };
 
 export type Step = {
@@ -37,6 +39,8 @@ export type Step = {
   src?: string;
   /** Kniha receptov: suroviny kroku (kľúč alebo ref), keď sa z textu nedajú určiť jednoznačne. */
   uses?: string[];
+  /** Kniha receptov: nadpis časti receptu zo zdroja („Krém“, „Korpus“) – ukáže sa nad prvým krokom časti. */
+  group?: string;
 };
 
 /**

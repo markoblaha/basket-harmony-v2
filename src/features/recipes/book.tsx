@@ -9,7 +9,7 @@ import { E, I } from "@/mockup/ui";
 import type { Estimator } from "@/features/lists/estimate";
 import { FOODS } from "./foods";
 import { bookCheck, recipeAllergens, type CheckRow } from "./kniha";
-import { formatAmount, ingName, renderStep, roundQty, scaleIngredients, toGrams } from "./logic";
+import { formatAmount, ingName, renderStep, roundQty, rowKey, scaleIngredients, scaleOrig, toGrams } from "./logic";
 import type { IngRow } from "./mk";
 import type { Ingredient, Recipe, Step } from "./types";
 
@@ -47,9 +47,12 @@ export function BookIngredients({ r, portions, rows, est, onToggle }: { r: Recip
               .map((ing, k) => {
                 const food = FOODS[ing.food];
                 const free = !!food?.free;
-                const row = free ? undefined : rows.find((x) => x.food === ing.food);
+                // Riadok nákupu podľa rovnakého kľúča ako v nákupe (aj surovina mimo databázy potravín, napr. mangové pyré).
+                const key = rowKey(ing);
+                const row = free ? undefined : rows.find((x) => x.key === key || x.key.startsWith(`${key}|`));
                 const home = !!row?.home;
-                const name = ing.label || ingName(ing);
+                // Riadok zo zdroja sa ukáže presne (množstvo je jeho súčasťou), inak názov + množstvo zvlášť.
+                const name = ing.orig ? scaleOrig(ing.orig, portions / r.portions) : ing.label || ingName(ing);
                 const state = free ? "" : home ? ` · ${t("rk.haveHome")}` : row?.staple ? ` · ${t("rk.noHome")}` : "";
                 return (
                   <div
@@ -68,8 +71,8 @@ export function BookIngredients({ r, portions, rows, est, onToggle }: { r: Recip
                         {ing.optional && <span className="bopt">{t("kb.optional")}</span>}
                       </b>
                       <span className="sub">
-                        {bookAmount(ing)}
-                        {ing.note ? ` · ${ing.note}` : ""}
+                        {ing.orig ? "" : bookAmount(ing)}
+                        {ing.note ? `${ing.orig ? "" : " · "}${ing.note}` : ""}
                         {state}
                       </span>
                     </div>
@@ -150,6 +153,7 @@ export function BookSteps({ r, portions }: { r: Recipe; portions: number }) {
         <li key={i}>
           <span className="n">{i + 1}</span>
           <div className="grow">
+            {st.group && st.group !== r.steps[i - 1]?.group && <div className="bgh">{st.group}</div>}
             <p>{renderStep(st.text, scaled)}</p>
             <StepChips st={st} />
             <StepBoxes st={st} />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buyPlan, formatAmount, interpretQuery, matchesFilters, mergeIngredients, recipeNutrition, renderStep, scaleIngredients } from "./logic";
+import { buyPlan, formatAmount, interpretQuery, matchesFilters, mergeIngredients, recipeNutrition, renderStep, rowKey, scaleIngredients, scaleOrig } from "./logic";
 import type { Ingredient, Recipe } from "./types";
 
 /* Skúšobné recepty len pre tento test (logika nesmie závisieť od obsahu knihy, ktorá sa mení po šaržiach). */
@@ -78,5 +78,28 @@ describe("recepty", () => {
     expect(nu.perPortion.kcal).toBeGreaterThan(400);
     expect(nu.perPortion.kcal).toBeLessThan(1200);
     expect(nu.skipped).toContain("Soľ");
+  });
+});
+
+describe("rowKey – surovina mimo databázy potravín", () => {
+  it("recept nájde riadok nákupu aj pre surovinu, ktorá nie je v databáze potravín", () => {
+    const ing: Ingredient = { food: "x_mangove_pyre", label: "mangového pyré", qty: 60, unit: "g" };
+    const r = { id: "t", name: "T", portions: 1, ingredients: [ing], steps: [] } as unknown as Recipe;
+    const rows = mergeIngredients([{ recipeId: "t", portions: 1 }], () => r);
+    expect(rows.map((x) => x.key)).toContain(rowKey(ing));
+    expect(rowKey({ food: "cibula" })).toBe("cibula");
+  });
+});
+
+describe("scaleOrig – pôvodný riadok suroviny zo zdroja", () => {
+  it("pri pôvodných porciách ostane riadok presne", () => {
+    expect(scaleOrig("0,5 kg celer", 1)).toBe("0,5 kg celer");
+    expect(scaleOrig("mletý  pepř", 2)).toBe("mletý  pepř");
+  });
+  it("prepočíta číslo na začiatku, rozpätie aj zlomok a zvyšok nechá", () => {
+    expect(scaleOrig("0.5 kg mrkev", 2)).toBe("1 kg mrkev");
+    expect(scaleOrig("1-2 lžičky mleté červené papriky", 2)).toBe("2-4 lžičky mleté červené papriky");
+    expect(scaleOrig("1/2 lžičky mletého zázvoru", 2)).toBe("1 lžičky mletého zázvoru");
+    expect(scaleOrig("175 g vlašských orechov Alesto", 0.5)).toBe("87,5 g vlašských orechov Alesto");
   });
 });

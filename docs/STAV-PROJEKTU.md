@@ -1,6 +1,6 @@
 # Stav projektu (odovzdanie pre ďalšiu reláciu)
 
-Aktualizované 19. 11. 2026 (kniha receptov: rozhodnutie o presnom kopírovaní, meranie webov). Pred prácou si prečítaj celé – je to krátke.
+Aktualizované 20. 11. 2026 (kniha receptov: šarža 4 ako presná kópia zdroja v pôvodnom jazyku, stĺpec `lang`). Pred prácou si prečítaj celé – je to krátke.
 
 ## Kde čo beží
 
@@ -52,6 +52,7 @@ z prerušeného behu na začiatku ukončí (`end_shopping`).
    `20261113000040_price_store_count`, `…041_price_comparable` (v testovacej DB ako 3 kroky: price_comparable,
    price_comparable_kind, price_comparable_sizes – súbor je ich súčet). Po nasadení spustiť `supabase/tests/price_model_test.sql`
    (vráti všetko späť, hľadaj `fails=0`; v ostrej DB treba upraviť názov testovacej domácnosti v 1. riadku bloku).
+   Kniha receptov: `20261117000043_recipe_book` a `20261120000044_book_recipe_lang` (jazyk receptu `lang`, cs/sk).
 3. Edge funkcie: pri zlúčení nasadiť do ostrej všetky z repozitára aj so spoločnými súbormi `_shared/` (gemini, receipt, guard).
    Nasadzujú sa s cestami `<funkcia>/index.ts` + `_shared/*.ts` (vstup `<funkcia>/index.ts`). V testovacej DB: parse-voice v5,
    recipe-ai v6 (obe s `guard.ts` – vyžadujú `household_id`, inak NOT_FOUND), extract-receipt v3, normalize-products v4,
@@ -290,8 +291,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   300 u nás bežne varených zahraničných; ďalšie krajiny neskôr (recept má kuchyňu a jazyk). Ochutnávač ukazuje recept
   až s fotkami; kategórie sa rozšíria (prílohy, šaláty, pečivo, koláče, torty, sviatočné).
 - **Recepty sa kopírujú presne (19. 11. 2026, rozhodnutie majiteľa):** z jedného najlepšieho receptu sa prevezmú suroviny,
-  množstvá, údaje aj postup bez zmien – nič sa nespája, nepíše vlastnými slovami ani nedopĺňa. Český recept = verný preklad
-  vety po vete (čísla kontroluje program), slovenský sa skopíruje doslova. Právo a licencie si rieši majiteľ sám pred
+  množstvá, údaje aj postup bez zmien – nič sa nespája, nepíše vlastnými slovami ani nedopĺňa. **Spresnené 20. 11.:**
+  recept sa uloží presne v jazyku a znení zdroja (český po česky, slovenský po slovensky, aj so značkami, tipmi a výzvami
+  autora, aj s chybami zdroja); stĺpec `book_recipes.lang`. Preklad cs→sk a sk→cs bude neskôr samostatná vrstva, originál
+  sa neprepisuje. Právo a licencie si rieši majiteľ sám pred
   vydaním appky – v návrhoch ich neriešiť. Napĺňanie postupne cez predplatné Claude (20 €), nie cez platené API.
   Návrh ChatGPT „Recipe Platform V3“ (17. 11.: 17 tabuliek catalog_*, etapy F0–F8, AI „obohatenie“) je zamietnutý –
   vychádzal zo starého ZIP-u (recepty ešte v kóde) a prerábal by hotovú knihu v DB.
@@ -803,19 +806,27 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     18 receptov (batch 4, published, bez fotiek – appka ukáže emoji): Vaření – sviečková po našom, pečená kačica, španielsky
     vtáčik po česky; Apetit – vianočka, medovník, karamelové veterníky; Toprecepty – grécka musaka, segedínsky guláš, lasagne;
     Recepty.cz – hovädzí guláš v tlakovom hrnci, kulajda, moravský vrabec; Kuchyňa Lidla – laskonky, vianočná kapustnica,
-    konfitovaná kačica; Víkendové pečení – makové tortičky s mangom, tekvicové rezy, cheesecake s ovocnou penou. Český text
-    preložený vetu po vete v relácii (nie pomocníkmi), Lidl doslovná kópia; program (`tools/kniha/sarza4/build18.py`) overil
-    pri všetkých 18: zoznam surovín = zdroj, množstvá (cez `parse.py`), všetky čísla v postupe, žiadne ř/ě/ů. Pri každej
-    surovine je pôvodný riadok (`orig`), zdroj je jeden riadok v `book_sources` (A, kotva), detaily vo `verification`.
-    Odchýlky: sviečková – zdroj má v postupe 100 g masla, ktoré v zozname chýba → doplnené s poznámkou (`verification.added`);
-    vynechané len reklamy a výzvy blogu (Víkendové pečení: odkazy na obchod, Tescoma, „napíšte do komentára“) a z Lidla značky
-    v názvoch surovín (pôvodný riadok so značkou ostal v `orig`); Lidl nadpisy sekcií a „Tip:“ ostali ako text krokov, náradie
-    v `tools`. Recepty.cz zamietnuté a nahradené (buchty bez teploty a času, plnené knedle bez množstiev plnky). Hodnotenia
+    konfitovaná kačica; Víkendové pečení – makové tortičky s mangom, tekvicové rezy, cheesecake s ovocnou penou.
+    **Verzia 2 (20. 11., pokyn majiteľa „musíš to okopírovať a všetko musí byť ako v reálnom recepte“):** prvá verzia
+    (preklad do SK, bez značiek a výziev, doplnené maslo) zamietnutá. Teraz je každý recept presne v jazyku a znení zdroja:
+    15 česky (`lang = 'cs'`, aj názov „Svíčková na smetaně po našem“), 3 slovensky z Lidla (aj so značkami Alesto, Belbake…).
+    Suroviny = riadky zdroja (`orig`; appka ukáže riadok presne a pri inom počte porcií prepočíta len číslo na začiatku –
+    `scaleOrig`), kroky = text zdroja; nadpisy častí (Krém, Korpus…) sú v `steps[].group` a appka ich ukáže nad krokom.
+    Ponechané ako v zdroji: tipy, chyby a rady autorov, výzvy a odkazy Víkendového pečenia („napište mi do komentáře“, Tescoma),
+    sviečková bez masla v zozname (zdroj ho má len v postupe – poznámka vo `verification.notes`). Náradie a čas čakania len
+    pri Lidli (zdroj ich uvádza), inde prázdne. Kontrola `tools/kniha/sarza4/orig18.py`: pri všetkých 18 riadky surovín =
+    zdroj a text krokov = text zdroja; zápis do DB overený odtlačkom (md5) každého receptu – 18/18 zhodných. Zdroj je jeden
+    riadok v `book_sources` (A, kotva), detaily vo `verification`. Migrácia `20261120000044_book_recipe_lang` je v TESTOVACEJ
+    DB. Nové zobrazenie (orig, nadpisy častí) je v kóde vetvy `claude/bold-fermat-3easmm` – nasadená testovacia appka ho ukáže
+    až po zlúčení do `design/v2-mobile-redesign` (dovtedy ukazuje český názov suroviny + množstvo zvlášť). Oprava: suroviny
+    mimo databázy potravín (`x_…`, napr. mangové pyré, tymián) ukazovali „netreba kupovať“ – recept teraz hľadá riadok nákupu
+    rovnakým kľúčom ako nákup (`rowKey` v `logic.ts`). Recepty.cz zamietnuté a nahradené (buchty bez teploty a času, plnené knedle bez množstiev plnky). Hodnotenia
     Víkendového pečenia a Lidla majú málo hlasov (8–20, laskonky 7). Časy pri Lidli a Víkendovom pečení odhadnuté z krokov
     (`verification.time_estimated`). Mapovanie potravín: `parse.py` zle priradil 26 surovín (napr. „olej na vymastenie plechu“
     → bravčové stehno, „sušená bazalka“ → sušienky) – opravené ručne v `sql18.py`; 41 surovín bez výživy (`x_…`), appka aj tak
     ukazuje kcal (výživa „neúplná“ je až vo fáze 1). Zápis do DB cez execute_sql (INSERT nežiada potvrdenie, len DELETE).
-    Overené preklikaním testovacej adresy (Recepty, sviečková, laskonky, makové tortičky + varenie, 4 vzhľady): 0 nálezov.
+    Verzia 2 overená: `npm run check`, preklikanie lokálneho buildu `--mode staging` (testovacia DB) – Recepty, sviečková,
+    laskonky, makové tortičky + varenie, 4 vzhľady: 0 nálezov; text surovín a postupu v appke prezretý.
     `testy/preklikanie.cjs` berie recept z `RECEPT=` (predvolene svieckova).
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
     recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):

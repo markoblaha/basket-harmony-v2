@@ -73,6 +73,22 @@ export function roundQty(q: number, unit: string) {
   return Math.round(q * 10) / 10;
 }
 
+const UNI: Record<string, number> = { "½": 0.5, "¼": 0.25, "¾": 0.75, "⅓": 1 / 3, "⅔": 2 / 3 };
+const NUM_RE = String.raw`\d+\s*\/\s*\d+|\d+(?:[.,]\d+)?|[½¼¾⅓⅔]`;
+const numOf = (s: string) => {
+  if (UNI[s] != null) return UNI[s]!;
+  const fr = s.match(/^(\d+)\s*\/\s*(\d+)$/);
+  return fr ? Number(fr[1]) / Number(fr[2]) : Number(s.replace(",", "."));
+};
+
+/** Pôvodný riadok suroviny („0,5 kg celer“, „1-2 lžičky papriky“) s množstvom na začiatku prepočítaným na porcie (f = nové / pôvodné). */
+export function scaleOrig(orig: string, f: number): string {
+  if (f === 1) return orig;
+  const fmt = (s: string) => formatNumber(Math.round(numOf(s) * f * 100) / 100, { maximumFractionDigits: 2 });
+  const re = new RegExp(String.raw`^(\s*)(${NUM_RE})(?:(\s*[-–]\s*)(${NUM_RE}))?`);
+  return orig.replace(re, (_m, sp: string, a: string, dash?: string, b?: string) => `${sp}${fmt(a)}${dash && b ? dash + fmt(b) : ""}`);
+}
+
 /** Suroviny prepočítané na počet porcií. */
 export function scaleIngredients(r: Recipe, portions: number): Ingredient[] {
   const f = portions / r.portions;
@@ -164,6 +180,11 @@ export type CartEntry = { recipeId: string; portions: number };
 export type Source = { recipeId: string; recipeName: string; qty: number; unit: string; note: string };
 export type Row = { key: string; food: string | null; name: string; cat: string; qty: number; unit: string; sources: Source[]; staple: boolean };
 
+/** Kľúč riadku nákupu: potravina z databázy podľa kľúča, iná surovina podľa názvu („x:mangove pyre“). */
+export function rowKey(ing: Pick<Ingredient, "food" | "label">) {
+  return FOODS[ing.food] ? ing.food : `x:${normalizeName(ing.label || ing.food)}`;
+}
+
 export function mergeIngredients(cart: CartEntry[], find: (id: string) => Recipe | undefined): Row[] {
   const groups = new Map<string, { food: string | null; name: string; cat: string; sources: Source[] }>();
   for (const entry of cart) {
@@ -172,7 +193,7 @@ export function mergeIngredients(cart: CartEntry[], find: (id: string) => Recipe
     for (const ing of scaleIngredients(r, entry.portions)) {
       const food = FOODS[ing.food];
       if (food?.free) continue; // voda sa nekupuje
-      const gk = food ? ing.food : `x:${normalizeName(ing.label || ing.food)}`;
+      const gk = rowKey(ing);
       if (!groups.has(gk)) groups.set(gk, { food: food ? ing.food : null, name: ingName(ing), cat: food?.cat || "other", sources: [] });
       groups.get(gk)!.sources.push({ recipeId: r.id, recipeName: r.name, qty: ing.qty, unit: ing.unit, note: ing.note || "" });
     }
