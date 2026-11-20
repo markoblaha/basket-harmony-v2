@@ -13,7 +13,7 @@ import { HelpBtn } from "@/features/help/Help";
 import { Btn } from "@/mockup/kit";
 import { haptic } from "@/components/kit";
 import { useCookRecipe, useRecipes } from "./api";
-import { StepChips } from "./book";
+import { StepChips, boxLines } from "./book";
 import type { Step } from "./types";
 import { formatAmount, ingName, renderStep, scaleIngredients, stepIngredients } from "./logic";
 import { bookAmount, duration } from "./book";
@@ -322,14 +322,14 @@ export function CookPage() {
               )}
               {det && (det.done || det.tip || det.more || det.warn) && (
                 <div className="cbox">
-                  {det.warn && (
-                    <div className="sbx pz">
+                  {boxLines(det.warn).map((x) => (
+                    <div key={x} className="sbx pz">
                       <I n="warning" />
                       <span>
-                        <b>{t("ck.warn")}</b> {det.warn}
+                        <b>{t("ck.warn")}</b> {x}
                       </span>
                     </div>
-                  )}
+                  ))}
                   {det.done && (
                     <div className="sbx ok">
                       <I n="check-circle" />
@@ -338,14 +338,14 @@ export function CookPage() {
                       </span>
                     </div>
                   )}
-                  {det.tip && (
-                    <div className="sbx tip">
+                  {boxLines(det.tip).map((x) => (
+                    <div key={x} className="sbx tip">
                       <I n="lightbulb" />
                       <span>
-                        <b>{t("ck.tip")}</b> {det.tip}
+                        <b>{t("ck.tip")}</b> {x}
                       </span>
                     </div>
-                  )}
+                  ))}
                   {det.more && (
                     <div className="sbx more">
                       <I n="info" />

@@ -294,7 +294,9 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   množstvá, údaje aj postup bez zmien – nič sa nespája, nepíše vlastnými slovami ani nedopĺňa. **Spresnené 20. 11.:**
   recept sa uloží presne v jazyku a znení zdroja (český po česky, slovenský po slovensky, aj so značkami, tipmi a výzvami
   autora, aj s chybami zdroja); stĺpec `book_recipes.lang`. Preklad cs→sk a sk→cs bude neskôr samostatná vrstva, originál
-  sa neprepisuje. Právo a licencie si rieši majiteľ sám pred
+  sa neprepisuje. Rady, tipy a upozornenia zdroja (bloky „Nejčastější chyby“, „Tipy“, „Tip:“) patria ku kroku, ktorého
+  sa týkajú – políčko Pozor (`steps[].warn`) alebo Tip (`steps[].tip`), doslovne; nie ako samostatné kroky na konci
+  (pokyn 20. 11.). Právo a licencie si rieši majiteľ sám pred
   vydaním appky – v návrhoch ich neriešiť. Napĺňanie postupne cez predplatné Claude (20 €), nie cez platené API.
   Návrh ChatGPT „Recipe Platform V3“ (17. 11.: 17 tabuliek catalog_*, etapy F0–F8, AI „obohatenie“) je zamietnutý –
   vychádzal zo starého ZIP-u (recepty ešte v kóde) a prerábal by hotovú knihu v DB.
@@ -820,7 +822,14 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     DB. Nové zobrazenie (orig, nadpisy častí) je v kóde vetvy `claude/bold-fermat-3easmm` – nasadená testovacia appka ho ukáže
     až po zlúčení do `design/v2-mobile-redesign` (dovtedy ukazuje český názov suroviny + množstvo zvlášť). Oprava: suroviny
     mimo databázy potravín (`x_…`, napr. mangové pyré, tymián) ukazovali „netreba kupovať“ – recept teraz hľadá riadok nákupu
-    rovnakým kľúčom ako nákup (`rowKey` v `logic.ts`). Recepty.cz zamietnuté a nahradené (buchty bez teploty a času, plnené knedle bez množstiev plnky). Hodnotenia
+    rovnakým kľúčom ako nákup (`rowKey` v `logic.ts`).
+    **Verzia 3 (20. 11., pokyn „tipy a rady v postupe tam, kam patria, nie na koniec“):** v 9 receptoch presunuté rady
+    k svojmu kroku (`tools/kniha/sarza4/rady18.py`, rozmiestnenie je v `SPEC`): guláš (pripálenie papriky → krok 1, opečenie
+    mäsa → 2, rozvarenie + majoránka, zápražka, odležanie → 3), kulajda, moravský vrabec, sviečková, pečená kačica (sadlo),
+    veterníky (domáci fondán), laskonky, cheesecake, makové dortíky. Text rád bez zmeny (SQL ich berie priamo z textu v DB),
+    zahodené len nadpisy blokov a „!“; zápis overený odtlačkom 9/9. Viac rád pri kroku = nový riadok v `tip`/`warn`, appka
+    (`boxLines`) ukáže každú v samostatnom políčku – nasadená testovacia appka ich do zlúčenia ukáže v jednom políčku.
+    Recepty.cz zamietnuté a nahradené (buchty bez teploty a času, plnené knedle bez množstiev plnky). Hodnotenia
     Víkendového pečenia a Lidla majú málo hlasov (8–20, laskonky 7). Časy pri Lidli a Víkendovom pečení odhadnuté z krokov
     (`verification.time_estimated`). Mapovanie potravín: `parse.py` zle priradil 26 surovín (napr. „olej na vymastenie plechu“
     → bravčové stehno, „sušená bazalka“ → sušienky) – opravené ručne v `sql18.py`; 41 surovín bez výživy (`x_…`), appka aj tak

@@ -93,6 +93,9 @@ export function BookIngredients({ r, portions, rows, est, onToggle }: { r: Recip
   );
 }
 
+/** Viac rád pri jednom kroku je v jednom texte, každá na novom riadku – appka ukáže každú v samostatnom políčku. */
+export const boxLines = (s?: string) => (s ? s.split("\n").filter((x) => x.trim()) : []);
+
 /** „Hotové je, keď“, „Pozor“ a „Tip“ pri kroku (aj v režime varenia). */
 export function StepBoxes({ st }: { st: Pick<Step, "done" | "warn" | "tip"> }) {
   return (
@@ -105,22 +108,22 @@ export function StepBoxes({ st }: { st: Pick<Step, "done" | "warn" | "tip"> }) {
           </span>
         </div>
       )}
-      {st.warn && (
-        <div className="sbx pz">
+      {boxLines(st.warn).map((x) => (
+        <div key={x} className="sbx pz">
           <I n="warning" />
           <span>
-            <b>{t("ck.warn")}</b> {st.warn}
+            <b>{t("ck.warn")}</b> {x}
           </span>
         </div>
-      )}
-      {st.tip && (
-        <div className="sbx tip">
+      ))}
+      {boxLines(st.tip).map((x) => (
+        <div key={x} className="sbx tip">
           <I n="lightbulb" />
           <span>
-            <b>{t("ck.tip")}</b> {st.tip}
+            <b>{t("ck.tip")}</b> {x}
           </span>
         </div>
-      )}
+      ))}
     </>
   );
 }
