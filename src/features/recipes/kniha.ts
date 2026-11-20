@@ -38,12 +38,15 @@ export function bookPics(r: Pick<Recipe, "id" | "book">) {
 export function recipeAllergens(r: Pick<Recipe, "ingredients">) {
   const al = new Set<Allergen>();
   const check = new Set<string>();
+  // Surovina mimo databázy potravín: alergény nepoznáme – appka to musí povedať, nie tváriť sa, že žiadne nie sú.
+  const unknown = new Set<string>();
   for (const ing of r.ingredients) {
     const food = FOODS[ing.food];
+    if (!food) unknown.add(ing.label || ing.food);
     for (const a of food?.al ?? []) al.add(a);
     if (food?.check && food.al?.length) check.add(ing.label || food.name);
   }
-  return { allergens: [...al], check: [...check] };
+  return { allergens: [...al], check: [...check], unknown: [...unknown] };
 }
 
 /** Adresy fotiek receptu z knihy (veľké na celú obrazovku) a malá prvá fotka ako náhľad počas načítania. */

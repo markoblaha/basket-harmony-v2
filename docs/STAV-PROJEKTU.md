@@ -295,6 +295,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   recept sa uloží presne v jazyku a znení zdroja (český po česky, slovenský po slovensky, aj so značkami, tipmi a výzvami
   autora, aj s chybami zdroja); stĺpec `book_recipes.lang`. Preklad cs→sk a sk→cs bude neskôr samostatná vrstva, originál
   sa neprepisuje. Jednotky sa ukazujú len g, kg, ml, l (dkg, dl, hrnčeky appka prepočíta pri zobrazení – `metric()`).
+  Cena na porciu, cena nákupu a kalórie sa ukážu len pri úplných údajoch (každá surovina s množstvom má cenu / výživu),
+  inak vôbec – radšej nič ako zlé číslo (pokyn 20. 11.: kačica nemôže stáť 25 centov). Alergény ukazuje recept z knihy vždy
+  (hore pri čase), pri surovine mimo databázy potravín „a možno ďalšie“ + v Info „nevieme určiť pri …“ (`fullCost` v `mk.tsx`,
+  `recipeAllergens` v `kniha.ts`).
   Rady, tipy a upozornenia zdroja (bloky „Nejčastější chyby“, „Tipy“, „Tip:“) patria ku kroku, ktorého
   sa týkajú – políčko Pozor (`steps[].warn`) alebo Tip (`steps[].tip`), doslovne; nie ako samostatné kroky na konci
   (pokyn 20. 11.). Právo a licencie si rieši majiteľ sám pred

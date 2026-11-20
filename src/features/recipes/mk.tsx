@@ -136,6 +136,14 @@ export function useHave() {
 /* ------------------------------------------------------------------ suroviny a cena */
 export type IngRow = Row & { home: boolean; cost: number; plan: ReturnType<typeof buyPlan> };
 
+/**
+ * Súčet cien riadkov, len keď appka pozná cenu každej suroviny s množstvom; inak 0 = cenu neukázať
+ * (pokyn majiteľa: radšej nič ako zlá cena – napr. kačica bez ceny kačice by vyšla na pár centov).
+ */
+export function fullCost(rows: Pick<IngRow, "cost" | "qty">[]) {
+  return rows.every((x) => x.cost > 0 || !(x.qty > 0)) ? rows.reduce((s, x) => s + x.cost, 0) : 0;
+}
+
 /** Suroviny receptu pre daný počet porcií: čo mám doma a koľko stojí to, čo treba kúpiť. */
 export function recipeRows(r: Recipe, portions: number, find: (id: string) => Recipe | undefined, est: Estimator, isHome: (rid: string, row: Row) => boolean): IngRow[] {
   return mergeIngredients([{ recipeId: r.id, portions }], find).map((row) => {
@@ -153,7 +161,7 @@ export function useRecipeFacts(householdId: string, recipes: Recipe[], find: (id
     const m = new Map<string, { cost: number; have: number; all: number }>();
     for (const r of recipes) {
       const rows = recipeRows(r, r.portions, find, est, isHome);
-      const cost = rows.filter((x) => !x.staple).reduce((a, x) => a + x.cost, 0) / Math.max(1, r.portions);
+      const cost = fullCost(rows.filter((x) => !x.staple)) / Math.max(1, r.portions);
       m.set(r.id, { cost, have: rows.filter((x) => x.home).length, all: rows.length });
     }
     return m;

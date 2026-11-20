@@ -16,7 +16,8 @@ import { Sheet } from "@/mockup/Sheet";
 import { Btn, eur } from "@/mockup/kit";
 import { useDeleteRecipe, useFavorites, useRecipes, useToggleFavorite } from "./api";
 import { NUTRIENTS, fmtNutrient, formatAmount, recipeNutrition, renderStep, riPct, scaleIngredients, type NutrientId } from "./logic";
-import { RCATS, art, recipeRows, useHave } from "./mk";
+import { RCATS, art, fullCost, recipeRows, useHave } from "./mk";
+import { recipeAllergens } from "./kniha";
 import { AddRecipeSheet, PlanSheet } from "./sheets";
 import { BookIngredients, BookInfo, BookSteps, duration } from "./book";
 import { PhotoSwiper } from "./Photos";
@@ -95,10 +96,14 @@ export function RecipePage() {
   const a = art(r);
   const rows = recipeRows(r, por, recipes.find, est, isHome);
   const missing = rows.filter((x) => !x.home);
-  const mcost = missing.reduce((s, x) => s + x.cost, 0);
-  const perPortion = rows.filter((x) => !x.staple).reduce((s, x) => s + x.cost, 0) / Math.max(1, por);
+  // Cena a kalórie len pri úplných údajoch (každá surovina má cenu / výživu), inak sa neukážu – radšej nič ako zlé číslo.
+  const mcost = fullCost(missing);
+  const perPortion = fullCost(rows.filter((x) => !x.staple)) / Math.max(1, por);
   const scaled = scaleIngredients(r, por);
-  const kcal = Math.round(recipeNutrition(r).perPortion.kcal);
+  const nu = recipeNutrition(r);
+  const kcal = nu.unknown.length ? 0 : Math.round(nu.perPortion.kcal);
+  // Alergény ukazuje recept z knihy vždy; pri surovine mimo databázy potravín povie, že nevieme.
+  const alg = r.book ? recipeAllergens(r) : null;
   const fav = !!favs?.has(r.id);
   const cat = RCATS.find((c) => c.id !== "all" && c.test(r));
   const prev = ids[idx - 1] ? recipes.find(ids[idx - 1]!) : undefined;
@@ -194,6 +199,14 @@ export function RecipePage() {
               </span>
             )}
             {perPortion > 0 && <span className="gr">{t("rk.perPortion", { price: eur(perPortion) })}</span>}
+            {alg && (
+              <span>
+                <I n="warning" />
+                {alg.allergens.length
+                  ? t(alg.unknown.length ? "kb.algChipMore" : "kb.algChip", { names: alg.allergens.map((a) => t(`kb.al.${a}` as Key)).join(", ") })
+                  : t(alg.unknown.length ? "kb.algChipUnknown" : "kb.algChipNone")}
+              </span>
+            )}
           </div>
           <div className="acts2">
             <button type="button" onClick={() => setSheet("plan")}>
@@ -298,7 +311,7 @@ export function RecipePage() {
             <div className={`card dockc${g ? " glass2" : ""}`}>
               <div className="grow">
                 <div className="t1">{t("rk.buyN", { items: tn("rk.ingredientsAcc", missing.length) })}</div>
-                <div className="meta">{t("rk.buyMeta", { price: eur(mcost) })}</div>
+                <div className="meta">{mcost > 0 ? t("rk.buyMeta", { price: eur(mcost) }) : t("rk.buyMetaNoPrice")}</div>
               </div>
               <Btn cls={`pri sm${g ? " a" : ""}`} onClick={() => setSheet("add")}>
                 <I n="basket" />

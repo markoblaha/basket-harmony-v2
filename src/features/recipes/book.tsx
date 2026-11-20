@@ -170,7 +170,7 @@ export function BookSteps({ r, portions }: { r: Recipe; portions: number }) {
 export function BookInfo({ r }: { r: Recipe }) {
   const b = r.book;
   if (!b) return null;
-  const { allergens, check } = recipeAllergens(r);
+  const { allergens, check, unknown } = recipeAllergens(r);
   return (
     <div className="binfo grid">
       <div>
@@ -182,8 +182,9 @@ export function BookInfo({ r }: { r: Recipe }) {
             ))}
           </div>
         ) : (
-          <p>{t("kb.noAllergens")}</p>
+          !unknown.length && <p>{t("kb.noAllergens")}</p>
         )}
+        {unknown.length > 0 && <p>{t("kb.algUnknown", { names: unknown.map(metric).join(", ") })}</p>}
         {check.length > 0 && <p>{t("kb.checkPack", { names: check.join(", ") })}</p>}
       </div>
       <div>
