@@ -80,6 +80,8 @@ export type BookCheck = {
 export type BookInfo = {
   /** Fotky (alebo obrázok šarže): hlavná a ďalšie zábery (súbory public/kniha/<id>-<n>.webp, triedy pic-kb_<id>_<n>). */
   photos: number;
+  /** Začiatok adresy fotiek z databázy (image_path bez „-1.webp“, napr. /kniha/v2/svieckova); súbory <base>-<n>.webp, <base>-1s.webp. */
+  photoBase?: string;
   /** Čas práce v minútách (minutes = celkový čas). */
   active: number;
   /** Čakanie navyše (odležanie). */

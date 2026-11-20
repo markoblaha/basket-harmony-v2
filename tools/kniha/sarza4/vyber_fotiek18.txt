@@ -1,20 +1,21 @@
-# Ručný výber dočasných originálnych fotiek (20. 11.): len fotky toho istého receptu zo stránky zdroja (hlavná + fotky
-# čitateľov pri Vaření/Recepty.cz), nie náhľady iných receptov. Lidl, Toprecepty: na stránke je len 1 fotka receptu.
-cheesecake_s_ovocnou_penou c1 c3 c6
-hovadzi_gulas c1 c8 c3
-karamelove_veterniky c8 c1
-konfitovana_kacica l1
-kulajda c1 c3 c4
-lasagne c2
-laskonky c1
-makove_torticky_s_mangom c1 c3 c9
-medovnik c8 c1
-moravsky_vrabec c1 c4 c3
-pecena_kacica c1 c2 c7
-recka_musaka c2
-segedinsky_gulas c2
-spanielsky_vtacik c10 c12 c8
-svieckova c1 c6 c10
+# Dočasné fotky receptov – verzia 2 (20. 11., pokyn „najkrajšie fotky v čo najlepšej kvalite“): najväčšia dostupná verzia
+# (Apetit originál, Recepty.cz 2000 px, Toprecepty 1200–1920 px), aj z iných kvalitných receptov toho istého jedla.
+# Formát: id a kandidáti (hN = z hq/index.json, cN = zo stránky zdroja receptu). Prvá fotka = karta a hlavná fotka.
+svieckova h14 h9
+pecena_kacica h30 h18 h26
+spanielsky_vtacik h48 h42 h41
+vianocka h59 h65 h54
+medovnik h74 h75 h72
+karamelove_veterniky h100 h89
+recka_musaka h112 h121 h110
+segedinsky_gulas h131 h125 h135
+lasagne h147 h139 h153
+hovadzi_gulas h167 h168 h160
+kulajda h183 h179 h173
+moravsky_vrabec h195 h187 h190
+laskonky h207 h208
+vianocna_kapustnica h225 h219 h224
+konfitovana_kacica h232 h226 h235
 tekvicove_rezy c1 c8 c9
-vianocka c8 c1
-vianocna_kapustnica c1
+cheesecake_s_ovocnou_penou c1 c3 c6
+makove_torticky_s_mangom c1 c3 c9

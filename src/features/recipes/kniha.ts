@@ -57,9 +57,11 @@ export function recipeAllergens(r: Pick<Recipe, "ingredients">) {
 /** Adresy fotiek receptu z knihy (veľké na celú obrazovku) a malá prvá fotka ako náhľad počas načítania. */
 export function bookPhotos(r: Pick<Recipe, "id" | "book">) {
   const n = r.book?.photos ?? 0;
+  // Adresa z databázy (priečinok s verziou, aby telefón nedržal staré fotky v pamäti), inak pôvodné /kniha/<id>.
+  const base = r.book?.photoBase ?? `/kniha/${r.id}`;
   return {
-    urls: Array.from({ length: n }, (_, k) => `/kniha/${r.id}-${k + 1}.webp`),
-    small: n ? `/kniha/${r.id}-1s.webp` : null,
+    urls: Array.from({ length: n }, (_, k) => `${base}-${k + 1}.webp`),
+    small: n ? `${base}-1s.webp` : null,
   };
 }
 

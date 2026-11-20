@@ -854,6 +854,12 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     nie náhľady iných receptov; Lidl, Toprecepty a pri Apetite stránka viac fotiek receptu nemá (1–2). Migrácia
     `20261120000045_book_recipe_images` (TESTOVACIA DB): `image_count`, `image_status = 'source'` (= predloha, neskôr Gemini
     a originály zmazať). Ochutnávač sa tým vrátil (ukazuje recepty s fotkami).
+    **Fotky verzia 2 (20. 11., „fotky sú otrasné – najkrajšie, v najlepšej kvalite“):** prvé boli malé náhľady (480–674 px)
+    ešte zmenšené. Teraz najkrajšie fotky jedla (aj z iných kvalitných receptov toho istého jedla) v najväčšom rozlíšení:
+    Apetit originál (až 5000 px), Recepty.cz 2000 px, Toprecepty 1200–1920 px, Víkendové pečení 1000 px; uložené do 2000 px
+    (WebP 88), náhľad 800 px. 51 fotiek (2–3 na recept), `public/kniha/v2/` – priečinok s verziou, lebo service worker drží
+    .webp v pamäti (pri zmene fotiek nový priečinok, adresa ide z `image_path`, `book.photoBase`). Výber
+    `tools/kniha/sarza4/vyber_fotiek18.txt`, zdroj každej fotky `fotky_zdroje18.json`, zber `fotky_hq18.py`.
     Recepty.cz zamietnuté a nahradené (buchty bez teploty a času, plnené knedle bez množstiev plnky). Hodnotenia
     Víkendového pečenia a Lidla majú málo hlasov (8–20, laskonky 7). Časy pri Lidli a Víkendovom pečení odhadnuté z krokov
     (`verification.time_estimated`). Mapovanie potravín: `parse.py` zle priradil 26 surovín (napr. „olej na vymastenie plechu“

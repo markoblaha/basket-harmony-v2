@@ -115,6 +115,7 @@ export function useBookRecipes() {
           steps: r.steps as unknown as Step[],
           book: {
             photos: r.image_path ? Math.max(1, r.image_count ?? 1) : 0,
+            photoBase: r.image_path ? r.image_path.replace(/-1\.webp$/, "") : undefined,
             batch: r.image_status === "batch_label" ? (r.batch ?? undefined) : undefined,
             active: r.active_minutes ?? r.minutes,
             wait: r.wait ?? undefined,
