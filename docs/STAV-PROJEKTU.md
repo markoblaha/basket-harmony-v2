@@ -300,6 +300,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
   inak vôbec – radšej nič ako zlé číslo (pokyn 20. 11.: kačica nemôže stáť 25 centov). Alergény ukazuje recept z knihy vždy
   (hore pri čase), pri surovine mimo databázy potravín „a možno ďalšie“ + v Info „nevieme určiť pri …“ (`fullCost` v `mk.tsx`,
   `recipeAllergens` v `kniha.ts`).
+  **Čo sa z receptu NEberie (pokyn 20. 11., spresnenie „presnej kópie“):** berie sa podrobný postup, tipy a rady k vareniu
+  a naše upozornenia; vynechajú sa výzvy autora (komentáre, hodnotenie, sledovanie), odkazy na obchody a iné články,
+  reklama na výrobky (napr. Tescoma, „kúpite ich tu“), značky obchodu v surovinách (Lidl: Alesto, Belbake, Pilos, Kania,
+  Pikok…) a smajlíky. Originál ostáva vo `verification.original`. Text pod receptom už netvrdí „spojené z receptov“.
   **Polotovary s postupom (pokyn 20. 11.):** pri preberaní receptu vždy posúdiť, či bežný človek surovinu vie pripraviť
   (pyré z tekvice, zápražka, domáci fondán, karamel, odpaľované cesto, vývar…). Ak nie, pridať k surovine postup prípravy
   `ingredients[].how` = { title, ingredients?, steps, url, orig } – z odkazu v zdroji („jak připravit“), inak z kvalitného
