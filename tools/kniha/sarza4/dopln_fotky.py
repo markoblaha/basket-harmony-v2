@@ -6,7 +6,7 @@ import sys, os, re, io, json, unicodedata
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from web import get, recipe
 import fotky18 as f
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageStat
 from concurrent.futures import ThreadPoolExecutor
 VZOR = {
  "japonsky_cheesecake": r"japonsky-cheesecake|japanese-cheesecake", "jogurtovy_cheesecake": r"jogurtovy-cheesecake",
@@ -31,6 +31,8 @@ VZOR = {
  "zemlovka": r"^zemlovka", "sulance_s_makom": r"sisky-s-makem|bramborove-sisky", "lievance": r"^livanec|^livance|^livanecky", "tvarohovy_krem": r"tvarohovy-krem",
  "tarte_tatin": r"tatin", "clafoutis": r"clafoutis", "venceky": r"venecky", "profiteroly": r"profiterol", "creme_brulee": r"creme-brulee|krem-brulee",
  "pavlova": r"pavlov", "baklava": r"baklav", "churros": r"churros", "citronovy_tart": r"citronov[ya]-tart|citronovy-kolac",
+ "dobosova_torta": r"dobos", "red_velvet_torta": r"red-velvet", "jahodova_torta": r"^jahodov[ya]-dort", "punciova_torta": r"puncov[ya]-dort|puncove-rezy",
+ "tres_leches": r"tres-leches|trimlek", "victoria_sponge": r"victoria|piskotovy-dort-s-jahod", "tiramisu_torta": r"tiramisu-dort", "oblatkova_torta": r"oplatkov[ya]-dort|lazensk",
 }
 SITES = {"apetit": r"/recept/", "receptycz": r"/recept/", "vikend": r"/\d{4}/\d{2}/", "lidl": r"/recepty/", "vareni": r"/recepty/[^/]+/?$", "toprecepty": r"/recept/\d+"}
 URLS = json.load(open(os.path.join(HERE, "..", "data", "urls.json")))
@@ -48,6 +50,7 @@ def photo(url):
             img = r and r.get("image"); img = img[0] if isinstance(img, list) else img; img = img.get("url") if isinstance(img, dict) else img
         if not img: return None
         raw = f.fetch(big(img), 25); im = Image.open(io.BytesIO(raw))
+        if ImageStat.Stat(im.convert("L").resize((64, 64))).stddev[0] < 30: return None  # zástupný obrázok (logo webu na sivom pozadí)
         return (url, raw, im.size) if im.width >= 1000 and im.height >= 650 else None
     except Exception: return None
 OUT = sys.argv[1]; os.makedirs(OUT, exist_ok=True)
