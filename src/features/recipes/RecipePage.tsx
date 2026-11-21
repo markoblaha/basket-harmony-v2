@@ -19,7 +19,7 @@ import { NUTRIENTS, fmtNutrient, formatAmount, recipeNutrition, renderStep, riPc
 import { RCATS, art, fullCost, recipeRows, useHave } from "./mk";
 import { recipeAllergens } from "./kniha";
 import { AddRecipeSheet, PlanSheet } from "./sheets";
-import { BookIngredients, BookInfo, BookSteps, duration } from "./book";
+import { BookIngredients, BookInfo, BookSteps } from "./book";
 import { PhotoSwiper } from "./Photos";
 import { useCart } from "./cart";
 import type { Recipe } from "./types";
@@ -193,12 +193,14 @@ export function RecipePage() {
             <h1 className="lt rt">{r.name}</h1>
           </div>
           <div className="facts">
-            <span>
-              <I n="clock" />
-              {r.book ? t("kb.work", { act: r.book.active, total: duration(r.minutes) }) : t("rk.minutes", { min: r.minutes })}
-            </span>
-            {r.book?.wait && <span>+ {r.book.wait}</span>}
-            {r.book && <span>{t(`rc.diff.${r.difficulty}` as Key)}</span>}
+            {/* Pri receptoch z knihy len to, čo ukazuje stránka zdroja – nič odhadnuté. */}
+            {(!r.book || r.book.pageTime) && (
+              <span>
+                <I n="clock" />
+                {r.book ? r.book.pageTime : t("rk.minutes", { min: r.minutes })}
+              </span>
+            )}
+            {r.book?.pageDiff && <span>{t(`rc.diff.${r.book.pageDiff}` as Key)}</span>}
             {kcal > 0 && (
               <span role={nutritionOn ? "button" : undefined} onClick={() => nutritionOn && setSheet("nutri")}>
                 <I n="flame" />

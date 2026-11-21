@@ -408,10 +408,12 @@ const TasteCard = memo(
           {kind && <span className="tst-kind">{kind}</span>}
           <h2>{r.name}</h2>
           <div className="tst-meta">
-            <span>
-              <I n="timer" />
-              {duration(r.minutes)}
-            </span>
+            {(!r.book || r.book.pageTime) && (
+              <span>
+                <I n="timer" />
+                {r.book ? r.book.pageTime : duration(r.minutes)}
+              </span>
+            )}
             {fact && fact.cost > 0 && <span>{t("rk.perPortion", { price: eur(fact.cost) })}</span>}
           </div>
           <div className="tst-have">

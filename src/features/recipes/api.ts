@@ -83,6 +83,13 @@ export function useMyRecipes(householdId: string) {
  * Kniha receptov z databázy (tabuľky book_*; číta len schválené a zverejnené recepty). Recepty sa do nej dostanú výrobnou
  * linkou (tools/kniha), nie z kódu aplikácie. Obrázky: image_path (neskôr Gemini), kým nie sú, obrázok šarže.
  */
+/** Údaje zo stránky zdroja uložené pri preberaní receptu: čas („< 90 min“, „60 min“) a náročnosť 1–3. */
+function pageOf(v: unknown): { time?: string; difficulty?: 1 | 2 | 3 } {
+  const p = (v as { page?: { time?: string | null; difficulty?: number | null } } | null)?.page;
+  const d = p?.difficulty;
+  return { time: p?.time ?? undefined, difficulty: d === 1 || d === 2 || d === 3 ? d : undefined };
+}
+
 export function useBookRecipes() {
   return useQuery({
     queryKey: ["book-recipes"],
@@ -118,7 +125,11 @@ export function useBookRecipes() {
             photos: r.image_path ? Math.max(1, r.image_count ?? 1) : 0,
             photoBase: r.image_path ? r.image_path.replace(/-1\.webp$/, "") : undefined,
             batch: r.image_status === "batch_label" ? (r.batch ?? undefined) : undefined,
-            active: r.active_minutes ?? r.minutes,
+            // Čas práce len ak ho uvádza zdroj (inak by bol odhad – recept musí byť presne podľa stránky).
+            active: r.active_minutes ?? undefined,
+            // Čas a náročnosť presne tak, ako ich ukazuje stránka zdroja (verification.page); bez nich sa neukážu.
+            pageTime: pageOf(r.verification).time,
+            pageDiff: pageOf(r.verification).difficulty,
             wait: r.wait ?? undefined,
             scale: (r.scale ?? undefined) as "free" | "piece" | "whole" | undefined,
             portionsGuess: r.portions_guess || undefined,

@@ -13,6 +13,7 @@ import { useHousehold } from "@/features/household/HouseholdProvider";
 import { useProfiles } from "@/features/household/api";
 import { useListEstimate } from "@/features/lists/estimate";
 import { useRecipePlans, useRecipes } from "@/features/recipes/api";
+import { recipeTime } from "@/features/recipes/logic";
 import { useHubSessions, useItems, useListStats, useLists, useStartShopping, type Session, type ShoppingList } from "@/features/lists/api";
 import { errorMessage } from "@/lib/errors";
 import { shortName } from "@/lib/shortName";
@@ -201,7 +202,7 @@ export function HomePage() {
                 const r = recipes.find(p.recipe_key);
                 const art = recipeArt(p.recipe_key, p.recipe_name);
                 const day = p.list_id && listById.get(p.list_id)?.planned_for;
-                const sub = [relDay(day || p.created_at), r ? t("home.minutes", { n: r.minutes }) : ""].filter(Boolean).join(" · ");
+                const sub = [relDay(day || p.created_at), r ? recipeTime(r) : ""].filter(Boolean).join(" · ");
                 return (
                   <HRow
                     key={p.id}

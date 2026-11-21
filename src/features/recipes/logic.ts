@@ -8,7 +8,10 @@ import { formatQuantity } from "@/lib/parseItem";
 import { FOODS, STAPLE_KEYS } from "./foods";
 import type { Ingredient, Recipe, RecipeCategory } from "./types";
 
-export const recipeMeta = (r: Recipe) => t("rc.meta", { min: r.minutes, diff: t(`rc.diff.${r.difficulty}` as Key) });
+/** Čas a náročnosť; pri receptoch z knihy len to, čo ukazuje stránka zdroja (recept nesmie obsahovať odhady). */
+/** Čas receptu na kartách: pri receptoch z knihy len čas zo stránky zdroja (inak prázdne), pri vlastných minúty. */
+export const recipeTime = (r: Recipe): string => (r.book ? (r.book.pageTime ?? "") : t("rk.minutes", { min: r.minutes }));
+export const recipeMeta = (r: Recipe) => (r.book ? [r.book.pageTime, r.book.pageDiff && t(`rc.diff.${r.book.pageDiff}` as Key)].filter(Boolean).join(" · ") : t("rc.meta", { min: r.minutes, diff: t(`rc.diff.${r.difficulty}` as Key) }));
 export const isSweet = (r: Recipe) => r.category === "sladke" || r.tags.includes("sladke");
 export const ingName = (ing: Ingredient) => FOODS[ing.food]?.name || ing.label || ing.food;
 export const isStaple = (food: string | null) => !!food && STAPLE_KEYS.includes(food);

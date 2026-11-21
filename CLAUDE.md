@@ -37,6 +37,9 @@ Ak nie, povedz to otvorene s dôvodom a navrhni lepšiu cestu. Rovnako priznaj s
 - Recept sa preberá z textu, ktorý je **na stránke naozaj vidieť** (v prehliadači `document.body.innerText`), nie zo
   skrytých dát (JSON-LD, HTML pre vyhľadávače) – tie sa môžu líšiť (tekvicové rezy: v dátach „lžíce“, na stránke „lžička“).
   Skryté dáta slúžia len na rýchle nájdenie surovín; pri rozdiele platí viditeľný text.
+- **Nič vymyslené (pokyn majiteľa 21. 11.):** suroviny, postup, tipy, čas, náročnosť a ďalšie údaje len tak, ako sú
+  na stránke. Žiadne vlastné rady, odhady času práce ani náročnosti. Čas a náročnosť zo stránky sa ukladajú do
+  `verification.page` ({time: „< 90 min“ | „60 min“, difficulty: 1–3}); keď ich stránka neuvádza, appka ich neukáže.
 - Fotky len zo stránky pôvodného receptu. Lyžice podľa originálu: skratky PL/ČL celým slovom, slová lžíce/lžička
   ako „lyžica/lyžička“. Podrobnosti v `docs/STAV-PROJEKTU.md`.
 

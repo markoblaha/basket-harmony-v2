@@ -984,6 +984,13 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     kontrola 219 zdrojov: 4 skutočné chyby – tekvicové rezy (lžíce/lžička) a 3 z Vaření.cz, ktoré v dátach píše 1/3 ako 1/4
     (buchty a české tvarohové koláče: mlieko 1/3 l; ovocné knedle: 1/3 kocky tvarohu) – opravené. Ostatné nálezy sú len iný
     zápis (1/2 = 0,5) alebo zaokrúhlenie stránky (Schwarzwald: na stránke 1,3 l, v dátach autora 1,25 l – ponechané 1,25 l).
+    **Nič vymyslené – čistenie (21. 11., pokyn majiteľa):** z 406 tipov a upozornení pri krokoch ostalo 133, ktoré sú na
+    stránke zdroja (porovnanie po vetách `tipy_vety.py` v scratchpade + ručná kontrola hraničných); 273 vlastných rád
+    zmazaných, 5 skrátených na znenie originálu. Čas práce (`active_minutes`) zmazaný všade – žiadny zdroj ho neuvádza.
+    Čas a náročnosť len zo stránky (`verification.page`): 164 receptov má čas (Apetit pásmo „< 90 min“, ostatní „N min“),
+    139 náročnosť (Apetit, Recepty.cz, Toprecepty); Víkendové pečení, Vaření (náročnosť) a užívateľské recepty Apetitu
+    ich neuvádzajú → v appke sa neukážu. `minutes`/`difficulty` ostávajú len na triedenie. Recepty mimo sladkých
+    (hlavné jedlá a i.) zatiaľ `page` nemajú, takže čas ani náročnosť neukazujú – doplniť rovnakou kontrolou.
     **Prepočet lyžíc ako v kuchyni (21. 11.):** `scaleSpoon` – zlomky namiesto desatinných čísel (½, ¼, ¾, ⅓, ⅔), menej než
     lyžica → lyžičky (1 lyžica = 3 lyžičky), lyžičky v celých/polovičných lyžiciach → lyžice, lyžica na ½, lyžička na ¼ alebo ⅓,
     menej než pätina lyžičky = štipka. Pri riadku s lyžicou sa pod ním ukáže „≈ X g“ (hmotnosť z `foods.ts`, lyz/lyzk).

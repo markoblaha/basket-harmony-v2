@@ -15,7 +15,7 @@ import { E, I, Toggle } from "@/mockup/ui";
 import { Sheet } from "@/mockup/Sheet";
 import { Btn, eur } from "@/mockup/kit";
 import { useFavorites, usePlanRecipes, useRecipePlans, useRecipes, useSetPlanStatus } from "./api";
-import { toListEntry } from "./logic";
+import { recipeTime, toListEntry } from "./logic";
 import { art, recipeRows, useHave } from "./mk";
 import { useEstimator } from "@/features/lists/estimate";
 import type { Recipe } from "./types";
@@ -174,8 +174,7 @@ export function PlanSheet({ open, onClose, day, rid, planId }: { open: boolean; 
                   <div className="tx">
                     <b>{r.name}</b>
                     <span className="sub">
-                      {t("rk.minutes", { min: r.minutes })}
-                      {favs.has(r.id) ? ` · ${t("rk.favShort")}` : ""}
+                      {[recipeTime(r), favs.has(r.id) ? t("rk.favShort") : ""].filter(Boolean).join(" · ")}
                     </span>
                   </div>
                   <I n="plus" w="bold" cls="chev" />

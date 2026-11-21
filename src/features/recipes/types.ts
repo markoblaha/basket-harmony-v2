@@ -91,7 +91,11 @@ export type BookInfo = {
   /** Začiatok adresy fotiek z databázy (image_path bez „-1.webp“, napr. /kniha/v2/svieckova); súbory <base>-<n>.webp, <base>-1s.webp. */
   photoBase?: string;
   /** Čas práce v minútách (minutes = celkový čas). */
-  active: number;
+  active?: number;
+  /** Čas tak, ako ho ukazuje stránka zdroja („< 90 min“, „60 min“). */
+  pageTime?: string;
+  /** Náročnosť zo stránky zdroja (1–3), ak ju uvádza. */
+  pageDiff?: 1 | 2 | 3;
   /** Čakanie navyše (odležanie). */
   wait?: string;
   cuisine: string;

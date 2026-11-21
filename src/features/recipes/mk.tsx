@@ -7,7 +7,7 @@ import { t } from "@/i18n";
 import { E, I } from "@/mockup/ui";
 import { eur, recipeArt } from "@/mockup/kit";
 import { useEstimator, type Estimator } from "@/features/lists/estimate";
-import { buyPlan, mergeIngredients, type Row } from "./logic";
+import { buyPlan, mergeIngredients, recipeTime, type Row } from "./logic";
 import { STAPLE_KEYS } from "./foods";
 import type { Recipe } from "./types";
 
@@ -188,7 +188,7 @@ export function useRecipeFacts(householdId: string, recipes: Recipe[], find: (id
 /** Karta receptu – rovnaká všade: obrázok, názov, čas a cena za porciu. */
 export function RCard({ r, onOpen, wide, fav, fact }: { r: Recipe; onOpen: () => void; wide?: boolean; fav?: boolean; fact?: { cost: number; have: number; all: number } }) {
   const a = art(r);
-  const meta = fact && fact.cost > 0 ? t("rk.cardMeta", { min: r.minutes, price: eur(fact.cost) }) : t("rk.minutes", { min: r.minutes });
+  const meta = [recipeTime(r), fact && fact.cost > 0 ? t("rk.perPortion", { price: eur(fact.cost) }) : ""].filter(Boolean).join(" · ");
   return (
     <button type="button" className={`rcard${wide ? " wide" : ""}`} onClick={onOpen}>
       <span className={`rimg${a.pic ? ` pic-${a.pic}` : ` bg-${a.bg}`}`}>

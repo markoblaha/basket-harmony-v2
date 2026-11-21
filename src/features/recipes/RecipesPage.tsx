@@ -19,7 +19,7 @@ import { Btn } from "@/mockup/kit";
 import { useFavorites, usePlanRecipes, useRecipePlans, useRecipes } from "./api";
 import { VoiceSearch } from "./common";
 import { ImportSheet } from "./ImportSheet";
-import { interpretQuery, matchesFilters, matchesTerms, recommendations, toListEntry } from "./logic";
+import { interpretQuery, matchesFilters, matchesTerms, recipeTime, recommendations, toListEntry } from "./logic";
 import { CHEAP, RCATS, RCOLS, RCard, art, recipeRows, useRecipeFacts } from "./mk";
 import { PlanSheet } from "./sheets";
 import type { Recipe } from "./types";
@@ -363,7 +363,7 @@ export function RecipesPage() {
                           <span className={`th${a.pic ? ` pic-${a.pic}` : ` bg-${a.bg}`}`}>{!a.pic && <E k={a.e} />}</span>
                           <div className="tx">
                             <b>{x.r.name}</b>
-                            <span className="sub">{t("rk.dayMeta", { min: x.r.minutes, state: miss ? t("rk.missN", { n: miss }) : t("rk.allHome") })}</span>
+                            <span className="sub">{[recipeTime(x.r), miss ? t("rk.missN", { n: miss }) : t("rk.allHome")].filter(Boolean).join(" · ")}</span>
                           </div>
                         </>
                       ) : (
