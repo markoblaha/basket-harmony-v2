@@ -5,7 +5,7 @@
  * a aktuálna fotka sa jemne približuje. Obrázky sú <img> (async dekódovanie, lenivé načítanie), pod prvou je
  * malý náhľad, takže sa nikdy neukáže čierna plocha.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { t } from "@/i18n";
 import { E, I } from "@/mockup/ui";
 import { bookPhotos } from "./kniha";
@@ -118,7 +118,7 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
           <div
             key={u}
             className={`phs-i${k === i && active ? " on" : ""}`}
-            style={k === 0 && small ? { backgroundImage: `url(${small})` } : undefined}
+            style={feed ? ({ "--bg": `url(${k === 0 && small ? small : u})` } as CSSProperties) : k === 0 && small ? { backgroundImage: `url(${small})` } : undefined}
             role="group"
             aria-label={t("tst.photo", { n: k + 1, all: n })}
           >
@@ -130,6 +130,9 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
                 decoding="async"
                 loading={k === 0 || (active && k <= i + 1) ? "eager" : "lazy"}
                 fetchPriority={k === 0 && active ? "high" : "auto"}
+                // Ochutnávač je na výšku: fotka na šírku by sa orezala na úzky pás v strede („extrémne priblížená“) –
+                // takú ukážeme celú a pozadie vyplní jej rozmazaná kópia (pokyn majiteľa 21. 11.).
+                onLoad={feed ? (e) => e.currentTarget.classList.toggle("wide", e.currentTarget.naturalWidth / e.currentTarget.naturalHeight > 0.8) : undefined}
               />
             )}
           </div>
