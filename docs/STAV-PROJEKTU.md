@@ -926,6 +926,14 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
     `delete from book_dishes where id = 'mramorova_babovka';` – duplicita omylom, recept patrí pod `babovka`.
+    **Fotky receptov – pravidlo (21. 11., pokyn majiteľa):** každý recept má 2–3 pekné fotky, aspoň 1000 px. Ak zdroj má
+    jednu alebo malú, `dopln_fotky.py` nájde rovnaké jedlo na iných weboch (len fotka receptu z JSON-LD, ≥ 1000 px),
+    z kontaktného hárku sa ručne vyberie zhoda, `vyber_doplnenych.py` uloží (extrémne malá vlastná fotka sa vynechá).
+    Zdroje: `fotky_zdroje_doplnene.json`. Keď sa zmení prvá fotka, súbory dostanú nový názov (`<id>_b-N.webp` +
+    `image_path`), lebo service worker drží .webp v cache. Bez doplnenia zostali len mrkvový fit a tiramisu cheesecake
+    (iná fotka toho istého jedla sa nenašla).
+    **Ochutnávač:** fotka na šírku sa na obrazovke na výšku orezávala na úzky pás (vyzerala extrémne priblížená) – teraz sa
+    ukáže celá (`object-fit: contain`, trieda `wide` podľa rozmerov) a pozadie vyplní rozmazaná kópia (`--bg`).
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
     recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):
     **Vaření.cz** 47 794 receptov, víťaz pri 13/13 jedál, medián 146 hodnotení, 91 % surovín s množstvom, ~130 slov postupu,
