@@ -383,5 +383,22 @@
  "orechove_kolieska": [
   "https://www.recepty.cz/recept/orechova-kolecka-s-vanilkovym-kremem-bez-lepku-164801",
   "pôvodná fotka receptu"
+ ],
+ "cokoladova_bez_muky": [
+  "pôvodná fotka receptu",
+  "https://www.apetitonline.cz/recept/svezi-dort-bez-mouky-s-malinami-tvarohem"
+ ],
+ "zmrzlinova_torta": [
+  "pôvodná fotka receptu",
+  "https://www.apetitonline.cz/recept/zmrzlinovy-dort-s-ovocem"
+ ],
+ "citronova_torta_beze": [
+  "pôvodná fotka receptu",
+  "https://www.apetitonline.cz/recept/citronovy-dort",
+  "https://www.apetitonline.cz/recept/citronovy-dort-s-bezinkovym-kremem"
+ ],
+ "karamelova_torta": [
+  "https://www.recepty.cz/recept/nepeceny-karamelovy-dort-s-ricottou-a-broskvemi-145952",
+  "https://www.recepty.cz/recept/karamelovy-dort-15628"
  ]
 }

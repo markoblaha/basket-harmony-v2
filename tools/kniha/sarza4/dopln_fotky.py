@@ -39,6 +39,7 @@ VZOR = {
  "ovocna_piskotova_torta": r"^ovocn[ya]-dort", "lotus_torta": r"lotus.*dort", "banoffee": r"banoffee|bananovo-karamelov",
  "kokosove_gulky": r"kokosove-kulicky", "kokosove_beze": r"kokosove-pusinky|^kokosky", "cokoladove_lupienky": r"florentin", "kokosove_rohy": r"kokosove-rohlicky",
  "marcipanove": r"marcipanov", "orechove_kolieska": r"orechova-kolecka|orechove-kolecka",
+ "cokoladova_bez_muky": r"bez-mouky", "zmrzlinova_torta": r"zmrzlinov.*dort", "citronova_torta_beze": r"citronov.*dort", "karamelova_torta": r"karamelov.*dort",
 }
 SITES = {"apetit": r"/recept/", "receptycz": r"/recept/", "vikend": r"/\d{4}/\d{2}/", "lidl": r"/recepty/", "vareni": r"/recepty/[^/]+/?$", "toprecepty": r"/recept/\d+"}
 URLS = json.load(open(os.path.join(HERE, "..", "data", "urls.json")))
