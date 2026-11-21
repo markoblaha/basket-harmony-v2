@@ -969,7 +969,8 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     tiramisu, apple crumble, banánová a jahodová zmrzlina, jablkový trifle, suflé, panna cotta, Eton mess, palacinky
     Suzette, semifreddo, ryžový puding, sorbet), kremrole a kiwi rezy, kysnuté (fašiangové šišky, loupáky, lekvárové buchty),
     koláče (perník, linecký, kefírová buchta, čučoriedkový, makový, apple pie, banánový chlebík), muffiny (citrónové s makom,
-    tvarohové, kávové, hruškové) a sušienky (škoricové, fínske ovsené). Spolu 202 receptov. Nový recept dostáva id jedla
+    tvarohové, kávové, hruškové) a sušienky (škoricové, fínske ovsené). Várka 24: belgické wafle, svadobné koláčiky, vdolky,
+    panettone, rožky s orechovou plnkou, croissanty, krupicová kaša. Spolu 209 receptov. Nový recept dostáva id jedla
     z plánu (`book_dishes`), ak tam už je – inak vzniká duplicita. Rýchle hľadanie podľa adresy: scratchpad
     `hladaj_slug.py "regex" [min_hlasov]` (rovnaké kritériá ako `tazba.py`, aj Toprecepty a Lidl).
     **Lyžice – pravidlo (21. 11., pokyn majiteľa):** v receptoch sa vždy píše „polievková lyžica“ (PL, lžíce, tbsp)
