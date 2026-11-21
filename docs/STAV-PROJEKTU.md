@@ -926,6 +926,9 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     jablková štrúdľa, bublanina, krémeše, brownies, tvarohový koláč, mramorová bábovka.
     Várka 2 (batch 8, 13 receptov): buchty, kysnutý koláč s tvarohom a jablkami, škoricové slimáky, makovník,
     orechovník, trubičky, linecké, vanilkové rožky, medovníčky, kokosky, rumové guľky, tiramisu, čokoládová pena.
+    Várka 3 (batch 9, 12 receptov, každý 2–3 fotky): čokoládové, čučoriedkové a banánové muffiny, cookies, ovsené sušienky,
+    palacinky, ovocné knedle, kysnuté knedle s čučoriedkami, žemľovka, šúľance s makom, lievance, vanilkový tvarohový krém.
+    Stav: 83 hotových, 218 naplánovaných.
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
     `delete from book_dishes where id = 'mramorova_babovka';` – duplicita omylom, recept patrí pod `babovka`.

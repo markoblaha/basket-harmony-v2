@@ -25,6 +25,10 @@ VZOR = {
  "medovnicky": r"^pernicky|vanocni-pernicky", "orechovnik": r"orechovy-zavin|^orechovnik", "rumove_gulky": r"rumove-kulicky",
  "skoricove_slimaky": r"skoricovi-sneci|skoricove-sneky|cinnamon-roll|skoricove-slimaky", "tiramisu": r"^tiramisu",
  "trubicky": r"^trubicky|^kornoutky", "vanilkove_rozky": r"vanilkove-rohlicky",
+ "cokoladove_muffiny": r"^cokoladove-muffiny", "cucoriedkove_muffiny": r"boruvkove-muffiny", "cookies": r"^cookies|chocolate-chip|americke-cookies",
+ "ovsene_susienky": r"^ovesne-susenky", "bananove_muffiny": r"^bananove-muffiny", "palacinky": r"^palacinky",
+ "ovocne_knedle": r"ovocne-knedliky|merunkove-knedliky|svestkove-knedliky|jahodove-knedliky", "parene_buchty": r"kynute-knedliky|borukove-knedliky|boruvkove-knedliky",
+ "zemlovka": r"^zemlovka", "sulance_s_makom": r"sisky-s-makem|bramborove-sisky", "lievance": r"^livanec|^livance|^livanecky", "tvarohovy_krem": r"tvarohovy-krem",
 }
 SITES = {"apetit": r"/recept/", "receptycz": r"/recept/", "vikend": r"/\d{4}/\d{2}/", "lidl": r"/recepty/", "vareni": r"/recepty/[^/]+/?$", "toprecepty": r"/recept/\d+"}
 URLS = json.load(open(os.path.join(HERE, "..", "data", "urls.json")))
