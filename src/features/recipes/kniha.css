@@ -36,6 +36,7 @@
 .bhm .phs-seg i.d { background: #fff; }
 .bhm .phs-seg i.c::after { content: ""; position: absolute; inset: 0; background: #fff; transform-origin: left; }
 .bhm .phs-seg i.c.run::after { animation: seg-fill var(--auto, 3.2s) linear forwards; }
+.bhm .phs-seg i.c.run.p::after { animation-play-state: paused; }
 @keyframes seg-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .bhm .phs.feed .phs-cnt { top: calc(var(--sat) + 76px); bottom: auto; right: 14px; }
 .bhm .phs.feed .phs-nav { top: 46%; }

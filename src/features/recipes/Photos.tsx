@@ -1,8 +1,8 @@
 /**
  * Fotky receptu, ktoré sa listujú do strán: prstom (natívne posúvanie so zarážkami – plynulé aj na slabom
  * telefóne), ťuknutím na ľavý/pravý okraj, šípkami na počítači a klávesmi ← →. Počítadlo „1/3“.
- * V Ochutnávači (feed) sa fotky aktívneho receptu samy posúvajú s pásikmi ako príbeh, kým sa ich nedotkneš,
- * a aktuálna fotka sa jemne približuje. Obrázky sú <img> (async dekódovanie, lenivé načítanie), pod prvou je
+ * V Ochutnávači (feed) sa fotky aktívneho receptu samy posúvajú s pásikmi ako príbeh – dokola, kým neprejdeš
+ * na ďalší recept (prst na fotke ich len pozdrží) – a aktuálna fotka sa jemne približuje. Obrázky sú <img> (async dekódovanie, lenivé načítanie), pod prvou je
  * malý náhľad, takže sa nikdy neukáže čierna plocha.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
@@ -36,7 +36,7 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
   const { urls, small } = bookPhotos(r);
   const n = urls.length;
   const [i, setI] = useState(0);
-  const [hold, setHold] = useState(false); // dotkol sa → fotky sa už samy neposúvajú
+  const [down, setDown] = useState(false); // prst na fotke → samé posúvanie stojí, po pustení pokračuje
   const sc = useRef<HTMLDivElement>(null);
   const raf = useRef(0);
   const names = [t("kb.ph.1"), t("kb.ph.2"), t("kb.ph.3"), t("kb.ph.4")];
@@ -45,10 +45,17 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
     (k: number) => {
       const el = sc.current;
       if (!el || !n) return;
+      // Ochutnávač: za poslednou fotkou znova prvá (fotky idú dokola) – skokom s krátkym prelínaním,
+      // nie prevíjaním naspäť cez všetky fotky.
+      if (feed && k >= n) {
+        el.scrollTo({ left: 0, behavior: "auto" });
+        if (!reduced()) el.animate?.([{ opacity: 0.3 }, { opacity: 1 }], { duration: 420, easing: "ease-out" });
+        return;
+      }
       const c = Math.max(0, Math.min(n - 1, k));
       el.scrollTo({ left: c * el.clientWidth, behavior: reduced() ? "auto" : "smooth" });
     },
-    [n],
+    [n, feed],
   );
 
   const onScroll = () => {
@@ -63,13 +70,26 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
   };
   useEffect(() => () => cancelAnimationFrame(raf.current), []);
 
-  // Ochutnávač: fotky aktívneho receptu sa samy posúvajú (raz dokola, potom ostane posledná).
-  const auto = feed && active && !hold && n > 1 && i < n - 1 && !reduced();
+  // Ochutnávač: fotky aktívneho receptu sa samy posúvajú dokola (po poslednej znova prvá), kým je recept
+  // na obrazovke (pokyn majiteľa 21. 11.). Prst na fotke posúvanie pozdrží (ako príbeh) – pásik aj čas stoja
+  // a po pustení dobehne len zvyšok času; ťuk alebo ťah na inú fotku začne jej čas odznova.
+  const auto = feed && active && n > 1 && !reduced();
+  const left = useRef(AUTO_MS);
   useEffect(() => {
-    if (!auto) return;
-    const tm = setTimeout(() => go(i + 1), AUTO_MS);
-    return () => clearTimeout(tm);
-  }, [auto, i, go]);
+    left.current = AUTO_MS;
+  }, [i, active]);
+  useEffect(() => {
+    if (!active) setDown(false);
+  }, [active]);
+  useEffect(() => {
+    if (!auto || down) return;
+    const start = performance.now();
+    const tm = setTimeout(() => go(i + 1), left.current);
+    return () => {
+      clearTimeout(tm);
+      left.current = Math.max(0, left.current - (performance.now() - start));
+    };
+  }, [auto, down, i, go]);
 
   // Šípky na klávesnici pre aktívny recept (feed) – v detaile receptu je fotka vždy aktívna.
   useEffect(() => {
@@ -79,7 +99,6 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
       if (e.key === "ArrowRight") go(i + 1);
       else if (e.key === "ArrowLeft") go(i - 1);
       else return;
-      setHold(true);
       e.preventDefault();
     };
     window.addEventListener("keydown", key);
@@ -112,7 +131,13 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
   }
 
   return (
-    <div className={`gal phs${feed ? " feed" : ""}`} onPointerDown={() => setHold(true)}>
+    <div
+      className={`gal phs${feed ? " feed" : ""}`}
+      onPointerDown={feed ? () => setDown(true) : undefined}
+      onPointerUp={feed ? () => setDown(false) : undefined}
+      onPointerCancel={feed ? () => setDown(false) : undefined}
+      onPointerLeave={feed ? () => setDown(false) : undefined}
+    >
       <div className="phs-s" ref={sc} onScroll={onScroll} onClick={tap} aria-roledescription="carousel">
         {urls.map((u, k) => (
           <div
@@ -141,7 +166,7 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
       {feed && n > 1 && (
         <div className="phs-seg" aria-hidden="true">
           {urls.map((u, k) => (
-            <i key={u} className={k < i ? "d" : k === i ? `c${auto ? " run" : ""}` : ""} style={{ ["--auto" as string]: `${AUTO_MS}ms` }} />
+            <i key={u} className={k < i ? "d" : k === i ? `c${auto ? " run" : ""}${down ? " p" : ""}` : ""} style={{ ["--auto" as string]: `${AUTO_MS}ms` }} />
           ))}
         </div>
       )}
@@ -153,7 +178,7 @@ export function PhotoSwiper({ r, feed = false, active = true, near = true }: Pro
           <button type="button" className="phs-nav prev" onClick={() => go(i - 1)} disabled={i === 0} aria-label={t("tst.prevPhoto")}>
             <I n="caret-left" w="bold" />
           </button>
-          <button type="button" className="phs-nav next" onClick={() => go(i + 1)} disabled={i === n - 1} aria-label={t("tst.nextPhoto")}>
+          <button type="button" className="phs-nav next" onClick={() => go(i + 1)} disabled={!feed && i === n - 1} aria-label={t("tst.nextPhoto")}>
             <I n="caret-right" w="bold" />
           </button>
         </>

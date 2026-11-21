@@ -970,6 +970,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     nugátová torta. Bez zhody zostali oblátková torta, lieskovoorieškové koláčiky a škoricové hviezdičky (1 vlastná fotka).
     **Ochutnávač:** fotka na šírku sa na obrazovke na výšku orezávala na úzky pás (vyzerala extrémne priblížená) – teraz sa
     ukáže celá (`object-fit: contain`, trieda `wide` podľa rozmerov) a pozadie vyplní rozmazaná kópia (`--bg`).
+    **Ochutnávač – fotky dokola (21. 11., pokyn majiteľa):** fotky receptu sa samy posúvajú dokola (po poslednej znova
+    prvá, skokom s krátkym prelínaním), kým je recept na obrazovke – predtým sa zastavili na poslednej a po prvom dotyku
+    navždy. Prst na fotke posúvanie len pozdrží (pásik stojí, po pustení dobehne zvyšok času). `Photos.tsx` (`down`, `left`).
+    Overené Playwrightom lokálne s testovacou DB: 1/3 → 2/3 → 3/3 → 1/3 → 2/3, podržanie 6 s stojí, ďalší recept tiež dokola.
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
     recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):
     **Vaření.cz** 47 794 receptov, víťaz pri 13/13 jedál, medián 146 hodnotení, 91 % surovín s množstvom, ~130 slov postupu,
