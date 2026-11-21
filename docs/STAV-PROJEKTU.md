@@ -937,6 +937,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Várka 6 (batch 13): torty banánová s karamelom, maková s citrónovým krémom, orieškovo-kávová, piškótová s malinovým
     mascarpone, ovocná so želé, smotanová Lotus; banoffee (koláče). Torty 19 hotových / 20 v pláne, cukrovie 13 / 17.
     Jogurtová a tvarohová želatínová torta – zdroje majú len hrnčeky/kelímky, hľadať iný recept.
+    Várka 7 (batch 14): cukrovie biele kokosové guľky, kokosové pusinky, florentínske, kokosové rožky v čokoláde,
+    marcipánové guľky, orechové kolieska s čokoládovým krémom. Cukrovie 19 / zostáva 11, torty 19 / zostáva 20.
+    Zostávajúce torty a cukrovie majú na českých weboch slabé recepty (málo hodnotení, hrnčeky) – ďalší krok je
+    hľadať ich na overených anglických weboch a preložiť.
     Panna cotta: zdroje majú zlé hodnotenie (Vaření 3,3), treba hľadať inde (napr. anglické weby).
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
