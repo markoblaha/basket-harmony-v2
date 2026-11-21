@@ -962,19 +962,14 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
     `delete from book_dishes where id = 'mramorova_babovka';` – duplicita omylom, recept patrí pod `babovka`.
-    **Fotky receptov – pravidlo (21. 11., pokyn majiteľa):** každý recept má 2–3 pekné fotky, aspoň 1000 px. Ak zdroj má
-    jednu alebo malú, `dopln_fotky.py` nájde rovnaké jedlo na iných weboch (len fotka receptu z JSON-LD, ≥ 1000 px),
-    z kontaktného hárku sa ručne vyberie zhoda, `vyber_doplnenych.py` uloží (extrémne malá vlastná fotka sa vynechá).
-    Zdroje: `fotky_zdroje_doplnene.json`. Keď sa zmení prvá fotka, súbory dostanú nový názov (`<id>_b-N.webp` +
-    `image_path`), lebo service worker drží .webp v cache. Bez doplnenia zostali len mrkvový fit a tiramisu cheesecake
-    (iná fotka toho istého jedla sa nenašla).
-    **Fotky zo zahraničia – pravidlo (21. 11., pokyn majiteľa):** keď recept nemá fotku celého jedla, fotka nesedí k názvu
-    alebo má nízke rozlíšenie, hľadaj rovnaké jedlo aj na zahraničných weboch (WebSearch, napr. lecker.de, recipetineats,
-    foodnouveau, backenmitchristina.at). `zahranicie.py <priečinok> <id> <url…>` vypíše názov a suroviny cudzieho receptu
-    a stiahne jeho fotku; fotku prevezmi len ak sedí NÁZOV, SUROVINY aj VZHĽAD (napr. Zimtsterne s bielkovou polevou ≠ naše
-    škoricové hviezdičky obalené v cukre → nepoužiť). Uloženie `uloz_zahranicne.py` → `<id>_z-N.webp` + nový `image_path`.
-    Prvé kolo: gaštanová torta, tiramisu torta, išelské, citrónový tart, Lotus torta, florentínky, tiramisu cheesecake,
-    nugátová torta. Bez zhody zostali oblátková torta, lieskovoorieškové koláčiky a škoricové hviezdičky (1 vlastná fotka).
+    **Fotky receptov – PLATNÉ pravidlo (21. 11., pokyn majiteľa, nahrádza staré „2–3 fotky aj z iných receptov“):**
+    recept smie mať LEN fotky zo stránky svojho pôvodného receptu (ten istý koláč/torta, aj viac záberov z toho istého
+    článku). Fotka iného koláča toho istého druhu sa nepoužíva, ani keď je krajšia. Vyššie rozlíšenie len z toho istého
+    originálu: Vaření `-velky.jpg` (~840 px) a Toprecepty (677×508) sú maximum, Apetit originál = adresa bez
+    `/styles/…/public/`, Recepty.cz `h1200w2000t`. Čistenie `len_originaly.py` (sada `<id>_o-N.webp`, nový `image_path`):
+    138 receptov zostalo s 1 originálnou fotkou, 18 má viac záberov z vlastného článku, gaštanová torta a tvarohový krém
+    nemajú originálnu fotku (bez fotky). `dopln_fotky.py`, `zahranicie.py` a `uloz_zahranicne.py` sa už na fotky NEPOUŽÍVAJÚ
+    (zahraničie len na porovnanie receptu).
     **Ochutnávač:** fotka na šírku sa na obrazovke na výšku orezávala na úzky pás (vyzerala extrémne priblížená) – teraz sa
     ukáže celá (`object-fit: contain`, trieda `wide` podľa rozmerov) a pozadie vyplní rozmazaná kópia (`--bg`).
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
