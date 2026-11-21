@@ -912,7 +912,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     `fotky_zdroje_cheesecake15.json`. Kontrola čísel a češtiny (ř/ě/ů) bez nálezu. Makový cheesecake z Víkendového pečenia
     vynechaný (zlá adresa – zatiaľ nenájdený).
     **Koláče a dezerty – celá kategória (21. 11., pokyn majiteľa „naplň celú kategóriu, postupne cez 5-hodinové limity“):**
-    nové podkategórie `cukrovie` (Vianočné cukrovie) a `muffiny` (Muffiny a sušienky). Plán 73 jedál je v
+    **Cieľ 300 receptov** (majiteľ 21. 11.: mix SK/CZ klasík, sveta a „wow“ nápadov; torty 40, cheesecaky 40, koláče a rezy
+    45, kysnuté 30, zákusky 30, cukrovie 30, muffiny a sušienky 25, dezerty 40, sladké jedlá 20). Stav 21. 11.: 71 hotových,
+    230 naplánovaných (priorita 1 = SK/CZ klasika, 2 = svet, 3 = sezónne a slávnostné).
+    Nové podkategórie `cukrovie` (Vianočné cukrovie) a `muffiny` (Muffiny a sušienky). Plán je v
     `tools/kniha/sarza4/dezerty.py` (ZOZNAM) aj v DB: `book_dishes` status `planned`, `notes = 'sub=<podkategória>'`,
     priorita 1 = klasika. Čo zostáva: `select name_sk, notes, priority from book_dishes where category = 'sladke'
     and status = 'planned' order by priority, notes`. Postup na ďalšiu várku: `OUT=<priečinok> python3 dezerty.py hladaj
