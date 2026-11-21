@@ -417,6 +417,8 @@ export const skRecipes = {
   "rk.sub.kolace_rezy": "Koláče a rezy",
   "rk.sub.kysnute": "Kysnuté pečivo",
   "rk.sub.zakusky": "Zákusky a drobné pečivo",
+  "rk.sub.cukrovie": "Vianočné cukrovie",
+  "rk.sub.muffiny": "Muffiny a sušienky",
   "rk.sub.dezerty": "Dezerty a krémy",
   "rk.sub.sladke_jedla": "Sladké jedlá",
   "rk.subAll": "Všetky",

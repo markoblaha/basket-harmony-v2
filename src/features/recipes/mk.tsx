@@ -35,7 +35,7 @@ export const SUBCATS: Record<string, string[]> = {
   cestoviny: ["zapekane", "omacky", "ryza", "pizza"],
   bezmasa: ["zeleninove_jedla", "syr_vajcia", "strukoviny", "salaty"],
   ranajky: ["sladke_ranajky", "slane_ranajky", "kase"],
-  sladke: ["torty", "cheesecaky", "kolace_rezy", "kysnute", "zakusky", "dezerty", "sladke_jedla"],
+  sladke: ["torty", "cheesecaky", "kolace_rezy", "kysnute", "zakusky", "cukrovie", "muffiny", "dezerty", "sladke_jedla"],
 };
 
 /** Do koľko € na porciu je jedlo „lacné“. */

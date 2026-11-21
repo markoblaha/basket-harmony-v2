@@ -911,6 +911,17 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     fotky receptu, staršie len 800 px; Apetit 1 vlastná), výber v `fotky_cheesecake15.py`, zdroje
     `fotky_zdroje_cheesecake15.json`. Kontrola čísel a češtiny (ř/ě/ů) bez nálezu. Makový cheesecake z Víkendového pečenia
     vynechaný (zlá adresa – zatiaľ nenájdený).
+    **Koláče a dezerty – celá kategória (21. 11., pokyn majiteľa „naplň celú kategóriu, postupne cez 5-hodinové limity“):**
+    nové podkategórie `cukrovie` (Vianočné cukrovie) a `muffiny` (Muffiny a sušienky). Plán 73 jedál je v
+    `tools/kniha/sarza4/dezerty.py` (ZOZNAM) aj v DB: `book_dishes` status `planned`, `notes = 'sub=<podkategória>'`,
+    priorita 1 = klasika. Čo zostáva: `select name_sk, notes, priority from book_dishes where category = 'sladke'
+    and status = 'planned' order by priority, notes`. Postup na ďalšiu várku: `OUT=<priečinok> python3 dezerty.py hladaj
+    <id…>` (kandidáti zo 6 webov zoradení podľa hodnotenia/hlasov/množstiev), vybrať, `vypis.py <priečinok> id=url …`
+    (suroviny, postup, fotka z JSON-LD – fotky z okolia stránky patria iným receptom), preložiť a zapísať cez
+    `pg_temp.add(id, podkategória, …)` (batch 7+; pri existujúcom pláne prepne jedlo na `done`). Id receptu = id jedla.
+    Várka 1 (batch 7, 12 receptov): Sacherova, Schwarzwaldská, orechová, čokoládová, mrkvová torta, jablkový koláč,
+    jablková štrúdľa, bublanina, krémeše, brownies, tvarohový koláč, mramorová bábovka. Na zmazanie (majiteľ, SQL Editor):
+    `delete from book_dishes where id = 'mramorova_babovka';` – duplicita omylom, recept patrí pod `babovka`.
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
     recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):
     **Vaření.cz** 47 794 receptov, víťaz pri 13/13 jedál, medián 146 hodnotení, 91 % surovín s množstvom, ~130 slov postupu,

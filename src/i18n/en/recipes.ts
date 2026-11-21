@@ -406,6 +406,8 @@ export const enRecipes: Record<keyof typeof skRecipes, string> = {
   "rk.sub.kolace_rezy": "Bakes and slices",
   "rk.sub.kysnute": "Yeast baking",
   "rk.sub.zakusky": "Pastries and small bakes",
+  "rk.sub.cukrovie": "Christmas cookies",
+  "rk.sub.muffiny": "Muffins and cookies",
   "rk.sub.dezerty": "Desserts and creams",
   "rk.sub.sladke_jedla": "Sweet dishes",
   "rk.subAll": "All",
