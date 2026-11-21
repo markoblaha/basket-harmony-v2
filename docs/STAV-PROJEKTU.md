@@ -955,6 +955,9 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     prejde adresy podľa kľúčových slov a nechá len ★ ≥ 4,2, ≥ 40 hlasov, ≥ 85 % množstiev a fotku ≥ 1000 px. Várka 11
     (batch 18, 13 zákuskov): ovocné košíčky, Mišove rezy, pudingové rezy, kakaová roláda, grófkine rezy, punčové rezy,
     karamelové košíčky, žravé rezy, kokosové rezy s rebarborou, tatranské rezy, nepečená roláda, limetkové tortičky, éclairs.
+    Várka 12 (batch 19): tvarohový mazanec, kysnuté makové buchty, buchtičky so šodó, tvarohová vianočka (fotka rakúsky
+    Topfenstriezel – vlastná bola nepečené cesto), šľahačkové koláčiky (cukrovie), české tvarohové koláče, litý kysnutý
+    koláč, kysnuté jahodové knedle. Výsledky hromadného výberu: scratchpad `taz/tazba_<podkategória>.json` (dočasné).
     Panna cotta: zdroje majú zlé hodnotenie (Vaření 3,3), treba hľadať inde (napr. anglické weby).
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
