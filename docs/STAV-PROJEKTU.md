@@ -930,6 +930,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     palacinky, ovocné knedle, kysnuté knedle s čučoriedkami, žemľovka, šúľance s makom, lievance, vanilkový tvarohový krém.
     Várka 4 (batch 10, 9 receptov zo sveta): tarte Tatin, clafoutis, citrónový tart, venčeky, profiteroly, crème brûlée,
     pavlova, baklava, churros (citrónový tart má zatiaľ 1 fotku – iný tart sa nenašiel). Stav: 92 hotových, 209 naplánovaných.
+    Várka 5 (batch 11–12, pokyn „naplň torty a cukrovinky“): torty Dobošova, red velvet, jahodová, punčová, tres leches,
+    Victoria sponge, tiramisu, oblátková; cukrovie pracny, bezé pusinky, marokánky, čokoládová saláma, plnené orechy,
+    vosie hniezda, škoricové hviezdičky, išelské. Torty 13 hotových / 26 v pláne, cukrovie 13 / 17 (+ medovník a pod.
+    mimo plánu). Opera, Esterházy a citrónová torta s bezé – české weby nemajú kvalitný recept, hľadať v angličtine.
     Panna cotta: zdroje majú zlé hodnotenie (Vaření 3,3), treba hľadať inde (napr. anglické weby).
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
