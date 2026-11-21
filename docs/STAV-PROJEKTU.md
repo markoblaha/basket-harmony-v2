@@ -961,7 +961,17 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Panna cotta: zdroje majú zlé hodnotenie (Vaření 3,3), treba hľadať inde (napr. anglické weby).
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
-    `delete from book_dishes where id = 'mramorova_babovka';` – duplicita omylom, recept patrí pod `babovka`.
+    `delete from book_dishes where status = 'quarantine' and category = 'sladke' and notes like '%zmazať%';` – duplicity
+    omylom (mramorova_babovka → babovka; z várky 21: ryzovy_nakyp, americke_livance, french_toast, tvarohove_knedle_jahody,
+    apple_crumble, ovocne_tiramisu, jablkovy_trifle, bananova_zmrzlina, germknodel – recepty už patria pod jedlá z plánu).
+    **Várky 21–23 (21. 11., batch 21–23, len originálne fotky `<id>_o-1.webp`):** sladké jedlá (ryžový nákyp, americké
+    lievance, tvarohové knedlíčky, French toast, zemiakové šišky s makom, Germknödel, ovsené lievančeky), dezerty (ovocné
+    tiramisu, apple crumble, banánová a jahodová zmrzlina, jablkový trifle, suflé, panna cotta, Eton mess, palacinky
+    Suzette, semifreddo, ryžový puding, sorbet), kremrole a kiwi rezy, kysnuté (fašiangové šišky, loupáky, lekvárové buchty),
+    koláče (perník, linecký, kefírová buchta, čučoriedkový, makový, apple pie, banánový chlebík), muffiny (citrónové s makom,
+    tvarohové, kávové, hruškové) a sušienky (škoricové, fínske ovsené). Spolu 202 receptov. Nový recept dostáva id jedla
+    z plánu (`book_dishes`), ak tam už je – inak vzniká duplicita. Rýchle hľadanie podľa adresy: scratchpad
+    `hladaj_slug.py "regex" [min_hlasov]` (rovnaké kritériá ako `tazba.py`, aj Toprecepty a Lidl).
     **Fotky receptov – PLATNÉ pravidlo (21. 11., pokyn majiteľa, nahrádza staré „2–3 fotky aj z iných receptov“):**
     recept smie mať LEN fotky zo stránky svojho pôvodného receptu (ten istý koláč/torta, aj viac záberov z toho istého
     článku). Fotka iného koláča toho istého druhu sa nepoužíva, ani keď je krajšia. Vyššie rozlíšenie len z toho istého
