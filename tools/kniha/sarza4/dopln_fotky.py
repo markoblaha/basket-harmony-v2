@@ -49,6 +49,8 @@ VZOR = {
  "kokosove_rezy": r"kokosove-rezy", "tatranske_rezy": r"tatransk", "nepecena_rolada": r"nepecena-rolada|nepeceny-rolad", "limetkove_dortiky": r"dortiky-s-|malinove-dortiky", "eclairs": r"eclair",
  "velkonocny_baranok": r"tvarohovy-mazanec|^mazanec", "makove_buchty": r"makove-buchty|buchty-s-makem", "dukatove_buchticky": r"buchticky-se-sodo|dukatove", "tvarohova_vianocka": r"tvarohova-vanocka",
  "slehackove_kolacky": r"slehackove-kolacky", "tvarohove_kolacik": r"tvarohove-kolace|tvarohove-kolacky", "lity_kynuty_kolac": r"lity-kynuty|kynuty-kolac-se-svestk|svestkovy-kynuty", "kaiser_jahody": r"jahodove-knedliky",
+ "hrnkove_muffiny": r"hrnkove-muffiny|jednoduche-muffiny|klasicke-muffiny", "muffiny_cokolada": r"muffiny-s-kousky-cokol|muffiny-s-cokoladou", "jogurtove_muffiny": r"jogurtove-muffiny",
+ "vlacne_muffiny": r"kakaove-muffiny|vlacne-muffiny", "jablkove_muffiny": r"jablecne-muffiny", "vanilkove_cupcaky": r"vanilkove-cupcake|cupcakes", "madlenky": r"madlenk", "pernikove_muffiny": r"pernikove-muffiny",
 }
 SITES = {"apetit": r"/recept/", "receptycz": r"/recept/", "vikend": r"/\d{4}/\d{2}/", "lidl": r"/recepty/", "vareni": r"/recepty/[^/]+/?$", "toprecepty": r"/recept/\d+"}
 URLS = json.load(open(os.path.join(HERE, "..", "data", "urls.json")))
