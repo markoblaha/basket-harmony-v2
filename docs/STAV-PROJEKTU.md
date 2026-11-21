@@ -920,7 +920,11 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     (suroviny, postup, fotka z JSON-LD – fotky z okolia stránky patria iným receptom), preložiť a zapísať cez
     `pg_temp.add(id, podkategória, …)` (batch 7+; pri existujúcom pláne prepne jedlo na `done`). Id receptu = id jedla.
     Várka 1 (batch 7, 12 receptov): Sacherova, Schwarzwaldská, orechová, čokoládová, mrkvová torta, jablkový koláč,
-    jablková štrúdľa, bublanina, krémeše, brownies, tvarohový koláč, mramorová bábovka. Na zmazanie (majiteľ, SQL Editor):
+    jablková štrúdľa, bublanina, krémeše, brownies, tvarohový koláč, mramorová bábovka.
+    Várka 2 (batch 8, 13 receptov): buchty, kysnutý koláč s tvarohom a jablkami, škoricové slimáky, makovník,
+    orechovník, trubičky, linecké, vanilkové rožky, medovníčky, kokosky, rumové guľky, tiramisu, čokoládová pena.
+    Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
+    panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
     `delete from book_dishes where id = 'mramorova_babovka';` – duplicita omylom, recept patrí pod `babovka`.
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
     recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):
