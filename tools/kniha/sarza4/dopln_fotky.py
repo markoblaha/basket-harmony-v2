@@ -44,6 +44,9 @@ VZOR = {
  "malinovo_pistaciova_torta": r"pistaciov.*dort", "ferrero_torta": r"nugatov.*dort",
  "medove_kocky": r"medove-(kostky|kocky|rezy)", "lieskovce": r"(liskov|orisk).*(kolacky|cukrovi|susenky)", "mandlove_rozky": r"mandlove-rohlicky|vanilkove-rohlicky",
  "vianocne_susienky": r"zazvorove-susenky", "kakaove_gulky": r"cokoladove-kulicky|rumove-kulicky",
+ "ovocne_kosicky": r"ovocne-kosicky|kosicky-s-", "kokosove_kocky": r"misa-rezy|misovy", "pudingove_rezy": r"pudinkove-rezy|kremesove-rezy", "piskotova_rolada": r"rolada-se-slehackou|kakaova-rolada|piskotova-rolada",
+ "hrabenciny_rezy": r"hrabenc", "punc_rezy": r"puncove-rezy", "lotus_kosicky": r"karamelove-kosicky|orechove-kosicky", "zrave_rezy": r"zrave-rezy|mandarinkove-rezy|rezy-s-mandarink",
+ "kokosove_rezy": r"kokosove-rezy", "tatranske_rezy": r"tatransk", "nepecena_rolada": r"nepecena-rolada|nepeceny-rolad", "limetkove_dortiky": r"dortiky-s-|malinove-dortiky", "eclairs": r"eclair",
 }
 SITES = {"apetit": r"/recept/", "receptycz": r"/recept/", "vikend": r"/\d{4}/\d{2}/", "lidl": r"/recepty/", "vareni": r"/recepty/[^/]+/?$", "toprecepty": r"/recept/\d+"}
 URLS = json.load(open(os.path.join(HERE, "..", "data", "urls.json")))

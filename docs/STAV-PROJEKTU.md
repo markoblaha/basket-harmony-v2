@@ -951,6 +951,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Várka 10 (batch 17): cukrovie orechové medové kocky, lieskovoorieškové koláčiky, mandľové rožky, zázvorové sušienky,
     čokoládové guľky s plnkou. Spolu 136 receptov. Cukrovie 24 / zostáva 6 (pracny so džemom, snehové guľky, plnené
     medovníčky, linecké s čokoládou, šachovnica, ovsené guľky – zdroje bez postupu alebo nejasné množstvá).
+    **Hromadný výber (21. 11., majiteľ: „v každej kategórii extrémne málo“):** `tazba.py <priečinok> <podkategória> [max]`
+    prejde adresy podľa kľúčových slov a nechá len ★ ≥ 4,2, ≥ 40 hlasov, ≥ 85 % množstiev a fotku ≥ 1000 px. Várka 11
+    (batch 18, 13 zákuskov): ovocné košíčky, Mišove rezy, pudingové rezy, kakaová roláda, grófkine rezy, punčové rezy,
+    karamelové košíčky, žravé rezy, kokosové rezy s rebarborou, tatranské rezy, nepečená roláda, limetkové tortičky, éclairs.
     Panna cotta: zdroje majú zlé hodnotenie (Vaření 3,3), treba hľadať inde (napr. anglické weby).
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
