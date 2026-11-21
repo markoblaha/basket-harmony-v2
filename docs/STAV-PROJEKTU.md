@@ -944,6 +944,10 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Várka 8 (batch 15): torty čokoládová bez múky, zmrzlinová malinovo-citrónová, kráľovská citrónová, karamelová
     hodvábna. Spolu v Koláčoch a dezertoch 125 receptov; torty 23 hotových / 16 v pláne, cukrovie 19 / 11.
     Tip na hľadanie: vzory v `dezerty.py` sú niekedy úzke (`^…`) – pri 0 kandidátoch hľadať v `data/urls.json` voľnejšie.
+    Várka 9 (batch 16): torty gaštanová (zatiaľ bez fotky – žiadna fotka gaštanovej torty sa nenašla), hrušková s pudingom,
+    malinová tvarohová, narodeninová s čokoládovou polevou (drip), pistáciovo-malinová, nugátová. Torty 29 / zostáva 10
+    (Esterházy, Opera, kokosová, naked cake, bezé torta, jogurtová, čokoládovo-malinová, marcipánová, grilážová, Spartak),
+    cukrovie 19 / zostáva 11 – na českých weboch slabé, treba anglické zdroje (WebSearch) alebo slovenské (Lidl).
     Panna cotta: zdroje majú zlé hodnotenie (Vaření 3,3), treba hľadať inde (napr. anglické weby).
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
