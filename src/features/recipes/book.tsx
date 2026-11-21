@@ -32,6 +32,13 @@ export function bookAmount(ing: Ingredient) {
   return g && g >= 1 ? `${base} (${formatNumber(roundQty(g, "g"))} g)` : base;
 }
 
+/** Pri riadku zo zdroja s lyžicou orientačné gramy („≈ 25 g“), aby bolo jasné, koľko to je; inak nič. */
+export function spoonGrams(ing: Ingredient) {
+  if (ing.unit !== "lyzica" && ing.unit !== "lyzicka") return "";
+  const g = toGrams(ing.food, ing.qty, ing.unit);
+  return g && g >= 1 ? t("kb.spoonGrams", { g: formatNumber(roundQty(g, "g")) }) : "";
+}
+
 /** Postup prípravy suroviny (podrecept) ako rozbaľovací blok – pri surovine, v postupe aj vo varení. */
 export function PrepBox({ how, first }: { how: PrepHow; first?: boolean }) {
   return (
@@ -97,8 +104,8 @@ export function BookIngredients({ r, portions, rows, est, onToggle }: { r: Recip
                         {ing.optional && <span className="bopt">{t("kb.optional")}</span>}
                       </b>
                       <span className="sub">
-                        {ing.orig ? "" : bookAmount(ing)}
-                        {ing.note ? `${ing.orig ? "" : " · "}${metric(ing.note)}` : ""}
+                        {ing.orig ? spoonGrams(ing) : bookAmount(ing)}
+                        {ing.note ? `${ing.orig && !spoonGrams(ing) ? "" : " · "}${metric(ing.note)}` : ""}
                         {state}
                       </span>
                       {ing.how && <PrepBox how={ing.how} />}

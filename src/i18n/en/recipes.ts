@@ -588,6 +588,8 @@ export const enRecipes: Record<keyof typeof skRecipes, string> = {
   "kb.h": "{h} h",
   "kb.hm": "{h} h {m} min",
   "kb.free": "no need to buy",
+  "kb.pinch": "a pinch",
+  "kb.spoonGrams": "≈ {g} g",
   "kb.optional": "optional",
   "kb.tools": "Equipment",
   "kb.allergens": "Allergens",

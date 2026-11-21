@@ -598,6 +598,8 @@ export const skRecipes = {
   "kb.h": "{h} h",
   "kb.hm": "{h} h {m} min",
   "kb.free": "netreba kupovať",
+  "kb.pinch": "štipka",
+  "kb.spoonGrams": "≈ {g} g",
   "kb.optional": "voliteľné",
   "kb.tools": "Náradie",
   "kb.allergens": "Alergény",

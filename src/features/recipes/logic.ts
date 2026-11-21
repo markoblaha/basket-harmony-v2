@@ -120,17 +120,51 @@ export function metric(s: string): string {
 export function scaleOrig(orig: string, f: number): string {
   const re = new RegExp(String.raw`^(\s*)(${NUM_RE})(?:(\s*[-–]\s*)(${NUM_RE}))?(?:(\s+)((?:polievkov|čajov)\S* )?(lyžic|lyžíc|lyžič)\S*)?`);
   const lead = orig.replace(re, (m: string, sp: string, a: string, dash?: string, b?: string, gap?: string, adj?: string, spoon?: string) => {
+    if (spoon) return sp + scaleSpoon(numOf(a) * f, dash && b ? numOf(b) * f : null, spoon !== "lyžič", !!adj, dash ?? "–", gap ?? " ");
     if (f === 1 && !m.includes(".")) return m;
-    const num = `${sp}${fmt2(numOf(a) * f)}${dash && b ? dash + fmt2(numOf(b) * f) : ""}`;
-    // Po prepočte sa lyžica skloňuje podľa nového čísla („1 polievková lyžica“ → „2 polievkové lyžice“).
-    if (!spoon) return num;
-    const form = spoonForm(numOf(b ?? a) * f, spoon !== "lyžič");
-    return `${num}${gap}${adj ? form : form.split(" ")[1]}`;
+    return `${sp}${fmt2(numOf(a) * f)}${dash && b ? dash + fmt2(numOf(b) * f) : ""}`;
   });
   return metric(lead);
 }
 
-/** Tvar lyžice podľa čísla (údaje receptu sú po slovensky; bez prívlastku sa použije len druhé slovo): 1 → „polievková lyžica“, 2–4 → „polievkové lyžice“, 1,5 → „polievkovej lyžice“, 5 → „polievkových lyžíc“. */
+/** 1 polievková lyžica = 3 čajové lyžičky (15 ml a 5 ml). */
+const TSP_PER_TBSP = 3;
+
+/**
+ * Lyžice po prepočte tak, ako by ich napísal kuchár: zlomky namiesto desatinných čísel („½ lyžičky“, nie „0,5“),
+ * menej než lyžica sa prepočíta na lyžičky („½ lyžice“ → „1½ lyžičky“), lyžičky v celých lyžiciach na lyžice
+ * („6 lyžičiek“ → „2 lyžice“), lyžica na pol lyžice a lyžička na štvrť či tretinu, menej než pätina lyžičky = štipka.
+ * Prívlastok („polievková“, „čajová“) ostane, len ak ho mal pôvodný riadok (skratka PL/ČL v origináli).
+ */
+export function scaleSpoon(lo: number, hi: number | null, tbsp: boolean, adj: boolean, dash = "–", gap = " "): string {
+  let top = hi ?? lo;
+  if (tbsp && top < 1) { tbsp = false; lo *= TSP_PER_TBSP; hi = hi == null ? null : hi * TSP_PER_TBSP; top *= TSP_PER_TBSP; }
+  else if (!tbsp && top >= TSP_PER_TBSP && [lo, hi ?? lo].every((x) => Math.abs((x / TSP_PER_TBSP) * 2 - Math.round((x / TSP_PER_TBSP) * 2)) < 0.01)) {
+    tbsp = true; lo /= TSP_PER_TBSP; hi = hi == null ? null : hi / TSP_PER_TBSP; top /= TSP_PER_TBSP;
+  }
+  if (!tbsp && top < 0.2) return t("kb.pinch");
+  const r = (x: number) => roundSpoon(x, tbsp);
+  const n1 = r(lo), n2 = hi == null ? null : r(hi);
+  const word = spoonForm(n2 ?? n1, tbsp);
+  return `${fracText(n1)}${n2 != null && n2 !== n1 ? dash + fracText(n2) : ""}${gap}${adj ? word : word.split(" ")[1]}`;
+}
+
+/** Lyžica na pol lyžice (najmenej ½), lyžička na štvrtiny alebo tretiny (najmenej ¼). */
+function roundSpoon(x: number, tbsp: boolean): number {
+  if (tbsp) return Math.max(0.5, Math.round(x * 2) / 2);
+  const q = Math.round(x * 4) / 4, th = Math.round(x * 3) / 3;
+  return Math.max(0.25, Math.abs(th - x) < Math.abs(q - x) - 0.001 ? th : q);
+}
+
+/** 1.5 → „1½“, 0.25 → „¼“, 2/3 → „⅔“, 2 → „2“. */
+function fracText(n: number): string {
+  const w = Math.floor(n + 1e-9), rest = n - w;
+  const g = [[0.25, "¼"], [1 / 3, "⅓"], [0.5, "½"], [2 / 3, "⅔"], [0.75, "¾"]].find(([v]) => Math.abs((v as number) - rest) < 0.01)?.[1] as string | undefined;
+  if (rest < 0.01) return String(w);
+  return g ? `${w || ""}${g}` : fmt2(n);
+}
+
+/** Tvar lyžice podľa čísla (údaje receptu sú po slovensky; bez prívlastku sa použije len druhé slovo): 1 → „polievková lyžica“, 2–4 → „polievkové lyžice“, ½ či 1½ → „polievkovej lyžice“, 5 → „polievkových lyžíc“. */
 function spoonForm(n: number, tbsp: boolean): string {
   const k = !Number.isInteger(n) ? 2 : n === 1 ? 0 : n >= 2 && n <= 4 ? 1 : 3;
   return (tbsp

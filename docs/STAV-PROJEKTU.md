@@ -979,6 +979,9 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     skratky (hlavne Apetit), ostatné obyčajné slová. Pozor: JSON-LD stránky sa môže líšiť od viditeľného textu – tekvicové
     rezy majú v dátach „lžíce“, na stránke „lžička“; platí viditeľný text. Pri prepočte porcií sa lyžica skloňuje
     (`scaleOrig`, aj s prívlastkom). Lyžica ako náčinie v postupe („lyžicou rozotrite“) ostáva.
+    **Prepočet lyžíc ako v kuchyni (21. 11.):** `scaleSpoon` – zlomky namiesto desatinných čísel (½, ¼, ¾, ⅓, ⅔), menej než
+    lyžica → lyžičky (1 lyžica = 3 lyžičky), lyžičky v celých/polovičných lyžiciach → lyžice, lyžica na ½, lyžička na ¼ alebo ⅓,
+    menej než pätina lyžičky = štipka. Pri riadku s lyžicou sa pod ním ukáže „≈ X g“ (hmotnosť z `foods.ts`, lyz/lyzk).
     **Fotky receptov – PLATNÉ pravidlo (21. 11., pokyn majiteľa, nahrádza staré „2–3 fotky aj z iných receptov“):**
     recept smie mať LEN fotky zo stránky svojho pôvodného receptu (ten istý koláč/torta, aj viac záberov z toho istého
     článku). Fotka iného koláča toho istého druhu sa nepoužíva, ani keď je krajšia. Vyššie rozlíšenie len z toho istého
