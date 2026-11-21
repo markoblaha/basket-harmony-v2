@@ -118,17 +118,19 @@ export function metric(s: string): string {
  * Desatinná bodka zdroja („0.5 kg“) sa ukáže po slovensky („0,5 kg“), jednotky cez metric().
  */
 export function scaleOrig(orig: string, f: number): string {
-  const re = new RegExp(String.raw`^(\s*)(${NUM_RE})(?:(\s*[-–]\s*)(${NUM_RE}))?(?:(\s+)(polievkov|čajov)\S* lyži\S*)?`);
-  const lead = orig.replace(re, (m: string, sp: string, a: string, dash?: string, b?: string, gap?: string, spoon?: string) => {
+  const re = new RegExp(String.raw`^(\s*)(${NUM_RE})(?:(\s*[-–]\s*)(${NUM_RE}))?(?:(\s+)((?:polievkov|čajov)\S* )?(lyžic|lyžíc|lyžič)\S*)?`);
+  const lead = orig.replace(re, (m: string, sp: string, a: string, dash?: string, b?: string, gap?: string, adj?: string, spoon?: string) => {
     if (f === 1 && !m.includes(".")) return m;
     const num = `${sp}${fmt2(numOf(a) * f)}${dash && b ? dash + fmt2(numOf(b) * f) : ""}`;
     // Po prepočte sa lyžica skloňuje podľa nového čísla („1 polievková lyžica“ → „2 polievkové lyžice“).
-    return spoon ? `${num}${gap}${spoonForm(numOf(b ?? a) * f, spoon === "polievkov")}` : num;
+    if (!spoon) return num;
+    const form = spoonForm(numOf(b ?? a) * f, spoon !== "lyžič");
+    return `${num}${gap}${adj ? form : form.split(" ")[1]}`;
   });
   return metric(lead);
 }
 
-/** Tvar lyžice podľa čísla (údaje receptu sú po slovensky): 1 → „polievková lyžica“, 2–4 → „polievkové lyžice“, 1,5 → „polievkovej lyžice“, 5 → „polievkových lyžíc“. */
+/** Tvar lyžice podľa čísla (údaje receptu sú po slovensky; bez prívlastku sa použije len druhé slovo): 1 → „polievková lyžica“, 2–4 → „polievkové lyžice“, 1,5 → „polievkovej lyžice“, 5 → „polievkových lyžíc“. */
 function spoonForm(n: number, tbsp: boolean): string {
   const k = !Number.isInteger(n) ? 2 : n === 1 ? 0 : n >= 2 && n <= 4 ? 1 : 3;
   return (tbsp
