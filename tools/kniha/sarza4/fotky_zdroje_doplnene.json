@@ -331,5 +331,34 @@
  ],
  "ischelky": [
   "pôvodná fotka receptu"
+ ],
+ "bananova_torta": [
+  "pôvodná fotka receptu",
+  "https://www.apetitonline.cz/recept/bananovy-dort-s-medovym-kremem-rumovou-polevou"
+ ],
+ "makova_torta": [
+  "pôvodná fotka receptu",
+  "https://www.recepty.cz/recept/makovy-dort-s-malinami-162180"
+ ],
+ "kavova_torta": [
+  "https://www.recepty.cz/recept/kavovy-dort-s-kavovou-slehackou-156287",
+  "https://www.apetitonline.cz/recept/cokoladovo-kavovy-dort"
+ ],
+ "mascarpone_torta": [
+  "pôvodná fotka receptu",
+  "https://www.apetitonline.cz/recept/mandlovy-pusinkovy-dort-s-medovym-mascarpone"
+ ],
+ "ovocna_piskotova_torta": [
+  "pôvodná fotka receptu",
+  "https://www.apetitonline.cz/recept/ovocny-dort-s-kokosovym-karamelem-vanilkou",
+  "https://www.recepty.cz/recept/ovocny-dort-6189"
+ ],
+ "lotus_torta": [
+  "pôvodná fotka receptu"
+ ],
+ "banoffee": [
+  "pôvodná fotka receptu",
+  "https://www.recepty.cz/recept/banoffee-pie-166079",
+  "https://www.recepty.cz/recept/banoffee-irsky-kolac-152156"
  ]
 }

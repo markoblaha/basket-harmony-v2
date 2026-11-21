@@ -934,6 +934,9 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Victoria sponge, tiramisu, oblátková; cukrovie pracny, bezé pusinky, marokánky, čokoládová saláma, plnené orechy,
     vosie hniezda, škoricové hviezdičky, išelské. Torty 13 hotových / 26 v pláne, cukrovie 13 / 17 (+ medovník a pod.
     mimo plánu). Opera, Esterházy a citrónová torta s bezé – české weby nemajú kvalitný recept, hľadať v angličtine.
+    Várka 6 (batch 13): torty banánová s karamelom, maková s citrónovým krémom, orieškovo-kávová, piškótová s malinovým
+    mascarpone, ovocná so želé, smotanová Lotus; banoffee (koláče). Torty 19 hotových / 20 v pláne, cukrovie 13 / 17.
+    Jogurtová a tvarohová želatínová torta – zdroje majú len hrnčeky/kelímky, hľadať iný recept.
     Panna cotta: zdroje majú zlé hodnotenie (Vaření 3,3), treba hľadať inde (napr. anglické weby).
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
