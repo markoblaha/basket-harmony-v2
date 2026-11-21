@@ -29,6 +29,8 @@ VZOR = {
  "ovsene_susienky": r"^ovesne-susenky", "bananove_muffiny": r"^bananove-muffiny", "palacinky": r"^palacinky",
  "ovocne_knedle": r"ovocne-knedliky|merunkove-knedliky|svestkove-knedliky|jahodove-knedliky", "parene_buchty": r"kynute-knedliky|borukove-knedliky|boruvkove-knedliky",
  "zemlovka": r"^zemlovka", "sulance_s_makom": r"sisky-s-makem|bramborove-sisky", "lievance": r"^livanec|^livance|^livanecky", "tvarohovy_krem": r"tvarohovy-krem",
+ "tarte_tatin": r"tatin", "clafoutis": r"clafoutis", "venceky": r"venecky", "profiteroly": r"profiterol", "creme_brulee": r"creme-brulee|krem-brulee",
+ "pavlova": r"pavlov", "baklava": r"baklav", "churros": r"churros", "citronovy_tart": r"citronov[ya]-tart|citronovy-kolac",
 }
 SITES = {"apetit": r"/recept/", "receptycz": r"/recept/", "vikend": r"/\d{4}/\d{2}/", "lidl": r"/recepty/", "vareni": r"/recepty/[^/]+/?$", "toprecepty": r"/recept/\d+"}
 URLS = json.load(open(os.path.join(HERE, "..", "data", "urls.json")))

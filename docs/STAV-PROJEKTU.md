@@ -928,7 +928,9 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     orechovník, trubičky, linecké, vanilkové rožky, medovníčky, kokosky, rumové guľky, tiramisu, čokoládová pena.
     Várka 3 (batch 9, 12 receptov, každý 2–3 fotky): čokoládové, čučoriedkové a banánové muffiny, cookies, ovsené sušienky,
     palacinky, ovocné knedle, kysnuté knedle s čučoriedkami, žemľovka, šúľance s makom, lievance, vanilkový tvarohový krém.
-    Stav: 83 hotových, 218 naplánovaných.
+    Várka 4 (batch 10, 9 receptov zo sveta): tarte Tatin, clafoutis, citrónový tart, venčeky, profiteroly, crème brûlée,
+    pavlova, baklava, churros (citrónový tart má zatiaľ 1 fotku – iný tart sa nenašiel). Stav: 92 hotových, 209 naplánovaných.
+    Panna cotta: zdroje majú zlé hodnotenie (Vaření 3,3), treba hľadať inde (napr. anglické weby).
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
     `delete from book_dishes where id = 'mramorova_babovka';` – duplicita omylom, recept patrí pod `babovka`.
