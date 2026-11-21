@@ -979,6 +979,11 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     skratky (hlavne Apetit), ostatné obyčajné slová. Pozor: JSON-LD stránky sa môže líšiť od viditeľného textu – tekvicové
     rezy majú v dátach „lžíce“, na stránke „lžička“; platí viditeľný text. Pri prepočte porcií sa lyžica skloňuje
     (`scaleOrig`, aj s prívlastkom). Lyžica ako náčinie v postupe („lyžicou rozotrite“) ostáva.
+    **Kontrola podľa viditeľného textu (21. 11., pokyn majiteľa):** `tools/kniha/sarza4/viditelne.cjs` (prehliadač,
+    `innerText` všetkých stránok zdrojov) + `porovnaj_viditelne.py` (suroviny zo skrytých dát vs. viditeľný text). Prvá
+    kontrola 219 zdrojov: 4 skutočné chyby – tekvicové rezy (lžíce/lžička) a 3 z Vaření.cz, ktoré v dátach píše 1/3 ako 1/4
+    (buchty a české tvarohové koláče: mlieko 1/3 l; ovocné knedle: 1/3 kocky tvarohu) – opravené. Ostatné nálezy sú len iný
+    zápis (1/2 = 0,5) alebo zaokrúhlenie stránky (Schwarzwald: na stránke 1,3 l, v dátach autora 1,25 l – ponechané 1,25 l).
     **Prepočet lyžíc ako v kuchyni (21. 11.):** `scaleSpoon` – zlomky namiesto desatinných čísel (½, ¼, ¾, ⅓, ⅔), menej než
     lyžica → lyžičky (1 lyžica = 3 lyžičky), lyžičky v celých/polovičných lyžiciach → lyžice, lyžica na ½, lyžička na ¼ alebo ⅓,
     menej než pätina lyžičky = štipka. Pri riadku s lyžicou sa pod ním ukáže „≈ X g“ (hmotnosť z `foods.ts`, lyz/lyzk).

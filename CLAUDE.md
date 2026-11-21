@@ -6,6 +6,10 @@ rozhodnutia majiteľa a čo treba spraviť pred zlúčením do `main`. Na konci 
 Majiteľ projektu nie je programátor. Komunikuj po slovensky, vysvetľuj príčiny,
 a pri krokoch, ktoré musí urobiť on, píš presne kam kliknúť a prečo.
 
+**Kriticky hodnoť (pokyn majiteľa 21. 11.).** Keď majiteľ niečo navrhne alebo sa pýta, nesúhlas automaticky:
+zhodnoť návrh aj vlastné riešenie – je to správne, najlepšie, dá sa to urobiť kvalitnejšie či profesionálnejšie?
+Ak nie, povedz to otvorene s dôvodom a navrhni lepšiu cestu. Rovnako priznaj slabiny vlastného riešenia.
+
 ## Princípy
 
 - **Jednoduchosť.** Aplikácia je pre jednu domácnosť. Nepridávaj vrstvy, verzie,
@@ -27,6 +31,14 @@ a pri krokoch, ktoré musí urobiť on, píš presne kam kliknúť a prečo.
 - Texty z databázy a edge funkcií sú kódy, ktoré sa mapujú na `error.*` kľúče
   (`lib/errors.ts`); do DB nepíš texty určené pre rozhranie.
 - Vyhýbaj sa skloňovaniu mien v šablónach (píš „Nakupuje: Lucia“, nie „Požiadať Lucia“).
+
+## Kniha receptov
+
+- Recept sa preberá z textu, ktorý je **na stránke naozaj vidieť** (v prehliadači `document.body.innerText`), nie zo
+  skrytých dát (JSON-LD, HTML pre vyhľadávače) – tie sa môžu líšiť (tekvicové rezy: v dátach „lžíce“, na stránke „lžička“).
+  Skryté dáta slúžia len na rýchle nájdenie surovín; pri rozdiele platí viditeľný text.
+- Fotky len zo stránky pôvodného receptu. Lyžice podľa originálu: skratky PL/ČL celým slovom, slová lžíce/lžička
+  ako „lyžica/lyžička“. Podrobnosti v `docs/STAV-PROJEKTU.md`.
 
 ## Databáza
 
