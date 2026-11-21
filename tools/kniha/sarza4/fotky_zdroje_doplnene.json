@@ -262,6 +262,7 @@
   "https://www.apetitonline.cz/recept/churros-s-chilli-cokoladou"
  ],
  "citronovy_tart": [
+  "https://foodnouveau.com/classic-french-lemon-tart/",
   "pôvodná fotka receptu"
  ],
  "dobosova_torta": [
@@ -292,7 +293,8 @@
   "https://www.recepty.cz/recept/piskotovy-dort-s-jahodami-a-kremem-168738"
  ],
  "tiramisu_torta": [
-  "pôvodná fotka receptu"
+  "pôvodná fotka receptu",
+  "https://www.loveandlemons.com/strawberry-tiramisu/"
  ],
  "oblatkova_torta": [
   "pôvodná fotka receptu"
@@ -330,6 +332,7 @@
   "pôvodná fotka receptu"
  ],
  "ischelky": [
+  "https://www.backenmitchristina.at/rezepte/ischler-kekse",
   "pôvodná fotka receptu"
  ],
  "bananova_torta": [
@@ -354,6 +357,8 @@
   "https://www.recepty.cz/recept/ovocny-dort-6189"
  ],
  "lotus_torta": [
+  "https://www.bakinglikeachef.com/lotus-biscoff-cake/",
+  "https://www.spatuladesserts.com/lotus-biscoff-cake/",
   "pôvodná fotka receptu"
  ],
  "banoffee": [
@@ -371,7 +376,8 @@
   "https://www.recepty.cz/recept/kokosky-podle-casopisu-f-o-o-d-167350"
  ],
  "cokoladove_lupienky": [
-  "pôvodná fotka receptu"
+  "pôvodná fotka receptu",
+  "https://www.lecker.de/florentiner-plaetzchen-45581.html"
  ],
  "kokosove_rohy": [
   "pôvodná fotka receptu"
@@ -419,7 +425,8 @@
   "pôvodná fotka receptu"
  ],
  "ferrero_torta": [
-  "pôvodná fotka receptu"
+  "pôvodná fotka receptu",
+  "https://www.lecker.de/nougat-buttercreme-torte-65937.html"
  ],
  "medove_kocky": [
   "https://www.apetitonline.cz/recept/zuzciny-medove-rezy",
@@ -441,5 +448,13 @@
   "https://www.recepty.cz/recept/rumove-kulicky-nepecene-144094",
   "pôvodná fotka receptu",
   "https://www.recepty.cz/recept/rumove-kulicky-nepecene-a-snadne-159936"
+ ],
+ "gastanova_torta": [
+  "https://www.lecker.de/maronen-schneetorte-70715.html"
+ ],
+ "tiramisu_cheesecake": [
+  "pôvodná fotka receptu",
+  "https://bakewithzoha.com/baked-tiramisu-cheesecake/",
+  "https://dinnerthendessert.com/tiramisu-cheesecake/"
  ]
 }

@@ -961,6 +961,13 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     Zdroje: `fotky_zdroje_doplnene.json`. Keď sa zmení prvá fotka, súbory dostanú nový názov (`<id>_b-N.webp` +
     `image_path`), lebo service worker drží .webp v cache. Bez doplnenia zostali len mrkvový fit a tiramisu cheesecake
     (iná fotka toho istého jedla sa nenašla).
+    **Fotky zo zahraničia – pravidlo (21. 11., pokyn majiteľa):** keď recept nemá fotku celého jedla, fotka nesedí k názvu
+    alebo má nízke rozlíšenie, hľadaj rovnaké jedlo aj na zahraničných weboch (WebSearch, napr. lecker.de, recipetineats,
+    foodnouveau, backenmitchristina.at). `zahranicie.py <priečinok> <id> <url…>` vypíše názov a suroviny cudzieho receptu
+    a stiahne jeho fotku; fotku prevezmi len ak sedí NÁZOV, SUROVINY aj VZHĽAD (napr. Zimtsterne s bielkovou polevou ≠ naše
+    škoricové hviezdičky obalené v cukre → nepoužiť). Uloženie `uloz_zahranicne.py` → `<id>_z-N.webp` + nový `image_path`.
+    Prvé kolo: gaštanová torta, tiramisu torta, išelské, citrónový tart, Lotus torta, florentínky, tiramisu cheesecake,
+    nugátová torta. Bez zhody zostali oblátková torta, lieskovoorieškové koláčiky a škoricové hviezdičky (1 vlastná fotka).
     **Ochutnávač:** fotka na šírku sa na obrazovke na výšku orezávala na úzky pás (vyzerala extrémne priblížená) – teraz sa
     ukáže celá (`object-fit: contain`, trieda `wide` podľa rozmerov) a pozadie vyplní rozmazaná kópia (`--bg`).
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
