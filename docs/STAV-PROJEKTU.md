@@ -982,6 +982,7 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     **Prepočet lyžíc ako v kuchyni (21. 11.):** `scaleSpoon` – zlomky namiesto desatinných čísel (½, ¼, ¾, ⅓, ⅔), menej než
     lyžica → lyžičky (1 lyžica = 3 lyžičky), lyžičky v celých/polovičných lyžiciach → lyžice, lyžica na ½, lyžička na ¼ alebo ⅓,
     menej než pätina lyžičky = štipka. Pri riadku s lyžicou sa pod ním ukáže „≈ X g“ (hmotnosť z `foods.ts`, lyz/lyzk).
+    Štipka, vajcia, žĺtky a bielky sa pri prepočte zaokrúhlia na celé (najmenej 1) a podstatné meno sa vyskloňuje.
     **Fotky receptov – PLATNÉ pravidlo (21. 11., pokyn majiteľa, nahrádza staré „2–3 fotky aj z iných receptov“):**
     recept smie mať LEN fotky zo stránky svojho pôvodného receptu (ten istý koláč/torta, aj viac záberov z toho istého
     článku). Fotka iného koláča toho istého druhu sa nepoužíva, ani keď je krajšia. Vyššie rozlíšenie len z toho istého

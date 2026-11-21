@@ -119,12 +119,31 @@ export function metric(s: string): string {
  */
 export function scaleOrig(orig: string, f: number): string {
   const re = new RegExp(String.raw`^(\s*)(${NUM_RE})(?:(\s*[-–]\s*)(${NUM_RE}))?(?:(\s+)((?:polievkov|čajov)\S* )?(lyžic|lyžíc|lyžič)\S*)?`);
-  const lead = orig.replace(re, (m: string, sp: string, a: string, dash?: string, b?: string, gap?: string, adj?: string, spoon?: string) => {
+  let wholeN: number | null = null;
+  const lead0 = orig.replace(re, (m: string, sp: string, a: string, dash?: string, b?: string, gap?: string, adj?: string, spoon?: string) => {
     if (spoon) return sp + scaleSpoon(numOf(a) * f, dash && b ? numOf(b) * f : null, spoon !== "lyžič", !!adj, dash ?? "–", gap ?? " ");
     if (f === 1 && !m.includes(".")) return m;
+    // Štipka a vajcia sa nedelia: najmenej 1, inak celé čísla („0,5 štipka soli“ ani „1,5 vajca“ sa nepíše).
+    if (WHOLE_AFTER.test(orig.slice(m.length))) {
+      const x = Math.max(1, Math.round(numOf(a) * f)), y = dash && b ? Math.max(1, Math.round(numOf(b) * f)) : null;
+      wholeN = y ?? x;
+      return `${sp}${x}${y != null ? (dash ?? "–") + y : ""}`;
+    }
     return `${sp}${fmt2(numOf(a) * f)}${dash && b ? dash + fmt2(numOf(b) * f) : ""}`;
   });
+  // Podstatné meno za zaokrúhleným číslom v správnom tvare („1 vajce“, „2 žĺtky“, „5 bielkov“).
+  const lead = wholeN == null ? lead0 : lead0.replace(WHOLE_NOUN, (w: string) => wholeForm(w, wholeN!));
   return metric(lead);
+}
+
+/** Čo nasleduje za číslom, ktoré sa po prepočte zaokrúhli na celé (štipka, vajce, žĺtok, bielok). */
+const WHOLE_AFTER = /^\s*(?:\S+\s+)?(?:štip|vaj|žĺt|žlt|biel)/i;
+
+const WHOLE_NOUN = /(?<=^\s*[\d–-]+\s+(?:\S+\s+)?)(vajcia|vajce|vajec|žĺtky|žĺtok|žĺtkov|bielky|bielok|bielkov|štipky|štipka|štipiek)(?=\s|$|,|\))/;
+function wholeForm(w: string, n: number): string {
+  const k = n === 1 ? 0 : n <= 4 ? 1 : 2;
+  const f = /^vaj/.test(w) ? ["vajce", "vajcia", "vajec"] : /^žĺt/.test(w) ? ["žĺtok", "žĺtky", "žĺtkov"] : /^biel/.test(w) ? ["bielok", "bielky", "bielkov"] : ["štipka", "štipky", "štipiek"];
+  return f[k] ?? w;
 }
 
 /** 1 polievková lyžica = 3 čajové lyžičky (15 ml a 5 ml). */

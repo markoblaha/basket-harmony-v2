@@ -103,6 +103,11 @@ describe("metric – len g, kg, ml a l", () => {
     expect(scaleOrig("1 čajová lyžička sódy", 4)).toBe("4 čajové lyžičky sódy");
     expect(scaleOrig("1/4 lyžičky muškátového orieška", 0.5)).toBe("štipka muškátového orieška");
     expect(scaleOrig("1/3 lyžičky vanilky", 1)).toBe("⅓ lyžičky vanilky");
+    expect(scaleOrig("1 štipka soli", 0.5)).toBe("1 štipka soli");
+    expect(scaleOrig("3 vajcia", 0.5)).toBe("2 vajcia");
+    expect(scaleOrig("4 žĺtky", 2)).toBe("8 žĺtkov");
+    expect(scaleOrig("1 štipka soli", 3)).toBe("3 štipky soli");
+    expect(scaleOrig("2 veľké vajcia", 0.5)).toBe("1 veľké vajce");
     expect(scaleOrig("3 polievkové lyžice oleja", 2)).toBe("6 polievkových lyžíc oleja");
     expect(scaleOrig("1–2 čajové lyžičky papriky", 2)).toBe("2–4 čajové lyžičky papriky");
     expect(scaleOrig("2 polievkové lyžice medu", 1)).toBe("2 polievkové lyžice medu");
