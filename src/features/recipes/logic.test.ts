@@ -34,10 +34,10 @@ describe("recepty", () => {
   });
 
   it("skloňuje lyžice a strúčiky", () => {
-    expect(formatAmount(1, "lyzica")).toBe("1 lyžica");
-    expect(formatAmount(5, "lyzica")).toBe("5 lyžíc");
-    expect(formatAmount(1.5, "lyzica")).toBe("1,5 lyžice");
-    expect(formatAmount(0.25, "lyzicka")).toBe("¼ lyžičky");
+    expect(formatAmount(1, "lyzica")).toBe("1 polievková lyžica");
+    expect(formatAmount(5, "lyzica")).toBe("5 polievkových lyžíc");
+    expect(formatAmount(1.5, "lyzica")).toBe("1,5 polievkovej lyžice");
+    expect(formatAmount(0.25, "lyzicka")).toBe("¼ čajovej lyžičky");
     expect(formatAmount(2, "strucik")).toBe("2 strúčiky");
   });
 
@@ -95,6 +95,11 @@ describe("metric – len g, kg, ml a l", () => {
     expect(scaleOrig("20 dkg slanina", 6)).toBe("1,2 kg slanina");
     expect(scaleOrig("60 ml rajčatového protlaku (0,25 hrnku)", 1)).toBe("60 ml rajčatového protlaku");
     expect(scaleOrig("350 ml mléka (1,5 hrnku)", 2)).toBe("700 ml mléka");
+    expect(scaleOrig("1 polievková lyžica cukru", 2)).toBe("2 polievkové lyžice cukru");
+    expect(scaleOrig("2 čajové lyžičky škorice", 0.75)).toBe("1,5 čajovej lyžičky škorice");
+    expect(scaleOrig("3 polievkové lyžice oleja", 2)).toBe("6 polievkových lyžíc oleja");
+    expect(scaleOrig("1–2 čajové lyžičky papriky", 2)).toBe("2–4 čajové lyžičky papriky");
+    expect(scaleOrig("2 polievkové lyžice medu", 1)).toBe("2 polievkové lyžice medu");
     expect(scaleOrig("0.5 lžička kmín", 1)).toBe("0,5 lžička kmín");
     expect(scaleOrig("1/2 lžičky mletého zázvoru", 1)).toBe("1/2 lžičky mletého zázvoru");
     expect(metric("s necelými 3,5 dl studené vody")).toBe("s necelými 350 ml studené vody");

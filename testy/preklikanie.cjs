@@ -187,7 +187,8 @@ const CHECK = () => {
           const k = x.join("|");
           if (!seen.has(k)) { seen.add(k); found.push(x); }
         }
-        if (step === 0) await page.screenshot({ path: path.join(OUT, `${look.name}-${n}.png`) });
+        // ALL=1 – fotka po každom posune (napr. kontrola surovín pod fotkou)
+        if (step === 0 || process.env.ALL) await page.screenshot({ path: path.join(OUT, `${look.name}-${n}${step ? "-" + step : ""}.png`) });
         const moved = await page.evaluate(() => { const t = scrollY; scrollBy(0, innerHeight * 0.8); return scrollY !== t; });
         if (!moved) break;
         await page.waitForTimeout(250);

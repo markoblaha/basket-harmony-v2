@@ -972,6 +972,11 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     tvarohové, kávové, hruškové) a sušienky (škoricové, fínske ovsené). Spolu 202 receptov. Nový recept dostáva id jedla
     z plánu (`book_dishes`), ak tam už je – inak vzniká duplicita. Rýchle hľadanie podľa adresy: scratchpad
     `hladaj_slug.py "regex" [min_hlasov]` (rovnaké kritériá ako `tazba.py`, aj Toprecepty a Lidl).
+    **Lyžice – pravidlo (21. 11., pokyn majiteľa):** v receptoch sa vždy píše „polievková lyžica“ (PL, lžíce, tbsp)
+    alebo „čajová lyžička“ (ČL, lžička, tsp), nikdy len „lyžica/lyžička“; štipka ostáva „štipka soli“. Všetkých ~470 lyžíc
+    v knihe prepísaných a porovnaných s originálom (skript scratchpad `lyzice.py`); jediná chyba – tekvicové rezy mali byť
+    polievkové. Jednotky `lyzica`/`lyzicka` v appke sa ukazujú tiež celým názvom a pri prepočte porcií sa skloňujú
+    (`scaleOrig`: „1 polievková lyžica“ → „2 polievkové lyžice“). Lyžica ako náčinie v postupe („lyžicou rozotrite“) ostáva.
     **Fotky receptov – PLATNÉ pravidlo (21. 11., pokyn majiteľa, nahrádza staré „2–3 fotky aj z iných receptov“):**
     recept smie mať LEN fotky zo stránky svojho pôvodného receptu (ten istý koláč/torta, aj viac záberov z toho istého
     článku). Fotka iného koláča toho istého druhu sa nepoužíva, ani keď je krajšia. Vyššie rozlíšenie len z toho istého
