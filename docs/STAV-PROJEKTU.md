@@ -900,6 +900,17 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     doplnené fotky iných receptov toho istého druhu, zdroj každej v `fotky_zdroje_cheesecake25.json`), `public/kniha/v2/`.
     Pri koláčoch sa kalórie ukazujú „celý recept“. Chýbajúce potraviny v databáze (mascarpone, čokoláda, želatína, ovocie…)
     = alergény „a možno ďalšie“ a bez kalórií – doplniť do `foods.ts` s USDA hodnotami.
+    **Šarža 6 – 14 ďalších cheesecakov (21. 11., pokyn majiteľa „doplň zaujímavé kvalitné“):** spolu 39 v podkategórii.
+    10 z Víkendového pečenia (figy, hrušky so zázvorom a bielou čokoládou, tekvicový s pyré ako „ako sa robí“, tvarohové
+    mini s lekvárom, mini so slivkovou omáčkou, vanilkový s penou z bielej čokolády, s čokoládovou penou, mini s arašidovým
+    maslom, mini s citrónovým krémom, nepečené mini s jahodami a rebarborou + pyré z rebarbory) a 4 z Apetitu (ricotta
+    s domácou ricottou ako „ako sa robí“, amaretto so slaným karamelom, levanduľový s čučoriedkami, matcha s Lotus).
+    Staré články Víkendového pečenia nemajú štruktúru „Recept na“ → text a zoznam fotiek z HTML (`cheesecake15.py` + ručné
+    čítanie), preklad v relácii, vynechané úvody blogu, značky obchodov (Lidl, Tasino…), „inspirace z webu…“, odbery.
+    Hrnčeky/balenia zo zdroja prepočítané na g s pôvodnou mierou v zátvorke. Fotky: 34 (Víkendové pečenie má vlastné
+    fotky receptu, staršie len 800 px; Apetit 1 vlastná), výber v `fotky_cheesecake15.py`, zdroje
+    `fotky_zdroje_cheesecake15.json`. Kontrola čísel a češtiny (ř/ě/ů) bez nálezu. Makový cheesecake z Víkendového pečenia
+    vynechaný (zlá adresa – zatiaľ nenájdený).
     **Meranie webov (19. 11. 2026):** 15 náhodných receptov z každého webu + cielený test 13 klasických jedál (najlepší
     recept s ★≥4, ≥10 hodnoteniami, ≥60 % surovín s množstvom). Hlavné (JSON-LD, hodnotenia, celý katalóg zo sitemap):
     **Vaření.cz** 47 794 receptov, víťaz pri 13/13 jedál, medián 146 hodnotení, 91 % surovín s množstvom, ~130 slov postupu,
