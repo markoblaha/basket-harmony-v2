@@ -948,6 +948,9 @@ FLOW=basics|rest|all), `napovedy.cjs` („?“ na 13 obrazovkách), `pridavanie.
     malinová tvarohová, narodeninová s čokoládovou polevou (drip), pistáciovo-malinová, nugátová. Torty 29 / zostáva 10
     (Esterházy, Opera, kokosová, naked cake, bezé torta, jogurtová, čokoládovo-malinová, marcipánová, grilážová, Spartak),
     cukrovie 19 / zostáva 11 – na českých weboch slabé, treba anglické zdroje (WebSearch) alebo slovenské (Lidl).
+    Várka 10 (batch 17): cukrovie orechové medové kocky, lieskovoorieškové koláčiky, mandľové rožky, zázvorové sušienky,
+    čokoládové guľky s plnkou. Spolu 136 receptov. Cukrovie 24 / zostáva 6 (pracny so džemom, snehové guľky, plnené
+    medovníčky, linecké s čokoládou, šachovnica, ovsené guľky – zdroje bez postupu alebo nejasné množstvá).
     Panna cotta: zdroje majú zlé hodnotenie (Vaření 3,3), treba hľadať inde (napr. anglické weby).
     Ďalej podľa plánu: zvyšok priority 1 (svadobné koláčiky, čokoládové a čučoriedkové muffiny, cookies, ovsené sušienky,
     panna cotta – Vaření má zlé hodnotenie, hľadať inde –, palacinky, ovocné a parené knedle, žemľovka, šúľance), potom priorita 2. Na zmazanie (majiteľ, SQL Editor):
